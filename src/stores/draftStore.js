@@ -1,0 +1,307 @@
+"use client";
+
+import { proxy } from "valtio";
+import { getAdapter } from "@/lib/adapters";
+
+// Get database adapter (Firebase or localStorage based on env)
+const db = getAdapter();
+
+export const draftStore = proxy({
+  draft: {},
+  completionStatus: {}, // Track which pages are completed: { "start": true, "main-applicant/details": true, ... }
+  currentApplicationId: null, // Track which application this draft belongs to
+  shouldPrefill: false,
+  lastSaved: null,
+  isLoading: false,
+  isSaving: false,
+  
+  // Set the current application context
+  setApplicationId(appId) {
+    this.currentApplicationId = appId;
+  },
+  
+  // Actions
+  async saveDraft(data, applicationId) {
+    try {
+      this.isSaving = true;
+      
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        console.warn('No application ID set for draft save');
+        this.isSaving = false;
+        return { success: false, error: 'Application ID required' };
+      }
+      
+      // Merge with existing draft
+      this.draft = { ...this.draft, ...data };
+      
+      // Save to Firebase immediately (no debouncing per user request)
+      const result = await db.saveDraft(this.draft, appId);
+      
+      if (result.success) {
+        this.lastSaved = new Date().toISOString();
+        this.isSaving = false;
+        return { success: true };
+      }
+      
+      this.isSaving = false;
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error("Error saving draft to Firebase:", error);
+      this.isSaving = false;
+      return { success: false, error: error.message };
+    }
+  },
+  
+  async loadDraft(applicationId) {
+    try {
+      this.isLoading = true;
+      
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        console.warn('No application ID set for draft load');
+        this.isLoading = false;
+        return {};
+      }
+      
+      const data = await db.loadDraft(appId);
+      this.draft = data || {};
+      
+      // Load completion status
+      const completionData = await db.loadCompletionStatus(appId);
+      this.completionStatus = completionData || {};
+      
+      // Load prefill setting
+      const prefill = await db.getPrefill();
+      this.shouldPrefill = prefill;
+      
+      this.isLoading = false;
+      return this.draft;
+    } catch (error) {
+      console.error("Error loading draft:", error);
+      this.isLoading = false;
+      return {};
+    }
+  },
+  
+  async clearDraft(applicationId) {
+    try {
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        console.warn('No application ID set for draft clear');
+        return { success: false, error: 'Application ID required' };
+      }
+      
+      await db.clearDraft(appId);
+      // Immutable update - replace with new empty object
+      this.draft = {};
+      this.lastSaved = null;
+      return { success: true };
+    } catch (error) {
+      console.error("Error clearing draft:", error);
+      return { success: false, error: error.message };
+    }
+  },
+  
+  async setPrefill(value) {
+    try {
+      await db.setPrefill(value);
+      this.shouldPrefill = value;
+    } catch (error) {
+      console.error("Error setting prefill:", error);
+    }
+  },
+  
+  updateField(path, value) {
+    // Create a deep copy to avoid in-place mutation
+    const newDraft = JSON.parse(JSON.stringify(this.draft));
+    
+    // Update nested field using path notation (e.g., "details.firstName")
+    const keys = path.split('.');
+    let obj = newDraft;
+    
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!obj[keys[i]]) obj[keys[i]] = {};
+      obj = obj[keys[i]];
+    }
+    
+    obj[keys[keys.length - 1]] = value;
+    
+    // Replace draft object entirely (triggers Valtio reactivity)
+    this.draft = newDraft;
+  },
+  
+  // Helper: Set nested value using dot notation path
+  setNestedValue(obj, path, value) {
+    const keys = path.split('.');
+    let current = obj;
+    
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) current[keys[i]] = {};
+      current = current[keys[i]];
+    }
+    
+    current[keys[keys.length - 1]] = value;
+  },
+  
+  // Helper: Get nested value using dot notation path
+  getNestedValue(obj, path) {
+    const keys = path.split('.');
+    let current = obj;
+    
+    for (const key of keys) {
+      if (current === null || current === undefined) return undefined;
+      current = current[key];
+    }
+    
+    return current;
+  },
+  
+  // Save data to a specific section (e.g., 'mainApplicant.details')
+  async saveSectionData(section, data, applicationId) {
+    try {
+      this.isSaving = true;
+      
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        console.warn('No application ID set for section save');
+        this.isSaving = false;
+        return { success: false, error: 'Application ID required' };
+      }
+      
+      // Create a deep copy of current draft
+      const newDraft = JSON.parse(JSON.stringify(this.draft));
+      
+      // Set the section data using nested path
+      this.setNestedValue(newDraft, section, data);
+      
+      // Update local draft
+      this.draft = newDraft;
+      
+      // Save entire draft to Firebase
+      const result = await db.saveDraft(this.draft, appId);
+      
+      if (result.success) {
+        this.lastSaved = new Date().toISOString();
+        this.isSaving = false;
+        return { success: true };
+      }
+      
+      this.isSaving = false;
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error("Error saving section data:", error);
+      this.isSaving = false;
+      return { success: false, error: error.message };
+    }
+  },
+  
+  // Get data from a specific section
+  getSectionData(section) {
+    return this.getNestedValue(this.draft, section) || {};
+  },
+  
+  // Mark a page as complete
+  async markPageComplete(pageKey, applicationId) {
+    try {
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        console.warn('No application ID set for marking page complete');
+        return { success: false };
+      }
+      
+      // Update completion status
+      this.completionStatus = { ...this.completionStatus, [pageKey]: true };
+      
+      // Save to Firebase
+      await db.saveCompletionStatus(this.completionStatus, appId);
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error marking page complete:", error);
+      return { success: false, error: error.message };
+    }
+  },
+  
+  // Mark a page as incomplete
+  async markPageIncomplete(pageKey, applicationId) {
+    try {
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        console.warn('No application ID set for marking page incomplete');
+        return { success: false };
+      }
+      
+      // Update completion status
+      this.completionStatus = { ...this.completionStatus, [pageKey]: false };
+      
+      // Save to Firebase
+      await db.saveCompletionStatus(this.completionStatus, appId);
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error marking page incomplete:", error);
+      return { success: false, error: error.message };
+    }
+  },
+  
+  // Check if a page is complete
+  isPageComplete(pageKey) {
+    return this.completionStatus[pageKey] === true;
+  },
+  
+  // Get completion percentage
+  getCompletionPercentage() {
+    // Auto-detect visa type from existing completion keys
+    let visaTypePrefix = '';
+    const completionKeys = Object.keys(this.completionStatus);
+    
+    if (completionKeys.length > 0) {
+      // Check for visa type prefix in existing keys
+      const firstKey = completionKeys[0];
+      if (firstKey.startsWith('temporary-work/')) {
+        visaTypePrefix = 'temporary-work/';
+      } else if (firstKey.startsWith('partner/')) {
+        visaTypePrefix = 'partner/';
+      } else if (firstKey.startsWith('protection/')) {
+        visaTypePrefix = 'protection/';
+      }
+    }
+    
+    // Define all intake pages (without visa prefix)
+    const basePages = [
+      'start',
+      'main-applicant/details',
+      'main-applicant/other',
+      'main-applicant/identity',
+      'main-applicant/employment',
+      'main-applicant/education',
+      'main-applicant/language',
+      'main-applicant/family',
+      'all-applicants/contacts',
+      'all-applicants/contact-details',
+      'all-applicants/addresses',
+      'all-applicants/future-addresses',
+      'all-applicants/travel-history',
+      'all-applicants/future-travel',
+      'all-applicants/visas',
+      'all-applicants/health',
+      'all-applicants/character',
+      'children/start',
+      'family-sponsor/details',
+    ];
+    
+    // Build full page keys with visa prefix
+    const allPages = basePages.map(page => `${visaTypePrefix}${page}`);
+    
+    // Count completed pages
+    const completedCount = allPages.filter(page => this.isPageComplete(page)).length;
+    const totalPages = allPages.length;
+    
+    return {
+      completed: completedCount,
+      total: totalPages,
+      percentage: totalPages > 0 ? Math.round((completedCount / totalPages) * 100) : 0
+    };
+  },
+});
