@@ -1,0 +1,578 @@
+Goal
+Create a production-ready (validation phase) Next.js 14 (App Router) + TypeScript app called “Ply Legal — Client Portal”. It implements a mobile-first multi-step intake wizard with the exact page tree, fields, gates, repeaters, and validations described below.
+No real authentication or database at this stage. Use dummy login and prefill demo data. All draft state persists to localStorage and is autosaved. Submit posts JSON to a stubbed API.
+
+Tech stack & libraries
+
+Next.js 14 (App Router) + TypeScript
+
+Tailwind CSS (configured; mobile-first)
+
+shadcn/ui components: Button, Card, Input, Select, Textarea, Tabs, Dialog, Toast
+
+react-hook-form + @hookform/resolvers + zod
+
+date-fns
+
+lucide-react (icons)
+
+(Optional) framer-motion for subtle animations (slide/fade on page/row add/remove)
+
+Branding (implement)
+
+Colors (Tailwind theme.extend.colors):
+
+plygreen: #285646 (primary)
+
+plyblue: #DEE3FF (background wash)
+
+Typography: legal/serif look (e.g., font-serif for headings); clean sans for forms.
+
+Global layout: light plyblue page background; white cards; plygreen accents.
+
+Use 8/12 spacing rhythm, rounded-2xl, shadow-sm/shadow-md, focus-visible outlines.
+
+App structure (must match exactly)
+app/
+  login/page.tsx                     // dummy login (no backend), redirects to /intake/start
+  intake/
+    start/page.tsx
+    main-applicant/
+      details/page.tsx
+      other/page.tsx
+      identity/page.tsx
+      employment/page.tsx
+      education/page.tsx
+      language/page.tsx
+      family/page.tsx
+    children/start/page.tsx
+    family-sponsor/details/page.tsx
+    family/page.tsx
+    all-applicants/
+      addresses/page.tsx
+      contact-details/page.tsx
+      visas/page.tsx
+      travel-history/page.tsx
+      future-travel/page.tsx
+      future-addresses/page.tsx
+      health/page.tsx
+      character/page.tsx
+      contacts/page.tsx
+    submit/page.tsx
+  api/intake/save/route.ts
+  api/intake/submit/route.ts
+components/
+  WizardShell.tsx
+  RepeaterTable.tsx
+  Field.tsx
+  ConfirmDialog.tsx
+  ErrorSummary.tsx
+  StickyNav.tsx
+lib/
+  types.ts
+  validation.ts
+  storage.ts
+  routes.ts
+  dummy-data.ts
+
+Routing and navigation
+
+Each bullet in the PAGE TREE below is its own route under /intake/<section>/<subpage>.
+
+WizardShell renders a sidebar stepper (desktop) and top tabs/dropdown (mobile).
+
+Show current section + subpages as chips/tabs under the section title.
+
+Sticky bottom bar (mobile): “Previous”, “Save Draft”, “Continue” (≥44px targets).
+
+Show progress bar (percent of subpages completed).
+
+On page change: scroll to top, run validation for current page, autosave draft.
+
+Dummy login (no backend)
+
+Route: /login
+
+Prefilled credentials: user@example.com / password123
+
+On submit, set localStorage['ply_session']="ok" and redirect to /intake/start.
+
+If session missing and user visits /intake/*, redirect to /login.
+
+Draft persistence, autosave, toasts
+
+Persist full Intake JSON in localStorage under key: ply:intake_draft
+
+Autosave:
+
+On every step change, and every 10 seconds while dirty.
+
+POST same payload to /api/intake/save (stub) and show shadcn Toast “Draft saved”.
+
+storage.ts exports: loadDraft(), saveDraft(partial), clearDraft() (merge semantics).
+
+Repeaters (Add/Edit/Remove)
+
+RepeaterTable:
+
+Desktop: simple table with Add/Edit/Delete.
+
+Small screens: render each row as a Card (stacked list) with action buttons.
+
+Add/Edit opens shadcn Dialog with a mini form bound to RHF.
+
+Persist immediately on submit; show micro fade/slide animations for row add/remove.
+
+All Yes/No gates toggle the corresponding repeater visibility live.
+
+Review & Submit
+
+Route /intake/submit:
+
+Render read-only summary grouped by section/sub-page, exact order as the page tree.
+
+Each group has an Edit button linking back to that route and focusing the first field.
+
+Submit posts full JSON to /api/intake/submit.
+
+On success, show confirmation screen with reference like APP-#### and “Return to Start”.
+
+API stubs (implement exactly)
+// app/api/intake/save/route.ts
+import { NextResponse } from "next/server";
+export async function POST(req: Request) {
+  const data = await req.json();
+  console.log("[SAVE] Draft:", data);
+  return NextResponse.json({ ok: true });
+}
+
+// app/api/intake/submit/route.ts
+import { NextResponse } from "next/server";
+export async function POST(req: Request) {
+  const data = await req.json();
+  const ref = `APP-${Math.floor(1000 + Math.random()*9000)}`;
+  console.log("[SUBMIT] Payload:", data, "Ref:", ref);
+  return NextResponse.json({ ok: true, reference: ref });
+}
+
+Data model (TypeScript) — lib/types.ts
+export type YesNo = "Yes" | "No";
+
+export type NameParts = { family_name: string; given_names: string; };
+export type DateRange = { from?: string; to?: string };
+
+export type OtherName = NameParts & { reason_for_change: string };
+export type Citizenship = { country: string; obtained_method: string; date_obtained?: string; still_citizen?: boolean };
+export type Passport = { doc_number: string; name: string; nationality: string; date_of_issue?: string; status?: "Valid"|"Expired"|"Cancelled" };
+export type IdentityDoc = { doc_type: string; id_number: string; name: string; country_of_issue: string; date_of_issue?: string };
+
+export type EmploymentRow = { date_from?: string; date_to?: string; status?: string; position?: string; country?: string };
+export type EducationRow = { date_from?: string; date_to?: string; course_name: string; institution_name: string; country?: string; status?: "Completed"|"Ongoing"|"Withdrawn" };
+
+export type LanguageRow = { language: string; proficiency?: "Basic"|"Intermediate"|"Proficient"|"Native"; main_language?: boolean };
+
+export type ChildRow = { name: string; dob?: string; gender?: "Male"|"Female"|"Other"; intention?: "Included in Application"|"Not Included" };
+
+export type AddressRow = DateRange & { address: string; legal_status?: string };
+export type PostalAddress = { line1: string; line2?: string; city: string; state: string; postcode: string; country: string };
+
+export type VisaRow = { country: string; type?: string; linked_passport?: string; decision_date?: string; outcome?: "Granted"|"Refused"|"Cancelled"|"Pending" };
+
+export type TravelRow = { country?: string; arrival_date?: string; departure_date?: string; reason?: string };
+export type FutureTravelRow = { from_to?: string; start_date?: string; reason?: string };
+export type FutureAddressRow = { date_from?: string; date_to?: string; address?: string };
+
+export type HealthExamRow = { name: string; dob?: string; country?: string; date_completed?: string };
+export type HealthWorkRow = { name: string; dob?: string; role?: string };
+export type TBRow = { name: string; dob?: string; country?: string };
+export type HealthConditionRow = { name: string; dob?: string; condition?: string };
+export type MedCareRow = { name: string; dob?: string };
+
+export type CharacterDetail = { name?: string; dob?: string; detail?: string; country?: string; date?: string; offence?: string; penalty?: string };
+
+export type Intake = {
+  started?: boolean;
+
+  // Main Applicant - Details
+  is_main_applicant?: YesNo;
+  prefix?: "Mr"|"Mrs"|"Miss"|"Ms"|"Dr"|"Other";
+  family_name?: string;
+  given_names?: string;
+  preferred_names?: string;
+  gender?: "Male"|"Female"|"Other";
+  dob?: string;
+  country_of_birth?: string;
+  suburb_of_birth?: string;
+  city_of_birth?: string;
+  state_of_birth?: string;
+  marital_status?: "Never Married"|"Married"|"De Facto"|"Divorced"|"Widowed"|"Separated";
+
+  // Main Applicant - Other
+  has_other_names?: YesNo;
+  other_names?: OtherName[];
+  use_chinese_code?: YesNo;
+  chinese_code?: string;
+  russian_descent?: YesNo;
+  patronymic_name?: NameParts;
+  has_prev_dob?: YesNo;
+  prev_dobs?: string[];
+
+  // Identity
+  citizen_of_country?: YesNo;
+  citizenships?: Citizenship[];
+  has_passport?: YesNo;
+  passports?: Passport[];
+  has_identity_doc?: YesNo;
+  identity_docs?: IdentityDoc[];
+  permanent_residency_rights?: YesNo;
+  pr_countries?: { country: string }[];
+
+  // Employment
+  currently_employed?: YesNo;
+  employment_history?: EmploymentRow[];
+
+  // Education
+  has_education?: YesNo;
+  education_history?: EducationRow[];
+
+  // Language
+  is_english_main?: YesNo;
+  languages?: LanguageRow[];
+
+  // Family (in Main Applicant)
+  has_children?: YesNo;
+
+  // Children
+  has_children_joint?: YesNo;
+  children?: ChildRow[];
+
+  // Family Sponsor
+  has_family_sponsor?: YesNo;
+  sponsor_relation?: "Parent"|"Spouse"|"Child"|"Sibling"|"Other Relative";
+
+  // Family (section)
+  family_members?: { name: string; dob?: string; relationship: string }[];
+
+  // All Applicants
+  same_residence?: YesNo;
+  address_history?: AddressRow[];
+
+  shared_phone?: YesNo;
+  phone_numbers?: { after_hours?: string; office_hours?: string; mobile?: string };
+
+  shared_email?: YesNo;
+  email?: string;
+
+  shared_postal?: YesNo;
+  postal_address?: PostalAddress;
+
+  has_previous_visa?: YesNo;
+  visa_history?: VisaRow[];
+
+  has_travel?: YesNo;
+  travel_history?: TravelRow[];
+
+  has_future_travel?: YesNo;
+  future_travel?: FutureTravelRow[];
+
+  knows_future_address?: YesNo;
+  future_addresses?: FutureAddressRow[];
+
+  // Health
+  health_exam_12m?: YesNo; health_exams?: HealthExamRow[];
+  intends_healthcare_work?: YesNo; health_work?: HealthWorkRow[];
+  tb_history?: YesNo; tb_history_details?: TBRow[];
+  tb_close_contact?: YesNo; tb_close_contact_details?: TBRow[];
+  listed_health_conditions?: YesNo; health_conditions?: HealthConditionRow[];
+  needs_medical_care?: YesNo; medical_care_details?: MedCareRow[];
+
+  // Character (map of slug -> answer+details)
+  character: {
+    [questionKey: string]: { answer: YesNo; details?: CharacterDetail[] }
+  };
+
+  // Contacts
+  contacts_note?: string;
+};
+
+Validation (Zod) — lib/validation.ts
+
+Implement schemas per sub-page and export them. Highlights to enforce:
+
+Required: family_name, given_names, gender, dob, country_of_birth, marital_status.
+
+dob must be ≤ today, ≥ today − 100 years; must be ≥ 18 years old (error if under; or surface a warning string).
+
+If has_other_names="Yes" ⇒ other_names.length ≥ 1 and all fields required.
+
+If use_chinese_code="Yes" ⇒ chinese_code required.
+
+If russian_descent="Yes" ⇒ patronymic_name.family_name & .given_names required.
+
+If has_prev_dob="Yes" ⇒ prev_dobs.length ≥ 1.
+
+If citizen_of_country="Yes" ⇒ citizenships.length ≥ 1.
+
+If has_passport="Yes" ⇒ passports.length ≥ 1.
+
+If has_identity_doc="Yes" ⇒ identity_docs.length ≥ 1.
+
+Address rows require address and from; to (when present) must be ≥ from.
+
+email (when provided) must be valid.
+
+Travel: if any date present, departure_date ≥ arrival_date.
+
+Character map: whenever an answer is Yes, require at least one detail object with a non-empty detail.
+
+Use date-fns for date comparisons.
+
+Character page — keys (slugs)
+
+Create a vertical list of Yes/No questions. Store as intake.character[slug]. Include at least these slugs:
+
+convictions, visa_refusals, detentions, imprisonment, community_orders,
+domestic_violence, sexual_offences, war_crimes, military_service,
+organisations, people_smuggling, human_trafficking, terrorist_links,
+intervention_orders, deportations, charges_pending, good_conduct_bonds
+
+
+For each Yes, show repeater with fields: name, dob, detail (textarea) and optional country, date, offence, penalty.
+
+Page Tree (routes) — implement all pages with stated fields
+
+Top-level (/intake):
+
+Start → checkbox started and Begin button → /intake/main-applicant/details.
+
+Main Applicant
+
+Details:
+is_main_applicant (Yes/No) [req], prefix (Mr/Mrs/Miss/Ms/Dr/Other),
+family_name [req], given_names [req], preferred_names,
+gender [req], dob [req],
+country_of_birth [req], suburb_of_birth, city_of_birth, state_of_birth,
+marital_status [req]
+
+Other:
+has_other_names (Y/N) → repeater Other Names: family_name, given_names, reason_for_change
+use_chinese_code (Y/N) → chinese_code
+russian_descent (Y/N) → group Patronymic Name: family_name, given_names
+has_prev_dob (Y/N) → repeater Previous DOBs (date items)
+
+Identity:
+citizen_of_country (Y/N) → repeater Citizenships: country, obtained_method, date_obtained, still_citizen
+has_passport (Y/N) → repeater Passports: doc_number, name, nationality, date_of_issue, status
+has_identity_doc (Y/N) → repeater Identity Docs: doc_type, id_number, name, country_of_issue, date_of_issue
+permanent_residency_rights (Y/N) → repeater Countries of PR: country
+
+Employment:
+currently_employed (Y/N)
+Repeater Employment History: date_from, date_to, status (Employed/Unemployed/Student/Other), position, country
+
+Education:
+has_education (Y/N) → Repeater Education: date_from, date_to, course_name, institution_name, country, status (Completed/Ongoing/Withdrawn)
+
+Language:
+is_english_main (Y/N)
+Repeater Languages: language, proficiency (Basic/Intermediate/Proficient/Native), main_language (Y/N)
+
+Family:
+has_children (Y/N)
+
+Children
+
+Start:
+has_children_joint (Y/N)
+Repeater Children Details (when Yes): name, dob, gender (Male/Female/Other), intention (Included in Application/Not Included)
+
+Family Sponsor
+
+Details:
+has_family_sponsor (Y/N)
+sponsor_relation (Parent/Spouse/Child/Sibling/Other Relative) visible when Yes
+
+Family (single page)
+
+Repeater Family Members: name, dob, relationship
+
+Relationship options: Spouse/Partner, Parent, Step-Parent, Sibling, Step-Sibling, Child, Step-Child, Adopted Child, Guardian
+
+All Applicants
+
+Addresses:
+same_residence (Y/N)
+Repeater Address History (10 years): from, to, address, legal_status
+
+Contact Details:
+shared_phone (Y/N)
+Group Phone Numbers: after_hours, office_hours, mobile
+shared_email (Y/N)
+email
+shared_postal (Y/N)
+Group Postal Address: line1, line2, city, state, postcode, country
+
+Visas:
+has_previous_visa (Y/N) → Repeater Visa History: country (Australia), type, linked_passport, decision_date, outcome (Granted/Refused/Cancelled/Pending)
+
+Travel History:
+has_travel (Y/N) → Repeater Travel: country, arrival_date, departure_date, reason
+
+Future Travel:
+has_future_travel (Y/N) → Repeater Future Travel: from_to, start_date, reason
+
+Future Addresses:
+knows_future_address (Y/N) → Repeater Future Addresses: date_from, date_to, address
+
+Health: (each gate Y/N shows repeater with columns)
+
+health_exam_12m → Health Exams: name, dob, country, date_completed
+
+intends_healthcare_work → Health Work: name, dob, role
+
+tb_history → TB History: name, dob, country
+
+tb_close_contact → TB Close Contact: name, dob, country
+
+listed_health_conditions → Conditions: name, dob, condition
+
+needs_medical_care → Ongoing Care: name, dob
+
+Character: vertical question list of the slugs above. For each Yes, show repeater with details.
+
+Contacts:
+contacts_note (textarea) (placeholder)
+
+Submit
+
+Render grouped Review, Edit links, Submit button → POST JSON and show confirmation with APP-####.
+
+Form & UX behavior
+
+Use react-hook-form per page with zodResolver.
+
+Disable “Continue” if schema invalid; show ErrorSummary at top + inline field errors.
+
+Provide autocomplete, inputMode, and proper labels/descriptions.
+
+Buttons: duplicate per screenshots (“Previous / Save Draft / Continue”).
+
+StickyNav renders on mobile; desktop shows at bottom of form as well.
+
+Lighthouse Mobile ≥ 90; no horizontal scroll; contrast compliant.
+
+Components — implement
+
+WizardShell.tsx
+
+Receives currentRoute and child page.
+
+Renders sidebar stepper (desktop) mirroring the exact page tree; active/complete states.
+
+On mobile, collapse into top tabs/select for subpages.
+
+Shows progress bar.
+
+Integrates autosave (interval + on step change).
+
+Provides context (current intake draft, setDraft).
+
+Field.tsx
+
+RHF + shadcn binding: label, description, error text, aria-describedby.
+
+Supports Input, Select, Textarea, RadioGroup, Checkbox, Date.
+
+RepeaterTable.tsx
+
+Props: rows, columns, onAdd, onEdit, onDelete, dialogForm render-prop.
+
+Card mode on small screens; table on md+.
+
+Mini search/filter not required now.
+
+Animate mount/unmount.
+
+ConfirmDialog.tsx
+
+Generic “Are you sure?” dialog.
+
+ErrorSummary.tsx
+
+Lists form errors (anchor/focus to field if possible).
+
+StickyNav.tsx
+
+Mobile bottom bar; accepts onPrev, onSave, onNext, loading, disabledNext.
+
+Dummy data — lib/dummy-data.ts
+
+Export a demoIntake: Intake with realistic sample rows for every repeater and sensible defaults for gates (some Yes with rows, some No).
+
+On first load (or if localStorage['ply:prefill']=="true" or no draft yet), prefill state with demoIntake.
+
+Routes helper — lib/routes.ts
+
+Export a canonical ordered list of steps & subpages to drive the sidebar and progress calculation.
+
+Each item: { title, href, section, subpages?: [...] }.
+
+Page shell pattern (for every sub-page)
+
+Import schema for this page from validation.ts.
+
+Use RHF + zodResolver.
+
+On submit (Continue), validate → merge into draft via saveDraft(partial), navigate to next route.
+
+“Save Draft” always merges and calls /api/intake/save.
+
+“Previous” navigates back without validation.
+
+Sub-page renders only its fields; repeater dialogs reuse Field components.
+
+Subtle animations
+
+Use framer-motion or CSS transitions to:
+
+Fade/slide in page content on mount
+
+Animate add/remove of repeater cards/rows
+
+Button hover/focus micro-interactions (Tailwind transitions)
+
+Acceptance criteria (must pass)
+
+All routes exist exactly as listed and are reachable from the sidebar and Next/Back.
+
+All gates (Yes/No) toggle the correct repeater visibility.
+
+Repeaters support add, edit, delete; rows persist and reflect immediately; render as cards on mobile.
+
+Autosave triggers on step change and every 10s while dirty; toast “Draft saved”.
+
+Validation blocks continue when invalid and shows ErrorSummary + inline errors.
+
+Review page groups fields by section/sub-page with Edit links that navigate back and focus first field.
+
+Submit posts full JSON to /api/intake/submit and shows a confirmation with an APP-#### reference.
+
+No database or real auth: dummy login only; all state in localStorage.
+
+UI is visually clean, mobile-first, with plyblue background, plygreen accents, cards, proper spacing, and no horizontal scrolling.
+
+Lighthouse mobile ≥ 90 and basic a11y (labels, roles, focus states, contrast).
+
+Important notes for Replit
+
+Do not leave any route blank — every page must render real fields/forms.
+
+Keep code modular and typed.
+
+Prefer server components for page shells; use client components where forms/handlers are needed ("use client").
+
+Use shadcn/ui for all inputs/buttons/dialogs/toasts.
+
+Keep everything ready for Vercel deploy with the stubbed API routes above.
+
+Build this app now with the above spec.

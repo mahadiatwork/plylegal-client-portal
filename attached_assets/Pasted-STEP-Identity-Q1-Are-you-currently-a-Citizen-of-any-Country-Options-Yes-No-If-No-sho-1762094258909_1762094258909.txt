@@ -1,0 +1,117 @@
+STEP  — Identity
+Q1. Are you currently a Citizen of any Country?
+Options: Yes, No
+
+
+If No → show:
+
+
+You have answered that you are not a Citizen of any country. You must provide details of how, when and why you are stateless. (multiline text, required)
+
+
+Q2. Have you ever been a Citizen of any Country?
+Options: Yes, No
+
+
+If Yes → show Citizenships (Repeater)
+
+
+Citizenship (Repeater row / modal)
+Fields:
+Country of Citizenship (dropdown, required)
+
+
+How was this Citizenship obtained? (dropdown: Birth, Descent, Naturalisation, Other, required)
+
+
+Date Obtained (DD/MM/YYYY, optional but recommended)
+
+
+Are you still a Citizen of this country? (Yes/No, required)
+
+
+If No → show:
+
+
+Date ceased (DD/MM/YYYY, optional)
+
+
+Reason (dropdown: Cancelled, Renounced, Other, required if Date ceased present)
+
+
+Q3. Do you currently hold or have you ever held a Passport or Travel Document?
+Options: Yes, No
+
+
+If Yes → show Passports/Travel Documents (Repeater)
+
+
+Passport/Travel Document (Repeater row / modal)
+Sections & Fields:
+Document
+Type of Document (dropdown, required; e.g., Passport, Emergency Passport, Travel Document)
+
+
+Passport/Document Number (text, required)
+
+
+Passport Country (dropdown, required)
+
+
+Place of Issue / Issuing Authority (text, required)
+
+
+Nationality (dropdown, required)
+
+
+Gender as shown on this document (dropdown: Male, Female, X/Unspecified, Other, required)
+
+
+Name (as on document)
+Choose Applicant Name (dropdown of known names; or free text if builder supports, required)
+
+
+Dates and Status
+Date of Issue (DD/MM/YYYY, required)
+
+
+Is this the Original Date of Issue? (Yes/No, required)
+
+
+Date of Expiry (DD/MM/YYYY, required unless Document Status ≠ Current)
+
+
+Document Status (dropdown: Current, Expired, Stolen, Lost, Other, required)
+
+
+Q4. Do you hold a government issued Identity Document or Identity Number?
+Options: Yes, No
+
+
+If Yes → show Government Identity Documents (Repeater)
+
+
+Government Identity Document (Repeater row / modal)
+Sections & Fields:
+Document
+Document Type (dropdown, required; e.g., National ID Card, Driver Licence, NIN, SSN, Aadhaar, Other)
+
+
+Identification Number (text, required)
+
+
+Country of Issue (dropdown, required)
+
+
+State/Province of Issue (text, optional)
+
+
+Place of Issue / Issuing Authority (text, optional)
+
+
+Name (as on document)
+Choose Applicant Name (dropdown of known names; or free text if builder supports, required)
+
+
+Dates
+Date Issued (DD/MM/YYYY, optional)

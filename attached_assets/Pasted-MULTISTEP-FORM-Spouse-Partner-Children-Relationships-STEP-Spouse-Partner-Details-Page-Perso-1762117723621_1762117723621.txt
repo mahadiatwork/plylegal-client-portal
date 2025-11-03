@@ -1,0 +1,145 @@
+MULTISTEP FORM — Spouse/Partner, Children & Relationships
+STEP: Spouse/Partner → Details
+Page: Personal Details
+Context
+
+This step captures information about the applicant’s spouse or partner.
+It should appear only if the applicant’s marital status is Married or De Facto.
+
+Q1. Add Spouse/Partner
+
+Button: Add Spouse/Partner
+
+Modal / Sub-step Fields:
+
+Personal Details
+
+Prefix/Title (radio): Mr / Mrs / Miss / Ms / Dr / Other
+
+Family Name (text, required)
+
+Given Names (text, required)
+
+Preferred Names (text, optional)
+
+Gender (radio: Male / Female / Other, required)
+
+Date of Birth (Day / Month / Year dropdowns, required)
+
+Residency & Migration Info
+
+Is your Spouse/Partner intending to migrate/travel to Australia as part of this application?
+
+Options: Yes / No (required)
+
+Birth & Residence Details
+
+Country of Birth (dropdown, required)
+
+City or Town of Birth (text, required)
+
+Country of Current Residence (dropdown, required)
+
+Buttons: Continue / Cancel
+
+STEP: Spouse/Partner → Other Details
+Title: Other Personal Details
+Q1. Has your Spouse/Partner ever had or been known by any other name, alias, or different spelling?
+
+Options: Yes / No
+
+If Yes → show Repeater Table:
+Columns: Family Name, Given Names, Reason for Change
+Button: Add
+
+Modal Fields:
+
+Family Name (text, required)
+
+Given Names (text, required)
+
+Reason for Change (text, required)
+
+STEP: Children
+Title: Children
+Q1. Do you or your Spouse/Partner have any Children, Step-Children or Adopted Children to be included in this application?
+
+Options: Yes / No
+
+If Yes → show Repeater Table
+Columns: Name, Date of Birth, Gender, Intention (to migrate or not)
+Button: Add
+
+Modal / Sub-step Fields:
+
+Personal Details
+
+Family Name (text, required)
+
+Given Names (text, required)
+
+Gender (radio: Male / Female / Other, required)
+
+Date of Birth (Day / Month / Year dropdowns, required)
+
+Relationship Details
+
+This person is MD MAHADI HASAN’s: (dropdown, required)
+
+Child / Step Child / Adopted Child
+
+Will this child be included in the application? (Yes / No, required)
+
+Country of Birth (dropdown, required)
+
+City/Town of Birth (text, optional)
+
+STEP: Relationships → Current Relationship
+Title: Current Relationship
+Q1. What date did you marry?
+
+(Date picker: Day / Month / Year, required if marital status = Married)
+
+Q2. Number of Children from this relationship
+
+(numeric input, optional but validated ≥ 0)
+
+Q3. Are you and your Spouse/Partner living together?
+
+Options: Yes / No
+
+If No → show:
+
+Reason for living apart (text area, optional)
+
+Since when have you been living separately? (date picker, optional)
+
+Validation & UX Rules
+
+Conditional display:
+
+Show “Spouse/Partner” section only if marital status = Married or De Facto.
+
+Show “Children” only if Q1 = Yes.
+
+Show “Other Personal Details” if spouse has name variations.
+
+Repeaters:
+
+Each Add/Edit modal validates required fields before adding to list.
+
+Each list supports Edit and Remove.
+
+Data integrity:
+
+Ensure all modal data commits to the parent step form before “Save” or “Continue”.
+
+Validate all required date fields (Date From ≤ Date To when applicable).
+
+Navigation buttons:
+
+Previous → return to prior step
+
+Save → triggers “Draft Save” (must persist form state)
+
+Continue → validate → move to next step

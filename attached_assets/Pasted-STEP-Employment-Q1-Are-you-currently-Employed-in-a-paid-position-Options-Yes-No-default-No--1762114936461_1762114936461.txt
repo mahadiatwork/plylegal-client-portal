@@ -1,0 +1,176 @@
+STEP: Employment
+Q1. Are you currently Employed in a paid position?
+
+Options: Yes, No (default: No)
+
+If Yes → show Current Job (inline)
+
+Employer/Organization (text, required)
+
+Position/Job Title (text, required)
+
+Country (dropdown, required)
+
+Start Date (DD/MM/YYYY, required)
+
+Still working here? (Yes/No, required)
+
+If No → End Date (DD/MM/YYYY, required)
+
+Employment Type (dropdown: Full-time, Part-time, Contract, Self-Employed)
+
+Address (text, optional)
+
+Q2. Employment History (last 5 years)
+
+Control: Repeater table with columns: Date From, Date To, Status, Position, Country + Edit/Remove + Add
+
+Employment History — Add/Edit modal
+
+Date From (DD/MM/YYYY, required)
+
+Date To (leave blank if ongoing) (DD/MM/YYYY, optional)
+
+Status (dropdown, required):
+Employed, Student, Retired, Self-Employed, Unemployed, Work Experience/Internships, Unpaid Employment/Volunteer
+
+Position / Occupation (text, required if Status = Employed or Self-Employed)
+
+Employer/Organization (text, optional)
+
+Country (dropdown, required)
+
+City/Town (text, optional)
+
+Duties/Notes (textarea, optional)
+
+Validation
+
+DateFrom ≤ DateTo when DateTo present.
+
+At least one history row required if Q1 = No (not currently employed).
+
+STEP: Education
+Q1. Have you ever undertaken or enrolled in any studies or training at secondary level or above?
+
+(Includes high school, college/vocational, university, research/thesis, specialised training, skill/trade qualifications.)
+
+Options: Yes, No
+
+If Yes → Education History (Repeater)
+
+Columns: Institution, Qualification, Field, From, To, Country + Edit/Remove + Add
+
+Education — Add/Edit modal
+
+Institution Name (text, required)
+
+Country (dropdown, required)
+
+Qualification/Level (dropdown: Secondary, Diploma/Certificate, Bachelor’s, Master’s, Doctorate/PhD, Other, required)
+
+Field of Study (text, required)
+
+Date From (DD/MM/YYYY, required)
+
+Date To (DD/MM/YYYY, required)
+
+Study Mode (dropdown: Full-time, Part-time, required)
+
+Graduated/Completed? (Yes/No, required)
+
+Document/Certificate Number (text, optional)
+
+Validation
+
+From ≤ To.
+
+At least one row when Q1 = Yes.
+
+STEP: Skills
+Q1. Do you hold any Occupational Registrations, Licences or Professional Memberships?
+
+Options: Yes, No
+
+If Yes → Registrations/Licences (Repeater)
+
+Columns: Type, Occupation, Date, Authority, Country + Edit/Remove + Add
+
+Registration/Licence — Add/Edit modal
+
+Type (dropdown: Registration, Licence, Professional Membership, Other, required)
+
+Occupation (text, required)
+
+Date (DD/MM/YYYY, required)
+
+Authority/Issuing Body (text, required)
+
+Country (dropdown, required)
+
+Reference/Number (text, optional)
+
+Q2. Have you applied for a Skills Assessment from an Australian Skills Assessing body?
+
+Options: Yes, No
+
+If Yes → Skills Assessments (Repeater)
+
+Columns: Authority, Occupation, Outcome Date, Outcome + Edit/Remove + Add
+
+Skills Assessment — Add/Edit modal
+
+Assessing Authority (text, required)
+
+Occupation (ANZSCO if available) (text, required)
+
+Application/Reference Number (text, optional)
+
+Outcome (dropdown: Positive, Negative, Pending, Other, required)
+
+Outcome Date (DD/MM/YYYY, required if Outcome ≠ Pending)
+
+Comments/Notes (textarea, optional)
+
+STEP: Language
+Q1. Is the English language your main language?
+
+Options: Yes, No
+
+If No (or always, based on your UX) → Languages used (Repeater)
+
+Columns: Language, Proficiency, Main Language? + Edit/Remove + Add
+
+Language — Add/Edit modal
+
+Language (dropdown/text, required)
+
+Proficiency (dropdown, required): Basic, Intermediate, Proficient, Fluent/Native
+
+Is this your main language? (Yes/No, required)
+
+Q2. Have you undertaken any English language test within the last 36 months?
+
+Options: Yes, No
+
+If Yes → English Test Results (Repeater)
+
+Columns: Date, Test Type, Location, Reference Number, Overall Score + Edit/Remove + Add
+
+English Test — Add/Edit modal
+
+Test Type (dropdown: IELTS Academic, IELTS General, PTE Academic, TOEFL iBT, OET, Other, required)
+
+Date (DD/MM/YYYY, required)
+
+Location/Test Centre (text, required)
+
+Reference/Registration Number (text, required)
+
+Overall Score (text or number, required)
+
+Sub-scores (group optional): Listening, Reading, Writing, Speaking
+
+Validation
+
+Enforce “within last 36 months” (date check against “today”).

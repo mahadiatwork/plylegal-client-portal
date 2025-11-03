@@ -1,0 +1,885 @@
+# Zoho CRM Integration Guide
+
+Complete step-by-step instructions for integrating Zoho CRM into your Next.js/Node.js application.
+
+## Table of Contents
+1. [Prerequisites](#prerequisites)
+2. [Environment Setup](#environment-setup)
+3. [Access Token Management](#access-token-management)
+4. [Basic Integration Patterns](#basic-integration-patterns)
+5. [Common Operations](#common-operations)
+6. [Advanced Queries](#advanced-queries)
+7. [File Uploads](#file-uploads)
+8. [Error Handling](#error-handling)
+9. [Best Practices](#best-practices)
+
+---
+
+## Prerequisites
+
+1. **Zoho CRM Account** with API access enabled
+2. **Access Token API Endpoint** - A REST API that returns a valid access token
+3. **Node.js/Next.js Project** with axios installed
+4. **Zoho CRM Module Names** - Know the custom module names in your Zoho instance
+
+Install required packages:
+```bash
+npm install axios
+# or
+yarn add axios
+```
+
+---
+
+## Environment Setup
+
+### 1. Environment Variables
+
+Create a `.env.local` file (or `.env`) in your project root:
+
+```env
+ACCESSTOKEN_URL=https://your-api-endpoint.com/get-access-token
+```
+
+**Important:** Your access token API should return a JSON response in this format:
+```json
+{
+  "access_token": "your-access-token-here",
+  "expires_in": 3600
+}
+```
+
+---
+
+## Access Token Management
+
+### Pattern: Fetch Access Token Before Every Request
+
+Since access tokens expire, fetch a fresh token for each Zoho API call:
+
+```javascript
+import axios from 'axios'
+
+// Get access token from your API endpoint
+const getAccessToken = async () => {
+  try {
+    const response = await axios.get(process.env.ACCESSTOKEN_URL)
+    return response.data.access_token
+  } catch (error) {
+    console.error('Error fetching access token:', error)
+    throw new Error('Failed to get access token')
+  }
+}
+
+// Usage
+const accessToken = await getAccessToken()
+```
+
+### Helper Function
+
+Create a reusable helper function:
+
+```javascript
+// utils/zohoClient.js
+import axios from 'axios'
+
+class ZohoCRMClient {
+  constructor() {
+    this.baseURL = 'https://www.zohoapis.com/crm'
+    this.accessToken = null
+  }
+
+  async getAccessToken() {
+    try {
+      const response = await axios.get(process.env.ACCESSTOKEN_URL)
+      this.accessToken = response.data.access_token
+      return this.accessToken
+    } catch (error) {
+      throw new Error(`Failed to get access token: ${error.message}`)
+    }
+  }
+
+  async makeRequest(method, endpoint, data = null) {
+    const token = await this.getAccessToken()
+    
+    const config = {
+      method,
+      url: `${this.baseURL}${endpoint}`,
+      headers: {
+        Authorization: token,
+        'Content-Type': 'application/json',
+      },
+    }
+
+    if (data && (method === 'post' || method === 'put')) {
+      config.data = data
+    }
+
+    try {
+      const response = await axios(config)
+      return response.data
+    } catch (error) {
+      console.error('Zoho API Error:', error.response?.data || error.message)
+      throw error
+    }
+  }
+}
+
+export default new ZohoCRMClient()
+```
+
+---
+
+## Basic Integration Patterns
+
+### Pattern 1: Server-Side API Route (Next.js)
+
+```javascript
+// pages/api/zoho/getRecord.js
+import axios from 'axios'
+
+export default async function handler(req, res) {
+  try {
+    // 1. Get access token
+    const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+    const accessToken = tokenResponse.data.access_token
+
+    // 2. Make Zoho CRM API call
+    const zohoResponse = await axios.get(
+      `https://www.zohoapis.com/crm/v2/Contacts/${req.query.id}`,
+      {
+        headers: {
+          Authorization: accessToken,
+        },
+      }
+    )
+
+    // 3. Return response
+    return res.status(200).json({
+      status: 'success',
+      data: zohoResponse.data.data,
+    })
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message)
+    return res.status(500).json({
+      status: 'error',
+      message: error.message,
+    })
+  }
+}
+```
+
+### Pattern 2: Server-Side Props (Next.js Pages)
+
+```javascript
+// pages/projects/index.js
+import axios from 'axios'
+
+export async function getServerSideProps(context) {
+  try {
+    // 1. Get access token
+    const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+    const accessToken = tokenResponse.data.access_token
+
+    // 2. Get user email from session (example)
+    const userEmail = context.query.email || 'user@example.com'
+
+    // 3. Fetch data from Zoho
+    const projectsResponse = await axios.get(
+      `https://www.zohoapis.com/crm/v2/Projects/search?criteria=(Email:equals:${userEmail})`,
+      {
+        headers: {
+          Authorization: accessToken,
+        },
+      }
+    )
+
+    return {
+      props: {
+        projects: projectsResponse.data.data || [],
+      },
+    }
+  } catch (error) {
+    console.error('Error fetching projects:', error)
+    return {
+      props: {
+        projects: [],
+      },
+    }
+  }
+}
+```
+
+---
+
+## Common Operations
+
+### 1. Search Records
+
+```javascript
+// Search by criteria
+const searchRecords = async (moduleName, criteria) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  const response = await axios.get(
+    `https://www.zohoapis.com/crm/v2/${moduleName}/search?criteria=${encodeURI(criteria)}`,
+    {
+      headers: {
+        Authorization: accessToken,
+      },
+    }
+  )
+
+  return response.data.data
+}
+
+// Usage examples:
+// Search by email
+const contacts = await searchRecords('Contacts', '(Email:equals:user@example.com)')
+
+// Search by name
+const accounts = await searchRecords('Accounts', '(Account_Name:equals:Acme Corp)')
+
+// Multiple conditions
+const deals = await searchRecords('Deals', '((Stage:equals:Closed Won)and(Amount:greater_than:10000))')
+```
+
+### 2. Get Single Record
+
+```javascript
+const getRecord = async (moduleName, recordId) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  const response = await axios.get(
+    `https://www.zohoapis.com/crm/v2/${moduleName}/${recordId}`,
+    {
+      headers: {
+        Authorization: accessToken,
+      },
+    }
+  )
+
+  return response.data.data[0]
+}
+
+// Usage:
+const contact = await getRecord('Contacts', '123456789')
+```
+
+### 3. Create Record
+
+```javascript
+const createRecord = async (moduleName, recordData) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  const response = await axios.post(
+    `https://www.zohoapis.com/crm/v2/${moduleName}`,
+    {
+      data: [recordData],
+    },
+    {
+      headers: {
+        Authorization: accessToken,
+        'Content-Type': 'application/json',
+      },
+    }
+  )
+
+  return response.data.data[0]
+}
+
+// Usage:
+const newContact = await createRecord('Contacts', {
+  First_Name: 'John',
+  Last_Name: 'Doe',
+  Email: 'john.doe@example.com',
+  Phone: '+1234567890',
+})
+```
+
+### 4. Update Record
+
+```javascript
+const updateRecord = async (moduleName, recordId, updateData) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  const response = await axios.put(
+    `https://www.zohoapis.com/crm/v2/${moduleName}`,
+    {
+      data: [{
+        id: recordId,
+        ...updateData,
+      }],
+    },
+    {
+      headers: {
+        Authorization: accessToken,
+        'Content-Type': 'application/json',
+      },
+    }
+  )
+
+  return response.data.data[0]
+}
+
+// Usage:
+const updated = await updateRecord('Contacts', '123456789', {
+  Phone: '+9876543210',
+  City: 'New York',
+})
+```
+
+### 5. Delete Record
+
+```javascript
+const deleteRecord = async (moduleName, recordId) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  const response = await axios.delete(
+    `https://www.zohoapis.com/crm/v2/${moduleName}`,
+    {
+      headers: {
+        Authorization: accessToken,
+      },
+      data: {
+        ids: [recordId],
+      },
+    }
+  )
+
+  return response.data
+}
+
+// Usage:
+await deleteRecord('Contacts', '123456789')
+```
+
+---
+
+## Advanced Queries
+
+### COQL (Zoho Object Query Language)
+
+COQL allows complex relational queries:
+
+```javascript
+const queryWithCOQL = async (selectQuery) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  const response = await axios.post(
+    `https://www.zohoapis.com/crm/v2.1/coql`,
+    {
+      select_query: selectQuery,
+    },
+    {
+      headers: {
+        Authorization: accessToken,
+        'Content-Type': 'application/json',
+      },
+    }
+  )
+
+  return response.data.data
+}
+
+// Usage examples:
+
+// Simple query
+const contacts = await queryWithCOQL(
+  `select First_Name, Last_Name, Email from Contacts where Email = 'user@example.com'`
+)
+
+// Query with related records
+const deals = await queryWithCOQL(
+  `select Deal_Name, Amount, Account.Account_Name, Account.Billing_City 
+   from Deals 
+   where Account.Account_Name != null 
+   limit 10`
+)
+
+// Complex query with multiple conditions
+const projects = await queryWithCOQL(
+  `select Name, id, Status, Contact.Email, Contact.First_Name 
+   from Projects 
+   where ((Status = 'Active') and (Contact.Email = 'user@example.com')) 
+   order by Created_Time desc`
+)
+```
+
+### Query Operators
+
+- **Comparison:** `=`, `!=`, `>`, `<`, `>=`, `<=`
+- **Logical:** `and`, `or`, `not`
+- **Like:** `like 'pattern%'`
+- **In:** `in (value1, value2)`
+- **Is Null:** `is null`, `is not null`
+
+---
+
+## File Uploads
+
+### Upload File as Attachment
+
+```javascript
+import axios from 'axios'
+import FormData from 'form-data'
+import fs from 'fs'
+
+const uploadFileAttachment = async (moduleName, recordId, filePath, fileName) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  // Create form data
+  const form = new FormData()
+  form.append('file', fs.createReadStream(filePath), fileName)
+
+  const response = await axios.post(
+    `https://www.zohoapis.com/crm/v2/${moduleName}/${recordId}/Attachments`,
+    form,
+    {
+      headers: {
+        ...form.getHeaders(),
+        'Content-Type': 'multipart/form-data',
+        Authorization: accessToken,
+      },
+    }
+  )
+
+  return response.data
+}
+
+// Usage:
+await uploadFileAttachment('Contacts', '123456789', './path/to/file.pdf', 'document.pdf')
+```
+
+### Handle File Upload from Request (Next.js API Route)
+
+```javascript
+// pages/api/zoho/uploadDocument.js
+import axios from 'axios'
+import FormData from 'form-data'
+import formidable from 'formidable'
+import fs from 'fs'
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
+
+export default async function handler(req, res) {
+  try {
+    // 1. Get access token
+    const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+    const accessToken = tokenResponse.data.access_token
+
+    // 2. Parse form data
+    const form = formidable({
+      keepExtensions: true,
+    })
+
+    const [fields, files] = await form.parse(req)
+    const file = files.file[0]
+    const recordId = fields.recordId[0]
+    const moduleName = fields.moduleName[0]
+
+    // 3. Upload to Zoho
+    const formData = new FormData()
+    formData.append('file', fs.createReadStream(file.filepath), file.originalFilename)
+
+    const uploadResponse = await axios.post(
+      `https://www.zohoapis.com/crm/v2/${moduleName}/${recordId}/Attachments`,
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          Authorization: accessToken,
+        },
+      }
+    )
+
+    // 4. Clean up temp file
+    fs.unlinkSync(file.filepath)
+
+    return res.status(200).json({
+      status: 'success',
+      data: uploadResponse.data,
+    })
+  } catch (error) {
+    console.error('Upload error:', error)
+    return res.status(500).json({
+      status: 'error',
+      message: error.message,
+    })
+  }
+}
+```
+
+---
+
+## Error Handling
+
+### Comprehensive Error Handler
+
+```javascript
+const handleZohoError = (error) => {
+  if (error.response) {
+    // Zoho API returned an error response
+    const { status, data } = error.response
+    
+    switch (status) {
+      case 401:
+        return {
+          code: 'UNAUTHORIZED',
+          message: 'Invalid or expired access token',
+          details: data,
+        }
+      case 403:
+        return {
+          code: 'FORBIDDEN',
+          message: 'Insufficient permissions',
+          details: data,
+        }
+      case 404:
+        return {
+          code: 'NOT_FOUND',
+          message: 'Record or module not found',
+          details: data,
+        }
+      case 429:
+        return {
+          code: 'RATE_LIMIT',
+          message: 'Too many requests. Rate limit exceeded',
+          details: data,
+        }
+      default:
+        return {
+          code: 'API_ERROR',
+          message: data?.message || 'Zoho API error',
+          details: data,
+        }
+    }
+  } else if (error.request) {
+    // Request made but no response
+    return {
+      code: 'NO_RESPONSE',
+      message: 'No response from Zoho API',
+      details: error.message,
+    }
+  } else {
+    // Error setting up request
+    return {
+      code: 'REQUEST_ERROR',
+      message: 'Error setting up request',
+      details: error.message,
+    }
+  }
+}
+
+// Usage in API route:
+try {
+  const result = await createRecord('Contacts', data)
+  return res.status(200).json({ status: 'success', data: result })
+} catch (error) {
+  const errorInfo = handleZohoError(error)
+  return res.status(500).json({ status: 'error', ...errorInfo })
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Token Caching (Optional but Recommended)
+
+For high-traffic applications, implement token caching:
+
+```javascript
+let tokenCache = {
+  token: null,
+  expiresAt: null,
+}
+
+const getCachedAccessToken = async () => {
+  const now = Date.now()
+  
+  // Return cached token if still valid (with 5 minute buffer)
+  if (tokenCache.token && tokenCache.expiresAt > now + 300000) {
+    return tokenCache.token
+  }
+
+  // Fetch new token
+  const response = await axios.get(process.env.ACCESSTOKEN_URL)
+  const expiresIn = response.data.expires_in || 3600 // seconds
+  
+  tokenCache = {
+    token: response.data.access_token,
+    expiresAt: now + (expiresIn * 1000),
+  }
+
+  return tokenCache.token
+}
+```
+
+### 2. Request Retry Logic
+
+```javascript
+const retryRequest = async (requestFn, maxRetries = 3, delay = 1000) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await requestFn()
+    } catch (error) {
+      if (i === maxRetries - 1) throw error
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)))
+    }
+  }
+}
+```
+
+### 3. Batch Operations
+
+```javascript
+const createMultipleRecords = async (moduleName, records) => {
+  const tokenResponse = await axios.get(process.env.ACCESSTOKEN_URL)
+  const accessToken = tokenResponse.data.access_token
+
+  // Zoho allows up to 100 records per request
+  const batchSize = 100
+  const results = []
+
+  for (let i = 0; i < records.length; i += batchSize) {
+    const batch = records.slice(i, i + batchSize)
+    
+    const response = await axios.post(
+      `https://www.zohoapis.com/crm/v2/${moduleName}`,
+      { data: batch },
+      {
+        headers: {
+          Authorization: accessToken,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    results.push(...response.data.data)
+  }
+
+  return results
+}
+```
+
+### 4. Type Safety (TypeScript)
+
+```typescript
+// types/zoho.d.ts
+export interface ZohoRecord {
+  id: string
+  [key: string]: any
+}
+
+export interface ZohoResponse {
+  data: ZohoRecord[]
+  info?: {
+    count?: number
+    page?: number
+    per_page?: number
+  }
+}
+
+export interface AccessTokenResponse {
+  access_token: string
+  expires_in?: number
+  token_type?: string
+}
+```
+
+---
+
+## Complete Example: Full Integration
+
+```javascript
+// utils/zohoService.js
+import axios from 'axios'
+
+class ZohoService {
+  constructor() {
+    this.baseURL = 'https://www.zohoapis.com/crm'
+  }
+
+  async getAccessToken() {
+    const response = await axios.get(process.env.ACCESSTOKEN_URL)
+    if (!response.data.access_token) {
+      throw new Error('Access token not found in response')
+    }
+    return response.data.access_token
+  }
+
+  async search(moduleName, criteria) {
+    const token = await this.getAccessToken()
+    const response = await axios.get(
+      `${this.baseURL}/v2/${moduleName}/search?criteria=${encodeURI(criteria)}`,
+      { headers: { Authorization: token } }
+    )
+    return response.data.data || []
+  }
+
+  async get(moduleName, id) {
+    const token = await this.getAccessToken()
+    const response = await axios.get(
+      `${this.baseURL}/v2/${moduleName}/${id}`,
+      { headers: { Authorization: token } }
+    )
+    return response.data.data[0]
+  }
+
+  async create(moduleName, data) {
+    const token = await this.getAccessToken()
+    const response = await axios.post(
+      `${this.baseURL}/v2/${moduleName}`,
+      { data: [data] },
+      { headers: { Authorization: token } }
+    )
+    return response.data.data[0]
+  }
+
+  async update(moduleName, id, data) {
+    const token = await this.getAccessToken()
+    const response = await axios.put(
+      `${this.baseURL}/v2/${moduleName}`,
+      { data: [{ id, ...data }] },
+      { headers: { Authorization: token } }
+    )
+    return response.data.data[0]
+  }
+
+  async delete(moduleName, id) {
+    const token = await this.getAccessToken()
+    const response = await axios.delete(
+      `${this.baseURL}/v2/${moduleName}`,
+      {
+        headers: { Authorization: token },
+        data: { ids: [id] },
+      }
+    )
+    return response.data
+  }
+
+  async coql(query) {
+    const token = await this.getAccessToken()
+    const response = await axios.post(
+      `${this.baseURL}/v2.1/coql`,
+      { select_query: query },
+      { headers: { Authorization: token } }
+    )
+    return response.data.data || []
+  }
+}
+
+export default new ZohoService()
+```
+
+### Usage:
+
+```javascript
+// In your API route or page
+import zohoService from '@/utils/zohoService'
+
+// Search
+const contacts = await zohoService.search('Contacts', '(Email:equals:user@example.com)')
+
+// Get
+const contact = await zohoService.get('Contacts', '123456789')
+
+// Create
+const newContact = await zohoService.create('Contacts', {
+  First_Name: 'John',
+  Last_Name: 'Doe',
+  Email: 'john@example.com',
+})
+
+// Update
+await zohoService.update('Contacts', '123456789', {
+  Phone: '+1234567890',
+})
+
+// COQL
+const deals = await zohoService.coql(
+  `select Deal_Name, Amount from Deals where Stage = 'Closed Won'`
+)
+```
+
+---
+
+## Testing Your Integration
+
+### Test Script
+
+```javascript
+// test-zoho.js
+const axios = require('axios')
+
+async function testZohoIntegration() {
+  try {
+    // 1. Test access token
+    console.log('1. Testing access token...')
+    const tokenRes = await axios.get(process.env.ACCESSTOKEN_URL)
+    console.log('✓ Access token received:', tokenRes.data.access_token ? 'Yes' : 'No')
+
+    const token = tokenRes.data.access_token
+
+    // 2. Test search
+    console.log('\n2. Testing search...')
+    const searchRes = await axios.get(
+      'https://www.zohoapis.com/crm/v2/Contacts/search?criteria=(Email:contains:test)',
+      { headers: { Authorization: token } }
+    )
+    console.log('✓ Search successful. Found', searchRes.data.data?.length || 0, 'records')
+
+    // 3. Test create (optional - be careful!)
+    // console.log('\n3. Testing create...')
+    // const createRes = await axios.post(
+    //   'https://www.zohoapis.com/crm/v2/Contacts',
+    //   { data: [{ First_Name: 'Test', Last_Name: 'User' }] },
+    //   { headers: { Authorization: token } }
+    // )
+    // console.log('✓ Create successful:', createRes.data.data[0].id)
+
+    console.log('\n✅ All tests passed!')
+  } catch (error) {
+    console.error('❌ Test failed:', error.response?.data || error.message)
+  }
+}
+
+testZohoIntegration()
+```
+
+---
+
+## Resources
+
+- [Zoho CRM API Documentation](https://www.zoho.com/crm/developer/docs/api/v2/)
+- [COQL Query Language](https://www.zoho.com/crm/developer/docs/api/v2/coql-query.html)
+- [Zoho API Rate Limits](https://www.zoho.com/crm/developer/docs/api/v2/rate-limits.html)
+
+---
+
+## Support
+
+For issues or questions:
+1. Check Zoho CRM API documentation
+2. Verify your access token is valid
+3. Ensure module names match your Zoho instance
+4. Check API rate limits
+
+---
+
+**Note:** Always test in a development/staging environment before deploying to production!
+

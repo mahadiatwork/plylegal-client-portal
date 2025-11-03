@@ -1,0 +1,331 @@
+🏗️ Enhancements Overview
+
+You have already built a beautiful PlyLegal client portal. Now extend it with these key improvements:
+
+Area	Task Summary
+🧭 Navigation	Improve layout, menu, and transitions
+📋 Profile	Add editable Address + Dependents section
+🧾 Review Page	Add dynamic search, better data layout, sticky sidebar
+📤 Uploads	Add file upload dialog, status handling, size warning
+📬 Send Message	Add non-editable visa + user info fields
+📚 Resources	Make it more professional with text and links
+📁 Documents	Remove page and sidebar item completely
+🧠 Wizard	Add navigation to return to Application and stop auto-navigation
+🎨 UI Polish	Balance sidebar height, spacing, and responsiveness
+🧩 1️⃣ Navigation & Layout
+
+Keep two-level navigation (global sidebar + contextual sidebar).
+
+Ensure left sidebar height matches page height — extend background color vertically.
+
+Make sidebar sticky (fixed position) when scrolling long pages.
+
+Add smooth hover states and active highlighting (plygreen background for active tab).
+
+Add subtle transitions for navigation (fade/slide-in).
+
+Ensure proper mobile behavior (sidebar collapses to hamburger).
+
+🧩 2️⃣ Profile Page Enhancements
+
+Path: /profile
+
+Existing:
+
+Static info card with name, email, phone.
+
+Additions:
+
+Add editable Address Information section with:
+
+Street Address, Suburb, State, Postcode, Country
+
+Add Dependents section:
+
+Table with Name, Relationship, DOB, Gender
+
+Buttons: [Add Dependent] [Edit] [Remove]
+
+Add “Edit” mode toggle:
+
+Clicking “Edit” converts all fields to editable inputs.
+
+Show buttons: [Save Changes] [Cancel].
+
+On Save → confirmation toast “Profile updated successfully.”
+
+Store updates in localStorage (ply:profile).
+
+🧩 3️⃣ Visa Applications Page Improvements
+
+Path: /applications
+
+UI Changes:
+
+The left menu column is currently short and visually unbalanced.
+Extend the sidebar vertically with a light plyblue background and add a section label:
+
+MAIN
+- Profile
+- Visa Applications
+
+Functional Changes:
+
+Keep table but make layout more balanced.
+
+Add subtle card background behind the table for contrast.
+
+Add "Last Updated" below each reference number (small gray text).
+
+Add pagination (dummy).
+
+“New Application” button styled with icon + plygreen background.
+
+Maintain current hover interactions and spacing.
+
+🧩 4️⃣ Upload Documents Page Enhancements
+
+Path: /applications/[id]/uploads
+
+Required Behavior:
+
+When clicking Upload, open a modal/dialog:
+
+Choose File (accept all types: PDF, JPG, PNG, DOC, TXT).
+
+Validate max file size 5 MB:
+
+If exceeded → show red alert “File exceeds 5 MB limit.”
+
+On successful upload:
+
+Status = Under Review
+
+Upload Date = current timestamp
+
+Show toast “File uploaded successfully.”
+
+Update localStorage immediately under ply:app:<id>:uploads.
+
+UI Details:
+
+Add subheading “Max 5 MB • PDF, JPG, PNG, DOC, TXT”.
+
+Replace “Pending” label with Badge components (Pending / Under Review / Approved).
+
+Add small icons beside upload buttons.
+
+Use gentle fade-in when new upload is added.
+
+🧩 5️⃣ Review & PDF Page Improvements
+
+Path: /applications/[id]/review
+
+Additions:
+
+Add search bar on top of the page:
+
+Placeholder: “Search fields or responses…”
+
+Real-time filtering of visible sections/questions.
+
+Make left sidebar sticky while scrolling.
+
+Each section (accordion) must show:
+
+Question | Response
+
+Even if there’s no data → response cell = “—”.
+
+Add top metadata:
+
+Partner Visa Application Review
+Application ID: APP-0001 | Generated: 2025-10-08 | Status: Active
+
+
+Add export options:
+
+[Collapse All] [Preview] [Download PDF]
+
+PDF generation uses window.print() (no backend required).
+
+Use subtle gridlines or alternate row shading for readability.
+
+🧩 6️⃣ Resources Page Enhancements
+
+Path: /applications/[id]/resources
+
+Make this page more professional:
+
+Add intro text:
+
+These resources provide official guidance and helpful references for your visa journey.
+Always verify details on official government websites before taking any action.
+
+
+List sections with categories and icons:
+
+Documents & Evidence
+
+Preparing your relationship evidence → link to https://immi.homeaffairs.gov.au/visas/supporting/relationship
+
+Health & Police Checks
+
+Organise your health examination → link to https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/health
+
+Organise your police clearances → link to https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/character
+
+Lodgement & Status
+
+Applying for Medicare → https://www.servicesaustralia.gov.au/medicare
+
+Global visa processing times → https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-processing-times
+
+Other Guides
+
+Australian Values Statement → https://immi.homeaffairs.gov.au/help-support/values/statement
+
+Arranging biometrics → https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/biometrics
+
+Use Card components with:
+
+Left icon (book or link)
+
+Title + small subtitle (“Guide” / “Official Link”)
+
+External link icon at right
+
+Gentle hover background effect.
+
+🧩 7️⃣ Send Message Page Enhancements
+
+Path: /applications/[id]/messages
+
+Existing:
+
+“Send a message” form (Subject + Message)
+
+“Conversation” thread (You / Ply Legal)
+
+Additions:
+
+Add a top “Message Info” section with automatically filled, non-editable fields:
+
+Field	Description
+Visa Number	e.g. APP-0001
+Application Type	Partner Visa (309/100)
+Contact Name	John David Smith
+Email	user@example.com
+
+Pre-fill values dynamically from:
+
+LocalStorage (ply:applications + ply:profile).
+
+Fields displayed in small gray boxes, non-editable.
+
+🧩 8️⃣ Remove Documents Page
+
+Delete /applications/[id]/documents
+
+Remove it from sidebar completely.
+
+The “Upload Documents” tab now manages all files.
+
+🧩 9️⃣ Wizard Fixes and Improvements
+
+Paths: /intake/*
+
+Key Fix:
+
+When adding entries (e.g. Identity Documents, Other Names):
+
+The page should not auto-advance.
+
+Stay on the same page after saving.
+
+Move to next page only when user clicks Continue.
+
+Use type="button" for “Add” buttons.
+
+Only Continue button triggers navigation.
+
+On successful add/edit: show toast “Saved successfully.”
+
+Navigation Enhancement:
+
+Add a breadcrumb or back button (top left corner):
+
+“← Back to Application Overview”
+
+Clicking returns to /applications/[id]/questionnaire.
+
+UI:
+
+Add sticky bottom bar with buttons: ← Previous | Save Draft | Continue →
+
+Maintain consistent spacing and card layout.
+
+🧩 🔟 General UI & UX Polish
+
+Ensure consistent sidebar height across all pages.
+
+Add subtle gradient header on each main page for visual balance.
+
+Keep forms centered within cards.
+
+Use unified spacing (px-8, py-6).
+
+All buttons: rounded-xl with consistent height and hover states.
+
+Add light motion transitions between route changes.
+
+✅ Functional Summary
+Feature	Requirement
+Dummy Login	Works via localStorage
+Profile	Editable fields + dependents
+Applications	Improved UI, balanced layout
+Uploads	Dialog upload + file size check
+Review	Dynamic search + sticky sidebar
+Resources	Real links + professional layout
+Send Message	Auto-filled user info fields
+Wizard	Stop auto-navigation + back link
+Documents	Removed completely
+Styling	Consistent PlyLegal look and feel
+⚙️ LocalStorage Model
+Key	Purpose
+ply_session	Dummy login session
+ply:profile	User info, address, dependents
+ply:applications	Visa applications list
+ply:app:<id>:uploads	Upload metadata
+ply:app:<id>:tasks	Checklist progress
+ply:app:<id>:deliverables	Deliverable list
+ply:app:<id>:messages	Conversation threads
+ply:intake_draft	Intake form data
+🧱 Tech & Component Notes
+
+Next.js 14 (App Router) + TypeScript
+
+TailwindCSS + shadcn/ui
+
+Use React Hook Form + Zod validation
+
+Persist changes to localStorage instantly
+
+Show toast on save/update
+
+Use Framer Motion for fade/slide transitions
+
+🧩 Acceptance Criteria
+
+✅ All pages functional
+✅ Consistent PlyLegal UI
+✅ Sidebar sticky + balanced
+✅ No auto-navigation in forms
+✅ Searchable review page
+✅ Resources page professional and linked
+✅ File uploads validated and persistent
+✅ Send Message prefilled
+✅ Editable profile with address + dependents
+✅ No broken routes or empty states
+
+Now build the complete and refined PlyLegal Client Portal with all the improvements above.

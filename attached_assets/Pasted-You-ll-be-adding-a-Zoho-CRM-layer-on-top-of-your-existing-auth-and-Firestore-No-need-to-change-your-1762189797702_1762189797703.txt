@@ -1,0 +1,119 @@
+You’ll be adding a Zoho CRM layer on top of your existing auth and Firestore.
+No need to change your auth flow or Firestore structure — we just extend it with:
+
+CRM contact verification after login
+
+Cached CRM contact data in Firestore
+
+Controlled write-backs (status/docs)
+
+🧠 Integration Concept (Post-login Check)
+
+User logs in via Firebase Auth.
+
+Server-side check (middleware or API route):
+
+Takes user.email
+
+Calls your Zoho Function endpoint to get an access token
+
+Calls Zoho CRM Contacts search API by email
+
+Conditional logic:
+
+If no contact found → redirect to “No portal account” page
+(“You don’t have an account in this portal. Please contact the administrator.”)
+
+If contact found →
+a. Store zoho_contact_id and CRM fields in Firestore
+b. Redirect to dashboard/profile (data loaded from Firestore cache)
+
+🧩 Architecture Overlay (on existing Firebase + Next.js)
+1. Next.js (App Router)
+
+Keep your existing pages and auth context.
+
+Add a server route (/api/zoho/verifyContact) that:
+
+Gets Firebase user info from ID token.
+
+Talks to Zoho CRM via your Function URL (using fetch server-side).
+
+Returns { success, contactData?, message? }.
+
+Add a small middleware to check for CRM verification before showing app pages.
+
+2. Firestore (Extend your current schema)
+
+You already have users — add CRM fields:
+
+users/{uid}:
+  email
+  displayName
+  zoho_contact_id
+  crm_contact_snapshot: {...}
+  crm_last_sync: Timestamp
+
+3. Server-only Zoho layer (inside /lib/zoho/)
+
+getAccessToken() — fetch from your Function URL.
+
+getContactByEmail(email, token) — search Zoho contacts module.
+
+updateContact(id, payload, token) — for later write-backs (phase 2).
+
+All of these should run on the server only (no exposure in the client bundle).
+
+⚙️ Data Flow (Step-by-step)
+
+Login event (Firebase)
+
+User logs in → you already have user.email and uid.
+
+Server verifies Zoho contact
+
+API route checks Firestore: if user has zoho_contact_id, skip verification.
+
+Else call Zoho → search by email.
+
+No contact found
+
+Return 403 → redirect to “Contact admin” page.
+
+Contact found
+
+Save contact ID and snapshot in Firestore.
+
+Continue normal app flow.
+
+Later actions (pushes)
+
+When user updates status/docs → write to Firestore first, then your server API pushes to Zoho CRM asynchronously (via queued or on-demand updates).
+
+🗃️ Example Data (in Firestore)
+{
+  "uid": "abc123",
+  "email": "user@domain.com",
+  "zoho_contact_id": "1234567890001",
+  "crm_contact_snapshot": {
+    "First_Name": "John",
+    "Last_Name": "Smith",
+    "Email": "user@domain.com",
+    "Phone": "123456789",
+    "Mailing_City": "Sydney"
+  },
+  "crm_last_sync": "2025-11-04T10:00:00Z"
+}
+
+🔒 Security Overview
+
+Never expose Zoho API keys or tokens in the client.
+
+Store your Function URL in .env.local as:
+
+ZOHO_FUNCTION_URL="https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=..."
+
+
+Use Firebase Authentication to verify users before any Zoho proxy calls.
+
+Store Zoho access tokens in memory or Firestore (server-only) with a short expiry.

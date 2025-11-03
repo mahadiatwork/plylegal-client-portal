@@ -1,0 +1,323 @@
+Screenshots note: I will upload several screenshots to show general layout ideas (Resources, Deliverables, Tasks, Review, etc.). Treat them as examples only. The UI/UX, colors, typography, spacing, and components must match the existing PlyLegal Intake Wizard that you (Replit) already built. Branding colors: plygreen #285646, plyblue #DEE3FF.
+
+Goal
+
+Extend the current Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui PlyLegal app into a complete client portal with:
+
+Dummy login (no backend)
+
+Profile
+
+Visa Applications list
+
+Per-application workspace tabs (Questionnaire, Review & PDF, Uploads, Documents, Tasks, Our Deliverables, Resources, Send Message)
+
+Full intake wizard already built, reused as-is
+
+LocalStorage persistence (no database)
+
+Fix: questionnaire form must not auto-navigate after adding data; only navigate on explicit “Next/Continue”.
+
+Keep the exact visual style from the current wizard (plyblue background, plygreen accents, rounded white cards, serif headings).
+
+Navigation Tree (must implement exactly)
+/login
+/profile
+/applications
+  └── [id]/
+       ├── questionnaire       → CTA to start wizard
+       │    └── /intake/...    → existing wizard pages
+       ├── review              → Review & PDF (read-only summary + download/print)
+       ├── uploads             → Upload documents
+       ├── documents           → Docs library (from uploads)
+       ├── tasks               → Checklist + progress
+       ├── deliverables        → Our Deliverables table
+       ├── resources           → Helpful links & guides
+       └── messages            → Send Message + Conversation
+
+Sidebar behavior (two levels)
+
+Global sidebar (after login):
+
+Ply Legal
+----------
+Profile
+Visa Applications
+
+
+When opening /applications/[id]: sidebar switches to contextual menu for that application:
+
+← Back to Visa Applications
+APP-0001 — Partner Visa (309/100)
+
+Questionnaire
+Review & PDF
+Upload Documents
+Documents
+Tasks
+Our Deliverables
+Resources
+Send Message
+
+
+On mobile, use a top AppHeader with a hamburger to toggle the sidebar.
+
+Folder & files to add (on top of existing wizard)
+app/
+  login/page.tsx
+  profile/page.tsx
+  applications/page.tsx
+  applications/[id]/layout.tsx
+  applications/[id]/page.tsx            // redirect to /questionnaire
+  applications/[id]/questionnaire/page.tsx
+  applications/[id]/review/page.tsx
+  applications/[id]/uploads/page.tsx
+  applications/[id]/documents/page.tsx
+  applications/[id]/tasks/page.tsx
+  applications/[id]/deliverables/page.tsx
+  applications/[id]/resources/page.tsx
+  applications/[id]/messages/page.tsx
+
+  api/intake/save/route.ts               // already provided below
+  api/intake/submit/route.ts
+
+components/
+  AppSidebar.tsx
+  AppHeader.tsx
+  PillNav.tsx
+  StatusBadge.tsx
+  ProgressBar.tsx
+  EmptyState.tsx
+  MessageBubble.tsx
+  UploadRow.tsx
+  TaskItem.tsx
+  DeliverableRow.tsx
+  ResourceRow.tsx
+  StickyNav.tsx                           // mobile Next/Prev/Save
+  ErrorSummary.tsx
+
+lib/
+  types.ts                                // includes Intake + app models
+  validation.ts                           // page-level zod schemas (already created for wizard)
+  storage.ts                              // localStorage helpers for all entities
+  routes.ts                               // ordered route list for sidebar & progress
+  dummy-data.ts                           // demoApplications, demoTasks, demoUploads, demoDeliverables, demoResources, demoMessages, demoIntake
+  pdf.ts                                  // print/download helper (window.print or basic jsPDF)
+
+🔧 Critical Bug Fix for Questionnaire (do NOT auto-advance)
+
+Problem: Current questionnaire jumps to next page after adding data (e.g., saving a repeater row or submitting an inner form).
+Required fix: Never change route automatically. Only navigate when:
+
+User clicks Next/Continue in the sticky footer or bottom buttons, or
+
+User clicks a link in the sidebar / contextual tabs.
+
+Implementation rules:
+
+Forms on each page must NOT auto-submit on Enter.
+
+Add onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()} to top-level <form> unless the Enter key is pressed inside a dialog that is explicitly meant to submit a row.
+
+Buttons that are not the Next/Continue action must be type="button".
+
+Examples: “Add Row”, “Save Row”, “Save Draft”, “Previous”, “Cancel”, “Close Dialog”.
+
+Row dialogs (Add/Edit) in repeaters must close and leave the user on the same page.
+
+On submit: update RHF state + localStorage, show a toast (“Saved”), do not call router.push.
+
+Next/Continue should be the only control that validates current page and navigates:
+
+const onContinue = form.handleSubmit((values) => {
+  saveDraft(merge(values));          // localStorage + POST /api/intake/save
+  router.push(nextHref);             // navigate ONLY here
+}, (errors) => {
+  setShowErrorSummary(true);         // stay on page, focus first error
+  // DO NOT navigate
+});
+
+
+Previous navigates back without validation (and without losing unsaved values):
+
+const onPrev = () => {
+  saveDraft(merge(form.getValues()));
+  router.push(prevHref);
+};
+
+
+Autosave (every 10s and on route change) must not navigate; it only persists.
+
+Pages (behavior + data)
+/login
+
+Prefilled dummy credentials (user@example.com / password123).
+
+On submit: localStorage.setItem('ply_session','ok'); redirect /applications.
+
+/profile
+
+Static card with basic user info (name, email, phone) matching the app’s style.
+
+/applications
+
+Table (carded) of applications from localStorage.
+
+Columns: Reference | Type | Status (StatusBadge) | Updated | Actions [Open] [Review & PDF].
+
+“+ New application” creates a new ID (APP-####), status Draft, updated timestamp, then pushes to /applications/[id].
+
+/applications/[id]/layout.tsx
+
+Reads application meta (ref, type, status) from localStorage.
+
+Renders contextual sidebar + top header and PillNav for tabs.
+
+Children render to the right area.
+
+/applications/[id]/questionnaire
+
+CTA card: “Partner Visa Application Questionnaire” + Start Questionnaire → /intake/start.
+
+/applications/[id]/review
+
+Collapsible summary grouped by wizard sections/subpages.
+
+Top actions: Expand All / Collapse All / Preview / Download PDF.
+
+“Edit” links jump to specific wizard routes.
+
+Download PDF uses window.print() with a print stylesheet (or simple jsPDF).
+
+/applications/[id]/uploads
+
+Upload rows for common documents (Passport page, Birth certificate, Relationship evidence, Police clearance, Health exam).
+
+Columns: Name | Status (Pending/Uploaded) | Upload Date | [Upload / Replace / Remove].
+
+Store metadata only per app in localStorage under ply:app:<id>:uploads.
+For preview, store object URL (session-only is OK).
+
+Mobile: each row becomes a card with actions stacked.
+
+/applications/[id]/documents
+
+Aggregated list of uploaded docs with [Preview] [Remove].
+
+Preview opens the object URL in a new tab; removing updates both docs and uploads lists.
+
+/applications/[id]/tasks
+
+Checklist (from dummy data). Each checkbox persists to ply:app:<id>:tasks.
+
+Show a progress bar “x of y tasks completed” with a smooth width animation.
+
+/applications/[id]/deliverables
+
+Table with Item | Description | Status:
+
+Strategy call — Completed
+
+Application draft — In progress
+
+Submission — Pending
+
+/applications/[id]/resources
+
+List of helpful items: title + right-aligned type (Guide/Link or (n)).
+
+Clicking opens in a new tab (sample URLs or #).
+
+/applications/[id]/messages
+
+Two-column layout:
+
+Left: Send a message (Subject, Message, Send).
+On send: append to localStorage (ply:app:<id>:messages), show toast, clear form, stay on page.
+
+Right: Conversation list with timestamps and a welcome seed message.
+
+Intake wizard (reuse the one you built)
+
+All pages exist under /intake/... per original spec.
+
+Apply the “no auto-advance” rules above to every wizard page and repeater dialog.
+
+Sticky mobile Previous / Save Draft / Continue (via StickyNav).
+
+Autosave every 10s and on step change; toast “Draft saved”.
+
+LocalStorage keys
+ply_session                      // "ok"
+ply:applications                 // [{ id, type, status, updated }]
+ply:app:<id>:uploads             // [{ name, status, uploadedAt, url? }]
+ply:app:<id>:docs                // [{ name, type, url?, size?, uploadedAt }]
+ply:app:<id>:tasks               // [{ id, title, done }]
+ply:app:<id>:deliverables        // [{ item, description, status }]
+ply:app:<id>:messages            // [{ from, text, date }]
+ply:intake_draft                 // Intake JSON used by wizard & Review tab
+
+
+lib/storage.ts should expose load, save, merge, clear, and per-app helpers.
+
+Dummy data (lib/dummy-data.ts)
+
+Provide realistic seeds:
+
+demoApplications: APP-0001 (Partner Visa 309/100, Active), APP-0002 (Visitor Visa 600, Draft)
+
+demoTasks, demoUploads, demoDeliverables, demoResources, demoMessages
+
+demoIntake filling all major wizard fields/repeaters to demo Review.
+
+On first load (or if ply:prefill=true), initialize localStorage from these.
+
+API stubs (unchanged)
+// app/api/intake/save/route.ts
+import { NextResponse } from "next/server";
+export async function POST(req: Request) {
+  const data = await req.json();
+  console.log("[SAVE] Draft:", data);
+  return NextResponse.json({ ok: true });
+}
+
+// app/api/intake/submit/route.ts
+import { NextResponse } from "next/server";
+export async function POST(req: Request) {
+  const data = await req.json();
+  const ref = `APP-${Math.floor(1000 + Math.random()*9000)}`;
+  console.log("[SUBMIT] Payload:", data, "Ref:", ref);
+  return NextResponse.json({ ok: true, reference: ref });
+}
+
+Styling & A11y
+
+Keep current wizard aesthetics: plyblue background, plygreen accents, rounded-2xl cards, shadow-sm, serif headings.
+
+≥44px touch targets, focus-visible outlines, correct aria-*.
+
+No horizontal scroll; Lighthouse mobile ≥ 90.
+
+Subtle page/row fade/slide animations (framer-motion or CSS).
+
+Acceptance criteria (must pass)
+
+Two-level sidebar works: global (Profile, Visa Apps) and contextual (tabs for an open app).
+
+Questionnaire bug fixed:
+
+Adding or editing data never changes pages automatically.
+
+Route only changes on Next/Continue or explicit sidebar/tab click.
+
+All per-app tabs function with localStorage persistence and toasts.
+
+Review page shows grouped intake data with Edit links to correct wizard routes.
+
+Uploads, Documents, Tasks, Deliverables, Resources, Messages all work and persist.
+
+Mobile sticky nav for the wizard; autosave toasts on save.
+
+Visuals consistent with the already built wizard.
+
+Build the above now, reusing the existing wizard components and visual language.
