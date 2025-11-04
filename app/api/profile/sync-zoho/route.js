@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ZohoCRMClient } from '@/lib/zohoClient';
+import { getAdapter } from '@/lib/adapters';
 
 export async function POST(request) {
   try {
@@ -43,58 +44,91 @@ export async function POST(request) {
     const existingContact = await zohoClient.findContactByEmail(email);
 
     // Prepare contact data for Zoho CRM with timestamp
+    // Only include fields that have values (Zoho may reject empty strings for some fields)
     const contactData = {
       First_Name: firstName || '',
       Last_Name: lastName || '',
       Email: email,
       Phone: phone || '',
       Mailing_Street: streetAddress || '',
-      Mailing_City: suburb || '',
-      Mailing_State: state || '',
+      Mailing_Suburb: suburb || '',
+      Mailing_State: state || '', // Use Mailing_State as per Zoho CRM API
       Mailing_Zip: postcode || '',
       Mailing_Country: country || '',
       // Store Firebase sync timestamp for conflict resolution
       Last_Firebase_Sync: new Date().toISOString(),
     };
+    
+    // Log the data being sent for debugging
+    console.log('📦 Contact data being sent to Zoho:', JSON.stringify(contactData, null, 2));
+    console.log('📍 State value:', state, '→ Mailing_State:', contactData.Mailing_State);
 
-    // Add dependencies as a description/note (or custom field if available)
-    if (dependencies && dependencies.length > 0) {
-      const dependenciesText = dependencies.map((dep, index) => 
-        `${index + 1}. ${dep.firstName} ${dep.lastName} - ${dep.relationship} - DOB: ${dep.dateOfBirth} - Citizenship: ${dep.citizenship}`
-      ).join('\n');
-      
-      contactData.Description = `Dependencies:\n${dependenciesText}`;
-    }
-
-    let result;
+    let contactId;
+    let action;
     
     if (existingContact) {
       // Update existing contact
       console.log('📝 Updating existing contact:', existingContact.id);
-      result = await zohoClient.updateRecord('Contacts', existingContact.id, contactData);
-      
-      return NextResponse.json({
-        success: true,
-        action: 'updated',
-        contactId: existingContact.id,
-        message: 'Contact updated successfully in Zoho CRM'
-      });
+      await zohoClient.updateRecord('Contacts', existingContact.id, contactData);
+      contactId = existingContact.id;
+      action = 'updated';
     } else {
       // Create new contact
       console.log('➕ Creating new contact');
-      result = await zohoClient.createRecord('Contacts', contactData);
+      const result = await zohoClient.createRecord('Contacts', contactData);
       
-      if (result?.details?.id) {
-        return NextResponse.json({
-          success: true,
-          action: 'created',
-          contactId: result.details.id,
-          message: 'Contact created successfully in Zoho CRM'
-        });
+      // Extract contact ID from result (v7 API returns { data: [{ id: "...", ... }] })
+      if (result?.id) {
+        contactId = result.id;
+      } else if (result?.details?.id) {
+        contactId = result.details.id;
       } else {
         throw new Error('Failed to create contact - no ID returned');
       }
+      action = 'created';
     }
+
+    // Sync dependencies to Partner_Dependents related list
+    if (contactId && dependencies && dependencies.length > 0) {
+      try {
+        console.log(`🔄 Syncing ${dependencies.length} dependencies to Partner_Dependents related list`);
+        await zohoClient.syncDependencies(contactId, dependencies);
+        console.log('✅ Dependencies synced successfully');
+      } catch (depError) {
+        console.error('⚠️ Failed to sync dependencies to related list (non-critical):', depError.message);
+        // Don't fail the whole sync if dependencies fail - log and continue
+      }
+    } else if (contactId && (!dependencies || dependencies.length === 0)) {
+      // If no dependencies provided, clear existing ones
+      try {
+        console.log('🔄 Clearing existing dependencies (none provided)');
+        await zohoClient.syncDependencies(contactId, []);
+      } catch (depError) {
+        console.error('⚠️ Failed to clear dependencies (non-critical):', depError.message);
+      }
+    }
+
+    // Store contactId in Firebase profile if userId is provided
+    if (userId && contactId) {
+      try {
+        const db = getAdapter();
+        await db.updateUserProfile(userId, {
+          zohoContactId: contactId,
+          zohoLastSyncedAt: new Date().toISOString(),
+        });
+        console.log('✅ Stored zohoContactId in Firebase profile:', contactId);
+      } catch (profileError) {
+        console.error('⚠️ Failed to store zohoContactId in profile (non-critical):', profileError);
+        // Don't fail the whole sync if profile update fails
+      }
+    }
+    
+    return NextResponse.json({
+      success: true,
+      action: action,
+      contactId: contactId,
+      message: `Contact ${action} successfully in Zoho CRM`
+    });
   } catch (error) {
     console.error('❌ Error syncing to Zoho CRM:', error);
     

@@ -146,6 +146,11 @@ export async function POST(request) {
       fullName: `${firstName || ''} ${lastName || ''}`.trim(),
       phone: phone || mobile || '',
       mobile: mobile || '',
+      streetAddress: mailingStreet || '',
+      suburb: mailingCity || '', // Map mailingCity to suburb (Zoho sends Mailing_Suburb as mailingCity)
+      state: mailingState || '',
+      postcode: mailingZip || '',
+      country: mailingCountry || '',
       mailingStreet: mailingStreet || '',
       mailingCity: mailingCity || '',
       mailingState: mailingState || '',

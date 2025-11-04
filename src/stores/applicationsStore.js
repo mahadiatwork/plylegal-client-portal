@@ -3,18 +3,33 @@
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
 
-// Get database adapter (Firebase or localStorage based on env)
-const db = getAdapter();
+// Lazy get adapter to avoid circular dependency issues
+const getDb = () => {
+  try {
+    return getAdapter();
+  } catch (error) {
+    console.error("Error getting adapter:", error);
+    // Return a mock adapter to prevent crashes
+    return null;
+  }
+};
 
 export const applicationsStore = proxy({
   applications: [],
   currentAppId: null,
   isLoading: false,
+  rawDealsData: null, // Store raw deals JSON from Zoho CRM for debugging
   
   // Actions
   async loadApplications(userId) {
     try {
       this.isLoading = true;
+      const db = getDb();
+      if (!db) {
+        console.error("Database adapter not available");
+        this.isLoading = false;
+        return [];
+      }
       const apps = await db.loadApplications(userId);
       this.applications = apps || [];
       this.isLoading = false;
@@ -32,6 +47,10 @@ export const applicationsStore = proxy({
   
   async createApplication(appData) {
     try {
+      const db = getDb();
+      if (!db) {
+        return { success: false, error: "Database adapter not available" };
+      }
       const result = await db.createApplication(appData);
       
       if (result.success) {
@@ -49,6 +68,10 @@ export const applicationsStore = proxy({
   
   async updateApplication(id, updates) {
     try {
+      const db = getDb();
+      if (!db) {
+        return { success: false, error: "Database adapter not available" };
+      }
       const result = await db.updateApplication(id, updates);
       
       if (result.success) {
@@ -68,6 +91,10 @@ export const applicationsStore = proxy({
   
   async deleteApplication(id) {
     try {
+      const db = getDb();
+      if (!db) {
+        return { success: false, error: "Database adapter not available" };
+      }
       const result = await db.deleteApplication(id);
       
       if (result.success) {
@@ -90,5 +117,22 @@ export const applicationsStore = proxy({
   getCurrentApp() {
     if (!this.currentAppId) return null;
     return this.getApplication(this.currentAppId);
+  },
+  
+  // Fetch deals from Zoho CRM and update rawDealsData
+  async fetchDealsFromZoho(userId, zohoContactId) {
+    try {
+      const db = getDb();
+      if (!db || !db.fetchDealsFromZoho) {
+        console.error("fetchDealsFromZoho not available in database adapter");
+        return { success: false, error: "Method not available" };
+      }
+      
+      const result = await db.fetchDealsFromZoho(userId, zohoContactId);
+      return { success: true, deals: result };
+    } catch (error) {
+      console.error("Error fetching deals from Zoho:", error);
+      return { success: false, error: error.message };
+    }
   },
 });

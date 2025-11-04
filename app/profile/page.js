@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { authStore } from "@/stores/authStore";
+import { applicationsStore } from "@/stores/applicationsStore";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,25 @@ export default function ProfilePage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [lastSyncStatus, setLastSyncStatus] = useState(null);
+  
+  // Update formData when userProfile changes (e.g., after fetching from Zoho)
+  useEffect(() => {
+    if (userProfile && !isEditing) {
+      setFormData({
+        firstName: userProfile.firstName || "",
+        lastName: userProfile.lastName || "",
+        phone: userProfile.phone || "",
+        streetAddress: userProfile.streetAddress || "",
+        suburb: userProfile.suburb || "",
+        state: userProfile.state || "",
+        postcode: userProfile.postcode || "",
+        country: userProfile.country || "Australia",
+        dependencies: userProfile.dependencies || [],
+      });
+    }
+  }, [userProfile, isEditing]);
   
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -147,6 +166,7 @@ export default function ProfilePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            userId: user?.id,
             email: user?.email,
             firstName: formData.firstName,
             lastName: formData.lastName,
@@ -214,6 +234,180 @@ export default function ProfilePage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleManualSync = async () => {
+    if (!user?.email) {
+      toast({
+        title: "Error",
+        description: "User email is required for sync.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const syncResponse = await fetch('/api/profile/sync-zoho', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          email: user?.email,
+          firstName: userProfile?.firstName || '',
+          lastName: userProfile?.lastName || '',
+          phone: userProfile?.phone || '',
+          streetAddress: userProfile?.streetAddress || '',
+          suburb: userProfile?.suburb || '',
+          state: userProfile?.state || '',
+          postcode: userProfile?.postcode || '',
+          country: userProfile?.country || 'Australia',
+          dependencies: userProfile?.dependencies || [],
+        }),
+      });
+
+      const syncResult = await syncResponse.json();
+
+      if (syncResult.success) {
+        setLastSyncStatus({
+          success: true,
+          message: syncResult.message,
+          timestamp: new Date().toISOString(),
+          action: syncResult.action,
+          contactId: syncResult.contactId,
+        });
+
+        // Reload profile to get updated zohoContactId
+        await authStore.loadUserProfile();
+
+        toast({
+          title: "Sync Successful",
+          description: syncResult.message,
+        });
+      } else {
+        setLastSyncStatus({
+          success: false,
+          message: syncResult.error || 'Sync failed',
+          timestamp: new Date().toISOString(),
+        });
+
+        toast({
+          title: "Sync Failed",
+          description: syncResult.error || 'Failed to sync with Zoho CRM',
+          variant: "destructive",
+        });
+      }
+    } catch (syncError) {
+      console.error("Error syncing to Zoho:", syncError);
+      setLastSyncStatus({
+        success: false,
+        message: syncError.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync with Zoho CRM. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleFetchFromZoho = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User ID is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsFetching(true);
+    try {
+      const fetchResponse = await fetch('/api/profile/fetch-zoho', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          email: user?.email,
+          contactId: userProfile?.zohoContactId,
+        }),
+      });
+
+      const fetchResult = await fetchResponse.json();
+
+      if (fetchResult.success) {
+        // Reload profile to get updated data
+        await authStore.loadUserProfile();
+        
+        // Reload applications to get any new deals/applications from Zoho
+        if (user?.id) {
+          await applicationsStore.loadApplications(user.id);
+          console.log('✅ Applications reloaded after fetching from Zoho');
+        }
+        
+        // The useEffect will automatically update formData when userProfile changes
+        // But we can also manually update it here to ensure it's immediate
+        if (!isEditing) {
+          // Update formData from the fetched result immediately
+          setFormData(prev => ({
+            ...prev,
+            firstName: fetchResult.profileData.firstName || prev.firstName,
+            lastName: fetchResult.profileData.lastName || prev.lastName,
+            phone: fetchResult.profileData.phone || prev.phone,
+            streetAddress: fetchResult.profileData.streetAddress || prev.streetAddress,
+            suburb: fetchResult.profileData.suburb || prev.suburb,
+            state: fetchResult.profileData.state || prev.state,
+            postcode: fetchResult.profileData.postcode || prev.postcode,
+            country: fetchResult.profileData.country || prev.country,
+            dependencies: fetchResult.profileData.dependencies || prev.dependencies,
+          }));
+        } else {
+          // Update form data if in edit mode
+          setFormData({
+            firstName: fetchResult.profileData.firstName || '',
+            lastName: fetchResult.profileData.lastName || '',
+            phone: fetchResult.profileData.phone || '',
+            streetAddress: fetchResult.profileData.streetAddress || '',
+            suburb: fetchResult.profileData.suburb || '',
+            state: fetchResult.profileData.state || '',
+            postcode: fetchResult.profileData.postcode || '',
+            country: fetchResult.profileData.country || 'Australia',
+            dependencies: fetchResult.profileData.dependencies || [],
+          });
+        }
+
+        setLastSyncStatus({
+          success: true,
+          message: fetchResult.message,
+          timestamp: new Date().toISOString(),
+          action: 'fetched',
+        });
+
+        toast({
+          title: "Fetch Successful",
+          description: "Profile data fetched from Zoho CRM and updated successfully!",
+        });
+      } else {
+        toast({
+          title: "Fetch Failed",
+          description: fetchResult.error || 'Failed to fetch from Zoho CRM',
+          variant: "destructive",
+        });
+      }
+    } catch (fetchError) {
+      console.error("Error fetching from Zoho:", fetchError);
+      toast({
+        title: "Fetch Failed",
+        description: "Failed to fetch from Zoho CRM. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  };
   
   return (
     <div className="min-h-screen bg-background flex">
@@ -253,7 +447,9 @@ export default function ProfilePage() {
                           {lastSyncStatus.success ? (
                             <>
                               <CheckCircle className="h-3 w-3 text-green-600 mr-1" />
-                              <span className="text-green-600">Synced to Zoho CRM</span>
+                              <span className="text-green-600">
+                                {lastSyncStatus.action === 'fetched' ? 'Fetched from Zoho CRM' : 'Synced to Zoho CRM'}
+                              </span>
                             </>
                           ) : (
                             <>
@@ -266,15 +462,37 @@ export default function ProfilePage() {
                     </CardDescription>
                   </div>
                   {!isEditing && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      data-testid="button-edit-profile"
-                      onClick={handleEdit}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManualSync}
+                        disabled={isSyncing || isFetching}
+                        title="Sync your profile data to Zoho CRM"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {isSyncing ? 'Syncing...' : 'Sync to Zoho'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleFetchFromZoho}
+                        disabled={isSyncing || isFetching}
+                        title="Fetch your profile data from Zoho CRM"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                        {isFetching ? 'Fetching...' : 'Fetch from Zoho'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid="button-edit-profile"
+                        onClick={handleEdit}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -702,6 +920,82 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
             
+            {/* Zoho CRM Sync Status Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <CardTitle>Zoho CRM Sync</CardTitle>
+                  </div>
+                  {!isEditing && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManualSync}
+                        disabled={isSyncing || isFetching}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {isSyncing ? 'Syncing...' : 'Sync to Zoho'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleFetchFromZoho}
+                        disabled={isSyncing || isFetching}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                        {isFetching ? 'Fetching...' : 'Fetch from Zoho'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <CardDescription>
+                  Manage synchronization with Zoho CRM
+                  {lastSyncStatus && (
+                    <span className="ml-2 text-xs">
+                      ({new Date(lastSyncStatus.timestamp).toLocaleString()})
+                    </span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userProfile?.zohoContactId ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium">Connected to Zoho CRM</span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p><span className="font-medium">Contact ID:</span> {userProfile.zohoContactId}</p>
+                      {lastSyncStatus && (
+                        <p className="mt-1">
+                          <span className="font-medium">Last {lastSyncStatus.action || 'sync'}:</span>{' '}
+                          {lastSyncStatus.success ? (
+                            <span className="text-green-600">{lastSyncStatus.message}</span>
+                          ) : (
+                            <span className="text-red-600">{lastSyncStatus.message}</span>
+                          )}
+                        </p>
+                      )}
+                      {userProfile?.zohoLastSyncedAt && (
+                        <p className="mt-1">
+                          <span className="font-medium">Last synced:</span>{' '}
+                          {new Date(userProfile.zohoLastSyncedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">Not connected to Zoho CRM. Sync your profile to create a connection.</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Zoho CRM Information Card */}
             {userProfile?.zohoContactId && (
               <Card>
