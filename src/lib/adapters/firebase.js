@@ -1131,42 +1131,65 @@ export class FirebaseAdapter extends BaseAdapter {
     }
   }
   
-  async createApplication(app) {
+  async createApplication(app, userId = null) {
     try {
-      const userId = this.auth.currentUser?.uid;
-      if (!userId) return { success: false, error: 'Not authenticated' };
+      // Accept userId as parameter (for server-side API routes) or use current user
+      const uid = userId || app.userId || this.auth.currentUser?.uid;
+      if (!uid) {
+        console.error('❌ No userId provided for createApplication');
+        return { success: false, error: 'Not authenticated' };
+      }
       
       const appData = {
         ...app,
-        userId: app.userId || userId,
+        userId: uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
       
+      console.log(`💾 Creating application in Firestore with id: ${app.id}, userId: ${uid}`);
       const appRef = doc(this.db, 'applications', app.id);
       await setDoc(appRef, appData);
+      console.log(`✅ Application ${app.id} created successfully in Firestore`);
       
       return {
         success: true,
         application: {
           ...app,
+          userId: uid,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
       };
     } catch (error) {
-      console.error('Error creating application:', error);
+      console.error('❌ Error creating application:', error);
+      console.error('❌ Error stack:', error.stack);
       return { success: false, error: error.message };
     }
   }
   
-  async updateApplication(id, updates) {
+  async updateApplication(id, updates, userId = null) {
     try {
+      // Accept userId as parameter (for server-side API routes) or use from updates
+      const uid = userId || updates.userId || this.auth.currentUser?.uid;
+      if (!uid) {
+        console.error('❌ No userId provided for updateApplication');
+        return { success: false, error: 'Not authenticated' };
+      }
+      
+      console.log(`💾 Updating application ${id} in Firestore, userId: ${uid}`);
       const appRef = doc(this.db, 'applications', id);
+      
+      // Remove id from updates if present (it's the document ID, not a field)
+      const { id: _, ...updateData } = updates;
+      
       await updateDoc(appRef, {
-        ...updates,
+        ...updateData,
+        userId: uid, // Ensure userId is set
         updatedAt: serverTimestamp()
       });
+      
+      console.log(`✅ Application ${id} updated successfully in Firestore`);
       
       // Get updated application
       const appSnap = await getDoc(appRef);
@@ -1177,7 +1200,8 @@ export class FirebaseAdapter extends BaseAdapter {
       
       return { success: true, application: updatedApp };
     } catch (error) {
-      console.error('Error updating application:', error);
+      console.error('❌ Error updating application:', error);
+      console.error('❌ Error stack:', error.stack);
       return { success: false, error: error.message };
     }
   }

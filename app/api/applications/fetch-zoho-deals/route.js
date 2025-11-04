@@ -37,6 +37,11 @@ export async function POST(request) {
     const db = getAdapter();
     const applicationsFromZoho = [];
 
+    // Load all existing applications ONCE before the loop to avoid duplicates
+    console.log('📋 Loading existing applications from Firebase...');
+    const existingApps = await db.loadApplications(userId);
+    console.log(`📋 Found ${existingApps?.length || 0} existing applications in Firebase`);
+
     for (const deal of deals) {
       try {
         // Extract Visa Type from Deal_Name or use Visa_Type field
@@ -49,20 +54,8 @@ export async function POST(request) {
         const visaType = deal.Visa_Type || extractVisaType(dealName) || 'Visa Application';
         const now = new Date();
 
-        // Map deal stage to application status
-        // StatusBadge expects: "Draft", "Submitted", "In progress", "Approved", "Rejected"
-        // Based on the deals: "Needs Analysis", "Value Proposition" are early stages -> "Draft"
-        const mapDealStageToStatus = (stage) => {
-          if (!stage) return 'Draft';
-          const stageLower = stage.toLowerCase();
-          if (stageLower.includes('won') || stageLower.includes('closed') || stageLower.includes('approved')) return 'Approved';
-          if (stageLower.includes('lost') || stageLower.includes('cancelled') || stageLower.includes('rejected')) return 'Rejected';
-          if (stageLower.includes('submitted') || stageLower.includes('lodged')) return 'Submitted';
-          // Early stages (Needs Analysis, Value Proposition, Qualification) -> Draft
-          if (stageLower.includes('needs analysis') || stageLower.includes('value proposition') || stageLower.includes('qualification')) return 'Draft';
-          // Other active stages -> In progress
-          return 'In progress';
-        };
+        // Use Stage directly from Zoho CRM (don't map it)
+        const stage = deal.Stage || deal.Deal_Stage || 'Draft';
 
         // Format date from Modified_Time or Last_Activity_Time (format: "26 Sep 2025")
         const formatDate = (dateString) => {
@@ -98,7 +91,7 @@ export async function POST(request) {
         const applicationData = {
           reference: dealName,
           type: visaType,
-          status: mapDealStageToStatus(deal.Stage || deal.Deal_Stage || 'draft'),
+          status: stage, // Use Stage directly from Zoho CRM
           closingDate: deal.Closing_Date || '',
           updated: formatDate(deal.Modified_Time || deal.Last_Activity_Time),
           lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || now.toISOString(),
@@ -106,23 +99,49 @@ export async function POST(request) {
           userId: userId,
         };
 
-        // Check if application already exists in Firebase by zohoId
-        const existingApps = await db.loadApplications(userId);
-        const existingApp = existingApps?.find(app => app.zohoId === deal.id);
+        // Check if application already exists in Firebase by zohoId first, then by reference/type as fallback
+        let existingApp = existingApps?.find(app => app.zohoId === deal.id);
+        
+        // Fallback: If no match by zohoId, try matching by reference and type (for old apps without zohoId)
+        if (!existingApp) {
+          existingApp = existingApps?.find(app => 
+            app.reference === dealName && 
+            app.type === visaType &&
+            !app.zohoId // Only match old apps that don't have zohoId yet
+          );
+          if (existingApp) {
+            console.log(`🔄 Found existing app by reference/type match (old app without zohoId), will update and add zohoId`);
+          }
+        }
 
         let appId;
         let isNew = false;
 
         if (existingApp) {
-          // Application exists - keep the existing Firebase id
+          // Application exists - keep the existing Firebase id and preserve Firebase-only fields
           appId = existingApp.id;
-          console.log(`🔄 Application already exists in Firebase with id ${appId}, updating...`);
+          console.log(`🔄 Application already exists in Firebase with id ${appId} (zohoId: ${existingApp.zohoId || 'none'}), updating...`);
 
-          // Update with Zoho data (keep existing Firebase id)
-          await db.updateApplication(appId, {
+          // Update only Zoho-related fields, preserve Firebase-only fields (questionnaire data, notes, etc.)
+          // Also ensure zohoId is set (for old apps that don't have it yet)
+          console.log(`💾 Updating existing application in Firebase:`, appId);
+          const updateResult = await db.updateApplication(appId, {
             ...applicationData,
             id: appId,
-          });
+            // Preserve any existing questionnaire data or other Firebase-only fields
+            // The updateApplication method should merge these updates with existing data
+          }, userId);
+          console.log(`💾 Update result:`, updateResult);
+          
+          if (!updateResult.success) {
+            throw new Error(`Failed to update application: ${updateResult.error}`);
+          }
+
+          // Update the existing app in our local array so we don't match it again
+          const existingIndex = existingApps.findIndex(app => app.id === appId);
+          if (existingIndex !== -1) {
+            existingApps[existingIndex] = { ...existingApp, ...applicationData, id: appId };
+          }
 
           applicationData.id = appId;
           applicationData.createdAt = existingApp.createdAt || now.toISOString();
@@ -140,29 +159,89 @@ export async function POST(request) {
             updatedAt: now.toISOString(),
           };
 
-          await db.createApplication(newApp);
+          console.log(`💾 Saving new application to Firebase:`, JSON.stringify(newApp, null, 2));
+          const createResult = await db.createApplication(newApp, userId);
+          console.log(`💾 Create result:`, createResult);
+          
+          if (!createResult.success) {
+            throw new Error(`Failed to create application: ${createResult.error}`);
+          }
 
           applicationData.id = appId;
           applicationData.createdAt = now.toISOString();
+          
+          // Add to our local array so we don't create duplicates in the same sync
+          existingApps.push({
+            id: appId,
+            ...applicationData
+          });
         }
 
         applicationsFromZoho.push(applicationData);
-        console.log(`✅ ${isNew ? 'Created' : 'Updated'} application ${appId} from Deal ${deal.id}`);
+        console.log(`✅ ${isNew ? 'Created' : 'Updated'} application ${appId} from Deal ${deal.id} (zohoId: ${deal.id})`);
       } catch (dealError) {
-        console.error(`⚠️ Failed to process Deal ${deal.id}:`, dealError.message);
+        console.error(`❌ Failed to process Deal ${deal.id}:`, dealError);
+        console.error(`❌ Error stack:`, dealError.stack);
         // Continue with other deals even if one fails
       }
     }
 
     console.log(`✅ Processed ${applicationsFromZoho.length} applications from Zoho CRM`);
-    console.log(`📋 Applications saved to Firebase:`, applicationsFromZoho.map(app => ({ id: app.id, reference: app.reference, type: app.type })));
+    console.log(`📋 Applications saved to Firebase:`, applicationsFromZoho.map(app => ({ id: app.id, reference: app.reference, type: app.type, zohoId: app.zohoId })));
+
+    // Verify final count in Firebase to ensure no duplicates
+    const finalApps = await db.loadApplications(userId);
+    console.log(`📊 Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
+    
+    // Find duplicates by zohoId and remove them (keep the first one)
+    const duplicatesByZohoId = [];
+    const seenZohoIds = new Map();
+    
+    if (finalApps && finalApps.length > 0) {
+      for (const app of finalApps) {
+        if (app.zohoId) {
+          if (seenZohoIds.has(app.zohoId)) {
+            // This is a duplicate - mark for deletion
+            duplicatesByZohoId.push(app);
+          } else {
+            // First occurrence - keep it
+            seenZohoIds.set(app.zohoId, app);
+          }
+        }
+      }
+    }
+    
+    // Remove duplicates from Firebase
+    let removedCount = 0;
+    if (duplicatesByZohoId.length > 0) {
+      console.warn(`⚠️ Found ${duplicatesByZohoId.length} duplicate applications by zohoId. Removing duplicates...`);
+      
+      for (const duplicate of duplicatesByZohoId) {
+        try {
+          console.log(`🗑️ Deleting duplicate application ${duplicate.id} (zohoId: ${duplicate.zohoId}, reference: ${duplicate.reference})`);
+          await db.deleteApplication(duplicate.id);
+          removedCount++;
+        } catch (deleteError) {
+          console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteError.message);
+        }
+      }
+      
+      console.log(`✅ Removed ${removedCount} duplicate applications`);
+    }
+    
+    // Reload to get final count after cleanup
+    const finalAppsAfterCleanup = await db.loadApplications(userId);
+    console.log(`📊 Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
 
     return NextResponse.json({
       success: true,
       deals: applicationsFromZoho,
       rawDealsData: deals, // Return raw deals JSON for display
       applicationsCount: applicationsFromZoho.length,
-      message: `Fetched ${deals.length} deals from Zoho CRM and saved ${applicationsFromZoho.length} applications to Firebase`
+      finalCount: finalAppsAfterCleanup?.length || 0,
+      duplicatesFound: duplicatesByZohoId.length,
+      duplicatesRemoved: removedCount,
+      message: `Fetched ${deals.length} deals from Zoho CRM, synced ${applicationsFromZoho.length} applications, and removed ${removedCount} duplicates (final count: ${finalAppsAfterCleanup?.length || 0})`
     });
   } catch (error) {
     console.error('❌ Error fetching deals from Zoho CRM:', error);
