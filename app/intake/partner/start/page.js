@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -15,12 +15,26 @@ import { getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
 export default function IntakeStartPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState("");
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
+
+  // Set application ID from URL params if available
+  useEffect(() => {
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
+      // If we have applicationId in store but not in URL, update URL to include it
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   useEffect(() => {
     // Load existing draft value if present
@@ -46,14 +60,21 @@ export default function IntakeStartPage() {
       return;
     }
 
+    // Ensure we have an applicationId before proceeding
+    const appId = searchParams.get('applicationId') || draftSnap.currentApplicationId;
+    if (!appId) {
+      setError("Application ID is required. Please return to the applications page and try again.");
+      return;
+    }
+
     // Save to draft
     await draftStore.saveDraft({ started: true });
     
     // Mark this page as complete
     await draftStore.markPageComplete(`${visaType}/start`);
     
-    // Navigate to first page using dynamic routing
-    const next = getNextRoute(pathname, visaType);
+    // Navigate to first page using dynamic routing, preserving applicationId
+    const next = getNextRoute(pathname, visaType, appId);
     if (next) router.push(next);
   };
 

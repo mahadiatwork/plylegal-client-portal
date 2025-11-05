@@ -1,68 +1,235 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
+import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { familyMainSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
-function ChildDialog({ row, onSubmit, onCancel }) {
-  const { control, handleSubmit } = useForm({
-    defaultValues: row || {
-      name: "",
-      dob: "",
-      gender: "Male",
-      intention: "Included in Application",
+const RELATIONSHIP_OPTIONS = [
+  "Adopted Child",
+  "Adopted Parent",
+  "Child",
+  "Child-in-Law",
+  "Cousin",
+  "Grand-Child",
+  "Grand-Parent",
+  "Guardian",
+  "Half-Sibling",
+  "Niece or Nephew",
+  "Parent",
+  "Parent-in-Law",
+  "Sibling",
+  "Sister/Brother-in-Law",
+  "Spouse/Partner",
+  "Step-Child",
+  "Step-Grandchild",
+  "Step-Grandparent",
+  "Step-Niece or Step-Nephew",
+  "Step-Parent",
+  "Step-Sibling",
+  "Step-Uncle or Step-Aunt",
+  "Uncle or Aunt",
+  "Ward"
+];
+
+const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+const months = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+
+const familyMemberDialogSchema = z.object({
+  family_name: z.string().min(1, "Family Name is required"),
+  given_names: z.string().min(1, "Given Names is required"),
+  gender: z.string().min(1, "Gender is required"),
+  birth_day: z.string().optional(),
+  birth_month: z.string().optional(),
+  birth_year: z.string().optional(),
+  relationship: z.string().min(1, "Relationship to Main Applicant is required"),
+});
+
+function FamilyMemberDialog({ editingRow, onSave, onCancel }) {
+  const dialogForm = useForm({
+    resolver: zodResolver(familyMemberDialogSchema),
+    defaultValues: editingRow || {
+      family_name: "",
+      given_names: "",
+      gender: "",
+      birth_day: "",
+      birth_month: "",
+      birth_year: "",
+      relationship: "",
     },
   });
 
-  const handleFormSubmit = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    handleSubmit(onSubmit)(event);
+  const handleFormSubmit = (data) => {
+    onSave(data);
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-4">
-      <Field type="text" name="name" control={control} label="Child's Full Name" required />
-      <Field type="date" name="dob" control={control} label="Date of Birth" />
-      <Field
-        type="select"
-        name="gender"
-        control={control}
-        label="Gender"
-        options={[
-          { value: "Male", label: "Male" },
-          { value: "Female", label: "Female" },
-          { value: "Other", label: "Other" },
-        ]}
-      />
-      <Field
-        type="select"
-        name="intention"
-        control={control}
-        label="Application Status"
-        options={[
-          { value: "Included in Application", label: "Included in Application" },
-          { value: "Not Included", label: "Not Included" },
-        ]}
-      />
-      <DialogFooter className="gap-2 sm:gap-2">
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dialogForm.handleSubmit(handleFormSubmit)(e);
+      }} 
+      className="space-y-4"
+    >
+      <div className="mb-4">
+        <p className="text-sm text-gray-600 mb-2">
+          Enter details about all of the Main Applicant's:
+        </p>
+        <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 ml-4">
+          <li>Spouse/Partner (if applicable); and</li>
+          <li>Parents (including Step-Parents); and</li>
+          <li>Siblings (including Step-Sisters/Step-Brothers); and</li>
+          <li>Children (including children from a previous relationship, Step-Children and Adopted Children)</li>
+          <li>Guardians (include any other person who has, or will have, custody or guardianship of this person)</li>
+        </ul>
+        <p className="text-sm text-gray-600 mt-2">
+          Please include details even if the family member is no longer alive.
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
+        <Input
+          id="family_name"
+          {...dialogForm.register("family_name")}
+          data-testid="input-family-name"
+        />
+        {dialogForm.formState.errors.family_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.family_name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="given_names">Given Names <span className="text-red-500">*</span></Label>
+        <Input
+          id="given_names"
+          {...dialogForm.register("given_names")}
+          data-testid="input-given-names"
+        />
+        {dialogForm.formState.errors.given_names && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.given_names.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label>Gender <span className="text-red-500">*</span></Label>
+        <RadioGroup
+          value={dialogForm.watch("gender")}
+          onValueChange={(value) => dialogForm.setValue("gender", value, { shouldValidate: true })}
+          className="flex gap-4 mt-2"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Male" id="gender-male" />
+            <Label htmlFor="gender-male" className="cursor-pointer">Male</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Female" id="gender-female" />
+            <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Other" id="gender-other" />
+            <Label htmlFor="gender-other" className="cursor-pointer">Other</Label>
+          </div>
+        </RadioGroup>
+        {dialogForm.formState.errors.gender && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label>Date of Birth</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("birth_day")}
+            onValueChange={(value) => dialogForm.setValue("birth_day", value)}
+          >
+            <SelectTrigger data-testid="select-birth-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {days.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("birth_month")}
+            onValueChange={(value) => dialogForm.setValue("birth_month", value)}
+          >
+            <SelectTrigger data-testid="select-birth-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month, idx) => (
+                <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("birth_year")}
+            onValueChange={(value) => dialogForm.setValue("birth_year", value)}
+          >
+            <SelectTrigger data-testid="select-birth-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="relationship">This person is the Main Applicant's: <span className="text-red-500">*</span></Label>
+        <Select
+          value={dialogForm.watch("relationship")}
+          onValueChange={(value) => dialogForm.setValue("relationship", value, { shouldValidate: true })}
+        >
+          <SelectTrigger data-testid="select-relationship">
+            <SelectValue placeholder="Choose Relationship Type" />
+          </SelectTrigger>
+          <SelectContent>
+            {RELATIONSHIP_OPTIONS.map((rel) => (
+              <SelectItem key={rel} value={rel}>{rel}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.relationship && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship.message}</p>
+        )}
+      </div>
+
+      <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" data-testid="button-submit">
-          {row ? "Update" : "Add"}
+        <Button type="submit" className="bg-primary text-primary-foreground" data-testid="button-ok">
+          Ok
         </Button>
       </DialogFooter>
     </form>
@@ -72,25 +239,40 @@ function ChildDialog({ row, onSubmit, onCancel }) {
 export default function MainApplicantFamilyPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const visaType = getVisaTypeFromPath(pathname);
+  const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
+  const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
-  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
+  
+  // Get visa type from pathname
+  const visaType = getVisaTypeFromPath(pathname);
 
-  // Prevent hydration mismatch
+  // Set application ID from URL params if available
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
+
+  // Load section data
+  const sectionData = draftStore.getSectionData('mainApplicant.family');
 
   const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(familyMainSchema),
+    mode: "onChange",
     defaultValues: {
-      has_children: draftSnap.draft.has_children,
-      children: draftSnap.draft.children || [],
+      has_children: sectionData.has_children || "",
+      children: sectionData.children || [],
     },
   });
 
+  // Watch form values
   const hasChildren = watch("has_children");
   const children = watch("children") || [];
 
@@ -99,40 +281,60 @@ export default function MainApplicantFamilyPage() {
 
   // Auto-save form data with debounce
   useEffect(() => {
+    if (!draftSnap.currentApplicationId) return;
+    
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
       if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveDraft(watchedValues);
+        draftStore.saveSectionData('mainApplicant.family', watchedValues);
       }
-    }, 2000); // Save 2 seconds after user stops typing
+    }, 2000);
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [watchedValues]);
+  }, [watchedValues, draftSnap.currentApplicationId]);
 
   const onSubmit = (data) => {
-    draftStore.saveDraft(data);
-    const next = getNextRoute(pathname, visaType);
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    draftStore.saveSectionData('mainApplicant.family', data);
+    draftStore.markPageComplete('partner/main-applicant/family');
+    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
 
   const handleSave = async () => {
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const currentData = getValues();
-    const result = await draftStore.saveDraft(currentData);
+    const result = await draftStore.saveSectionData('mainApplicant.family', currentData);
     
     if (result.success) {
-      // Mark this page as complete
       await draftStore.markPageComplete('partner/main-applicant/family');
       toast({
         title: "Draft saved",
@@ -148,15 +350,28 @@ export default function MainApplicantFamilyPage() {
   };
 
   const updateChildren = (newChildren) => {
-    setValue("children", newChildren, { shouldDirty: true });
-    draftStore.saveDraft({ children: newChildren });
+    setValue("children", newChildren, { shouldValidate: true });
+    const currentData = getValues();
+    draftStore.saveSectionData('mainApplicant.family', { ...currentData, children: newChildren });
   };
 
   const childrenColumns = [
-    { key: "name", label: "Name" },
-    { key: "dob", label: "Date of Birth" },
+    { key: "name", label: "Name", format: (row) => {
+      if (row.family_name || row.given_names) {
+        return `${row.given_names || ""} ${row.family_name || ""}`.trim();
+      }
+      return row.name || "";
+    }},
+    { key: "dob", label: "Date of Birth", format: (row) => {
+      if (row.birth_day && row.birth_month && row.birth_year) {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthIdx = parseInt(row.birth_month) - 1;
+        return `${monthNames[monthIdx]} ${row.birth_day}, ${row.birth_year}`;
+      }
+      return row.dob || "";
+    }},
     { key: "gender", label: "Gender" },
-    { key: "intention", label: "Status" },
+    { key: "relationship", label: "Relationship" },
   ];
 
   return (
@@ -166,7 +381,15 @@ export default function MainApplicantFamilyPage() {
           <CardTitle className="text-2xl font-semibold">Family Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+              }
+            }}
+            className="space-y-8"
+          >
             {Object.keys(errors).length > 0 && (
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
@@ -180,25 +403,29 @@ export default function MainApplicantFamilyPage() {
               </div>
             )}
 
-            <Field
-              type="radio"
-              name="has_children"
-              control={control}
-              label="Do you have any children?"
-              options={[
-                { value: "Yes", label: "Yes" },
-                { value: "No", label: "No" },
-              ]}
-            />
+            {/* Question: Do you have any children? */}
+            <div>
+              <Field
+                type="radio"
+                name="has_children"
+                control={control}
+                label="Do you have any children?"
+                options={[
+                  { value: "Yes", label: "Yes" },
+                  { value: "No", label: "No" },
+                ]}
+              />
+            </div>
 
-            {mounted && hasChildren === "Yes" && (
+            {/* Children Information Section */}
+            {hasChildren === "Yes" && (
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Children Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Children Information</h3>
                 <p className="text-sm text-gray-600">
                   Please provide details about your children
                 </p>
                 <RepeaterTable
-                  rows={children}
+                  data={children}
                   columns={childrenColumns}
                   onAdd={(row) => updateChildren([...children, row])}
                   onEdit={(index, row) => {
@@ -210,11 +437,11 @@ export default function MainApplicantFamilyPage() {
                     const updated = children.filter((_, i) => i !== index);
                     updateChildren(updated);
                   }}
-                  dialogForm={(row, onSubmit, onCancel) => (
-                    <ChildDialog row={row} onSubmit={onSubmit} onCancel={onCancel} />
-                  )}
+                  DialogComponent={FamilyMemberDialog}
                   addButtonText="Add Child"
-                  emptyMessage="No children added"
+                  testIdPrefix="family"
+                  dialogTitle="Add Family Member"
+                  dialogClassName="max-w-4xl w-[90vw] max-h-[98vh] bg-white overflow-y-auto"
                 />
               </div>
             )}

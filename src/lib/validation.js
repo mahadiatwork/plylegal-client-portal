@@ -10,24 +10,156 @@ export const startSchema = z.object({
 
 export const detailsSchema = z.object({
   is_main_applicant: yesNoEnum,
+  // Main applicant fields (required when is_main_applicant === "Yes")
   prefix: z.string().optional(),
-  family_name: z.string().min(1, "Required"),
-  given_names: z.string().min(1, "Required"),
+  family_name: z.string().optional(),
+  given_names: z.string().optional(),
   preferred_names: z.string().optional(),
-  gender: z.enum(["Male", "Female", "Other"]),
-  dob: z.string().min(1, "Required"),
-  country_of_birth: z.string().min(1, "Required"),
+  gender: z.enum(["Male", "Female", "Other"]).optional(),
+  birth_day: z.string().optional(),
+  birth_month: z.string().optional(),
+  birth_year: z.string().optional(),
+  country_of_birth: z.string().optional(),
   suburb_of_birth: z.string().optional(),
   city_of_birth: z.string().optional(),
   state_of_birth: z.string().optional(),
   marital_status: z.enum([
-    "Never Married",
+    "Never Married or been in a De Facto Relationship",
     "Married",
     "De Facto",
     "Divorced",
     "Widowed",
     "Separated",
-  ]),
+  ]).optional(),
+  // Person completing questionnaire fields (required when is_main_applicant === "No")
+  completing_prefix: z.string().optional(),
+  completing_family_name: z.string().optional(),
+  completing_given_names: z.string().optional(),
+  completing_preferred_names: z.string().optional(),
+  completing_gender: z.enum(["Male", "Female", "Other"]).optional(),
+  completing_birth_day: z.string().optional(),
+  completing_birth_month: z.string().optional(),
+  completing_birth_year: z.string().optional(),
+  completing_country_of_birth: z.string().optional(),
+  completing_suburb_of_birth: z.string().optional(),
+  completing_city_of_birth: z.string().optional(),
+  completing_state_of_birth: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // Conditional validation based on is_main_applicant
+  if (data.is_main_applicant === "Yes") {
+    // Require main applicant fields
+    if (!data.family_name || data.family_name.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["family_name"],
+      });
+    }
+    if (!data.given_names || data.given_names.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["given_names"],
+      });
+    }
+    if (!data.gender) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["gender"],
+      });
+    }
+    if (!data.birth_day || !data.birth_month || !data.birth_year) {
+      if (!data.birth_day) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["birth_day"],
+        });
+      }
+      if (!data.birth_month) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["birth_month"],
+        });
+      }
+      if (!data.birth_year) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["birth_year"],
+        });
+      }
+    }
+    if (!data.country_of_birth || data.country_of_birth.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["country_of_birth"],
+      });
+    }
+    if (!data.marital_status && data.is_main_applicant === "Yes") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["marital_status"],
+      });
+    }
+  } else if (data.is_main_applicant === "No") {
+    // Require person completing questionnaire fields
+    if (!data.completing_family_name || data.completing_family_name.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["completing_family_name"],
+      });
+    }
+    if (!data.completing_given_names || data.completing_given_names.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["completing_given_names"],
+      });
+    }
+    if (!data.completing_gender) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["completing_gender"],
+      });
+    }
+    if (!data.completing_birth_day || !data.completing_birth_month || !data.completing_birth_year) {
+      if (!data.completing_birth_day) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["completing_birth_day"],
+        });
+      }
+      if (!data.completing_birth_month) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["completing_birth_month"],
+        });
+      }
+      if (!data.completing_birth_year) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Required",
+          path: ["completing_birth_year"],
+        });
+      }
+    }
+    if (!data.completing_country_of_birth || data.completing_country_of_birth.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["completing_country_of_birth"],
+      });
+    }
+  }
 });
 
 export const otherSchema = z.object({
@@ -36,6 +168,15 @@ export const otherSchema = z.object({
     family_name: z.string(),
     given_names: z.string(),
     reason_for_change: z.string(),
+    has_evidence: z.string().optional(),
+    evidence_type: z.string().optional(),
+    document_issue_day: z.string().optional(),
+    document_issue_month: z.string().optional(),
+    document_issue_year: z.string().optional(),
+    document_reference_number: z.string().optional(),
+    issuing_country: z.string().optional(),
+    issuing_state: z.string().optional(),
+    place_of_issue: z.string().optional(),
   })).optional(),
   use_chinese_code: yesNoEnum.optional(),
   chinese_code: z.string().optional(),
@@ -45,44 +186,181 @@ export const otherSchema = z.object({
     given_names: z.string(),
   }).optional(),
   has_prev_dob: yesNoEnum.optional(),
-  prev_dobs: z.array(z.string()).optional(),
+  prev_dobs: z.array(z.union([
+    z.string(),
+    z.object({
+      day: z.string(),
+      month: z.string(),
+      year: z.string(),
+      date: z.string().optional(),
+    })
+  ])).optional(),
+}).superRefine((data, ctx) => {
+  // If has_other_names is Yes, require at least one other name
+  if (data.has_other_names === "Yes") {
+    if (!data.other_names || data.other_names.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one other name is required when 'Yes' is selected",
+        path: ["other_names"],
+      });
+    }
+  }
+  
+  // If use_chinese_code is Yes, require chinese_code
+  if (data.use_chinese_code === "Yes") {
+    if (!data.chinese_code || data.chinese_code.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Chinese Commercial Code is required when 'Yes' is selected",
+        path: ["chinese_code"],
+      });
+    }
+  }
+  
+  // If russian_descent is Yes, require patronymic_name fields
+  if (data.russian_descent === "Yes") {
+    if (!data.patronymic_name || !data.patronymic_name.family_name || !data.patronymic_name.given_names) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Patronymic name (Family Name and Given Names) is required when 'Yes' is selected",
+        path: ["patronymic_name"],
+      });
+    }
+  }
+  
+  // If has_prev_dob is Yes, require at least one previous DOB
+  if (data.has_prev_dob === "Yes") {
+    if (!data.prev_dobs || data.prev_dobs.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one previous date of birth is required when 'Yes' is selected",
+        path: ["prev_dobs"],
+      });
+    }
+  }
 });
 
 export const identitySchema = z.object({
   citizen_of_country: yesNoEnum.optional(),
+  stateless_explanation: z.string().optional(),
   citizenships: z.array(z.object({
     country: z.string(),
     obtained_method: z.string(),
-    date_obtained: z.string().optional(),
-    still_citizen: z.boolean().optional(),
+    date_obtained_day: z.string().optional(),
+    date_obtained_month: z.string().optional(),
+    date_obtained_year: z.string().optional(),
+    still_citizen: z.string().optional(),
+    date_ceased_day: z.string().optional(),
+    date_ceased_month: z.string().optional(),
+    date_ceased_year: z.string().optional(),
+    reason_ceased: z.string().optional(),
   })).optional(),
   has_passport: yesNoEnum.optional(),
   passports: z.array(z.object({
-    doc_number: z.string(),
-    name: z.string(),
+    document_type: z.string(),
+    document_number: z.string(),
+    passport_country: z.string(),
+    place_of_issue: z.string(),
     nationality: z.string(),
-    date_of_issue: z.string().optional(),
-    status: z.enum(["Valid", "Expired", "Cancelled"]).optional(),
+    gender: z.string(),
+    name: z.string(),
+    date_issued_day: z.string().optional(),
+    date_issued_month: z.string().optional(),
+    date_issued_year: z.string().optional(),
+    is_original_date: z.string().optional(),
+    original_date_day: z.string().optional(),
+    original_date_month: z.string().optional(),
+    original_date_year: z.string().optional(),
+    date_expiry_day: z.string().optional(),
+    date_expiry_month: z.string().optional(),
+    date_expiry_year: z.string().optional(),
+    document_status: z.string(),
   })).optional(),
   has_identity_doc: yesNoEnum.optional(),
   identity_docs: z.array(z.object({
-    doc_type: z.string(),
-    id_number: z.string(),
+    document_type: z.string(),
+    identification_number: z.string(),
     name: z.string(),
     country_of_issue: z.string(),
-    date_of_issue: z.string().optional(),
+    state_province_of_issue: z.string().optional(),
+    place_of_issue: z.string().optional(),
+    date_issued_day: z.string().optional(),
+    date_issued_month: z.string().optional(),
+    date_issued_year: z.string().optional(),
+    date_expiry_day: z.string().optional(),
+    date_expiry_month: z.string().optional(),
+    date_expiry_year: z.string().optional(),
   })).optional(),
   permanent_residency_rights: yesNoEnum.optional(),
   pr_countries: z.array(z.object({ country: z.string() })).optional(),
+}).superRefine((data, ctx) => {
+  // If not a citizen, stateless explanation is required
+  if (data.citizen_of_country === "No" && (!data.stateless_explanation || data.stateless_explanation.trim().length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Stateless explanation is required when you are not a citizen of any country",
+      path: ["stateless_explanation"],
+    });
+  }
+  
+  // If is current citizen, require at least one citizenship entry
+  if (data.citizen_of_country === "Yes" && (!data.citizenships || data.citizenships.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one citizenship is required",
+      path: ["citizenships"],
+    });
+  }
+  
+  // If has passport, require at least one passport entry
+  if (data.has_passport === "Yes" && (!data.passports || data.passports.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one passport/travel document is required",
+      path: ["passports"],
+    });
+  }
+  
+  // If has identity doc, require at least one identity document entry
+  if (data.has_identity_doc === "Yes" && (!data.identity_docs || data.identity_docs.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one identity document is required",
+      path: ["identity_docs"],
+    });
+  }
+  
+  // If has permanent residency rights, require at least one PR country entry
+  if (data.permanent_residency_rights === "Yes" && (!data.pr_countries || data.pr_countries.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one permanent residency country is required",
+      path: ["pr_countries"],
+    });
+  }
 });
 
 export const employmentSchema = z.object({
   currently_employed: yesNoEnum.optional(),
   employment_history: z.array(z.object({
-    date_from: z.string().optional(),
-    date_to: z.string().optional(),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
     status: z.string().optional(),
     position: z.string().optional(),
+    business_name: z.string().optional(),
+    business_address_street: z.string().optional(),
+    business_address_street_line2: z.string().optional(),
+    business_address_suburb: z.string().optional(),
+    business_address_state: z.string().optional(),
+    business_address_postcode: z.string().optional(),
+    main_duties: z.string().optional(),
+    occupied_time: z.string().optional(),
+    financial_support: z.string().optional(),
     country: z.string().optional(),
   })).optional(),
 });
@@ -90,42 +368,92 @@ export const employmentSchema = z.object({
 export const educationSchema = z.object({
   has_education: yesNoEnum.optional(),
   education_history: z.array(z.object({
-    date_from: z.string().optional(),
-    date_to: z.string().optional(),
-    course_name: z.string(),
-    institution_name: z.string(),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    qualification_type: z.string().optional(),
+    is_highest_qualification: z.string().optional(),
+    course_name: z.string().optional(),
+    course_language: z.string().optional(),
+    course_status: z.string().optional(),
+    institution_name: z.string().optional(),
     country: z.string().optional(),
-    status: z.enum(["Completed", "Ongoing", "Withdrawn"]).optional(),
+    institution_address: z.string().optional(),
+    institution_suburb: z.string().optional(),
+    institution_state: z.string().optional(),
+    institution_postcode: z.string().optional(),
   })).optional(),
+}).superRefine((data, ctx) => {
+  // If has education is Yes, require at least one education history entry
+  if (data.has_education === "Yes" && (!data.education_history || data.education_history.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one education history entry is required",
+      path: ["education_history"],
+    });
+  }
 });
 
 export const languageSchema = z.object({
   is_english_main: yesNoEnum.optional(),
   languages: z.array(z.object({
-    language: z.string(),
-    proficiency: z.enum(["Basic", "Intermediate", "Proficient", "Native"]).optional(),
-    main_language: z.boolean().optional(),
+    language: z.string().optional(),
+    proficiency: z.string().optional(),
+    is_main_language: z.string().optional(),
   })).optional(),
 });
 
 export const familyMainSchema = z.object({
   has_children: yesNoEnum.optional(),
   children: z.array(z.object({
-    name: z.string().min(1, "Name is required"),
-    dob: z.string().optional(),
-    gender: z.enum(["Male", "Female", "Other"]).optional(),
+    family_name: z.string().optional(),
+    given_names: z.string().optional(),
+    name: z.string().optional(), // Keep for backward compatibility
+    gender: z.string().optional(),
+    birth_day: z.string().optional(),
+    birth_month: z.string().optional(),
+    birth_year: z.string().optional(),
+    dob: z.string().optional(), // Keep for backward compatibility
+    relationship: z.string().optional(),
     intention: z.enum(["Included in Application", "Not Included"]).optional(),
   })).optional(),
+}).superRefine((data, ctx) => {
+  // If has children is Yes, require at least one child entry
+  if (data.has_children === "Yes" && (!data.children || data.children.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one child entry is required",
+      path: ["children"],
+    });
+  }
 });
 
 export const childrenSchema = z.object({
   has_children_joint: yesNoEnum.optional(),
   children: z.array(z.object({
-    name: z.string(),
-    dob: z.string().optional(),
-    gender: z.enum(["Male", "Female", "Other"]).optional(),
+    family_name: z.string().optional(),
+    given_names: z.string().optional(),
+    name: z.string().optional(), // Keep for backward compatibility
+    gender: z.string().optional(),
+    birth_day: z.string().optional(),
+    birth_month: z.string().optional(),
+    birth_year: z.string().optional(),
+    dob: z.string().optional(), // Keep for backward compatibility
+    relationship: z.string().optional(),
     intention: z.enum(["Included in Application", "Not Included"]).optional(),
   })).optional(),
+}).superRefine((data, ctx) => {
+  // If has children is Yes, require at least one child entry
+  if (data.has_children_joint === "Yes" && (!data.children || data.children.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one child entry is required",
+      path: ["children"],
+    });
+  }
 });
 
 export const familySponsorSchema = z.object({

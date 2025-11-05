@@ -86,18 +86,22 @@ export default function IntakeLayout({ children }) {
         {currentSection?.subpages && (
           <ScrollArea className="border-t border-border">
             <div className="flex gap-1 p-2">
-              {currentSection.subpages.map((subpage) => (
-                <Button
-                  key={subpage.href}
-                  variant={isRouteActive(subpage.href) ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => router.push(subpage.href)}
-                  className="min-h-8 text-xs whitespace-nowrap"
-                  data-testid={`tab-${subpage.href}`}
-                >
-                  {subpage.title}
-                </Button>
-              ))}
+              {currentSection.subpages.map((subpage) => {
+                const appId = draftSnap.currentApplicationId;
+                const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
+                return (
+                  <Button
+                    key={subpage.href}
+                    variant={isRouteActive(subpage.href) ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => router.push(href)}
+                    className="min-h-8 text-xs whitespace-nowrap"
+                    data-testid={`tab-${subpage.href}`}
+                  >
+                    {subpage.title}
+                  </Button>
+                );
+              })}
             </div>
           </ScrollArea>
         )}
@@ -171,7 +175,9 @@ export default function IntakeLayout({ children }) {
                     <Button
                       variant="ghost"
                       onClick={() => {
-                        router.push(route.href);
+                        const appId = draftSnap.currentApplicationId;
+                        const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
+                        router.push(href);
                         setSidebarOpen(false);
                       }}
                       className={cn(
@@ -195,7 +201,9 @@ export default function IntakeLayout({ children }) {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              router.push(subpage.href);
+                              const appId = draftSnap.currentApplicationId;
+                              const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
+                              router.push(href);
                               setSidebarOpen(false);
                             }}
                             className={cn(

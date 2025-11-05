@@ -1,4 +1,5 @@
 import axios from 'axios';
+import FormData from 'form-data';
 
 class ZohoCRMClient {
   constructor() {
@@ -518,6 +519,64 @@ class ZohoCRMClient {
       return createdDependents;
     } catch (error) {
       console.error('❌ Error syncing dependencies:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a file as an attachment to a Zoho CRM record
+   * @param {string} moduleName - Module name (e.g., 'Deals', 'Contacts')
+   * @param {string} recordId - Record ID (e.g., Deal ID)
+   * @param {Buffer|Stream} fileBuffer - File buffer to upload
+   * @param {string} fileName - File name (must include extension)
+   * @param {string} contentType - Content type (e.g., 'image/jpeg', 'application/pdf')
+   * @returns {Promise<Object>} Upload response from Zoho
+   */
+  async uploadAttachment(moduleName, recordId, fileBuffer, fileName, contentType = null) {
+    try {
+      const token = await this.getAccessToken();
+      
+      if (!token) {
+        throw new Error('No Zoho access token available');
+      }
+
+      // Use v8 API for attachments as per Zoho documentation
+      const datacenter = process.env.ZOHO_DATACENTER || 'com.au';
+      const baseURL = `https://www.zohoapis.${datacenter}/crm/v8`;
+      
+      // Create FormData for file upload (server-side only)
+      const formData = new FormData();
+      
+      // Append file buffer with proper content type
+      const options = {
+        filename: fileName,
+      };
+      
+      // Set content type if provided (helps Zoho preserve file format)
+      if (contentType) {
+        options.contentType = contentType;
+      }
+      
+      formData.append('file', fileBuffer, options);
+
+      const response = await axios.post(
+        `${baseURL}/${moduleName}/${recordId}/Attachments`,
+        formData,
+        {
+          headers: {
+            ...formData.getHeaders(),
+            Authorization: `Zoho-oauthtoken ${token}`,
+          },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        }
+      );
+
+      console.log(`✅ File uploaded successfully to ${moduleName}/${recordId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error uploading attachment to ${moduleName}/${recordId}:`, error.message);
+      console.error('Error details:', error.response?.data || error);
       throw error;
     }
   }

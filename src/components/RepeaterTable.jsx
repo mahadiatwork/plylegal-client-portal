@@ -20,6 +20,9 @@ export function RepeaterTable({
   addButtonText = "Add Entry",
   emptyMessage = "No entries added",
   testIdPrefix = "entry",
+  dialogTitle,
+  dialogSubtitle,
+  dialogClassName,
 }) {
   const rows = data || [];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -96,7 +99,7 @@ export function RepeaterTable({
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="py-3 px-4 text-sm">
-                      {row[col.key]}
+                      {col.format ? (typeof col.format === 'function' ? col.format(row) : col.format(row[col.key])) : row[col.key]}
                     </td>
                   ))}
                   <td className="py-3 px-4">
@@ -127,14 +130,16 @@ export function RepeaterTable({
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className={dialogClassName || "max-w-2xl max-h-[90vh] bg-white"}>
           <DialogHeader>
             <DialogTitle>
-              {editingIndex !== null ? "Edit Entry" : "Add Entry"}
+              {dialogTitle || (editingIndex !== null ? "Edit Entry" : "Add Entry")}
             </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Fill in the information below
-            </p>
+            {dialogSubtitle && (
+              <p className="text-sm text-muted-foreground mt-2">
+                {dialogSubtitle}
+              </p>
+            )}
           </DialogHeader>
           {DialogComponent && (
             <DialogComponent

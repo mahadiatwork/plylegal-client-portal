@@ -14,6 +14,14 @@ export const PARTNER_VISA_ROUTES = [
       { href: "/intake/partner/main-applicant/family", title: "Family" },
     ],
   },
+  {
+    href: "/intake/partner/spouse-partner/details",
+    title: "Spouse/Partner",
+    subpages: [
+      { href: "/intake/partner/spouse-partner/details", title: "Details" },
+      { href: "/intake/partner/spouse-partner/personal-details", title: "Personal Details" },
+    ],
+  },
   { href: "/intake/partner/children/start", title: "Children" },
   { href: "/intake/partner/family-sponsor/details", title: "Family Sponsor" },
   { href: "/intake/partner/family", title: "Family Members" },

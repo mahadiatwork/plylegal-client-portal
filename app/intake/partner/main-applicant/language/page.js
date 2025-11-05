@@ -1,72 +1,122 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
+import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { languageSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
-function LanguageDialog({ row, onSubmit, onCancel }) {
-  const { control, handleSubmit, watch, setValue } = useForm({
-    defaultValues: row || {
+const PROFICIENCY_LEVELS = [
+  "Superior",
+  "Proficient",
+  "Competent",
+  "Vocational",
+  "Functional",
+  "Limited",
+  "Not at All"
+];
+
+const languageDialogSchema = z.object({
+  language: z.string().min(1, "Language is required"),
+  proficiency: z.string().min(1, "Level of Proficiency is required"),
+  is_main_language: z.string().optional(),
+});
+
+function LanguageDialog({ editingRow, onSave, onCancel }) {
+  const dialogForm = useForm({
+    resolver: zodResolver(languageDialogSchema),
+    defaultValues: editingRow || {
       language: "",
-      proficiency: "Basic",
-      main_language: false,
+      proficiency: "",
+      is_main_language: "",
     },
   });
 
-  const mainLanguage = watch("main_language");
-
-  const handleFormSubmit = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    handleSubmit(onSubmit)(event);
+  const handleFormSubmit = (data) => {
+    onSave(data);
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-4">
-      <Field type="text" name="language" control={control} label="Language" required />
-      <Field
-        type="select"
-        name="proficiency"
-        control={control}
-        label="Proficiency"
-        options={[
-          { value: "Basic", label: "Basic" },
-          { value: "Intermediate", label: "Intermediate" },
-          { value: "Proficient", label: "Proficient" },
-          { value: "Native", label: "Native" },
-        ]}
-      />
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="main_language"
-          checked={mainLanguage}
-          onCheckedChange={(checked) => setValue("main_language", !!checked)}
-          data-testid="checkbox-main-language"
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dialogForm.handleSubmit(handleFormSubmit)(e);
+      }} 
+      className="space-y-4"
+    >
+      <div>
+        <Label htmlFor="language">Language <span className="text-red-500">*</span></Label>
+        <Input
+          id="language"
+          {...dialogForm.register("language")}
+          data-testid="input-language"
         />
-        <Label htmlFor="main_language" className="cursor-pointer">
-          This is my main language
-        </Label>
+        {dialogForm.formState.errors.language && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.language.message}</p>
+        )}
       </div>
-      <DialogFooter className="gap-2 sm:gap-2">
+
+      <div>
+        <Label htmlFor="proficiency">Level of Proficiency <span className="text-red-500">*</span></Label>
+        <Select
+          value={dialogForm.watch("proficiency")}
+          onValueChange={(value) => dialogForm.setValue("proficiency", value, { shouldValidate: true })}
+        >
+          <SelectTrigger data-testid="select-proficiency">
+            <SelectValue placeholder="Choose Proficiency" />
+          </SelectTrigger>
+          <SelectContent>
+            {PROFICIENCY_LEVELS.map((level) => (
+              <SelectItem key={level} value={level}>{level}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.proficiency && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.proficiency.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label>Is this your main Language?</Label>
+        <RadioGroup
+          value={dialogForm.watch("is_main_language")}
+          onValueChange={(value) => dialogForm.setValue("is_main_language", value)}
+          className="flex gap-4 mt-2"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Yes" id="main-lang-yes" />
+            <Label htmlFor="main-lang-yes" className="cursor-pointer">Yes</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="No" id="main-lang-no" />
+            <Label htmlFor="main-lang-no" className="cursor-pointer">No</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" data-testid="button-submit">
-          {row ? "Update" : "Add"}
+        <Button type="submit" className="bg-primary text-primary-foreground" data-testid="button-ok">
+          Ok
         </Button>
       </DialogFooter>
     </form>
@@ -76,19 +126,40 @@ function LanguageDialog({ row, onSubmit, onCancel }) {
 export default function MainApplicantLanguagePage() {
   const router = useRouter();
   const pathname = usePathname();
-  const visaType = getVisaTypeFromPath(pathname);
+  const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
+  const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
+  
+  // Get visa type from pathname
+  const visaType = getVisaTypeFromPath(pathname);
+
+  // Set application ID from URL params if available
+  useEffect(() => {
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
+
+  // Load section data
+  const sectionData = draftStore.getSectionData('mainApplicant.language');
 
   const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(languageSchema),
+    mode: "onChange",
     defaultValues: {
-      is_english_main: draftSnap.draft.is_english_main,
-      languages: draftSnap.draft.languages || [],
+      is_english_main: sectionData.is_english_main || "",
+      languages: sectionData.languages || [],
     },
   });
 
+  // Watch form values
   const languages = watch("languages") || [];
 
   // Watch all form values for auto-save
@@ -96,13 +167,15 @@ export default function MainApplicantLanguagePage() {
 
   // Auto-save form data with debounce
   useEffect(() => {
+    if (!draftSnap.currentApplicationId) return;
+    
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
       if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveDraft(watchedValues);
+        draftStore.saveSectionData('mainApplicant.language', watchedValues);
       }
     }, 2000);
 
@@ -111,25 +184,43 @@ export default function MainApplicantLanguagePage() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [watchedValues]);
+  }, [watchedValues, draftSnap.currentApplicationId]);
 
   const onSubmit = (data) => {
-    draftStore.saveDraft(data);
-    const next = getNextRoute(pathname, visaType);
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    draftStore.saveSectionData('mainApplicant.language', data);
+    draftStore.markPageComplete('partner/main-applicant/language');
+    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
 
   const handleSave = async () => {
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const currentData = getValues();
-    const result = await draftStore.saveDraft(currentData);
+    const result = await draftStore.saveSectionData('mainApplicant.language', currentData);
     
     if (result.success) {
-      // Mark this page as complete
       await draftStore.markPageComplete('partner/main-applicant/language');
       toast({
         title: "Draft saved",
@@ -145,17 +236,18 @@ export default function MainApplicantLanguagePage() {
   };
 
   const updateLanguages = (newLanguages) => {
-    setValue("languages", newLanguages, { shouldDirty: true });
-    draftStore.saveDraft({ languages: newLanguages });
+    setValue("languages", newLanguages, { shouldValidate: true });
+    const currentData = getValues();
+    draftStore.saveSectionData('mainApplicant.language', { ...currentData, languages: newLanguages });
   };
 
   const languageColumns = [
     { key: "language", label: "Language" },
-    { key: "proficiency", label: "Proficiency" },
+    { key: "proficiency", label: "Level of Proficiency" },
     { 
-      key: "main_language", 
-      label: "Main", 
-      render: (value) => value ? "Yes" : "No" 
+      key: "is_main_language", 
+      label: "Main Language", 
+      format: (row) => row.is_main_language === "Yes" ? "Yes" : "No"
     },
   ];
 
@@ -163,7 +255,10 @@ export default function MainApplicantLanguagePage() {
     <>
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Language Skills</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Language</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            In this section, provide details about the main applicant's language skills.
+          </p>
         </CardHeader>
         <CardContent>
           <form
@@ -188,24 +283,28 @@ export default function MainApplicantLanguagePage() {
               </div>
             )}
 
-            <Field
-              type="radio"
-              name="is_english_main"
-              control={control}
-              label="Is English your main language?"
-              options={[
-                { value: "Yes", label: "Yes" },
-                { value: "No", label: "No" },
-              ]}
-            />
+            {/* Question: Is the English language your main language? */}
+            <div>
+              <Field
+                type="radio"
+                name="is_english_main"
+                control={control}
+                label="Is the English language your main language?"
+                options={[
+                  { value: "Yes", label: "Yes" },
+                  { value: "No", label: "No" },
+                ]}
+              />
+            </div>
 
-            <div className="space-y-4">
-              <h3 className="font-serif text-lg font-medium">Languages</h3>
-              <p className="text-sm text-muted-foreground">
-                Please list all languages you speak, including English
+            {/* Languages Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Languages</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Enter details of all Languages you are able to communicate in (including English)
               </p>
               <RepeaterTable
-                rows={languages}
+                data={languages}
                 columns={languageColumns}
                 onAdd={(row) => updateLanguages([...languages, row])}
                 onEdit={(index, row) => {
@@ -217,11 +316,12 @@ export default function MainApplicantLanguagePage() {
                   const updated = languages.filter((_, i) => i !== index);
                   updateLanguages(updated);
                 }}
-                dialogForm={(row, onSubmit, onCancel) => (
-                  <LanguageDialog row={row} onSubmit={onSubmit} onCancel={onCancel} />
-                )}
-                addButtonText="Add Language"
-                emptyMessage="No languages added"
+                DialogComponent={LanguageDialog}
+                addButtonText="Add"
+                testIdPrefix="language"
+                dialogTitle="Languages"
+                dialogSubtitle="Enter details of all Languages you are able to communicate in (including English)"
+                dialogClassName="max-w-4xl w-[90vw] max-h-[98vh] bg-white overflow-y-auto"
               />
             </div>
 

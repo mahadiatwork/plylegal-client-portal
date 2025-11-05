@@ -79,26 +79,71 @@ export default function UploadsPage() {
     setSelectedFile(file);
   };
 
-  const handleUpload = () => {
-    if (!selectedFile || !selectedUpload) return;
+  const handleUpload = async () => {
+    if (!selectedFile || !selectedUpload || !application) return;
 
-    updateUpload(appId, selectedUpload.id, {
-      status: "Under Review",
-      uploadedAt: new Date().toISOString().split('T')[0],
-    });
-    
-    toast({
-      title: "File uploaded successfully",
-      description: `${selectedFile.name} is now under review.`,
-    });
+    // Check if application has a zohoId (Deal ID)
+    if (!application.zohoId) {
+      toast({
+        title: "Error",
+        description: "Application is not linked to a Zoho CRM Deal. Please sync your application first.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setDialogOpen(false);
-    setSelectedFile(null);
+    try {
+      // Show loading state
+      const loadingToast = toast({
+        title: "Uploading...",
+        description: `Uploading ${selectedFile.name} to Zoho CRM...`,
+      });
+
+      // Create FormData to send file to API
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('dealId', application.zohoId);
+      formData.append('documentName', selectedUpload.name);
+
+      // Upload to Zoho CRM via API route
+      const response = await fetch('/api/uploads/zoho', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to upload file to Zoho CRM');
+      }
+
+      // Update local state with "Uploaded" status
+      updateUpload(appId, selectedUpload.id, {
+        status: "Uploaded",
+        uploadedAt: new Date().toISOString().split('T')[0],
+      });
+
+      toast({
+        title: "File uploaded successfully",
+        description: `${selectedFile.name} has been uploaded to Zoho CRM.`,
+      });
+
+      setDialogOpen(false);
+      setSelectedFile(null);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload file. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusBadge = (status) => {
     const statusStyles = {
       'Pending': 'bg-gray-100 text-gray-700',
+      'Uploaded': 'bg-blue-100 text-blue-700 border border-blue-300',
       'Under Review': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
       'Approved': 'bg-green-100 text-green-700 border border-green-300',
       'Rejected': 'bg-red-100 text-red-700 border border-red-300',
