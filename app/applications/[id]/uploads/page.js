@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { appDataStore, updateUpload } from "@/stores/appDataStore";
+import { authStore } from "@/stores/authStore";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
@@ -29,16 +30,96 @@ export default function UploadsPage() {
   const [selectedUpload, setSelectedUpload] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [matterDocuments, setMatterDocuments] = useState([]);
+  const [loadingMatterDocs, setLoadingMatterDocs] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const applicationsSnap = useSnapshot(applicationsStore);
   const appDataSnap = useSnapshot(appDataStore);
+  const authSnap = useSnapshot(authStore);
   const { toast } = useToast();
   
   const appId = params.id;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const uploads = appDataSnap.cache[appId]?.uploads || [];
+
+  // Load applications and uploads data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Wait for auth to be ready
+        if (!authSnap.isAuthenticated && !authSnap.user) {
+          // Check session first
+          await authStore.checkSession();
+        }
+
+        const userId = authSnap.user?.id;
+        if (!userId) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Load applications if not already loaded
+        if (applicationsSnap.applications.length === 0) {
+          await applicationsStore.loadApplications(userId);
+        }
+
+        // Load uploads data from localStorage (synchronous operation)
+        if (appId) {
+          appDataStore.loadUploads(appId);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
+
+  // Fetch Matter Documents from Zoho CRM
+  useEffect(() => {
+    const fetchMatterDocuments = async () => {
+      if (!application?.zohoId) {
+        setLoadingMatterDocs(false);
+        return;
+      }
+
+      setLoadingMatterDocs(true);
+      try {
+        const response = await fetch(`/api/uploads/matter-documents?dealId=${application.zohoId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          const docs = result.documents || [];
+          console.log('📦 Matter Documents received:', JSON.stringify(docs, null, 2));
+          setMatterDocuments(docs);
+        } else {
+          console.error('Error fetching matter documents:', result.error);
+        }
+      } catch (error) {
+        console.error('Error fetching matter documents:', error);
+      } finally {
+        setLoadingMatterDocs(false);
+      }
+    };
+
+    if (application?.zohoId && !isLoading) {
+      fetchMatterDocuments();
+    }
+  }, [application?.zohoId, isLoading]);
   
-  const handleOpenDialog = (upload) => {
-    setSelectedUpload(upload);
+  const handleOpenDialog = (doc) => {
+    // Create a compatible upload object from Matter Document
+    const uploadObj = {
+      id: doc.id,
+      name: doc.Matter_Document_Name || doc.Document_Name || doc.File_Name || 'Document',
+      status: doc.Document_Status || 'Pending',
+      matterDocumentId: doc.id,
+      matterDocumentName: doc.Matter_Document_Name || doc.Document_Name || doc.File_Name
+    };
+    setSelectedUpload(uploadObj);
     setSelectedFile(null);
     setError("");
     setDialogOpen(true);
@@ -80,7 +161,7 @@ export default function UploadsPage() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !selectedUpload || !application) return;
+    if (!selectedFile || !selectedUpload || !application || uploading) return;
 
     // Check if application has a zohoId (Deal ID)
     if (!application.zohoId) {
@@ -92,6 +173,7 @@ export default function UploadsPage() {
       return;
     }
 
+    setUploading(true);
     try {
       // Show loading state
       const loadingToast = toast({
@@ -103,7 +185,9 @@ export default function UploadsPage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('dealId', application.zohoId);
-      formData.append('documentName', selectedUpload.name);
+      // Use matterDocumentName if it's a Matter Document, otherwise use the upload name
+      const documentName = selectedUpload.matterDocumentName || selectedUpload.name;
+      formData.append('documentName', documentName);
 
       // Upload to Zoho CRM via API route
       const response = await fetch('/api/uploads/zoho', {
@@ -128,6 +212,15 @@ export default function UploadsPage() {
         description: `${selectedFile.name} has been uploaded to Zoho CRM.`,
       });
 
+      // Refresh Matter Documents after successful upload
+      if (application.zohoId) {
+        const refreshResponse = await fetch(`/api/uploads/matter-documents?dealId=${application.zohoId}`);
+        const refreshResult = await refreshResponse.json();
+        if (refreshResult.success) {
+          setMatterDocuments(refreshResult.documents || []);
+        }
+      }
+
       setDialogOpen(false);
       setSelectedFile(null);
     } catch (error) {
@@ -137,12 +230,15 @@ export default function UploadsPage() {
         description: error.message || "Failed to upload file. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setUploading(false);
     }
   };
 
   const getStatusBadge = (status) => {
     const statusStyles = {
       'Pending': 'bg-gray-100 text-gray-700',
+      'Not Submitted Yet': 'bg-purple-100 text-purple-700 border border-purple-300',
       'Uploaded': 'bg-blue-100 text-blue-700 border border-blue-300',
       'Under Review': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
       'Approved': 'bg-green-100 text-green-700 border border-green-300',
@@ -151,13 +247,45 @@ export default function UploadsPage() {
     
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status] || statusStyles['Pending']}`}>
-        {status}
+        {status || 'Pending'}
       </span>
     );
   };
+
+  const formatDate = (dateString, status) => {
+    // Don't show date for "Not Submitted Yet" documents
+    if (!dateString || status === 'Not Submitted Yet' || status === 'Pending') {
+      return '—';
+    }
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const canUpload = (status) => {
+    // Allow upload for "Not Submitted Yet" and "Pending"
+    // Block upload for "Approved", "Declined", "Uploaded", "Under Review"
+    return status === 'Not Submitted Yet' || status === 'Pending';
+  };
   
-  if (!application) {
-    return <div>Loading...</div>;
+  // Show loading state while data is being loaded
+  if (isLoading || !application) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
   }
   
   return (
@@ -208,32 +336,66 @@ export default function UploadsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {uploads.map((upload) => (
-                      <tr key={upload.id} className="hover:bg-gray-50 transition-colors" data-testid={`row-upload-${upload.id}`}>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm text-gray-700">{upload.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          {getStatusBadge(upload.status)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-gray-700">{upload.uploadedAt || '—'}</span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button 
-                            onClick={() => handleOpenDialog(upload)}
-                            className="px-3 py-1.5 border border-[#285646] text-[#285646] rounded-md text-xs font-medium hover:bg-[#285646] hover:text-white transition"
-                            data-testid={`button-upload-${upload.id}`}
-                          >
-                            <UploadIcon className="w-3 h-3 inline mr-1" />
-                            Upload
-                          </button>
+                    {loadingMatterDocs ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-gray-500">
+                          Loading documents...
                         </td>
                       </tr>
-                    ))}
+                    ) : matterDocuments.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-gray-500">
+                          No documents found
+                        </td>
+                      </tr>
+                    ) : (
+                      matterDocuments.map((doc) => {
+                        const status = doc.Document_Status || 'Pending';
+                        const documentName = doc.Matter_Document_Name || doc.Document_Name || doc.File_Name || doc.Name || 'Untitled';
+                        const uploadAllowed = canUpload(status);
+                        
+                        return (
+                          <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm text-gray-700">
+                                  {documentName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              {getStatusBadge(status)}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="text-sm text-gray-700">
+                                {formatDate(doc.Created_Time, status)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              {uploadAllowed ? (
+                                <button 
+                                  onClick={() => handleOpenDialog(doc)}
+                                  className="px-3 py-1.5 border border-[#285646] text-[#285646] rounded-md text-xs font-medium hover:bg-[#285646] hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                  data-testid={`button-upload-${doc.id}`}
+                                >
+                                  <UploadIcon className="w-3 h-3 inline mr-1" />
+                                  Upload
+                                </button>
+                              ) : (
+                                <button 
+                                  disabled
+                                  className="px-3 py-1.5 border border-gray-300 text-gray-400 rounded-md text-xs font-medium cursor-not-allowed opacity-50"
+                                >
+                                  <UploadIcon className="w-3 h-3 inline mr-1" />
+                                  Upload
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -291,11 +453,11 @@ export default function UploadsPage() {
               </Button>
               <Button
                 onClick={handleUpload}
-                disabled={!selectedFile || !!error}
+                disabled={!selectedFile || !!error || uploading}
                 data-testid="button-confirm-upload"
                 className="bg-[#285646] hover:bg-[#1f4236]"
               >
-                Upload File
+                {uploading ? 'Uploading...' : 'Upload File'}
               </Button>
             </div>
           </div>

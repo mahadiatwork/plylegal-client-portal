@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
-import { applicationsStore, draftStore } from "@/stores";
+import { applicationsStore, draftStore, authStore } from "@/stores";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
@@ -15,12 +15,44 @@ export default function QuestionnairePage() {
   const params = useParams();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const applicationsSnap = useSnapshot(applicationsStore);
   const draftSnap = useSnapshot(draftStore);
+  const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   
+  // Load applications data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Wait for auth to be ready
+        if (!authSnap.isAuthenticated && !authSnap.user) {
+          // Check session first
+          await authStore.checkSession();
+        }
+
+        const userId = authSnap.user?.id;
+        if (!userId) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Load applications if not already loaded
+        if (applicationsSnap.applications.length === 0) {
+          await applicationsStore.loadApplications(userId);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
+
   useEffect(() => {
     // Set application context for draft store
     if (appId) {
@@ -30,8 +62,15 @@ export default function QuestionnairePage() {
     }
   }, [appId]);
   
-  if (!application) {
-    return <div>Loading...</div>;
+  // Show loading state while data is being loaded
+  if (isLoading || !application) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
   }
   
   const handleStartQuestionnaire = () => {

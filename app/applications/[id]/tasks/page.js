@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { appDataStore, updateTasks } from "@/stores/appDataStore";
+import { authStore } from "@/stores/authStore";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
@@ -15,12 +16,48 @@ import { Checkbox } from "@/components/ui/checkbox";
 export default function TasksPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const applicationsSnap = useSnapshot(applicationsStore);
   const appDataSnap = useSnapshot(appDataStore);
+  const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const tasks = appDataSnap.cache[appId]?.tasks || [];
+
+  // Load applications and tasks data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Wait for auth to be ready
+        if (!authSnap.isAuthenticated && !authSnap.user) {
+          await authStore.checkSession();
+        }
+
+        const userId = authSnap.user?.id;
+        if (!userId) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Load applications if not already loaded
+        if (applicationsSnap.applications.length === 0) {
+          await applicationsStore.loadApplications(userId);
+        }
+
+        // Load tasks data from localStorage
+        if (appId && !appDataSnap.cache[appId]?.tasks) {
+          appDataStore.loadTasks(appId);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
   
   const handleToggle = (taskId) => {
     const updated = tasks.map(task =>
@@ -31,8 +68,15 @@ export default function TasksPage() {
   
   const completedCount = tasks.filter(t => t.done).length;
   
-  if (!application) {
-    return <div>Loading...</div>;
+  // Show loading state while data is being loaded
+  if (isLoading || !application) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
   }
   
   return (

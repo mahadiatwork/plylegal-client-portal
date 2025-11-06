@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
+import { authStore } from "@/stores/authStore";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
@@ -105,13 +106,51 @@ function ResourceCard({ resource }) {
 export default function ResourcesPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const applicationsSnap = useSnapshot(applicationsStore);
+  const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
   const application = applicationsSnap.applications.find(app => app.id === appId);
+
+  // Load applications data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Wait for auth to be ready
+        if (!authSnap.isAuthenticated && !authSnap.user) {
+          await authStore.checkSession();
+        }
+
+        const userId = authSnap.user?.id;
+        if (!userId) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Load applications if not already loaded
+        if (applicationsSnap.applications.length === 0) {
+          await applicationsStore.loadApplications(userId);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
   
-  if (!application) {
-    return <div>Loading...</div>;
+  // Show loading state while data is being loaded
+  if (isLoading || !application) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
   }
   
   return (

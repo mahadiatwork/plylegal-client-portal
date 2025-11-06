@@ -322,6 +322,9 @@ class ZohoCRMClient {
         } else if (relatedListName === 'Deals') {
           // Fields for Deals/Applications
           fields = 'id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time';
+        } else if (relatedListName === 'Matter_Documents') {
+          // Fields for Matter_Documents - include multiple name field variations and document_Serial for sorting
+          fields = 'id,Matter_Document_Name,Document_Name,Name,Document_Status,Created_Time,File_Name,File_Size,Modified_Time,Owner,Parent_Id,document_Serial';
         } else {
           // Default: get id and basic fields
           fields = 'id';

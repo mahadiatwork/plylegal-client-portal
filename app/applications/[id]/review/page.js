@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { draftStore } from "@/stores/draftStore";
+import { authStore } from "@/stores/authStore";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
@@ -150,23 +151,44 @@ export default function ReviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const applicationsSnap = useSnapshot(applicationsStore);
   const draftSnap = useSnapshot(draftStore);
+  const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const draft = draftSnap.draft || {};
   
-  // Load draft data on mount
+  // Load applications and draft data on mount
   useEffect(() => {
     const loadData = async () => {
-      if (appId) {
+      try {
         setIsLoading(true);
-        draftStore.setApplicationId(appId);
-        await draftStore.loadDraft(appId);
+        
+        // Wait for auth to be ready
+        if (!authSnap.isAuthenticated && !authSnap.user) {
+          await authStore.checkSession();
+        }
+
+        const userId = authSnap.user?.id;
+        if (userId) {
+          // Load applications if not already loaded
+          if (applicationsSnap.applications.length === 0) {
+            await applicationsStore.loadApplications(userId);
+          }
+        }
+
+        // Load draft data
+        if (appId) {
+          draftStore.setApplicationId(appId);
+          await draftStore.loadDraft(appId);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
         setIsLoading(false);
       }
     };
     loadData();
-  }, [appId]);
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
   
   const handlePrint = () => {
     window.print();
@@ -311,8 +333,15 @@ export default function ReviewPage() {
     },
   ];
   
-  if (!application) {
-    return <div>Loading...</div>;
+  // Show loading state while data is being loaded
+  if (isLoading || !application) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </div>
+    );
   }
   
   return (
