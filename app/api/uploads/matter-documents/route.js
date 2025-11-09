@@ -18,7 +18,8 @@ export async function GET(request) {
     
     // Fetch Matter_Documents from Deal's related list
     // Try multiple field name variations to ensure we get the document name
-    const fields = 'id,Matter_Document_Name,Document_Name,Name,Document_Status,Created_Time,File_Name,File_Size,Modified_Time,Owner,Parent_Id,document_Serial';
+    // Include Comments, Rejection_Comments, and Decline_Reason fields for comment functionality
+    const fields = 'id,Matter_Document_Name,Document_Name,Name,Document_Status,Created_Time,File_Name,File_Size,Modified_Time,Owner,Parent_Id,document_Serial,Comments,Rejection_Comments,Decline_Reason';
     const documents = await zohoClient.getRelatedRecords('Deals', dealId, 'Matter_Documents', fields);
 
     console.log(`✅ Found ${documents?.length || 0} Matter_Documents`);

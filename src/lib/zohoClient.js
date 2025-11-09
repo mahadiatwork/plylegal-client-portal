@@ -323,8 +323,8 @@ class ZohoCRMClient {
           // Fields for Deals/Applications
           fields = 'id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time';
         } else if (relatedListName === 'Matter_Documents') {
-          // Fields for Matter_Documents - include multiple name field variations and document_Serial for sorting
-          fields = 'id,Matter_Document_Name,Document_Name,Name,Document_Status,Created_Time,File_Name,File_Size,Modified_Time,Owner,Parent_Id,document_Serial';
+          // Fields for Matter_Documents - include multiple name field variations, document_Serial for sorting, and Comments/Decline_Reason fields
+          fields = 'id,Matter_Document_Name,Document_Name,Name,Document_Status,Created_Time,File_Name,File_Size,Modified_Time,Owner,Parent_Id,document_Serial,Comments,Rejection_Comments,Decline_Reason';
         } else {
           // Default: get id and basic fields
           fields = 'id';
@@ -548,26 +548,26 @@ class ZohoCRMClient {
       const baseURL = `https://www.zohoapis.${datacenter}/crm/v8`;
       
       // Create FormData for file upload (server-side only)
+      // Match curl format: -F "file=@filename"
       const formData = new FormData();
       
-      // Append file buffer with proper content type
-      const options = {
-        filename: fileName,
-      };
-      
-      // Set content type if provided (helps Zoho preserve file format)
-      if (contentType) {
-        options.contentType = contentType;
-      }
-      
-      formData.append('file', fileBuffer, options);
+      // Append file buffer - form-data accepts Buffer directly
+      // Third parameter is filename (required for file uploads)
+      formData.append('file', fileBuffer, fileName);
+
+      // Get headers from form-data (includes Content-Type with boundary)
+      // Don't override Content-Type - let form-data set it with boundary
+      const formHeaders = formData.getHeaders();
+
+      console.log(`📤 Uploading attachment to ${baseURL}/${moduleName}/${recordId}/Attachments`);
+      console.log(`📄 File: ${fileName}, Size: ${fileBuffer.length} bytes`);
 
       const response = await axios.post(
         `${baseURL}/${moduleName}/${recordId}/Attachments`,
         formData,
         {
           headers: {
-            ...formData.getHeaders(),
+            ...formHeaders,
             Authorization: `Zoho-oauthtoken ${token}`,
           },
           maxContentLength: Infinity,
@@ -576,10 +576,13 @@ class ZohoCRMClient {
       );
 
       console.log(`✅ File uploaded successfully to ${moduleName}/${recordId}`);
+      console.log(`📦 Upload response:`, JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
       console.error(`❌ Error uploading attachment to ${moduleName}/${recordId}:`, error.message);
       console.error('Error details:', error.response?.data || error);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
       throw error;
     }
   }

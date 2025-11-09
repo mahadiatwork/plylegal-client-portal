@@ -334,3 +334,47 @@
     inset: -1px;
   }
 }
+
+/* Print styles for PDF generation */
+@media print {
+  /* Hide navigation, buttons, and non-essential elements */
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure proper page breaks */
+  .space-y-4 > * {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Optimize layout for printing */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Remove shadows and borders for cleaner print */
+  .shadow-sm,
+  .shadow,
+  .shadow-md,
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  /* Ensure cards print properly */
+  .rounded-lg {
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 1cm;
+  }
+
+  /* Prevent page breaks inside sections */
+  .p-5 {
+    page-break-inside: avoid;
+  }
+}

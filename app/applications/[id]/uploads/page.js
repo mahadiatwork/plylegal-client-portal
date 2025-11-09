@@ -11,7 +11,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload as UploadIcon, FileText } from "lucide-react";
+import { Upload as UploadIcon, FileText, ChevronDown, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 export default function UploadsPage() {
   const params = useParams();
@@ -32,8 +39,10 @@ export default function UploadsPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [matterDocuments, setMatterDocuments] = useState([]);
+  const [documentsJson, setDocumentsJson] = useState(null);
   const [loadingMatterDocs, setLoadingMatterDocs] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState({});
   const applicationsSnap = useSnapshot(applicationsStore);
   const appDataSnap = useSnapshot(appDataStore);
   const authSnap = useSnapshot(authStore);
@@ -78,6 +87,38 @@ export default function UploadsPage() {
     loadData();
   }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
 
+  // Fetch documents_json from Deal
+  useEffect(() => {
+    const fetchDocumentsJson = async () => {
+      if (!application?.zohoId) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/deals/${application.zohoId}`);
+        const result = await response.json();
+        
+        if (result.success && result.deal?.documents_json) {
+          const jsonData = typeof result.deal.documents_json === 'string' 
+            ? JSON.parse(result.deal.documents_json) 
+            : result.deal.documents_json;
+          console.log('📋 documents_json received:', JSON.stringify(jsonData, null, 2));
+          setDocumentsJson(jsonData);
+        } else {
+          console.log('📋 No documents_json found in Deal');
+          setDocumentsJson(null);
+        }
+      } catch (error) {
+        console.error('Error fetching documents_json:', error);
+        setDocumentsJson(null);
+      }
+    };
+
+    if (application?.zohoId && !isLoading) {
+      fetchDocumentsJson();
+    }
+  }, [application?.zohoId, isLoading]);
+
   // Fetch Matter Documents from Zoho CRM
   useEffect(() => {
     const fetchMatterDocuments = async () => {
@@ -112,12 +153,14 @@ export default function UploadsPage() {
   
   const handleOpenDialog = (doc) => {
     // Create a compatible upload object from Matter Document
+    // Use "Name" key as primary source for document name
+    const documentName = doc.Name || doc.Matter_Document_Name || doc.Document_Name || doc.File_Name || 'Document';
     const uploadObj = {
       id: doc.id,
-      name: doc.Matter_Document_Name || doc.Document_Name || doc.File_Name || 'Document',
+      name: documentName,
       status: doc.Document_Status || 'Pending',
       matterDocumentId: doc.id,
-      matterDocumentName: doc.Matter_Document_Name || doc.Document_Name || doc.File_Name
+      matterDocumentName: documentName
     };
     setSelectedUpload(uploadObj);
     setSelectedFile(null);
@@ -197,22 +240,23 @@ export default function UploadsPage() {
 
       const result = await response.json();
 
+      console.log('📤 Upload API response:', result);
+
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to upload file to Zoho CRM');
+        const errorMsg = result.error || result.message || 'Failed to upload file to Zoho CRM';
+        console.error('❌ Upload failed:', errorMsg);
+        console.error('Response details:', result);
+        throw new Error(errorMsg);
       }
 
-      // Update local state with "Uploaded" status
-      updateUpload(appId, selectedUpload.id, {
-        status: "Uploaded",
-        uploadedAt: new Date().toISOString().split('T')[0],
-      });
+      console.log('✅ Upload API call successful');
 
       toast({
         title: "File uploaded successfully",
-        description: `${selectedFile.name} has been uploaded to Zoho CRM.`,
+        description: `${selectedFile.name} has been uploaded and is now awaiting approval.`,
       });
 
-      // Refresh Matter Documents after successful upload
+      // Refresh Matter Documents after successful upload to get updated status
       if (application.zohoId) {
         const refreshResponse = await fetch(`/api/uploads/matter-documents?dealId=${application.zohoId}`);
         const refreshResult = await refreshResponse.json();
@@ -240,9 +284,11 @@ export default function UploadsPage() {
       'Pending': 'bg-gray-100 text-gray-700',
       'Not Submitted Yet': 'bg-purple-100 text-purple-700 border border-purple-300',
       'Uploaded': 'bg-blue-100 text-blue-700 border border-blue-300',
+      'Awaiting Approval': 'bg-orange-100 text-orange-700 border border-orange-300',
       'Under Review': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
       'Approved': 'bg-green-100 text-green-700 border border-green-300',
       'Rejected': 'bg-red-100 text-red-700 border border-red-300',
+      'Declined': 'bg-red-100 text-red-700 border border-red-300',
     };
     
     return (
@@ -272,10 +318,174 @@ export default function UploadsPage() {
   };
 
   const canUpload = (status) => {
-    // Allow upload for "Not Submitted Yet" and "Pending"
-    // Block upload for "Approved", "Declined", "Uploaded", "Under Review"
-    return status === 'Not Submitted Yet' || status === 'Pending';
+    // Disable upload for: "Awaiting Approval", "Approved", "Uploaded", "Under Review"
+    // Enable upload for: "Not Submitted Yet", "Pending", "Rejected", "Declined"
+    const blockedStatuses = ['Awaiting Approval', 'Approved', 'Uploaded', 'Under Review'];
+    return !blockedStatuses.includes(status);
   };
+
+  // Organize documents by categories from documents_json
+  // IMPORTANT: All document data (names, status, comments) comes from Zoho Matter Documents
+  // JSON is ONLY used for categorization and ordering
+  const organizedDocuments = useMemo(() => {
+    // If no Zoho documents, return empty
+    if (!Array.isArray(matterDocuments) || matterDocuments.length === 0) {
+      return { categories: [], uncategorized: [] };
+    }
+
+    // If no documents_json, show all Zoho documents as uncategorized
+    if (!documentsJson) {
+      return { categories: [], uncategorized: matterDocuments };
+    }
+
+    // Parse documents_json structure
+    // Expected structure: { categories: [{ name: "...", items: [{ name: "...", serial: 1 }] }] }
+    const categories = documentsJson.categories || documentsJson || [];
+    
+    console.log('📋 documents_json structure:', JSON.stringify(documentsJson, null, 2));
+    console.log('📦 Matter Documents count:', matterDocuments.length);
+    
+    // Create maps from JSON for matching (reverse lookup)
+    // Map: serial/item name → { category, itemIndex }
+    const jsonItemBySerial = {};
+    const jsonItemByName = {};
+    const jsonItemByNameNormalized = {}; // For fuzzy matching
+    
+    categories.forEach(category => {
+      const categoryName = category.name || 'Unnamed Category';
+      const categoryItems = category.items || [];
+      
+      categoryItems.forEach((item, itemIndex) => {
+        // Map by serial
+        if (item.serial !== null && item.serial !== undefined && item.serial !== '') {
+          const serialStr = String(item.serial);
+          const serialNum = Number(item.serial);
+          jsonItemBySerial[serialStr] = { category: categoryName, itemIndex };
+          jsonItemBySerial[serialNum] = { category: categoryName, itemIndex };
+        }
+        
+        // Map by name - check multiple field names (text, name, title)
+        // JSON structure may use item.text, item.name, or item.title
+        const itemNameValue = item.text || item.name || item.title;
+        if (itemNameValue) {
+          const itemName = itemNameValue.toLowerCase().trim();
+          jsonItemByName[itemName] = { category: categoryName, itemIndex };
+          
+          // Also create normalized version for fuzzy matching
+          const fuzzyName = itemName
+            .replace(/\s+/g, ' ')
+            .replace(/[^\w\s]/g, '')
+            .trim();
+          jsonItemByNameNormalized[fuzzyName] = { category: categoryName, itemIndex };
+        }
+      });
+    });
+
+    console.log('🔍 JSON items by serial:', Object.keys(jsonItemBySerial));
+    console.log('🔍 JSON items by name (sample):', Object.keys(jsonItemByName).slice(0, 5));
+
+    // Now match each Zoho document to a JSON item
+    // Structure: { category: { documents: [{ doc, itemIndex }] } }
+    const documentsByCategory = {};
+    const matchedDocumentIds = new Set();
+    
+    matterDocuments.forEach(doc => {
+      const docSerial = doc.document_Serial || doc.Document_Serial;
+      const docName = doc.Name || doc.Matter_Document_Name || doc.Document_Name || doc.File_Name || '';
+      
+      let matchedJsonItem = null;
+      let matchMethod = null;
+      
+      // Try to match by serial first
+      if (docSerial !== null && docSerial !== undefined && docSerial !== '') {
+        const serialStr = String(docSerial);
+        const serialNum = Number(docSerial);
+        matchedJsonItem = jsonItemBySerial[serialStr] || jsonItemBySerial[serialNum];
+        if (matchedJsonItem) {
+          matchMethod = 'serial';
+        }
+      }
+      
+      // If no match by serial, try exact name match
+      if (!matchedJsonItem && docName) {
+        const docNameNormalized = docName.toLowerCase().trim();
+        matchedJsonItem = jsonItemByName[docNameNormalized];
+        if (matchedJsonItem) {
+          matchMethod = 'exact-name';
+        }
+      }
+      
+      // If still no match, try fuzzy name matching
+      if (!matchedJsonItem && docName) {
+        const docNameFuzzy = docName.toLowerCase()
+          .replace(/\s+/g, ' ')
+          .replace(/[^\w\s]/g, '')
+          .trim();
+        
+        // Try exact fuzzy match
+        matchedJsonItem = jsonItemByNameNormalized[docNameFuzzy];
+        if (matchedJsonItem) {
+          matchMethod = 'fuzzy-name';
+        } else {
+          // Try partial matching
+          for (const [normalizedName, jsonItem] of Object.entries(jsonItemByNameNormalized)) {
+            if (docNameFuzzy.includes(normalizedName) || normalizedName.includes(docNameFuzzy)) {
+              const shorter = docNameFuzzy.length < normalizedName.length ? docNameFuzzy : normalizedName;
+              const longer = docNameFuzzy.length >= normalizedName.length ? docNameFuzzy : normalizedName;
+              if (longer.includes(shorter) && shorter.length >= 10) {
+                matchedJsonItem = jsonItem;
+                matchMethod = 'partial-name';
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // Log matching results
+      if (matchedJsonItem) {
+        console.log(`✅ Matched Zoho document "${docName}" (serial: ${docSerial}) to category "${matchedJsonItem.category}" item index ${matchedJsonItem.itemIndex} via ${matchMethod}`);
+        
+        // Add to category
+        if (!documentsByCategory[matchedJsonItem.category]) {
+          documentsByCategory[matchedJsonItem.category] = [];
+        }
+        documentsByCategory[matchedJsonItem.category].push({
+          doc,
+          itemIndex: matchedJsonItem.itemIndex
+        });
+        matchedDocumentIds.add(doc.id);
+      } else {
+        console.log(`❌ No JSON match for Zoho document "${docName}" (serial: ${docSerial})`);
+      }
+    });
+
+    // Sort documents within each category by their matched item index (JSON order)
+    Object.keys(documentsByCategory).forEach(categoryName => {
+      documentsByCategory[categoryName].sort((a, b) => a.itemIndex - b.itemIndex);
+    });
+
+    // Build organized categories structure
+    const organizedCategories = categories.map(category => {
+      const categoryName = category.name || 'Unnamed Category';
+      const categoryDocuments = documentsByCategory[categoryName] || [];
+      
+      return {
+        name: categoryName,
+        documents: categoryDocuments.map(item => item.doc) // Extract just the doc, sorted by itemIndex
+      };
+    }).filter(category => category.documents.length > 0); // Only show categories that have documents
+
+    // Find uncategorized documents (not matched to any JSON item)
+    const uncategorized = matterDocuments.filter(doc => !matchedDocumentIds.has(doc.id));
+    
+    console.log(`📊 Organization complete: ${organizedCategories.length} categories, ${uncategorized.length} uncategorized documents`);
+
+    return {
+      categories: organizedCategories,
+      uncategorized
+    };
+  }, [documentsJson, matterDocuments]);
   
   // Show loading state while data is being loaded
   if (isLoading || !application) {
@@ -323,83 +533,264 @@ export default function UploadsPage() {
                 Upload supporting documents for your visa application. Accepted formats: PDF, JPG, PNG, DOC, TXT (max 5MB).
               </p>
             </div>
+
+            {/* Debug: Show raw data */}
+            {process.env.NODE_ENV === 'development' && documentsJson && (
+              <Collapsible className="mb-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm overflow-hidden">
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center justify-between p-3 bg-yellow-100 border-b border-yellow-200 cursor-pointer hover:bg-yellow-200 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <ChevronDown className="w-4 h-4 text-yellow-700" />
+                        <h3 className="font-semibold text-yellow-900 text-sm">Debug: documents_json Structure</h3>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 bg-yellow-900 text-yellow-100 overflow-auto max-h-96">
+                      <pre className="text-xs font-mono whitespace-pre-wrap break-words">
+                        {JSON.stringify(documentsJson, null, 2)}
+                      </pre>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            )}
             
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Document Name</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Status</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Upload Date</th>
-                      <th className="py-3 px-4 text-right text-sm font-medium text-gray-900">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {loadingMatterDocs ? (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-gray-500">
-                          Loading documents...
-                        </td>
-                      </tr>
-                    ) : matterDocuments.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-gray-500">
-                          No documents found
-                        </td>
-                      </tr>
-                    ) : (
-                      matterDocuments.map((doc) => {
-                        const status = doc.Document_Status || 'Pending';
-                        const documentName = doc.Matter_Document_Name || doc.Document_Name || doc.File_Name || doc.Name || 'Untitled';
-                        const uploadAllowed = canUpload(status);
-                        
-                        return (
-                          <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-gray-500" />
-                                <span className="text-sm text-gray-700">
-                                  {documentName}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              {getStatusBadge(status)}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className="text-sm text-gray-700">
-                                {formatDate(doc.Created_Time, status)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              {uploadAllowed ? (
-                                <button 
-                                  onClick={() => handleOpenDialog(doc)}
-                                  className="px-3 py-1.5 border border-[#285646] text-[#285646] rounded-md text-xs font-medium hover:bg-[#285646] hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                  data-testid={`button-upload-${doc.id}`}
-                                >
-                                  <UploadIcon className="w-3 h-3 inline mr-1" />
-                                  Upload
-                                </button>
-                              ) : (
-                                <button 
-                                  disabled
-                                  className="px-3 py-1.5 border border-gray-300 text-gray-400 rounded-md text-xs font-medium cursor-not-allowed opacity-50"
-                                >
-                                  <UploadIcon className="w-3 h-3 inline mr-1" />
-                                  Upload
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+            {loadingMatterDocs ? (
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center">
+                <div className="text-gray-500">Loading documents...</div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Render Categories */}
+                {organizedDocuments.categories.map((category) => {
+                  const isExpanded = expandedCategories[category.name] ?? true;
+                  
+                  return (
+                    <Collapsible
+                      key={category.name}
+                      open={isExpanded}
+                      onOpenChange={(open) => setExpandedCategories(prev => ({ ...prev, [category.name]: open }))}
+                    >
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                        {/* Category Header */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">
+                          <div className="flex items-center gap-3 flex-1">
+                            <CollapsibleTrigger asChild>
+                              <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                                <ChevronDown className={cn(
+                                  "w-5 h-5 text-gray-500 transition-transform",
+                                  isExpanded && "rotate-180"
+                                )} />
+                              </button>
+                            </CollapsibleTrigger>
+                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                          </div>
+                          <button className="p-1 hover:bg-gray-200 rounded transition-colors text-red-500">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Category Content */}
+                        <CollapsibleContent>
+                          <div className="p-4">
+                            <div className="overflow-x-auto">
+                              <table className="w-full table-fixed">
+                                <colgroup>
+                                  <col className="w-[40%]" />
+                                  <col className="w-[15%]" />
+                                  <col className="w-[30%]" />
+                                  <col className="w-[15%]" />
+                                </colgroup>
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                  <tr>
+                                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Document Name</th>
+                                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Status</th>
+                                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Comments</th>
+                                    <th className="py-3 px-4 text-right text-sm font-medium text-gray-900">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                  {category.documents.map((doc, index) => {
+                                    // ALL data comes from Zoho document - never from JSON
+                                    // Use "Name" key as primary source, then fallback to other Zoho fields
+                                    const documentName = doc.Name || 
+                                      doc.Matter_Document_Name || 
+                                      doc.Document_Name || 
+                                      doc.File_Name || 
+                                      doc.matter_document_name ||
+                                      doc.document_name ||
+                                      doc.file_name ||
+                                      doc.name ||
+                                      `Document ${doc.id?.slice(-6) || 'Unknown'}`;
+                                    
+                                    const status = doc.Document_Status || 'Not Submitted Yet';
+                                    const uploadAllowed = canUpload(status);
+                                    const comment = doc.Decline_Reason || doc.Comments || doc.Rejection_Comments || doc.comments || doc.rejection_comments || doc.decline_reason || '';
+                                    
+                                    return (
+                                      <tr key={doc.id || index} className="hover:bg-gray-50 transition-colors">
+                                        <td className="py-3 px-4">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                            <span className="text-sm text-gray-700 truncate" title={documentName}>
+                                              {documentName}
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          {getStatusBadge(status)}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          {comment ? (
+                                            <span className="text-sm text-gray-700 truncate block" title={comment}>
+                                              {comment}
+                                            </span>
+                                          ) : (
+                                            <span className="text-xs text-gray-400">—</span>
+                                          )}
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                          {uploadAllowed ? (
+                                            <button 
+                                              onClick={() => handleOpenDialog(doc)}
+                                              className="px-3 py-1.5 border border-[#285646] text-[#285646] rounded-md text-xs font-medium hover:bg-[#285646] hover:text-white transition whitespace-nowrap"
+                                            >
+                                              <UploadIcon className="w-3 h-3 inline mr-1" />
+                                              Upload
+                                            </button>
+                                          ) : (
+                                            <button 
+                                              disabled
+                                              className="px-3 py-1.5 border border-gray-300 text-gray-400 rounded-md text-xs font-medium cursor-not-allowed opacity-50 whitespace-nowrap"
+                                            >
+                                              <UploadIcon className="w-3 h-3 inline mr-1" />
+                                              Upload
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  );
+                })}
+
+                {/* Uncategorized Documents */}
+                {organizedDocuments.uncategorized.length > 0 && (
+                  <Collapsible defaultOpen={true}>
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <ChevronDown className="w-5 h-5 text-gray-500" />
+                            <h3 className="font-semibold text-gray-900">Uncategorized</h3>
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+
+                      <CollapsibleContent>
+                        <div className="p-4">
+                          <div className="overflow-x-auto">
+                            <table className="w-full table-fixed">
+                              <colgroup>
+                                <col className="w-[40%]" />
+                                <col className="w-[15%]" />
+                                <col className="w-[30%]" />
+                                <col className="w-[15%]" />
+                              </colgroup>
+                              <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                  <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Document Name</th>
+                                  <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Status</th>
+                                  <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Comments</th>
+                                  <th className="py-3 px-4 text-right text-sm font-medium text-gray-900">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {organizedDocuments.uncategorized.map((doc) => {
+                                  const status = doc.Document_Status || 'Pending';
+                                  // Use "Name" key as primary source, then fallback to other fields
+                                  const documentName = doc.Name || 
+                                                     doc.Matter_Document_Name || 
+                                                     doc.Document_Name || 
+                                                     doc.File_Name || 
+                                                     doc.matter_document_name ||
+                                                     doc.document_name ||
+                                                     doc.file_name ||
+                                                     doc.name ||
+                                                     `Document ${doc.id?.slice(-6) || 'Unknown'}`;
+                                  const uploadAllowed = canUpload(status);
+                                  const comment = doc.Decline_Reason || doc.Comments || doc.Rejection_Comments || doc.comments || doc.rejection_comments || doc.decline_reason || '';
+                                  
+                                  return (
+                                    <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                                      <td className="py-3 px-4">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                          <span className="text-sm text-gray-700 truncate" title={documentName}>
+                                            {documentName}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4">
+                                        {getStatusBadge(status)}
+                                      </td>
+                                      <td className="py-3 px-4">
+                                        {comment ? (
+                                          <span className="text-sm text-gray-700 truncate block" title={comment}>
+                                            {comment}
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs text-gray-400">—</span>
+                                        )}
+                                      </td>
+                                      <td className="py-3 px-4 text-right">
+                                        {uploadAllowed ? (
+                                          <button 
+                                            onClick={() => handleOpenDialog(doc)}
+                                            className="px-3 py-1.5 border border-[#285646] text-[#285646] rounded-md text-xs font-medium hover:bg-[#285646] hover:text-white transition whitespace-nowrap"
+                                          >
+                                            <UploadIcon className="w-3 h-3 inline mr-1" />
+                                            Upload
+                                          </button>
+                                        ) : (
+                                          <button 
+                                            disabled
+                                            className="px-3 py-1.5 border border-gray-300 text-gray-400 rounded-md text-xs font-medium cursor-not-allowed opacity-50 whitespace-nowrap"
+                                          >
+                                            <UploadIcon className="w-3 h-3 inline mr-1" />
+                                            Upload
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                )}
+
+                {/* Show message if no documents at all */}
+                {organizedDocuments.categories.length === 0 && organizedDocuments.uncategorized.length === 0 && (
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center">
+                    <div className="text-gray-500">No documents found</div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>
