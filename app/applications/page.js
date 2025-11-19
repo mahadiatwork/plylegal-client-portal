@@ -7,7 +7,7 @@ import { applicationsStore, authStore } from "@/stores";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ExternalLink, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export default function ApplicationsPage() {
   const router = useRouter();
@@ -157,14 +157,6 @@ export default function ApplicationsPage() {
                                   className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-50 transition"
                                 >
                                   Open
-                                </button>
-                                <button
-                                  onClick={() => router.push(`/applications/${app.id}/review`)}
-                                  data-testid={`button-review-${app.id}`}
-                                  className="px-3 py-1.5 text-gray-600 text-xs font-medium hover:text-gray-900 transition flex items-center gap-1"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Review & PDF
                                 </button>
                               </div>
                             </td>

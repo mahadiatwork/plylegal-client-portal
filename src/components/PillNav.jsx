@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
   FileText, 
-  FileCheck, 
   Upload, 
   CheckSquare, 
   Package, 
@@ -19,7 +18,6 @@ export function PillNav({ appId }) {
   
   const tabs = [
     { href: `/applications/${appId}/questionnaire`, label: "Questionnaire", icon: FileText },
-    { href: `/applications/${appId}/review`, label: "Review & PDF", icon: FileCheck },
     { href: `/applications/${appId}/uploads`, label: "Upload Documents", icon: Upload },
     { href: `/applications/${appId}/tasks`, label: "Tasks", icon: CheckSquare },
     { href: `/applications/${appId}/deliverables`, label: "Our Deliverables", icon: Package },

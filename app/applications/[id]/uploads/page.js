@@ -318,10 +318,8 @@ export default function UploadsPage() {
   };
 
   const canUpload = (status) => {
-    // Disable upload for: "Awaiting Approval", "Approved", "Uploaded", "Under Review"
-    // Enable upload for: "Not Submitted Yet", "Pending", "Rejected", "Declined"
-    const blockedStatuses = ['Awaiting Approval', 'Approved', 'Uploaded', 'Under Review'];
-    return !blockedStatuses.includes(status);
+    // Always allow uploads - users can upload multiple documents
+    return true;
   };
 
   // Organize documents by categories from documents_json
@@ -534,29 +532,6 @@ export default function UploadsPage() {
               </p>
             </div>
 
-            {/* Debug: Show raw data */}
-            {process.env.NODE_ENV === 'development' && documentsJson && (
-              <Collapsible className="mb-4">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm overflow-hidden">
-                  <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between p-3 bg-yellow-100 border-b border-yellow-200 cursor-pointer hover:bg-yellow-200 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <ChevronDown className="w-4 h-4 text-yellow-700" />
-                        <h3 className="font-semibold text-yellow-900 text-sm">Debug: documents_json Structure</h3>
-                      </div>
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="p-4 bg-yellow-900 text-yellow-100 overflow-auto max-h-96">
-                      <pre className="text-xs font-mono whitespace-pre-wrap break-words">
-                        {JSON.stringify(documentsJson, null, 2)}
-                      </pre>
-                    </div>
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-            )}
-            
             {loadingMatterDocs ? (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center">
                 <div className="text-gray-500">Loading documents...</div>

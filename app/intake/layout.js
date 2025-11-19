@@ -10,6 +10,7 @@ import { Check, Menu, X, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getIntakeRoutes, calculateProgress } from "@/lib/routes";
 import { useState, useEffect } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
@@ -128,9 +129,7 @@ export default function IntakeLayout({ children }) {
           <div className="h-full flex flex-col">
             {/* Logo */}
             <div className="p-6 border-b border-sidebar-border">
-              <h1 className="font-serif text-2xl font-bold text-primary">
-                PlyLegal
-              </h1>
+              <BrandLogo priority />
               <p className="text-sm text-sidebar-foreground/70 mt-1">
                 Client Portal
               </p>

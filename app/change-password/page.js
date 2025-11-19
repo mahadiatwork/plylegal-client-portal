@@ -16,6 +16,7 @@ import { auth } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const passwordChangeSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
@@ -131,10 +132,8 @@ export default function ChangePasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md rounded-2xl shadow-lg">
         <CardHeader className="space-y-3 text-center pb-6">
-          <div className="mx-auto">
-            <h1 className="font-serif text-3xl font-bold text-primary mb-2">
-              PlyLegal
-            </h1>
+          <div className="mx-auto flex justify-center">
+            <BrandLogo className="h-12" priority />
           </div>
           <CardTitle className="font-serif text-2xl">Change Your Password</CardTitle>
           <CardDescription className="text-base">

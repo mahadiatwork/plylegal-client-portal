@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { cn } from "@/lib/utils";
-import { User, FileText, ChevronLeft, FileCheck, Upload, CheckSquare, Package, BookOpen, MessageSquare, FileEdit } from "lucide-react";
+import { User, FileText, ChevronLeft, Upload, CheckSquare, Package, BookOpen, MessageSquare, FileEdit } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export function AppSidebar({ mode, application, onClose }) {
   const pathname = usePathname();
@@ -16,7 +17,7 @@ export function AppSidebar({ mode, application, onClose }) {
     return (
       <aside className="w-64 border-r border-sidebar-border bg-sidebar flex flex-col h-screen sticky top-0">
         <div className="p-6 border-b border-sidebar-border">
-          <h2 className="font-serif text-2xl font-bold text-sidebar-foreground">PlyLegal</h2>
+          <BrandLogo priority />
         </div>
         
         <ScrollArea className="flex-1">
@@ -48,7 +49,6 @@ export function AppSidebar({ mode, application, onClose }) {
   
   const appTabs = [
     { href: `/applications/${application.id}/questionnaire`, label: "Questionnaire", icon: FileText },
-    { href: `/applications/${application.id}/review`, label: "Review & PDF", icon: FileCheck },
     { href: `/applications/${application.id}/uploads`, label: "Upload Documents", icon: Upload },
     { href: `/applications/${application.id}/tasks`, label: "Tasks", icon: CheckSquare },
     { href: `/applications/${application.id}/deliverables`, label: "Our Deliverables", icon: Package },

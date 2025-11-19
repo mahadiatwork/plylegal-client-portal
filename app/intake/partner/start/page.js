@@ -85,11 +85,6 @@ export default function IntakeStartPage() {
           <CardTitle className="text-3xl font-semibold">
             Immigration Application Intake
           </CardTitle>
-          <CardDescription className="text-base leading-relaxed">
-            Welcome to the PlyLegal client portal. This wizard will guide you through
-            collecting all necessary information for your immigration application.
-            Your progress will be saved automatically as you go.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Submission Success Banner */}
