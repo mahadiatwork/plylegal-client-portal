@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { ZohoCRMClient } from '@/lib/zohoClient';
-import { getAdapter } from '@/lib/adapters';
+import {
+  loadApplicationsAdmin,
+  createApplicationAdmin,
+  updateApplicationAdmin,
+  deleteApplicationAdmin
+} from '@/lib/firebase-admin-helpers';
+import { isAdminSDKInitialized } from '@/lib/firebase-admin';
 
 export async function POST(request) {
   try {
@@ -11,6 +17,19 @@ export async function POST(request) {
       return NextResponse.json(
         { success: false, error: 'userId and zohoContactId are required' },
         { status: 400 }
+      );
+    }
+
+    // Check if Admin SDK is properly initialized
+    if (!isAdminSDKInitialized()) {
+      console.error('❌ Firebase Admin SDK is not initialized');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Firebase Admin SDK is not properly initialized. Please set FIREBASE_SERVICE_ACCOUNT_KEY environment variable with your Firebase service account JSON.',
+          requiresSetup: true
+        },
+        { status: 500 }
       );
     }
 
@@ -33,14 +52,22 @@ export async function POST(request) {
     console.log(`📋 Found ${deals.length} deals in Deals related list`);
     console.log('📦 Raw deals JSON data:', JSON.stringify(deals, null, 2));
 
-    // Save deals to Firebase as applications
-    const db = getAdapter();
+    // Save deals to Firebase as applications using Admin SDK
     const applicationsFromZoho = [];
 
     // Load all existing applications ONCE before the loop to avoid duplicates
-    console.log('📋 Loading existing applications from Firebase...');
-    const existingApps = await db.loadApplications(userId);
-    console.log(`📋 Found ${existingApps?.length || 0} existing applications in Firebase`);
+    console.log('📋 Loading existing applications from Firebase (Admin SDK)...');
+    let existingApps = [];
+    try {
+      existingApps = await loadApplicationsAdmin(userId);
+      console.log(`📋 Found ${existingApps?.length || 0} existing applications in Firebase`);
+    } catch (adminError) {
+      console.error('❌ Failed to load applications with Admin SDK:', adminError.message);
+      console.error('💡 This usually means FIREBASE_SERVICE_ACCOUNT_KEY is not set');
+      console.error('💡 Returning empty array - applications will be created but may not sync properly');
+      // Continue with empty array - we'll still try to create/update applications
+      existingApps = [];
+    }
 
     for (const deal of deals) {
       try {
@@ -124,17 +151,19 @@ export async function POST(request) {
 
           // Update only Zoho-related fields, preserve Firebase-only fields (questionnaire data, notes, etc.)
           // Also ensure zohoId is set (for old apps that don't have it yet)
-          console.log(`💾 Updating existing application in Firebase:`, appId);
-          const updateResult = await db.updateApplication(appId, {
+          console.log(`💾 Updating existing application in Firebase (Admin SDK):`, appId);
+          const updateResult = await updateApplicationAdmin(appId, {
             ...applicationData,
             id: appId,
             // Preserve any existing questionnaire data or other Firebase-only fields
-            // The updateApplication method should merge these updates with existing data
+            // The updateApplicationAdmin method will merge these updates with existing data
           }, userId);
           console.log(`💾 Update result:`, updateResult);
           
           if (!updateResult.success) {
-            throw new Error(`Failed to update application: ${updateResult.error}`);
+            console.error(`❌ Failed to update application ${appId}:`, updateResult.error);
+            // Continue with next deal instead of throwing - we'll log the error but not fail the entire sync
+            continue;
           }
 
           // Update the existing app in our local array so we don't match it again
@@ -159,12 +188,14 @@ export async function POST(request) {
             updatedAt: now.toISOString(),
           };
 
-          console.log(`💾 Saving new application to Firebase:`, JSON.stringify(newApp, null, 2));
-          const createResult = await db.createApplication(newApp, userId);
+          console.log(`💾 Saving new application to Firebase (Admin SDK):`, JSON.stringify(newApp, null, 2));
+          const createResult = await createApplicationAdmin(newApp, userId);
           console.log(`💾 Create result:`, createResult);
           
           if (!createResult.success) {
-            throw new Error(`Failed to create application: ${createResult.error}`);
+            console.error(`❌ Failed to create application ${appId}:`, createResult.error);
+            // Continue with next deal instead of throwing - we'll log the error but not fail the entire sync
+            continue;
           }
 
           applicationData.id = appId;
@@ -190,8 +221,14 @@ export async function POST(request) {
     console.log(`📋 Applications saved to Firebase:`, applicationsFromZoho.map(app => ({ id: app.id, reference: app.reference, type: app.type, zohoId: app.zohoId })));
 
     // Verify final count in Firebase to ensure no duplicates
-    const finalApps = await db.loadApplications(userId);
-    console.log(`📊 Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
+    let finalApps = [];
+    try {
+      finalApps = await loadApplicationsAdmin(userId);
+      console.log(`📊 Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
+    } catch (adminError) {
+      console.error('❌ Failed to load final applications count:', adminError.message);
+      finalApps = applicationsFromZoho; // Use the apps we just processed
+    }
     
     // Find duplicates by zohoId and remove them (keep the first one)
     const duplicatesByZohoId = [];
@@ -219,8 +256,12 @@ export async function POST(request) {
       for (const duplicate of duplicatesByZohoId) {
         try {
           console.log(`🗑️ Deleting duplicate application ${duplicate.id} (zohoId: ${duplicate.zohoId}, reference: ${duplicate.reference})`);
-          await db.deleteApplication(duplicate.id);
-          removedCount++;
+          const deleteResult = await deleteApplicationAdmin(duplicate.id);
+          if (deleteResult.success) {
+            removedCount++;
+          } else {
+            console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteResult.error);
+          }
         } catch (deleteError) {
           console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteError.message);
         }
@@ -230,8 +271,14 @@ export async function POST(request) {
     }
     
     // Reload to get final count after cleanup
-    const finalAppsAfterCleanup = await db.loadApplications(userId);
-    console.log(`📊 Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
+    let finalAppsAfterCleanup = [];
+    try {
+      finalAppsAfterCleanup = await loadApplicationsAdmin(userId);
+      console.log(`📊 Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
+    } catch (adminError) {
+      console.error('❌ Failed to load final applications count after cleanup:', adminError.message);
+      finalAppsAfterCleanup = finalApps; // Use previous count
+    }
 
     return NextResponse.json({
       success: true,
