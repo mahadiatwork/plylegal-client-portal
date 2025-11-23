@@ -80,6 +80,7 @@ export const PROTECTION_VISA_ROUTES = [
       { href: "/intake/protection/all-applicants/health", title: "Health" },
       { href: "/intake/protection/all-applicants/character", title: "Character" },
       { href: "/intake/protection/all-applicants/other-information", title: "Other Information" },
+      { href: "/intake/protection/all-applicants/other", title: "Other" },
     ],
   },
   { href: "/intake/protection/submit", title: "Submit" },

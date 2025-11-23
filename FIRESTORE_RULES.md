@@ -146,3 +146,4 @@ If you see this error:
 - `src/lib/adapters/firebase.js` - Client-side Firebase adapter (enforces rules)
 - `src/lib/firebase-admin-helpers.js` - Server-side helper functions using Admin SDK
 
+
