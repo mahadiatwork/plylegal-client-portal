@@ -55,6 +55,31 @@ service cloud.firestore {
       // Write operations should be server-side only (Admin SDK)
     }
     
+    // Messages collection - users can read/write their own messages
+    match /messages/{messageId} {
+      // Allow reading messages where userId or senderUid matches authenticated user
+      // This works for both individual reads (get) and queries (list)
+      // When querying with where('userId', '==', request.auth.uid), Firestore
+      // will check each document against this rule
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.senderUid == request.auth.uid);
+      
+      // Allow creating messages where userId and senderUid match the authenticated user
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.senderUid == request.auth.uid;
+      
+      // Allow updating messages the user owns (by userId or senderUid)
+      allow update: if request.auth != null && 
+        (resource.data.userId == request.auth.uid ||
+         resource.data.senderUid == request.auth.uid);
+      
+      // Allow deleting messages the user owns
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
@@ -145,5 +170,7 @@ If you see this error:
 - `src/lib/firebase-admin.js` - Admin SDK configuration (bypasses rules)
 - `src/lib/adapters/firebase.js` - Client-side Firebase adapter (enforces rules)
 - `src/lib/firebase-admin-helpers.js` - Server-side helper functions using Admin SDK
+
+
 
 

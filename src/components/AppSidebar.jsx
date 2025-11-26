@@ -38,6 +38,14 @@ export function AppSidebar({ mode, application, onClose }) {
               isActive={pathname === "/applications" || pathname?.startsWith("/applications/")}
               onClick={onClose}
             />
+            
+            <NavLink
+              href="/messages"
+              icon={MessageSquare}
+              label="Messages"
+              isActive={pathname === "/messages" || pathname?.startsWith("/messages/")}
+              onClick={onClose}
+            />
           </nav>
         </ScrollArea>
       </aside>
@@ -51,7 +59,6 @@ export function AppSidebar({ mode, application, onClose }) {
     { href: `/applications/${application.id}/questionnaire`, label: "Questionnaire", icon: FileText },
     { href: `/applications/${application.id}/uploads`, label: "Upload Documents", icon: Upload },
     { href: `/applications/${application.id}/resources`, label: "Resources", icon: BookOpen },
-    { href: `/applications/${application.id}/messages`, label: "Send Message", icon: MessageSquare },
     { href: `/applications/${application.id}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
   

@@ -73,6 +73,15 @@ export default function QuestionnairePage() {
     );
   }
   
+  const deriveVisaTypeCode = (app) => {
+    if (!app) return "partner";
+    if (app.visaTypeCode) return app.visaTypeCode;
+    const typeLower = (app.type || "").toLowerCase();
+    if (typeLower.includes("protection")) return "protection";
+    if (typeLower.includes("work") || typeLower.includes("temporary") || typeLower.includes("482")) return "temporary-work";
+    return "partner";
+  };
+
   const handleStartQuestionnaire = () => {
     // Route to visa-type-specific intake
     const visaTypeRoutes = {
@@ -80,8 +89,8 @@ export default function QuestionnairePage() {
       'protection': `/intake/protection/start?applicationId=${appId}`,
       'temporary-work': `/intake/temporary-work/start?applicationId=${appId}`,
     };
-    
-    const route = visaTypeRoutes[application.visaTypeCode] || `/intake/partner/start?applicationId=${appId}`;
+    const visaTypeCode = deriveVisaTypeCode(application);
+    const route = visaTypeRoutes[visaTypeCode] || `/intake/partner/start?applicationId=${appId}`;
     router.push(route);
   };
   

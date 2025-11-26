@@ -18,7 +18,6 @@ export function PillNav({ appId }) {
     { href: `/applications/${appId}/questionnaire`, label: "Questionnaire", icon: FileText },
     { href: `/applications/${appId}/uploads`, label: "Upload Documents", icon: Upload },
     { href: `/applications/${appId}/resources`, label: "Resources", icon: BookOpen },
-    { href: `/applications/${appId}/messages`, label: "Send Message", icon: MessageSquare },
     { href: `/applications/${appId}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
   

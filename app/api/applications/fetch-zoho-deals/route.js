@@ -22,14 +22,15 @@ export async function POST(request) {
 
     // Check if Admin SDK is properly initialized
     if (!isAdminSDKInitialized()) {
-      console.error('❌ Firebase Admin SDK is not initialized');
+      console.warn('⚠️ Firebase Admin SDK is not initialized - Zoho sync unavailable');
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Firebase Admin SDK is not properly initialized. Please set FIREBASE_SERVICE_ACCOUNT_KEY environment variable with your Firebase service account JSON.',
-          requiresSetup: true
+          error: 'Zoho sync unavailable: Firebase Admin SDK is not configured. Applications can still be loaded from Firestore.',
+          requiresSetup: true,
+          message: 'To enable Zoho sync, set FIREBASE_SERVICE_ACCOUNT_KEY environment variable with your Firebase service account JSON.'
         },
-        { status: 500 }
+        { status: 200 } // Return 200 instead of 500 since this is expected behavior
       );
     }
 

@@ -250,6 +250,28 @@ class ZohoCRMClient {
     }
   }
 
+  /**
+   * Batch update multiple records in a module
+   * @param {string} moduleName
+   * @param {Array<Object>} records - Array of objects containing { id, ...fields }
+   * @returns {Promise<Array>} API response data
+   */
+  async updateRecords(moduleName, records = []) {
+    if (!Array.isArray(records) || records.length === 0) {
+      return [];
+    }
+
+    try {
+      const response = await this.makeRequest('put', `/${moduleName}`, {
+        data: records,
+      });
+      return response.data || [];
+    } catch (error) {
+      console.error(`Error updating ${records.length} ${moduleName} records:`, error.message);
+      throw error;
+    }
+  }
+
   async findContactByEmail(email) {
     try {
       // Use email as query parameter: GET /Contacts/search?email={{email}}
@@ -523,6 +545,41 @@ class ZohoCRMClient {
     } catch (error) {
       console.error('❌ Error syncing dependencies:', error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Fetch attachments for a record
+   * @param {string} moduleName
+   * @param {string} recordId
+   * @returns {Promise<Array>} Array of attachment records
+   */
+  async getRecordAttachments(moduleName, recordId) {
+    try {
+      const response = await this.makeRequest(
+        'get',
+        `/${moduleName}/${recordId}/Attachments`
+      );
+
+      if (Array.isArray(response)) {
+        return response;
+      }
+
+      if (Array.isArray(response?.data)) {
+        return response.data;
+      }
+
+      if (Array.isArray(response?.details)) {
+        return response.details;
+      }
+
+      return [];
+    } catch (error) {
+      if (error.response?.status === 204 || error.response?.data?.code === 'NO_DATA') {
+        return [];
+      }
+      console.error(`Error fetching attachments for ${moduleName}/${recordId}:`, error.message);
+      return [];
     }
   }
 

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zoho CRM Chat API Tester</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px; margin: 0 auto; padding: 20px;
+      background: #f5f5f5;
+    }
+    .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { margin-bottom: 20px; color: #333; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+    input, textarea {
+      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;
+      font-size: 14px;
+    }
+    textarea { min-height: 100px; font-family: monospace; }
+    button {
+      background: #0070f3; color: white; border: none; padding: 12px 24px;
+      border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;
+      margin-right: 10px; margin-bottom: 10px;
+    }
+    button:hover { background: #0051cc; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .result {
+      margin-top: 20px; padding: 15px; border-radius: 4px;
+      background: #f9f9f9; border-left: 4px solid #0070f3;
+      font-family: monospace; font-size: 12px; white-space: pre-wrap;
+      max-height: 400px; overflow-y: auto;
+    }
+    .result.success { border-color: #10b981; background: #f0fdf4; }
+    .result.error { border-color: #ef4444; background: #fef2f2; }
+    .info { padding: 10px; background: #e0f2fe; border-radius: 4px; margin-bottom: 20px; color: #0369a1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Zoho CRM Chat API Tester</h1>
+    
+    <div class="info">
+      <strong>Note:</strong> Make sure your dev server is running on port 5000 and 
+      ZOHO_API_KEY is set in your environment.
+    </div>
+
+    <div class="form-group">
+      <label>API Base URL:</label>
+      <input type="text" id="apiBase" value="http://localhost:5000" />
+    </div>
+
+    <div class="form-group">
+      <label>Zoho API Key:</label>
+      <input type="password" id="apiKey" placeholder="Enter your ZOHO_API_KEY" />
+    </div>
+
+    <div class="form-group">
+      <label>Email Address:</label>
+      <input type="email" id="email" placeholder="user@example.com" />
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button onclick="testSearchUser()">1. Search User</button>
+      <button onclick="testFetchMessages()">2. Fetch Messages</button>
+      <button onclick="testSendMessage()">3. Send Message</button>
+      <button onclick="testMarkSeen()">4. Mark as Seen</button>
+      <button onclick="runAllTests()" style="background: #10b981;">Run All Tests</button>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    let lastUserId = null;
+    let lastMessageIds = [];
+
+    function getApiBase() {
+      return document.getElementById('apiBase').value || 'http://localhost:5000';
+    }
+
+    function getApiKey() {
+      return document.getElementById('apiKey').value || '';
+    }
+
+    function getEmail() {
+      return document.getElementById('email').value.trim();
+    }
+
+    function showResult(data, isError = false) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = 'result ' + (isError ? 'error' : 'success');
+      resultDiv.textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function testSearchUser() {
+      const email = getEmail();
+      if (!email) {
+        showResult({ error: 'Please enter an email address' }, true);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${getApiBase()}/api/zoho/search-user?email=${encodeURIComponent(email)}`,
+          {
+            headers: {
+              'x-zoho-api-key': getApiKey(),
+            },
+          }
+        );
+        const data = await response.json();
+        
+        if (data.success && data.user) {
+          lastUserId = data.user.uid || data.user.userId;
+          showResult(data);
+        } else {
+          showResult(data, true);
+        }
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+
+    async function testFetchMessages() {
+      const email = getEmail();
+      if (!email && !lastUserId) {
+        showResult({ error: 'Please search for a user first or enter an email' }, true);
+        return;
+      }
+
+      try {
+        const url = lastUserId
+          ? `${getApiBase()}/api/zoho/messages?userId=${lastUserId}&limit=10`
+          : `${getApiBase()}/api/zoho/messages?email=${encodeURIComponent(email)}&limit=10`;
+        
+        const response = await fetch(url, {
+          headers: {
+            'x-zoho-api-key': getApiKey(),
+          },
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          lastMessageIds = data.messages.map(m => m.id);
+          if (data.userId) lastUserId = data.userId;
+          showResult(data);
+        } else {
+          showResult(data, true);
+        }
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+
+    async function testSendMessage() {
+      const email = getEmail();
+      if (!email && !lastUserId) {
+        showResult({ error: 'Please search for a user first or enter an email' }, true);
+        return;
+      }
+
+      try {
+        const messageData = {
+          email: lastUserId ? undefined : email,
+          userId: lastUserId || undefined,
+          senderType: 'agent',
+          senderUid: 'zoho-agent-test-' + Date.now(),
+          senderName: 'Test Agent',
+          body: `Test message from API tester at ${new Date().toISOString()}`,
+        };
+
+        const response = await fetch(`${getApiBase()}/api/zoho/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-zoho-api-key': getApiKey(),
+          },
+          body: JSON.stringify(messageData),
+        });
+        const data = await response.json();
+        
+        if (data.success && data.message) {
+          lastMessageIds.push(data.message.id);
+          showResult(data);
+        } else {
+          showResult(data, true);
+        }
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+
+    async function testMarkSeen() {
+      if (lastMessageIds.length === 0) {
+        showResult({ error: 'No messages to mark as seen. Fetch messages first.' }, true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${getApiBase()}/api/zoho/messages`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-zoho-api-key': getApiKey(),
+          },
+          body: JSON.stringify({
+            messageIds: lastMessageIds.slice(0, 5),
+          }),
+        });
+        const data = await response.json();
+        showResult(data, !data.success);
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+
+    async function runAllTests() {
+      showResult({ message: 'Running all tests...' });
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testSearchUser();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testFetchMessages();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testSendMessage();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await testMarkSeen();
+      
+      showResult({ message: 'All tests completed! Check results above.' });
+    }
+  </script>
+</body>
+</html>
+
