@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { otherSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
@@ -30,6 +31,7 @@ const REASON_OPTIONS = [
   "Alias",
   "Spelling Variation",
   "Adoption",
+  "Religious Name",
   "Translation/Transliteration",
   "Other"
 ];
@@ -64,11 +66,14 @@ const otherNameDialogSchema = z.object({
   issuing_country: z.string().optional(),
   issuing_state: z.string().optional(),
   place_of_issue: z.string().optional(),
+  use_in_application: z.string().optional(),
 });
 
 function OtherNameDialog({ row, onSubmit, onCancel }) {
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "No";
+  const initialUseInApplication = row?.use_in_application === "Yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
+  const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
   
   const dialogForm = useForm({
     resolver: zodResolver(otherNameDialogSchema),
@@ -85,6 +90,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       issuing_country: "",
       issuing_state: "",
       place_of_issue: "",
+      use_in_application: "No",
     },
   });
 
@@ -92,6 +98,10 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
     if (row?.has_evidence !== undefined) {
       setHasEvidence(row.has_evidence);
       dialogForm.setValue("has_evidence", row.has_evidence);
+    }
+    if (row?.use_in_application !== undefined) {
+      setUseInApplication(row.use_in_application === "Yes");
+      dialogForm.setValue("use_in_application", row.use_in_application);
     }
   }, [row, dialogForm]);
 
@@ -150,6 +160,20 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
         {dialogForm.formState.errors.reason_for_change && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_change.message}</p>
         )}
+      </div>
+
+      <div className="flex items-center space-x-2 pt-2">
+        <Checkbox 
+          id="use_in_application" 
+          checked={useInApplication}
+          onCheckedChange={(checked) => {
+            setUseInApplication(checked);
+            dialogForm.setValue("use_in_application", checked ? "Yes" : "No");
+          }}
+        />
+        <Label htmlFor="use_in_application" className="text-sm font-normal cursor-pointer">
+          Use this name in the application
+        </Label>
       </div>
 
       <div className="pt-4 border-t border-gray-200">

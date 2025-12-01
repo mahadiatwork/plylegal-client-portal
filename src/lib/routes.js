@@ -79,7 +79,6 @@ export const PROTECTION_VISA_ROUTES = [
       { href: "/intake/protection/all-applicants/travel-history", title: "Travel History" },
       { href: "/intake/protection/all-applicants/health", title: "Health" },
       { href: "/intake/protection/all-applicants/character", title: "Character" },
-      { href: "/intake/protection/all-applicants/other-information", title: "Other Information" },
     ],
   },
   { href: "/intake/protection/submit", title: "Submit" },

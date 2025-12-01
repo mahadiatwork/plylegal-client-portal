@@ -15,7 +15,7 @@ export const detailsSchema = z.object({
   family_name: z.string().optional(),
   given_names: z.string().optional(),
   preferred_names: z.string().optional(),
-  gender: z.enum(["Male", "Female", "Other"]).optional(),
+  gender: z.enum(["Male", "Female"]).optional(),
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
@@ -31,12 +31,15 @@ export const detailsSchema = z.object({
     "Widowed",
     "Separated",
   ]).optional(),
+  marital_status_date_day: z.string().optional(),
+  marital_status_date_month: z.string().optional(),
+  marital_status_date_year: z.string().optional(),
   // Person completing questionnaire fields (required when is_main_applicant === "No")
   completing_prefix: z.string().optional(),
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
   completing_preferred_names: z.string().optional(),
-  completing_gender: z.enum(["Male", "Female", "Other"]).optional(),
+  completing_gender: z.enum(["Male", "Female"]).optional(),
   completing_birth_day: z.string().optional(),
   completing_birth_month: z.string().optional(),
   completing_birth_year: z.string().optional(),
@@ -105,6 +108,31 @@ export const detailsSchema = z.object({
         message: "Required",
         path: ["marital_status"],
       });
+    }
+    if (data.marital_status && data.marital_status !== "Never Married or been in a De Facto Relationship" && data.is_main_applicant === "Yes") {
+      if (!data.marital_status_date_day || !data.marital_status_date_month || !data.marital_status_date_year) {
+        if (!data.marital_status_date_day) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Required",
+            path: ["marital_status_date_day"],
+          });
+        }
+        if (!data.marital_status_date_month) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Required",
+            path: ["marital_status_date_month"],
+          });
+        }
+        if (!data.marital_status_date_year) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Required",
+            path: ["marital_status_date_year"],
+          });
+        }
+      }
     }
   } else if (data.is_main_applicant === "No") {
     // Require person completing questionnaire fields
@@ -177,6 +205,7 @@ export const otherSchema = z.object({
     issuing_country: z.string().optional(),
     issuing_state: z.string().optional(),
     place_of_issue: z.string().optional(),
+    use_in_application: z.string().optional(),
   })).optional(),
   use_chinese_code: yesNoEnum.optional(),
   chinese_code: z.string().optional(),
@@ -250,11 +279,6 @@ export const identitySchema = z.object({
     date_obtained_day: z.string().optional(),
     date_obtained_month: z.string().optional(),
     date_obtained_year: z.string().optional(),
-    still_citizen: z.string().optional(),
-    date_ceased_day: z.string().optional(),
-    date_ceased_month: z.string().optional(),
-    date_ceased_year: z.string().optional(),
-    reason_ceased: z.string().optional(),
   })).optional(),
   has_passport: yesNoEnum.optional(),
   passports: z.array(z.object({
@@ -293,7 +317,13 @@ export const identitySchema = z.object({
     date_expiry_year: z.string().optional(),
   })).optional(),
   permanent_residency_rights: yesNoEnum.optional(),
-  pr_countries: z.array(z.object({ country: z.string() })).optional(),
+  pr_countries: z.array(z.object({
+    country: z.string(),
+    residency_status: z.string().optional(),
+    expiry_date_day: z.string().optional(),
+    expiry_date_month: z.string().optional(),
+    expiry_date_year: z.string().optional(),
+  })).optional(),
 }).superRefine((data, ctx) => {
   // If not a citizen, stateless explanation is required
   if (data.citizen_of_country === "No" && (!data.stateless_explanation || data.stateless_explanation.trim().length === 0)) {
@@ -332,12 +362,27 @@ export const identitySchema = z.object({
   }
   
   // If has permanent residency rights, require at least one PR country entry
-  if (data.permanent_residency_rights === "Yes" && (!data.pr_countries || data.pr_countries.length === 0)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "At least one permanent residency country is required",
-      path: ["pr_countries"],
-    });
+  if (data.permanent_residency_rights === "Yes") {
+    if (!data.pr_countries || data.pr_countries.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one country of residency is required",
+        path: ["pr_countries"],
+      });
+    } else {
+      // Validate each PR country entry
+      data.pr_countries.forEach((item, index) => {
+        if (item.residency_status === "Temporary") {
+          if (!item.expiry_date_day || !item.expiry_date_month || !item.expiry_date_year) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Expiry date is required for temporary residency",
+              path: ["pr_countries", index, "expiry_date_day"],
+            });
+          }
+        }
+      });
+    }
   }
 });
 

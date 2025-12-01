@@ -227,10 +227,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
                     <RadioGroupItem value="Female" id="gender-female" />
                     <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Other" id="gender-other" />
-                    <Label htmlFor="gender-other" className="cursor-pointer">Other</Label>
-                  </div>
                 </RadioGroup>
                 {dialogForm.formState.errors.gender && (
                   <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>

@@ -99,7 +99,7 @@ export default function MainApplicantDetailsPage() {
   const { control, handleSubmit, getValues, setValue, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(detailsSchema),
     defaultValues: {
-      is_main_applicant: sectionData.is_main_applicant,
+      is_main_applicant: sectionData.is_main_applicant || "Yes",
       prefix: sectionData.prefix,
       family_name: sectionData.family_name || "",
       given_names: sectionData.given_names || "",
@@ -113,6 +113,9 @@ export default function MainApplicantDetailsPage() {
       city_of_birth: sectionData.city_of_birth || "",
       state_of_birth: sectionData.state_of_birth || "",
       marital_status: sectionData.marital_status,
+      marital_status_date_day: sectionData.marital_status_date_day || "",
+      marital_status_date_month: sectionData.marital_status_date_month || "",
+      marital_status_date_year: sectionData.marital_status_date_year || "",
       completing_prefix: sectionData.completing_prefix,
       completing_family_name: sectionData.completing_family_name || "",
       completing_given_names: sectionData.completing_given_names || "",
@@ -142,6 +145,10 @@ export default function MainApplicantDetailsPage() {
   const birthDay = useWatch({ control, name: "birth_day" });
   const birthMonth = useWatch({ control, name: "birth_month" });
   const birthYear = useWatch({ control, name: "birth_year" });
+  const maritalStatus = useWatch({ control, name: "marital_status" });
+  const maritalStatusDateDay = useWatch({ control, name: "marital_status_date_day" });
+  const maritalStatusDateMonth = useWatch({ control, name: "marital_status_date_month" });
+  const maritalStatusDateYear = useWatch({ control, name: "marital_status_date_year" });
 
   // Watch all form values for auto-save
   const watchedValues = useWatch({ control });
@@ -251,6 +258,9 @@ export default function MainApplicantDetailsPage() {
       setValue("city_of_birth", "");
       setValue("state_of_birth", "");
       setValue("marital_status", undefined);
+      setValue("marital_status_date_day", "");
+      setValue("marital_status_date_month", "");
+      setValue("marital_status_date_year", "");
     }
 
     // Update ref for next comparison
@@ -280,6 +290,7 @@ export default function MainApplicantDetailsPage() {
               </div>
             )}
 
+            <div className="hidden">
             <Field
               type="radio"
               name="is_main_applicant"
@@ -291,6 +302,7 @@ export default function MainApplicantDetailsPage() {
                 { value: "No", label: "No" },
               ]}
             />
+            </div>
 
             {/* Section 1 - Person Completing Questionnaire (shown only if No) */}
             {isMainApplicant === "No" && (
@@ -359,7 +371,7 @@ export default function MainApplicantDetailsPage() {
                   onValueChange={(value) => setValue("completing_gender", value)}
                   className="flex gap-4"
                 >
-                  {["Male", "Female", "Other"].map((gender) => (
+                  {["Male", "Female"].map((gender) => (
                     <div key={gender} className="flex items-center">
                       <RadioGroupItem value={gender} id={`completing-gender-${gender.toLowerCase()}`} />
                       <Label htmlFor={`completing-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
@@ -456,7 +468,7 @@ export default function MainApplicantDetailsPage() {
                 <h2 className="text-lg font-medium text-gray-900">Main Applicant's Personal Details</h2>
 
                 {/* Prefix/Title - Radio Group */}
-                <div>
+                <div className="hidden">
                 <Label className="text-sm font-medium mb-2 block">Prefix/Title</Label>
                 <RadioGroup
                   value={prefix || ""}
@@ -515,7 +527,7 @@ export default function MainApplicantDetailsPage() {
                   onValueChange={(value) => setValue("gender", value)}
                   className="flex gap-4"
                 >
-                  {["Male", "Female", "Other"].map((gender) => (
+                  {["Male", "Female"].map((gender) => (
                     <div key={gender} className="flex items-center">
                       <RadioGroupItem value={gender} id={`gender-${gender.toLowerCase()}`} />
                       <Label htmlFor={`gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
@@ -649,6 +661,79 @@ export default function MainApplicantDetailsPage() {
                     { value: "Separated", label: "Separated" },
                   ]}
                 />
+
+                {maritalStatus && maritalStatus !== "Never Married or been in a De Facto Relationship" && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      {maritalStatus === "Married" && "Date of Marriage"}
+                      {maritalStatus === "De Facto" && "Date De Facto Relationship Began"}
+                      {maritalStatus === "Divorced" && "Date of Divorce"}
+                      {maritalStatus === "Widowed" && "Date of Death of Spouse"}
+                      {maritalStatus === "Separated" && "Date of Separation"} <span className="text-red-600">*</span>
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">Day</Label>
+                        <Select
+                          value={maritalStatusDateDay || ""}
+                          onValueChange={(value) => setValue("marital_status_date_day", value)}
+                        >
+                          <SelectTrigger id="marital_status_date_day" data-testid="select-marital-status-date-day">
+                            <SelectValue placeholder="Day" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {days.map((day) => (
+                              <SelectItem key={day} value={day}>{day}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.marital_status_date_day && (
+                          <p className="text-sm text-red-600 mt-1">{errors.marital_status_date_day.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">Month</Label>
+                        <Select
+                          value={maritalStatusDateMonth || ""}
+                          onValueChange={(value) => setValue("marital_status_date_month", value)}
+                        >
+                          <SelectTrigger id="marital_status_date_month" data-testid="select-marital-status-date-month">
+                            <SelectValue placeholder="Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {months.map((month, idx) => (
+                              <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.marital_status_date_month && (
+                          <p className="text-sm text-red-600 mt-1">{errors.marital_status_date_month.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">Year</Label>
+                        <Select
+                          value={maritalStatusDateYear || ""}
+                          onValueChange={(value) => setValue("marital_status_date_year", value)}
+                        >
+                          <SelectTrigger id="marital_status_date_year" data-testid="select-marital-status-date-year">
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {years.map((year) => (
+                              <SelectItem key={year} value={year}>{year}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.marital_status_date_year && (
+                          <p className="text-sm text-red-600 mt-1">{errors.marital_status_date_year.message}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

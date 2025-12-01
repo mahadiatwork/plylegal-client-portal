@@ -42,6 +42,9 @@ const formSchema = z.object({
   city_of_birth: z.string().optional(),
   state_of_birth: z.string().optional(),
   marital_status: z.string().optional(),
+  marital_status_date_day: z.string().optional(),
+  marital_status_date_month: z.string().optional(),
+  marital_status_date_year: z.string().optional(),
 });
 
 export default function Page() {
@@ -87,6 +90,9 @@ export default function Page() {
       city_of_birth: "",
       state_of_birth: "",
       marital_status: "",
+      marital_status_date_day: "",
+      marital_status_date_month: "",
+      marital_status_date_year: "",
     },
   });
 
@@ -163,7 +169,7 @@ export default function Page() {
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
             {/* Main Applicant Question */}
-            <div>
+            <div className="hidden">
               <Label className="text-base font-medium text-gray-900">
                 Are you or will you be the Main Applicant in any application?
               </Label>
@@ -257,7 +263,7 @@ export default function Page() {
                     className="flex gap-4 mt-2"
                     data-testid="radio-completing-gender"
                   >
-                    {["Male", "Female", "Other"].map((gender) => (
+                    {["Male", "Female"].map((gender) => (
                       <div key={gender} className="flex items-center">
                         <RadioGroupItem value={gender} id={`completing-gender-${gender.toLowerCase()}`} />
                         <Label htmlFor={`completing-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
@@ -343,7 +349,7 @@ export default function Page() {
             <div className="space-y-6 pt-6 border-t border-gray-200">
               <h2 className="text-lg font-medium text-gray-900">Main Applicant's Personal Details</h2>
 
-              <div>
+              <div className="hidden">
                 <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
                 <RadioGroup
                   value={form.watch("prefix")}
@@ -397,7 +403,7 @@ export default function Page() {
                   className="flex gap-4 mt-2"
                   data-testid="radio-gender"
                 >
-                  {["Male", "Female", "Other"].map((gender) => (
+                  {["Male", "Female"].map((gender) => (
                     <div key={gender} className="flex items-center">
                       <RadioGroupItem value={gender} id={`main-gender-${gender.toLowerCase()}`} />
                       <Label htmlFor={`main-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
@@ -516,6 +522,70 @@ export default function Page() {
                   <p className="text-sm text-red-600 mt-1">{form.formState.errors.marital_status.message}</p>
                 )}
               </div>
+
+              {form.watch("marital_status") && form.watch("marital_status") !== "Never Married" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    {form.watch("marital_status") === "Married" && "Date of Marriage"}
+                    {form.watch("marital_status") === "De Facto Relationship" && "Date De Facto Relationship Began"}
+                    {form.watch("marital_status") === "Divorced" && "Date of Divorce"}
+                    {form.watch("marital_status") === "Widowed" && "Date of Death of Spouse"}
+                    {form.watch("marital_status") === "Separated" && "Date of Separation"} <span className="text-red-600">*</span>
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">Day</Label>
+                      <Select
+                        value={form.watch("marital_status_date_day")}
+                        onValueChange={(value) => form.setValue("marital_status_date_day", value)}
+                      >
+                        <SelectTrigger id="marital_status_date_day">
+                          <SelectValue placeholder="Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {days.map((day) => (
+                            <SelectItem key={day} value={day}>{day}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">Month</Label>
+                      <Select
+                        value={form.watch("marital_status_date_month")}
+                        onValueChange={(value) => form.setValue("marital_status_date_month", value)}
+                      >
+                        <SelectTrigger id="marital_status_date_month">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month, idx) => (
+                            <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">Year</Label>
+                      <Select
+                        value={form.watch("marital_status_date_year")}
+                        onValueChange={(value) => form.setValue("marital_status_date_year", value)}
+                      >
+                        <SelectTrigger id="marital_status_date_year">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Desktop Navigation */}

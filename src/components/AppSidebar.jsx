@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { cn } from "@/lib/utils";
-import { User, FileText, ChevronLeft, Upload, BookOpen, MessageSquare, FileEdit } from "lucide-react";
+import { User, FileText, ChevronLeft, Upload, CheckSquare, Package, BookOpen, MessageSquare, FileEdit } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -38,14 +38,6 @@ export function AppSidebar({ mode, application, onClose }) {
               isActive={pathname === "/applications" || pathname?.startsWith("/applications/")}
               onClick={onClose}
             />
-            
-            <NavLink
-              href="/messages"
-              icon={MessageSquare}
-              label="Messages"
-              isActive={pathname === "/messages" || pathname?.startsWith("/messages/")}
-              onClick={onClose}
-            />
           </nav>
         </ScrollArea>
       </aside>
@@ -58,7 +50,10 @@ export function AppSidebar({ mode, application, onClose }) {
   const appTabs = [
     { href: `/applications/${application.id}/questionnaire`, label: "Questionnaire", icon: FileText },
     { href: `/applications/${application.id}/uploads`, label: "Upload Documents", icon: Upload },
+    { href: `/applications/${application.id}/tasks`, label: "Tasks", icon: CheckSquare },
+    { href: `/applications/${application.id}/deliverables`, label: "Our Deliverables", icon: Package },
     { href: `/applications/${application.id}/resources`, label: "Resources", icon: BookOpen },
+    { href: `/applications/${application.id}/messages`, label: "Send Message", icon: MessageSquare },
     { href: `/applications/${application.id}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
   

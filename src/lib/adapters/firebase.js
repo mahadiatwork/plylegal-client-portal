@@ -78,9 +78,8 @@ export class FirebaseAdapter extends BaseAdapter {
         try {
           const userProfile = await this.getUserProfile(userCredential.user.uid);
           if (userProfile?.zohoContactId) {
-            console.log('🔍 Attempting to sync deals/applications from Zoho CRM on login...');
+            console.log('🔍 Fetching deals/applications from Zoho CRM on login...');
             // Use API route to fetch and save to Firebase (ensures correct field mapping)
-            // This is optional and won't block login if it fails
             fetch('/api/applications/fetch-zoho-deals', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -99,24 +98,18 @@ export class FirebaseAdapter extends BaseAdapter {
                   await applicationsStore.loadApplications(userCredential.user.uid);
                   console.log('✅ Applications reloaded from Firebase after Zoho sync');
                 } else {
-                  // Log but don't show error - Zoho sync is optional
-                  if (result.requiresSetup) {
-                    console.warn('ℹ️ Zoho sync unavailable: Admin SDK not configured. Login successful.');
-                  } else {
-                    console.warn('⚠️ Zoho sync failed (non-critical):', result.error);
-                  }
+                  console.error('⚠️ Failed to fetch deals from Zoho:', result.error);
                 }
               })
               .catch((dealError) => {
-                // Silently handle - Zoho sync is optional and won't block login
-                console.warn('ℹ️ Zoho sync unavailable (non-critical):', dealError.message);
+                console.error('⚠️ Failed to fetch deals from Zoho on login (non-critical):', dealError.message);
               });
           } else {
             console.log('ℹ️ No Zoho contact ID found, skipping deals fetch');
           }
         } catch (zohoError) {
-          // Log but don't fail login - Zoho sync is optional
-          console.warn('ℹ️ Zoho sync check skipped (non-critical):', zohoError.message);
+          // Log but don't fail login
+          console.error('⚠️ Error checking Zoho on login (non-critical):', zohoError.message);
         }
         
         const user = {

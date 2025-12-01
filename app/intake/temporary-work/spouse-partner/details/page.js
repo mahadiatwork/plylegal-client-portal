@@ -201,7 +201,7 @@ export default function Page() {
                 onValueChange={(value) => form.setValue("gender", value)}
               >
                 <div className="flex flex-wrap gap-4">
-                  {["Male", "Female", "Other"].map((gender) => (
+                  {["Male", "Female"].map((gender) => (
                     <div key={gender} className="flex items-center space-x-2">
                       <RadioGroupItem value={gender} id={`gender-${gender}`} data-testid={`radio-gender-${gender.toLowerCase()}`} />
                       <Label htmlFor={`gender-${gender}`}>{gender}</Label>

@@ -28,50 +28,45 @@ export default function ApplicationsPage() {
   const [hasSynced, setHasSynced] = useState(false);
   
   // Load applications from Firebase (they should already be synced from Zoho on login)
-  // Try to sync with Zoho CRM on page load (but only once, and don't block if it fails)
+  // Always sync with Zoho CRM on page load (but only once)
   useEffect(() => {
     const loadApplications = async () => {
-      if (!authSnap.user?.id) return;
-      
-      // Always load from Firebase first (this works without Admin SDK)
-      await applicationsStore.loadApplications(authSnap.user.id);
-      
-      // Try to sync with Zoho CRM if we have a contact ID and haven't synced yet
-      // This is optional and won't block the page if it fails
-      if (authSnap.userProfile?.zohoContactId && !hasSynced) {
+      if (authSnap.user?.id && authSnap.userProfile?.zohoContactId && !hasSynced) {
+        // First, load from Firebase
+        await applicationsStore.loadApplications(authSnap.user.id);
+        
+        // Sync with Zoho CRM (only once per page load)
+        console.log('📋 Syncing applications with Zoho CRM...');
         setHasSynced(true); // Set flag immediately to prevent duplicate calls
         
-        // Run Zoho sync in background (non-blocking)
-        fetch('/api/applications/fetch-zoho-deals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: authSnap.user.id,
-            zohoContactId: authSnap.userProfile.zohoContactId,
-          }),
-        })
-          .then(async (response) => {
-            const result = await response.json();
-            if (result.success) {
-              // Store raw deals data for debugging
-              applicationsStore.rawDealsData = result.rawDealsData || [];
-              console.log(`✅ Synced ${result.applicationsCount || 0} applications from Zoho CRM`);
-              console.log(`📊 Raw deals count: ${result.rawDealsData?.length || 0}`);
-              // Reload from Firebase after syncing
-              await applicationsStore.loadApplications(authSnap.user.id);
-            } else {
-              // Log but don't show error to user - Zoho sync is optional
-              if (result.requiresSetup) {
-                console.warn('ℹ️ Zoho sync unavailable: Admin SDK not configured. Applications loaded from Firestore.');
-              } else {
-                console.warn('⚠️ Zoho sync failed (non-critical):', result.error);
-              }
-            }
-          })
-          .catch((error) => {
-            // Silently handle - Zoho sync is optional
-            console.warn('⚠️ Zoho sync unavailable (non-critical):', error.message);
+        try {
+          const response = await fetch('/api/applications/fetch-zoho-deals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: authSnap.user.id,
+              zohoContactId: authSnap.userProfile.zohoContactId,
+            }),
           });
+
+          const result = await response.json();
+          if (result.success) {
+            // Store raw deals data for debugging
+            applicationsStore.rawDealsData = result.rawDealsData || [];
+            console.log(`✅ Synced ${result.applicationsCount || 0} applications from Zoho CRM`);
+            console.log(`📊 Raw deals count: ${result.rawDealsData?.length || 0}`);
+            // Reload from Firebase after syncing
+            await applicationsStore.loadApplications(authSnap.user.id);
+          } else {
+            console.error('❌ Failed to sync with Zoho:', result.error);
+          }
+        } catch (error) {
+          console.error('⚠️ Failed to sync with Zoho:', error.message);
+          setHasSynced(false); // Reset flag on error so it can retry
+        }
+      } else if (authSnap.user?.id && !authSnap.userProfile?.zohoContactId) {
+        // Just load from Firebase if no zohoContactId
+        await applicationsStore.loadApplications(authSnap.user.id);
       }
     };
     

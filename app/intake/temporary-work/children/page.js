@@ -126,7 +126,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           onValueChange={(value) => form.setValue("gender", value)}
         >
           <div className="flex gap-4">
-            {["Male", "Female", "Other"].map((gender) => (
+            {["Male", "Female"].map((gender) => (
               <div key={gender} className="flex items-center space-x-2">
                 <RadioGroupItem value={gender} id={`dialog-gender-${gender}`} data-testid={`radio-dialog-gender-${gender.toLowerCase()}`} />
                 <Label htmlFor={`dialog-gender-${gender}`}>{gender}</Label>

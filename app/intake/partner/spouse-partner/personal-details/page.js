@@ -276,7 +276,7 @@ export default function SpousePartnerPersonalDetailsPage() {
                 onValueChange={(value) => setValue("gender", value)}
                 className="flex gap-4"
               >
-                {["Male", "Female", "Other"].map((gender) => (
+                {["Male", "Female"].map((gender) => (
                   <div key={gender} className="flex items-center space-x-2">
                     <RadioGroupItem value={gender} id={`gender-${gender.toLowerCase()}`} />
                     <Label htmlFor={`gender-${gender.toLowerCase()}`} className="cursor-pointer">{gender}</Label>

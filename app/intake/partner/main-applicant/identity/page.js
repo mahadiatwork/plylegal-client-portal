@@ -48,10 +48,9 @@ const COUNTRIES = [
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation", "Other"];
-const CEASED_REASON_OPTIONS = ["Cancelled", "Renounced", "Other"];
+const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation"];
 const PASSPORT_TYPE_OPTIONS = ["Passport", "Emergency Passport", "Travel Document"];
-const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified", "Other"];
+const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified"];
 const DOCUMENT_STATUS_OPTIONS = ["Current", "Expired", "Lost", "Stolen", "Cancelled", "Damaged"];
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -86,8 +85,6 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
 function CitizenshipDialog({ editingRow, onSave, onCancel }) {
-  const initialStillCitizen = editingRow?.still_citizen !== undefined ? (editingRow.still_citizen === "Yes" || editingRow.still_citizen === "yes" || editingRow.still_citizen === true ? "Yes" : "No") : "Yes";
-  const [stillCitizen, setStillCitizen] = useState(initialStillCitizen);
   
   const dialogForm = useForm({
     defaultValues: editingRow || {
@@ -96,21 +93,8 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
       date_obtained_day: "",
       date_obtained_month: "",
       date_obtained_year: "",
-      still_citizen: "Yes",
-      date_ceased_day: "",
-      date_ceased_month: "",
-      date_ceased_year: "",
-      reason_ceased: "",
     },
   });
-
-  useEffect(() => {
-    if (editingRow?.still_citizen !== undefined) {
-      const value = editingRow.still_citizen === "Yes" || editingRow.still_citizen === "yes" || editingRow.still_citizen === true ? "Yes" : "No";
-      setStillCitizen(value);
-      dialogForm.setValue("still_citizen", value);
-    }
-  }, [editingRow, dialogForm]);
 
   const handleFormSubmit = (data) => {
     onSave(data);
@@ -202,100 +186,6 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
           </Select>
         </div>
       </div>
-
-      <div>
-        <Label className="text-sm font-normal mb-2 block">
-          Are you still a Citizen of this country?
-        </Label>
-        <RadioGroup
-          value={stillCitizen}
-          onValueChange={(value) => {
-            setStillCitizen(value);
-            dialogForm.setValue("still_citizen", value);
-          }}
-          className="flex gap-4"
-          data-testid="radio-still-citizen"
-        >
-          <div className="flex items-center" data-testid="radio-still-citizen-yes">
-            <RadioGroupItem value="Yes" id="still-citizen-yes" />
-            <Label htmlFor="still-citizen-yes" className="ml-2 cursor-pointer font-normal">
-              Yes
-            </Label>
-          </div>
-          <div className="flex items-center" data-testid="radio-still-citizen-no">
-            <RadioGroupItem value="No" id="still-citizen-no" />
-            <Label htmlFor="still-citizen-no" className="ml-2 cursor-pointer font-normal">
-              No
-            </Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      {stillCitizen === "No" && (
-        <div className="space-y-4">
-          <div>
-            <Label>Date ceased</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Select
-                value={dialogForm.watch("date_ceased_day")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_day", value)}
-              >
-                <SelectTrigger data-testid="select-ceased-day">
-                  <SelectValue placeholder="Choose Day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {days.map((day) => (
-                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("date_ceased_month")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_month", value)}
-              >
-                <SelectTrigger data-testid="select-ceased-month">
-                  <SelectValue placeholder="Choose Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, idx) => (
-                    <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("date_ceased_year")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_year", value)}
-              >
-                <SelectTrigger data-testid="select-ceased-year">
-                  <SelectValue placeholder="Choose Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="reason_ceased">Reason</Label>
-            <Select
-              value={dialogForm.watch("reason_ceased")}
-              onValueChange={(value) => dialogForm.setValue("reason_ceased", value)}
-            >
-              <SelectTrigger data-testid="select-reason-ceased">
-                <SelectValue placeholder="Choose Reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {CEASED_REASON_OPTIONS.map((reason) => (
-                  <SelectItem key={reason} value={reason}>{reason}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
@@ -887,8 +777,16 @@ function IdentityDocDialog({ editingRow, onSave, onCancel }) {
 }
 
 function CountryDialog({ editingRow, onSave, onCancel }) {
+  const [residencyStatus, setResidencyStatus] = useState(editingRow?.residency_status || "Permanent");
+
   const dialogForm = useForm({
-    defaultValues: editingRow || { country: "" },
+    defaultValues: editingRow || { 
+      country: "",
+      residency_status: "Permanent",
+      expiry_date_day: "",
+      expiry_date_month: "",
+      expiry_date_year: "",
+    },
   });
 
   const handleFormSubmit = (data) => {
@@ -923,6 +821,85 @@ function CountryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
+
+      <div>
+        <Label className="text-sm font-medium mb-2 block">
+          Residency Status
+        </Label>
+        <RadioGroup
+          value={residencyStatus}
+          onValueChange={(value) => {
+            setResidencyStatus(value);
+            dialogForm.setValue("residency_status", value);
+          }}
+          className="flex gap-4"
+          data-testid="radio-residency-status"
+        >
+          <div className="flex items-center" data-testid="radio-residency-status-permanent">
+            <RadioGroupItem value="Permanent" id="residency-status-permanent" />
+            <Label htmlFor="residency-status-permanent" className="ml-2 cursor-pointer font-normal">
+              Permanent
+            </Label>
+          </div>
+          <div className="flex items-center" data-testid="radio-residency-status-temporary">
+            <RadioGroupItem value="Temporary" id="residency-status-temporary" />
+            <Label htmlFor="residency-status-temporary" className="ml-2 cursor-pointer font-normal">
+              Temporary
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {residencyStatus === "Temporary" && (
+        <div>
+          <Label>Expiry Date of Temporary Residency</Label>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <Select
+              value={dialogForm.watch("expiry_date_day")}
+              onValueChange={(value) => dialogForm.setValue("expiry_date_day", value)}
+            >
+              <SelectTrigger data-testid="select-expiry-day">
+                <SelectValue placeholder="Day" />
+              </SelectTrigger>
+              <SelectContent>
+                {days.map((day) => (
+                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={dialogForm.watch("expiry_date_month")}
+              onValueChange={(value) => dialogForm.setValue("expiry_date_month", value)}
+            >
+              <SelectTrigger data-testid="select-expiry-month">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month, idx) => (
+                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={dialogForm.watch("expiry_date_year")}
+              onValueChange={(value) => dialogForm.setValue("expiry_date_year", value)}
+            >
+              <SelectTrigger data-testid="select-expiry-year">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {dialogForm.formState.errors.expiry_date_day && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.expiry_date_day.message}</p>
+          )}
+        </div>
+      )}
+
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
@@ -1096,10 +1073,6 @@ export default function MainApplicantIdentityPage() {
       }
       return "";
     }},
-    { key: "still_citizen", label: "Are you still a Citizen of this Country?", format: (value) => {
-      if (value === "Yes" || value === "yes" || value === true) return "Yes";
-      return "No";
-    }},
   ];
 
   const passportColumns = [
@@ -1134,6 +1107,15 @@ export default function MainApplicantIdentityPage() {
 
   const countryColumns = [
     { key: "country", label: "Country" },
+    { key: "residency_status", label: "Status" },
+    { key: "expiry_date", label: "Expiry Date", format: (row) => {
+      if (row.residency_status === "Temporary" && row.expiry_date_day && row.expiry_date_month && row.expiry_date_year) {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthIdx = parseInt(row.expiry_date_month) - 1;
+        return `${monthNames[monthIdx]} ${row.expiry_date_day}, ${row.expiry_date_year}`;
+      }
+      return "";
+    }},
   ];
 
   return (
@@ -1303,13 +1285,13 @@ export default function MainApplicantIdentityPage() {
               )}
             </div>
 
-            {/* Question 4: Do you have the right to permanently reside in any country of which you are not a citizen? */}
+            {/* Question 4: Do you have the right to temporary or permanently reside in any country of which you are not a citizen? */}
             <div>
               <Field
                 type="radio"
                 name="permanent_residency_rights"
                 control={control}
-                label="Do you have the right to permanently reside in any country of which you are not a citizen?"
+                label="Do you have the right to temporary or permanently reside in any country of which you are not a citizen?"
                 options={[
                   { value: "Yes", label: "Yes" },
                   { value: "No", label: "No" },
@@ -1319,7 +1301,7 @@ export default function MainApplicantIdentityPage() {
               {permanentResidencyRights === "Yes" && (
                 <div className="mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of all countries that you hold permanent residency for
+                    Enter details of all countries that you hold temporary or permanent residency for
                   </p>
                   <RepeaterTable
                     data={prCountries}
@@ -1337,7 +1319,7 @@ export default function MainApplicantIdentityPage() {
                     DialogComponent={CountryDialog}
                     addButtonText="Add"
                     testIdPrefix="pr-country"
-                    dialogTitle="Permanent Residency"
+                    dialogTitle="Temporary or Permanent Residency"
                   />
                 </div>
               )}

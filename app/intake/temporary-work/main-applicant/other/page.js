@@ -10,6 +10,7 @@ import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -79,11 +80,14 @@ const dialogSchema = z.object({
   issuing_country: z.string().optional(),
   issuing_state: z.string().optional(),
   place_of_issue: z.string().optional(),
+  use_in_application: z.string().optional(),
 });
 
 function OtherNameDialog({ row, onSubmit, onCancel }) {
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
+  const initialUseInApplication = row?.use_in_application === "yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
+  const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
   
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
@@ -100,6 +104,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       issuing_country: "",
       issuing_state: "",
       place_of_issue: "",
+      use_in_application: "no",
     },
   });
 
@@ -107,6 +112,10 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
     if (row?.has_evidence !== undefined) {
       setHasEvidence(row.has_evidence);
       dialogForm.setValue("has_evidence", row.has_evidence);
+    }
+    if (row?.use_in_application !== undefined) {
+      setUseInApplication(row.use_in_application === "yes");
+      dialogForm.setValue("use_in_application", row.use_in_application);
     }
   }, [row]);
 
@@ -173,6 +182,20 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
         {dialogForm.formState.errors.reason_for_change && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_change.message}</p>
         )}
+      </div>
+
+      <div className="flex items-center space-x-2 pt-2">
+        <Checkbox 
+          id="use_in_application" 
+          checked={useInApplication}
+          onCheckedChange={(checked) => {
+            setUseInApplication(checked);
+            dialogForm.setValue("use_in_application", checked ? "yes" : "no");
+          }}
+        />
+        <Label htmlFor="use_in_application" className="text-sm font-normal cursor-pointer">
+          Use this name in the application
+        </Label>
       </div>
 
       <div className="pt-4 border-t border-gray-200">

@@ -29,11 +29,6 @@ const formSchema = z.object({
     date_obtained_day: z.string().optional(),
     date_obtained_month: z.string().optional(),
     date_obtained_year: z.string().optional(),
-    still_citizen: z.string(),
-    date_ceased_day: z.string().optional(),
-    date_ceased_month: z.string().optional(),
-    date_ceased_year: z.string().optional(),
-    reason_ceased: z.string().optional(),
   })).optional(),
   has_passport: z.enum(["yes", "no"]),
   passports: z.array(z.object({
@@ -121,14 +116,7 @@ const formSchema = z.object({
 const CITIZENSHIP_REASON_OPTIONS = [
   "Birth",
   "Descent",
-  "Naturalisation",
-  "Other"
-];
-
-const CEASED_REASON_OPTIONS = [
-  "Cancelled",
-  "Renounced",
-  "Other"
+  "Naturalisation"
 ];
 
 const PASSPORT_TYPE_OPTIONS = [
@@ -160,7 +148,7 @@ const DOCUMENT_TYPE_OPTIONS = [
   "Other"
 ];
 
-const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified", "Other"];
+const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified"];
 
 const DOCUMENT_STATUS_OPTIONS = [
   "Current",
@@ -177,17 +165,9 @@ const citizenshipDialogSchema = z.object({
   date_obtained_day: z.string().optional(),
   date_obtained_month: z.string().optional(),
   date_obtained_year: z.string().optional(),
-  still_citizen: z.string(),
-  date_ceased_day: z.string().optional(),
-  date_ceased_month: z.string().optional(),
-  date_ceased_year: z.string().optional(),
-  reason_ceased: z.string().optional(),
 });
 
 function CitizenshipDialog({ row, onSubmit, onCancel }) {
-  const initialStillCitizen = row?.still_citizen !== undefined ? row.still_citizen : "yes";
-  const [stillCitizen, setStillCitizen] = useState(initialStillCitizen);
-  
   const dialogForm = useForm({
     resolver: zodResolver(citizenshipDialogSchema),
     defaultValues: row || {
@@ -196,20 +176,8 @@ function CitizenshipDialog({ row, onSubmit, onCancel }) {
       date_obtained_day: "",
       date_obtained_month: "",
       date_obtained_year: "",
-      still_citizen: "yes",
-      date_ceased_day: "",
-      date_ceased_month: "",
-      date_ceased_year: "",
-      reason_ceased: "",
     },
   });
-
-  useEffect(() => {
-    if (row?.still_citizen !== undefined) {
-      setStillCitizen(row.still_citizen);
-      dialogForm.setValue("still_citizen", row.still_citizen);
-    }
-  }, [row]);
 
   const handleFormSubmit = (data) => {
     onSubmit(data);
@@ -309,100 +277,6 @@ function CitizenshipDialog({ row, onSubmit, onCancel }) {
           </Select>
         </div>
       </div>
-
-      <div>
-        <Label className="text-sm font-normal mb-2 block">
-          Are you still a Citizen of this country?
-        </Label>
-        <RadioGroup
-          value={stillCitizen}
-          onValueChange={(value) => {
-            setStillCitizen(value);
-            dialogForm.setValue("still_citizen", value);
-          }}
-          className="flex gap-4"
-          data-testid="radio-still-citizen"
-        >
-          <div className="flex items-center" data-testid="radio-still-citizen-yes">
-            <RadioGroupItem value="yes" id="still-citizen-yes" />
-            <Label htmlFor="still-citizen-yes" className="ml-2 cursor-pointer font-normal">
-              Yes
-            </Label>
-          </div>
-          <div className="flex items-center" data-testid="radio-still-citizen-no">
-            <RadioGroupItem value="no" id="still-citizen-no" />
-            <Label htmlFor="still-citizen-no" className="ml-2 cursor-pointer font-normal">
-              No
-            </Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      {stillCitizen === "no" && (
-        <div className="space-y-4">
-          <div>
-            <Label>Date ceased</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Select
-                value={dialogForm.watch("date_ceased_day")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_day", value)}
-              >
-                <SelectTrigger data-testid="select-ceased-day">
-                  <SelectValue placeholder="Choose Day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {days.map((day) => (
-                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("date_ceased_month")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_month", value)}
-              >
-                <SelectTrigger data-testid="select-ceased-month">
-                  <SelectValue placeholder="Choose Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month) => (
-                    <SelectItem key={month} value={month}>{month}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("date_ceased_year")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_year", value)}
-              >
-                <SelectTrigger data-testid="select-ceased-year">
-                  <SelectValue placeholder="Choose Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="reason_ceased">Reason</Label>
-            <Select
-              value={dialogForm.watch("reason_ceased")}
-              onValueChange={(value) => dialogForm.setValue("reason_ceased", value)}
-            >
-              <SelectTrigger data-testid="select-reason-ceased">
-                <SelectValue placeholder="Choose Reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {CEASED_REASON_OPTIONS.map((reason) => (
-                  <SelectItem key={reason} value={reason}>{reason}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
@@ -1191,7 +1065,6 @@ export default function IdentityPage() {
                         { key: "country", label: "Country" },
                         { key: "how_obtained", label: "How was this Citizenship obtained?" },
                         { key: "date_obtained_day", label: "Date Obtained", format: (row) => `${row.date_obtained_day} ${row.date_obtained_month} ${row.date_obtained_year}` },
-                        { key: "still_citizen", label: "Are you still a Citizen of this Country?", format: (value) => value === "yes" ? "Yes" : "No" },
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...citizenships, newRow];
