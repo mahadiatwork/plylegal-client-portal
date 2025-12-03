@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
 const formSchema = z.object({
+  // Question 1: Other Names
   has_other_names: z.enum(["yes", "no"]),
   other_names: z.array(z.object({
     family_name: z.string(),
@@ -34,6 +35,22 @@ const formSchema = z.object({
     issuing_country: z.string().optional(),
     issuing_state: z.string().optional(),
     place_of_issue: z.string().optional(),
+    use_in_application: z.string().optional(),
+  })).optional(),
+  
+  // Question 2: Chinese Commercial Code
+  use_chinese_code: z.enum(["yes", "no"]),
+  chinese_code: z.string().optional(),
+  
+  // Question 3: Russian Descent
+  russian_descent: z.enum(["yes", "no"]),
+  patronymic_family_name: z.string().optional(),
+  patronymic_given_names: z.string().optional(),
+  
+  // Question 4: Previous Date of Birth
+  has_prev_dob: z.enum(["yes", "no"]),
+  prev_dobs: z.array(z.object({
+    date_of_birth: z.string(),
   })).optional(),
 });
 
@@ -83,7 +100,13 @@ const dialogSchema = z.object({
   use_in_application: z.string().optional(),
 });
 
-function OtherNameDialog({ row, onSubmit, onCancel }) {
+const prevDobDialogSchema = z.object({
+  date_of_birth: z.string().min(1, "Date of birth is required"),
+});
+
+// Other Name Dialog Component
+function OtherNameDialog({ editingRow, onSave, onCancel }) {
+  const row = editingRow;
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
   const initialUseInApplication = row?.use_in_application === "yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
@@ -120,7 +143,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
   }, [row]);
 
   const handleFormSubmit = (data) => {
-    onSubmit(data);
+    onSave(data);
   };
 
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
@@ -141,7 +164,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       className="space-y-4"
     >
       <div>
-        <Label htmlFor="family_name">Family Name</Label>
+        <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
         <Input
           id="family_name"
           {...dialogForm.register("family_name")}
@@ -153,7 +176,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="given_names">Given Names</Label>
+        <Label htmlFor="given_names">Given Names <span className="text-red-500">*</span></Label>
         <Input
           id="given_names"
           {...dialogForm.register("given_names")}
@@ -165,7 +188,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="reason_for_change">Reason for Change</Label>
+        <Label htmlFor="reason_for_change">Reason for Change <span className="text-red-500">*</span></Label>
         <Select
           value={dialogForm.watch("reason_for_change")}
           onValueChange={(value) => dialogForm.setValue("reason_for_change", value, { shouldValidate: true })}
@@ -173,7 +196,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
           <SelectTrigger data-testid="select-reason-for-change">
             <SelectValue placeholder="Choose Reason for Change" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
             {REASON_OPTIONS.map((reason) => (
               <SelectItem key={reason} value={reason}>{reason}</SelectItem>
             ))}
@@ -240,7 +263,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                 <SelectTrigger data-testid="select-evidence-type">
                   <SelectValue placeholder="Choose Evidence Type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {EVIDENCE_TYPE_OPTIONS.map((type) => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
@@ -258,7 +281,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                   <SelectTrigger data-testid="select-document-day">
                     <SelectValue placeholder="Choose Day" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {days.map((day) => (
                       <SelectItem key={day} value={day}>{day}</SelectItem>
                     ))}
@@ -272,7 +295,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                   <SelectTrigger data-testid="select-document-month">
                     <SelectValue placeholder="Choose Month" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {months.map((month, idx) => (
                       <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
                     ))}
@@ -286,7 +309,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                   <SelectTrigger data-testid="select-document-year">
                     <SelectValue placeholder="Choose Year" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {years.map((year) => (
                       <SelectItem key={year} value={year}>{year}</SelectItem>
                     ))}
@@ -349,7 +372,66 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
           className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-ok"
         >
-          Ok
+          Save
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+// Previous Date of Birth Dialog Component
+function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
+  const row = editingRow;
+  
+  const dialogForm = useForm({
+    resolver: zodResolver(prevDobDialogSchema),
+    defaultValues: row || {
+      date_of_birth: "",
+    },
+  });
+
+  const handleFormSubmit = (data) => {
+    onSave(data);
+  };
+
+  return (
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dialogForm.handleSubmit(handleFormSubmit)(e);
+      }} 
+      className="space-y-4"
+    >
+      <div>
+        <Label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
+        <Input
+          id="date_of_birth"
+          type="date"
+          {...dialogForm.register("date_of_birth")}
+          data-testid="input-date-of-birth"
+          className="w-full"
+        />
+        {dialogForm.formState.errors.date_of_birth && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth.message}</p>
+        )}
+      </div>
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel} 
+          data-testid="button-cancel-dob"
+        >
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          data-testid="button-save-dob"
+        >
+          Save
         </Button>
       </DialogFooter>
     </form>
@@ -378,11 +460,23 @@ export default function Page() {
     defaultValues: {
       has_other_names: "no",
       other_names: [],
+      use_chinese_code: "no",
+      chinese_code: "",
+      russian_descent: "no",
+      patronymic_family_name: "",
+      patronymic_given_names: "",
+      has_prev_dob: "no",
+      prev_dobs: [],
     },
   });
 
+  // Watch form values
   const hasOtherNames = form.watch("has_other_names");
   const otherNames = form.watch("other_names") || [];
+  const useChineseCode = form.watch("use_chinese_code");
+  const russianDescent = form.watch("russian_descent");
+  const hasPrevDob = form.watch("has_prev_dob");
+  const prevDobs = form.watch("prev_dobs") || [];
 
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_other || {};
@@ -430,10 +524,31 @@ export default function Page() {
     draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), other_names: newNames });
   };
 
+  const updatePrevDobs = (newDobs) => {
+    form.setValue("prev_dobs", newDobs, { shouldValidate: true });
+    draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), prev_dobs: newDobs });
+  };
+
   const otherNameColumns = [
     { key: "family_name", label: "Family Name" },
     { key: "given_names", label: "Given Names" },
     { key: "reason_for_change", label: "Reason for Change" },
+  ];
+
+  const prevDobColumns = [
+    { 
+      key: "date_of_birth", 
+      label: "Date of Birth",
+      format: (row) => {
+        if (!row.date_of_birth) return "";
+        try {
+          const date = new Date(row.date_of_birth);
+          return date.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch {
+          return row.date_of_birth;
+        }
+      }
+    },
   ];
 
   return (
@@ -448,44 +563,46 @@ export default function Page() {
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
-            <div className="space-y-6">
+            <div className="space-y-8">
               <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
 
-              <div>
-                <Label className="text-base font-normal text-gray-900">
-                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
-                </Label>
-                <RadioGroup
-                  value={form.watch("has_other_names")}
-                  onValueChange={(value) => form.setValue("has_other_names", value)}
-                  className="flex gap-4 mt-2"
-                  data-testid="radio-has-other-names"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="yes" data-testid="radio-yes" />
-                    <Label htmlFor="yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="no" data-testid="radio-no" />
-                    <Label htmlFor="no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-                {form.formState.errors.has_other_names?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
-                )}
-              </div>
+              {/* Question 1: Other Names */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Have you ever had or been known by any other Name or Alias, or had a different name spelling?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("has_other_names")}
+                    onValueChange={(value) => form.setValue("has_other_names", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-has-other-names"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
+                      <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
+                      <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {form.formState.errors.has_other_names?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
+                  )}
+                </div>
 
                 {hasOtherNames === "yes" && (
-                  <div className="mt-6">
+                  <div className="pl-0 mt-4">
                     <p className="text-sm text-gray-600 mb-4">
                       Enter details of the other names you have been known by, including names before marriage
                     </p>
                     <RepeaterTable
-                      rows={otherNames}
+                      data={otherNames}
                       columns={otherNameColumns}
                       onAdd={(row) => updateOtherNames([...otherNames, row])}
                       onEdit={(index, row) => {
@@ -497,45 +614,198 @@ export default function Page() {
                         const updated = otherNames.filter((_, i) => i !== index);
                         updateOtherNames(updated);
                       }}
-                      dialogForm={(row, onSubmit, onCancel) => (
-                        <OtherNameDialog row={row} onSubmit={onSubmit} onCancel={onCancel} />
-                      )}
+                      DialogComponent={OtherNameDialog}
                       addButtonText="Add"
                       emptyMessage="No other names added"
+                      dialogTitle="Add other name"
+                      testIdPrefix="other-name"
                     />
                   </div>
                 )}
               </div>
 
-              {/* Desktop Navigation */}
-              <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
+              {/* Question 2: Chinese Commercial Code */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Do you use a Chinese Commercial Code for your name?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("use_chinese_code")}
+                    onValueChange={(value) => form.setValue("use_chinese_code", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-use-chinese-code"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
+                      <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
+                      <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {useChineseCode === "yes" && (
+                  <div className="pl-0 mt-4">
+                    <Label htmlFor="chinese_code">Chinese Commercial Code</Label>
+                    <Input
+                      id="chinese_code"
+                      {...form.register("chinese_code")}
+                      className="max-w-md mt-1"
+                      data-testid="input-chinese-code"
+                      placeholder="Enter your Chinese Commercial Code"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Question 3: Russian Descent */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Are you of Russian descent?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("russian_descent")}
+                    onValueChange={(value) => form.setValue("russian_descent", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-russian-descent"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="russian-descent-yes" data-testid="radio-russian-descent-yes" />
+                      <Label htmlFor="russian-descent-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="russian-descent-no" data-testid="radio-russian-descent-no" />
+                      <Label htmlFor="russian-descent-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {russianDescent === "yes" && (
+                  <div className="pl-0 mt-4 space-y-4">
+                    <p className="text-sm text-gray-600">
+                      In English, write your Patronymic Name
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="patronymic_family_name">Family Name</Label>
+                        <Input
+                          id="patronymic_family_name"
+                          {...form.register("patronymic_family_name")}
+                          className="mt-1"
+                          data-testid="input-patronymic-family-name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="patronymic_given_names">Given Names</Label>
+                        <Input
+                          id="patronymic_given_names"
+                          {...form.register("patronymic_given_names")}
+                          className="mt-1"
+                          data-testid="input-patronymic-given-names"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Question 4: Different Date of Birth */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Have you ever had a different Date of Birth?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("has_prev_dob")}
+                    onValueChange={(value) => form.setValue("has_prev_dob", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-has-prev-dob"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="prev-dob-yes" data-testid="radio-prev-dob-yes" />
+                      <Label htmlFor="prev-dob-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="prev-dob-no" data-testid="radio-prev-dob-no" />
+                      <Label htmlFor="prev-dob-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {hasPrevDob === "yes" && (
+                  <div className="pl-0 mt-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Enter details of your previous Birth Dates
+                    </p>
+                    <RepeaterTable
+                      data={prevDobs}
+                      columns={prevDobColumns}
+                      onAdd={(row) => updatePrevDobs([...prevDobs, row])}
+                      onEdit={(index, row) => {
+                        const updated = [...prevDobs];
+                        updated[index] = row;
+                        updatePrevDobs(updated);
+                      }}
+                      onDelete={(index) => {
+                        const updated = prevDobs.filter((_, i) => i !== index);
+                        updatePrevDobs(updated);
+                      }}
+                      DialogComponent={PreviousDOBDialog}
+                      addButtonText="Add"
+                      emptyMessage="No previous birth dates added"
+                      dialogTitle="Add previous date of birth"
+                      testIdPrefix="prev-dob"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
+                className="min-h-9"
+                data-testid="button-previous"
+              >
+                ← Previous
+              </Button>
+              <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handlePrevious}
+                  onClick={handleSave}
                   className="min-h-9"
-                  data-testid="button-previous"
+                  data-testid="button-save"
                 >
-                  ← Previous
+                  Save
                 </Button>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleSave}
-                    className="min-h-9"
-                    data-testid="button-save"
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                    data-testid="button-continue"
-                  >
-                    Continue →
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                  data-testid="button-continue"
+                >
+                  Continue →
+                </Button>
+              </div>
             </div>
           </form>
         </div>

@@ -21,7 +21,7 @@ const nextConfig = {
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     NEXT_PUBLIC_DATABASE_TYPE: process.env.NEXT_PUBLIC_DATABASE_TYPE || 'firebase',
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname, './src'),
@@ -31,6 +31,19 @@ const nextConfig = {
       '@/stores': path.resolve(__dirname, './src/stores'),
       '@assets': path.resolve(__dirname, './attached_assets'),
     };
+    
+    // Exclude firebase-admin from client-side bundles
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        net: false,
+        tls: false,
+        fs: false,
+        child_process: false,
+        dns: false,
+      };
+    }
+    
     return config;
   },
 };

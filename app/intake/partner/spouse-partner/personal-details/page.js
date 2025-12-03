@@ -51,7 +51,6 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
 const spousePartnerPersonalDetailsSchema = z.object({
-  prefix: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
   preferred_names: z.string().optional(),
@@ -99,7 +98,6 @@ export default function SpousePartnerPersonalDetailsPage() {
     resolver: zodResolver(spousePartnerPersonalDetailsSchema),
     mode: "onChange",
     defaultValues: {
-      prefix: sectionData.prefix || spousePartnerBasic?.prefix || "",
       family_name: sectionData.family_name || spousePartnerBasic?.family_name || "",
       given_names: sectionData.given_names || spousePartnerBasic?.given_names || "",
       preferred_names: sectionData.preferred_names || "",
@@ -222,22 +220,6 @@ export default function SpousePartnerPersonalDetailsPage() {
               <p className="text-sm text-gray-700 mb-4">
                 In the Spouse/Partner section you are to provide details about the main applicant's spouse/partner. You are to provide information even if this person is not going to be included in the application.
               </p>
-            </div>
-
-            <div>
-              <Label className="mb-2 block">Prefix/Title</Label>
-              <RadioGroup
-                value={watch("prefix")}
-                onValueChange={(value) => setValue("prefix", value)}
-                className="flex flex-wrap gap-4"
-              >
-                {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                  <div key={prefix} className="flex items-center space-x-2">
-                    <RadioGroupItem value={prefix} id={`prefix-${prefix}`} />
-                    <Label htmlFor={`prefix-${prefix}`} className="cursor-pointer">{prefix}</Label>
-                  </div>
-                ))}
-              </RadioGroup>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

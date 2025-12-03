@@ -61,7 +61,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md rounded-2xl shadow-lg">
         <CardHeader className="space-y-3 text-center pb-6">
           <div className="mx-auto flex justify-center">
-            <BrandLogo className="h-12" priority />
+            <BrandLogo className="h-12" priority variant="black" />
           </div>
           <CardTitle className="font-serif text-2xl">Welcome Back</CardTitle>
           <CardDescription className="text-base">

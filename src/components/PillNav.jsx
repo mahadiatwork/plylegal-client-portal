@@ -4,11 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
-  FileText, 
-  Upload, 
-  CheckSquare, 
-  Package, 
-  BookOpen, 
+  FileText,
+  Upload,
+  BookOpen,
   MessageSquare,
   FileEdit
 } from "lucide-react";
@@ -19,8 +17,6 @@ export function PillNav({ appId }) {
   const tabs = [
     { href: `/applications/${appId}/questionnaire`, label: "Questionnaire", icon: FileText },
     { href: `/applications/${appId}/uploads`, label: "Upload Documents", icon: Upload },
-    { href: `/applications/${appId}/tasks`, label: "Tasks", icon: CheckSquare },
-    { href: `/applications/${appId}/deliverables`, label: "Our Deliverables", icon: Package },
     { href: `/applications/${appId}/resources`, label: "Resources", icon: BookOpen },
     { href: `/applications/${appId}/messages`, label: "Send Message", icon: MessageSquare },
     { href: `/applications/${appId}/corrections`, label: "Submit Corrections", icon: FileEdit },

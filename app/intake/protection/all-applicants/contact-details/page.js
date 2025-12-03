@@ -4,21 +4,83 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
 
+// Country list for dropdowns
+const COUNTRY_OPTIONS = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
+  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
+  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
+  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
+  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
+  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
+  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
+  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
+  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
+  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
+  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
+  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
+  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
+  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
+  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
+  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
+  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
+  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
+  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
+  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
+  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
+  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
+  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+];
+
+// Form schema
 const formSchema = z.object({
-  phone: z.string().optional(),
-  mobile: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  emergency_contact_name: z.string().optional(),
-  emergency_contact_phone: z.string().optional(),
+  // Question 1: Shared Contact Phone Numbers
+  share_same_contact_phones: z.enum(["yes", "no"]).optional(),
+  after_hours_phone_country_code: z.string().optional(),
+  after_hours_phone_area_code: z.string().optional(),
+  after_hours_phone_number: z.string().optional(),
+  office_hours_phone_country_code: z.string().optional(),
+  office_hours_phone_area_code: z.string().optional(),
+  office_hours_phone_number: z.string().optional(),
+  mobile_phone_country_code: z.string().optional(),
+  mobile_phone_number: z.string().optional(),
+  
+  // Question 2: Shared Email Address
+  share_same_email: z.enum(["yes", "no"]).optional(),
+  shared_email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  
+  // Question 3: Shared Postal Address
+  share_same_postal_address: z.enum(["yes", "no"]).optional(),
+  postal_address: z.string().optional(),
+  postal_country: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // If shared phones is yes, at least one phone number should be provided
+  if (data.share_same_contact_phones === "yes") {
+    const hasAfterHours = data.after_hours_phone_country_code || data.after_hours_phone_area_code || data.after_hours_phone_number;
+    const hasOfficeHours = data.office_hours_phone_country_code || data.office_hours_phone_area_code || data.office_hours_phone_number;
+    const hasMobile = data.mobile_phone_country_code || data.mobile_phone_number;
+    
+    if (!hasAfterHours && !hasOfficeHours && !hasMobile) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one phone number must be provided when sharing contact phones",
+        path: ["after_hours_phone_country_code"],
+      });
+    }
+  }
 });
 
 export default function Page() {
@@ -40,13 +102,26 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      phone: "",
-      mobile: "",
-      email: "",
-      emergency_contact_name: "",
-      emergency_contact_phone: "",
+      share_same_contact_phones: "",
+      after_hours_phone_country_code: "",
+      after_hours_phone_area_code: "",
+      after_hours_phone_number: "",
+      office_hours_phone_country_code: "",
+      office_hours_phone_area_code: "",
+      office_hours_phone_number: "",
+      mobile_phone_country_code: "",
+      mobile_phone_number: "",
+      share_same_email: "",
+      shared_email: "",
+      share_same_postal_address: "",
+      postal_address: "",
+      postal_country: "",
     },
   });
+
+  const shareSamePhones = form.watch("share_same_contact_phones");
+  const shareSameEmail = form.watch("share_same_email");
+  const shareSamePostal = form.watch("share_same_postal_address");
 
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_contact_details || {};
@@ -58,6 +133,35 @@ export default function Page() {
       });
     }
   }, []);
+
+  // Clear phone fields when "No" is selected
+  useEffect(() => {
+    if (shareSamePhones === "no") {
+      form.setValue("after_hours_phone_country_code", "");
+      form.setValue("after_hours_phone_area_code", "");
+      form.setValue("after_hours_phone_number", "");
+      form.setValue("office_hours_phone_country_code", "");
+      form.setValue("office_hours_phone_area_code", "");
+      form.setValue("office_hours_phone_number", "");
+      form.setValue("mobile_phone_country_code", "");
+      form.setValue("mobile_phone_number", "");
+    }
+  }, [shareSamePhones]);
+
+  // Clear email field when "No" is selected
+  useEffect(() => {
+    if (shareSameEmail === "no") {
+      form.setValue("shared_email", "");
+    }
+  }, [shareSameEmail]);
+
+  // Clear postal address fields when "No" is selected
+  useEffect(() => {
+    if (shareSamePostal === "no") {
+      form.setValue("postal_address", "");
+      form.setValue("postal_country", "");
+    }
+  }, [shareSamePostal]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_contact_details", data);
@@ -89,88 +193,248 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <StickyNav
-        onPrevious={handlePrevious}
-        onSave={handleSave}
-        onContinue={form.handleSubmit(onSubmit)}
+    <div className="min-h-screen bg-[#E0E7FF]">
+      <StickyNav 
+        title="Contact Details"
+        description="For everyone who is to be included in this application, provide the following details about their contact details:"
       />
-
+      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Contact Details</h1>
-          <p className="text-muted-foreground mt-2">
-            Provide contact information for all applicants.
-          </p>
+        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="space-y-8">
+              {/* Question 1: Shared Contact Phone Numbers */}
+              <div className="space-y-4">
+                <Label className="text-base font-medium mb-3 block">
+                  Does everyone included in this application share the same Contact Phone Numbers?
+                </Label>
+                <RadioGroup
+                  value={shareSamePhones}
+                  onValueChange={(value) => form.setValue("share_same_contact_phones", value)}
+                  className="flex gap-4"
+                  data-testid="radio-share-phones"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="share-phones-yes" />
+                    <Label htmlFor="share-phones-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="share-phones-no" />
+                    <Label htmlFor="share-phones-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                {/* Shared Phone Fields - Show when Yes */}
+                {shareSamePhones === "yes" && (
+                  <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
+                    <div>
+                      <Label className="mb-2 block">After Hours Phone Number</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input
+                          placeholder="Country Code"
+                          {...form.register("after_hours_phone_country_code")}
+                          data-testid="input-after-hours-country"
+                        />
+                        <Input
+                          placeholder="Area Code"
+                          {...form.register("after_hours_phone_area_code")}
+                          data-testid="input-after-hours-area"
+                        />
+                        <Input
+                          placeholder="Number"
+                          {...form.register("after_hours_phone_number")}
+                          data-testid="input-after-hours-number"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="mb-2 block">Office Hours Phone Number</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input
+                          placeholder="Country Code"
+                          {...form.register("office_hours_phone_country_code")}
+                          data-testid="input-office-hours-country"
+                        />
+                        <Input
+                          placeholder="Area Code"
+                          {...form.register("office_hours_phone_area_code")}
+                          data-testid="input-office-hours-area"
+                        />
+                        <Input
+                          placeholder="Number"
+                          {...form.register("office_hours_phone_number")}
+                          data-testid="input-office-hours-number"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Country Code"
+                          {...form.register("mobile_phone_country_code")}
+                          data-testid="input-mobile-country"
+                        />
+                        <Input
+                          placeholder="Number"
+                          {...form.register("mobile_phone_number")}
+                          data-testid="input-mobile-number"
+                        />
+                      </div>
+                    </div>
+                    {form.formState.errors.after_hours_phone_country_code && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {form.formState.errors.after_hours_phone_country_code.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Question 2: Shared Email Address */}
+              <div className="space-y-4 pt-6 border-t border-gray-200">
+                <Label className="text-base font-medium mb-3 block">
+                  Does everyone included in this application share the same email address?
+                </Label>
+                <RadioGroup
+                  value={shareSameEmail}
+                  onValueChange={(value) => form.setValue("share_same_email", value)}
+                  className="flex gap-4"
+                  data-testid="radio-share-email"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="share-email-yes" />
+                    <Label htmlFor="share-email-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="share-email-no" />
+                    <Label htmlFor="share-email-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                {/* Shared Email Field - Show when Yes */}
+                {shareSameEmail === "yes" && (
+                  <div className="mt-6">
+                    <Label htmlFor="shared_email" className="mb-2 block">Email Address</Label>
+                    <Input
+                      id="shared_email"
+                      type="email"
+                      {...form.register("shared_email")}
+                      data-testid="input-shared-email"
+                    />
+                    {form.formState.errors.shared_email && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {form.formState.errors.shared_email.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Question 3: Shared Postal Address */}
+              <div className="space-y-4 pt-6 border-t border-gray-200">
+                <Label className="text-base font-medium mb-3 block">
+                  Does everyone included in this application share the same postal address?
+                </Label>
+                <RadioGroup
+                  value={shareSamePostal}
+                  onValueChange={(value) => form.setValue("share_same_postal_address", value)}
+                  className="flex gap-4"
+                  data-testid="radio-share-postal"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="share-postal-yes" />
+                    <Label htmlFor="share-postal-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="share-postal-no" />
+                    <Label htmlFor="share-postal-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+
+                {/* Shared Postal Address Fields - Show when Yes */}
+                {shareSamePostal === "yes" && (
+                  <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      Enter the current Postal Address for the Main Applicant
+                    </p>
+                    
+                    <div>
+                      <Label htmlFor="postal_address" className="mb-2 block">
+                        Postal Address
+                      </Label>
+                      <Input
+                        id="postal_address"
+                        placeholder="Address (including Street Number and Name or Post Office Box)"
+                        {...form.register("postal_address")}
+                        data-testid="input-postal-address"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="mb-2 block">Choose Country</Label>
+                      <Select
+                        value={form.watch("postal_country")}
+                        onValueChange={(value) => form.setValue("postal_country", value)}
+                      >
+                        <SelectTrigger data-testid="select-postal-country">
+                          <SelectValue placeholder="Choose Country" />
+                        </SelectTrigger>
+                        <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                          {COUNTRY_OPTIONS.map((country) => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between mt-8 pt-6 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
+                data-testid="button-previous"
+              >
+                Previous
+              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSave}
+                  data-testid="button-save"
+                >
+                  Save
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
+                  data-testid="button-continue"
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          </form>
         </div>
-
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-foreground">Contact Information</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  {...form.register("phone")}
-                  placeholder="Enter phone number"
-                  data-testid="input-phone"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="mobile">Mobile Number</Label>
-                <Input
-                  id="mobile"
-                  {...form.register("mobile")}
-                  placeholder="Enter mobile number"
-                  data-testid="input-mobile"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                {...form.register("email")}
-                placeholder="Enter email address"
-                data-testid="input-email"
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="border-t border-border pt-6 mt-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Emergency Contact</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_name">Name</Label>
-                  <Input
-                    id="emergency_contact_name"
-                    {...form.register("emergency_contact_name")}
-                    placeholder="Enter emergency contact name"
-                    data-testid="input-emergency-name"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_phone">Phone Number</Label>
-                  <Input
-                    id="emergency_contact_phone"
-                    {...form.register("emergency_contact_phone")}
-                    placeholder="Enter emergency contact phone"
-                    data-testid="input-emergency-phone"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </form>
       </div>
     </div>
   );

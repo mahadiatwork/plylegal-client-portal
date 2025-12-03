@@ -75,13 +75,39 @@ export default function QuestionnairePage() {
   
   const handleStartQuestionnaire = () => {
     // Route to visa-type-specific intake
-    const visaTypeRoutes = {
-      'partner': `/intake/partner/start?applicationId=${appId}`,
-      'protection': `/intake/protection/start?applicationId=${appId}`,
-      'temporary-work': `/intake/temporary-work/start?applicationId=${appId}`,
-    };
+    // First try visaTypeCode, then fallback to extracting from type field
+    let visaTypeCode = application.visaTypeCode?.toLowerCase();
     
-    const route = visaTypeRoutes[application.visaTypeCode] || `/intake/partner/start?applicationId=${appId}`;
+    // If visaTypeCode is not set, try to extract from application.type
+    if (!visaTypeCode && application.type) {
+      const typeLower = application.type.toLowerCase();
+      if (typeLower.includes('protection')) {
+        visaTypeCode = 'protection';
+      } else if (typeLower.includes('partner')) {
+        visaTypeCode = 'partner';
+      } else if (typeLower.includes('temporary') || typeLower.includes('work')) {
+        visaTypeCode = 'temporary-work';
+      }
+    }
+    
+    // Debug logging
+    console.log('Questionnaire routing:', {
+      visaTypeCode: application.visaTypeCode,
+      type: application.type,
+      detectedVisaType: visaTypeCode
+    });
+    
+    let route;
+    if (visaTypeCode === 'protection') {
+      route = `/intake/protection/start?applicationId=${appId}`;
+    } else if (visaTypeCode === 'partner') {
+      route = `/intake/partner/start?applicationId=${appId}`;
+    } else {
+      // All other visa types go to temporary-work route
+      route = `/intake/temporary-work/start?applicationId=${appId}`;
+    }
+    
+    console.log('Routing to:', route);
     router.push(route);
   };
   

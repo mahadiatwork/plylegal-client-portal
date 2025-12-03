@@ -2,11 +2,15 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import blackLogo from "@/assets/Ply_Logo_black.png";
+import whiteLogo from "@/assets/Ply_Logo_White.png";
 
-export function BrandLogo({ className, priority = false }) {
+export function BrandLogo({ className, priority = false, variant = "white" }) {
+  const logoSrc = variant === "black" ? blackLogo : whiteLogo;
+  
   return (
     <Image
-      src="/logo.png"
+      src={logoSrc}
       alt="PlyLegal"
       width={200}
       height={60}

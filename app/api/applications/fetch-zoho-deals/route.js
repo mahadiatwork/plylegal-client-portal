@@ -1,17 +1,230 @@
 import { NextResponse } from 'next/server';
 import { ZohoCRMClient } from '@/lib/zohoClient';
-import { getAdapter } from '@/lib/adapters';
+
+// Firebase REST API helper - uses the web API key with user's ID token for authentication
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
+// Store for ID token (passed from client)
+let currentIdToken = null;
+
+function setIdToken(token) {
+  currentIdToken = token;
+}
+
+function getAuthHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (currentIdToken) {
+    headers['Authorization'] = `Bearer ${currentIdToken}`;
+  }
+  return headers;
+}
+
+// Convert Firestore document to plain object
+function firestoreDocToObject(doc) {
+  const fields = doc.fields || {};
+  const result = {};
+  
+  for (const [key, value] of Object.entries(fields)) {
+    if (value.stringValue !== undefined) result[key] = value.stringValue;
+    else if (value.integerValue !== undefined) result[key] = parseInt(value.integerValue);
+    else if (value.doubleValue !== undefined) result[key] = value.doubleValue;
+    else if (value.booleanValue !== undefined) result[key] = value.booleanValue;
+    else if (value.timestampValue !== undefined) result[key] = value.timestampValue;
+    else if (value.nullValue !== undefined) result[key] = null;
+    else if (value.arrayValue !== undefined) result[key] = (value.arrayValue.values || []).map(v => firestoreDocToObject({ fields: { _: v } })._);
+    else if (value.mapValue !== undefined) result[key] = firestoreDocToObject(value.mapValue);
+  }
+  
+  return result;
+}
+
+// Convert plain object to Firestore document format
+function objectToFirestoreDoc(obj) {
+  const fields = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) {
+      fields[key] = { nullValue: null };
+    } else if (typeof value === 'string') {
+      fields[key] = { stringValue: value };
+    } else if (typeof value === 'number') {
+      if (Number.isInteger(value)) {
+        fields[key] = { integerValue: value.toString() };
+      } else {
+        fields[key] = { doubleValue: value };
+      }
+    } else if (typeof value === 'boolean') {
+      fields[key] = { booleanValue: value };
+    } else if (Array.isArray(value)) {
+      fields[key] = { arrayValue: { values: value.map(v => objectToFirestoreDoc({ _: v }).fields._) } };
+    } else if (typeof value === 'object') {
+      fields[key] = { mapValue: { fields: objectToFirestoreDoc(value).fields } };
+    }
+  }
+  
+  return { fields };
+}
+
+// Load applications from Firestore via REST API
+async function loadApplicationsServer(userId) {
+  try {
+    // Use structured query to filter by userId
+    const queryUrl = `${FIRESTORE_BASE_URL}:runQuery`;
+    const response = await fetch(queryUrl, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'applications' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'userId' },
+              op: 'EQUAL',
+              value: { stringValue: userId }
+            }
+          }
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Firestore query failed:', errorText);
+      return [];
+    }
+    
+    const results = await response.json();
+    
+    // Filter out empty results (Firestore returns array with one empty object if no results)
+    const applications = results
+      .filter(r => r.document)
+      .map(r => {
+        const docPath = r.document.name;
+        const id = docPath.split('/').pop();
+        return {
+          id,
+          ...firestoreDocToObject(r.document)
+        };
+      });
+    
+    return applications;
+  } catch (error) {
+    console.error('❌ Error loading applications:', error.message);
+    return [];
+  }
+}
+
+// Create application in Firestore via REST API
+async function createApplicationServer(app, userId) {
+  try {
+    const docUrl = `${FIRESTORE_BASE_URL}/applications/${app.id}`;
+    const now = new Date().toISOString();
+    
+    const appData = {
+      ...app,
+      userId: userId,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const response = await fetch(docUrl, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(objectToFirestoreDoc(appData))
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Firestore create failed:', errorText);
+      return { success: false, error: errorText };
+    }
+    
+    console.log(`✅ Application ${app.id} created successfully`);
+    return { success: true, application: appData };
+  } catch (error) {
+    console.error('❌ Error creating application:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Update application in Firestore via REST API
+async function updateApplicationServer(id, updates, userId) {
+  try {
+    const docUrl = `${FIRESTORE_BASE_URL}/applications/${id}`;
+    const now = new Date().toISOString();
+    
+    const { id: _, ...updateData } = updates;
+    const appData = {
+      ...updateData,
+      userId: userId,
+      updatedAt: now
+    };
+    
+    // Use updateMask to only update specific fields
+    const updateMask = Object.keys(appData).map(k => `updateMask.fieldPaths=${k}`).join('&');
+    
+    const response = await fetch(`${docUrl}?${updateMask}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(objectToFirestoreDoc(appData))
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Firestore update failed:', errorText);
+      return { success: false, error: errorText };
+    }
+    
+    console.log(`✅ Application ${id} updated successfully`);
+    
+    const result = await response.json();
+    return { success: true, application: { id, ...firestoreDocToObject(result) } };
+  } catch (error) {
+    console.error('❌ Error updating application:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete application from Firestore via REST API
+async function deleteApplicationServer(id) {
+  try {
+    const docUrl = `${FIRESTORE_BASE_URL}/applications/${id}`;
+    
+    const response = await fetch(docUrl, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Firestore delete failed:', errorText);
+      return { success: false, error: errorText };
+    }
+    
+    console.log(`✅ Application ${id} deleted`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error deleting application:', error.message);
+    return { success: false, error: error.message };
+  }
+}
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { userId, zohoContactId } = body;
+    const { userId, zohoContactId, idToken } = body;
 
     if (!userId || !zohoContactId) {
       return NextResponse.json(
         { success: false, error: 'userId and zohoContactId are required' },
         { status: 400 }
       );
+    }
+
+    // Set the ID token for authenticated Firestore requests
+    if (idToken) {
+      setIdToken(idToken);
     }
 
     console.log(`🔍 Fetching deals for contact ${zohoContactId} from Zoho CRM...`);
@@ -34,12 +247,11 @@ export async function POST(request) {
     console.log('📦 Raw deals JSON data:', JSON.stringify(deals, null, 2));
 
     // Save deals to Firebase as applications
-    const db = getAdapter();
     const applicationsFromZoho = [];
 
     // Load all existing applications ONCE before the loop to avoid duplicates
     console.log('📋 Loading existing applications from Firebase...');
-    const existingApps = await db.loadApplications(userId);
+    const existingApps = await loadApplicationsServer(userId);
     console.log(`📋 Found ${existingApps?.length || 0} existing applications in Firebase`);
 
     for (const deal of deals) {
@@ -125,7 +337,7 @@ export async function POST(request) {
           // Update only Zoho-related fields, preserve Firebase-only fields (questionnaire data, notes, etc.)
           // Also ensure zohoId is set (for old apps that don't have it yet)
           console.log(`💾 Updating existing application in Firebase:`, appId);
-          const updateResult = await db.updateApplication(appId, {
+          const updateResult = await updateApplicationServer(appId, {
             ...applicationData,
             id: appId,
             // Preserve any existing questionnaire data or other Firebase-only fields
@@ -160,7 +372,7 @@ export async function POST(request) {
           };
 
           console.log(`💾 Saving new application to Firebase:`, JSON.stringify(newApp, null, 2));
-          const createResult = await db.createApplication(newApp, userId);
+          const createResult = await createApplicationServer(newApp, userId);
           console.log(`💾 Create result:`, createResult);
           
           if (!createResult.success) {
@@ -190,7 +402,7 @@ export async function POST(request) {
     console.log(`📋 Applications saved to Firebase:`, applicationsFromZoho.map(app => ({ id: app.id, reference: app.reference, type: app.type, zohoId: app.zohoId })));
 
     // Verify final count in Firebase to ensure no duplicates
-    const finalApps = await db.loadApplications(userId);
+    const finalApps = await loadApplicationsServer(userId);
     console.log(`📊 Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
     
     // Find duplicates by zohoId and remove them (keep the first one)
@@ -219,7 +431,7 @@ export async function POST(request) {
       for (const duplicate of duplicatesByZohoId) {
         try {
           console.log(`🗑️ Deleting duplicate application ${duplicate.id} (zohoId: ${duplicate.zohoId}, reference: ${duplicate.reference})`);
-          await db.deleteApplication(duplicate.id);
+          await deleteApplicationServer(duplicate.id);
           removedCount++;
         } catch (deleteError) {
           console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteError.message);
@@ -230,7 +442,7 @@ export async function POST(request) {
     }
     
     // Reload to get final count after cleanup
-    const finalAppsAfterCleanup = await db.loadApplications(userId);
+    const finalAppsAfterCleanup = await loadApplicationsServer(userId);
     console.log(`📊 Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
 
     return NextResponse.json({

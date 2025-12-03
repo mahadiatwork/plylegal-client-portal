@@ -17,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 
 const formSchema = z.object({
-  prefix: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
   preferred_names: z.string().optional(),
@@ -50,7 +49,6 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      prefix: "",
       family_name: "",
       given_names: "",
       preferred_names: "",
@@ -144,23 +142,6 @@ export default function Page() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Personal Details</h2>
-
-            <div className="space-y-2">
-              <Label htmlFor="prefix">Prefix/Title *</Label>
-              <RadioGroup
-                value={form.watch("prefix")}
-                onValueChange={(value) => form.setValue("prefix", value)}
-              >
-                <div className="flex flex-wrap gap-4">
-                  {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                    <div key={prefix} className="flex items-center space-x-2">
-                      <RadioGroupItem value={prefix} id={`prefix-${prefix}`} data-testid={`radio-prefix-${prefix.toLowerCase()}`} />
-                      <Label htmlFor={`prefix-${prefix}`}>{prefix}</Label>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">

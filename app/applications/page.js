@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FileText } from "lucide-react";
+import { auth } from "@/lib/firebase";
 
 export default function ApplicationsPage() {
   const router = useRouter();
@@ -40,12 +41,16 @@ export default function ApplicationsPage() {
         setHasSynced(true); // Set flag immediately to prevent duplicate calls
         
         try {
+          // Get user's ID token for authenticated Firestore requests
+          const idToken = await auth.currentUser?.getIdToken();
+          
           const response = await fetch('/api/applications/fetch-zoho-deals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId: authSnap.user.id,
               zohoContactId: authSnap.userProfile.zohoContactId,
+              idToken: idToken,
             }),
           });
 

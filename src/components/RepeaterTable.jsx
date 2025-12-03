@@ -130,7 +130,7 @@ export function RepeaterTable({
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={dialogClassName || "max-w-2xl max-h-[90vh] bg-white"}>
+        <DialogContent className={dialogClassName || "max-w-2xl max-h-[90vh] bg-white overflow-y-auto"}>
           <DialogHeader>
             <DialogTitle>
               {dialogTitle || (editingIndex !== null ? "Edit Entry" : "Add Entry")}
@@ -141,13 +141,15 @@ export function RepeaterTable({
               </p>
             )}
           </DialogHeader>
-          {DialogComponent && (
-            <DialogComponent
-              editingRow={editingIndex !== null ? rows[editingIndex] : null}
-              onSave={handleSubmit}
-              onCancel={handleCancel}
-            />
-          )}
+          <div className="overflow-visible">
+            {DialogComponent && (
+              <DialogComponent
+                editingRow={editingIndex !== null ? rows[editingIndex] : null}
+                onSave={handleSubmit}
+                onCancel={handleCancel}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

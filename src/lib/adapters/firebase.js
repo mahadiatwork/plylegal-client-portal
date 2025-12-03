@@ -79,6 +79,8 @@ export class FirebaseAdapter extends BaseAdapter {
           const userProfile = await this.getUserProfile(userCredential.user.uid);
           if (userProfile?.zohoContactId) {
             console.log('🔍 Fetching deals/applications from Zoho CRM on login...');
+            // Get ID token for authenticated Firestore requests
+            const idToken = await userCredential.user.getIdToken();
             // Use API route to fetch and save to Firebase (ensures correct field mapping)
             fetch('/api/applications/fetch-zoho-deals', {
               method: 'POST',
@@ -86,6 +88,7 @@ export class FirebaseAdapter extends BaseAdapter {
               body: JSON.stringify({
                 userId: userCredential.user.uid,
                 zohoContactId: userProfile.zohoContactId,
+                idToken: idToken,
               }),
             })
               .then(async (response) => {
