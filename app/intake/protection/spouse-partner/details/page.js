@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   family_name: z.string().optional(),
@@ -37,6 +38,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -66,13 +68,21 @@ export default function Page() {
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_spouse_details || {};
     if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
+      form.reset({
+        family_name: savedData.family_name || "",
+        given_names: savedData.given_names || "",
+        preferred_names: savedData.preferred_names || "",
+        gender: savedData.gender || "",
+        birth_day: savedData.birth_day || "",
+        birth_month: savedData.birth_month || "",
+        birth_year: savedData.birth_year || "",
+        intending_to_migrate: savedData.intending_to_migrate || "",
+        country_of_birth: savedData.country_of_birth || "",
+        city_of_birth: savedData.city_of_birth || "",
+        country_of_residence: savedData.country_of_residence || "",
       });
     }
-  }, []);
+  }, [draftSnap.draft?.protection_spouse_details]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_spouse_details", data);
@@ -87,19 +97,42 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("protection_spouse_details", values);
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      const values = form.getValues();
+      console.log("Saving protection_spouse_details data:", values);
+      const result = await draftStore.saveSectionData("protection_spouse_details", values);
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error);
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
       toast({
         title: "Error",
-        description: "Failed to save draft",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -125,12 +158,6 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-background">
-      <StickyNav
-        onPrevious={handlePrevious}
-        onSave={handleSave}
-        onContinue={form.handleSubmit(onSubmit)}
-      />
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Spouse/Partner Personal Details</h1>
@@ -302,8 +329,58 @@ export default function Page() {
               </Select>
             </div>
           </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              className="min-h-9"
+              data-testid="button-previous"
+            >
+              ← Previous
+            </Button>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="min-h-9"
+                data-testid="button-save"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Draft"
+                )}
+              </Button>
+              <Button
+                type="submit"
+                className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                data-testid="button-next"
+              >
+                Next →
+              </Button>
+            </div>
+          </div>
         </form>
       </div>
+
+      {/* Mobile Navigation */}
+      <StickyNav
+        onPrev={handlePrevious}
+        onNext={form.handleSubmit(onSubmit)}
+        onSave={handleSave}
+        loading={isSaving}
+        previousTestId="button-previous-mobile"
+        nextTestId="button-next-mobile"
+        saveTestId="button-save-mobile"
+      />
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -1185,9 +1186,9 @@ export default function IdentityPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const snapshot = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   const visaType = getVisaTypeFromPath(pathname);
-  const currentData = snapshot?.data?.protection_identity || {};
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -1201,18 +1202,41 @@ export default function IdentityPage() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      is_current_citizen: currentData.is_current_citizen || "no",
-      stateless_explanation: currentData.stateless_explanation || "",
-      has_been_citizen: currentData.has_been_citizen || "no",
-      citizenships: currentData.citizenships || [],
-      has_passport: currentData.has_passport || "no",
-      passports: currentData.passports || [],
-      has_identity_document: currentData.has_identity_document || "no",
-      identity_documents: currentData.identity_documents || [],
-      has_permanent_residency: currentData.has_permanent_residency || "no",
-      pr_countries: currentData.pr_countries || [],
+      is_current_citizen: "no",
+      stateless_explanation: "",
+      has_been_citizen: "no",
+      citizenships: [],
+      has_passport: "no",
+      passports: [],
+      has_identity_document: "no",
+      identity_documents: [],
+      has_permanent_residency: "no",
+      pr_countries: [],
     },
   });
+
+  // Load saved data when draft is available
+  useEffect(() => {
+    const savedData = snapshot.draft?.protection_identity || {};
+    if (Object.keys(savedData).length > 0) {
+      // Merge saved data with default values to ensure all fields are set
+      const formData = {
+        is_current_citizen: savedData.is_current_citizen || "no",
+        stateless_explanation: savedData.stateless_explanation || "",
+        has_been_citizen: savedData.has_been_citizen || "no",
+        citizenships: savedData.citizenships || [],
+        has_passport: savedData.has_passport || "no",
+        passports: savedData.passports || [],
+        has_identity_document: savedData.has_identity_document || "no",
+        identity_documents: savedData.identity_documents || [],
+        has_permanent_residency: savedData.has_permanent_residency || "no",
+        pr_countries: savedData.pr_countries || [],
+      };
+      
+      // Use reset to properly update all form fields
+      form.reset(formData);
+    }
+  }, [snapshot.draft?.protection_identity]);
 
   // Watch form values
   const isCurrentCitizen = form.watch("is_current_citizen");
@@ -1227,21 +1251,45 @@ export default function IdentityPage() {
   const prCountries = form.watch("pr_countries") || [];
 
   const handleSave = async () => {
-    const data = form.getValues();
-    const result = await draftStore.saveSectionData("protection_identity", data);
-    
-    if (result.success) {
-      draftStore.markPageComplete(`${visaType}/main-applicant/identity`);
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      // Validate form before saving
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const data = form.getValues();
+      console.log("Saving protection_identity data:", data); // Debug log
+      const result = await draftStore.saveSectionData("protection_identity", data);
+      
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error); // Debug log
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error); // Debug log
       toast({
         title: "Error",
-        description: result.error || "Failed to save changes",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1358,8 +1406,9 @@ export default function IdentityPage() {
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <StickyNav
           onSave={handleSave}
-          onPrevious={handlePrevious}
+          onPrev={handlePrevious}
           onNext={form.handleSubmit(onSubmit)}
+          loading={isSaving}
           nextLabel="Continue"
           previousTestId="button-previous-mobile"
           nextTestId="button-continue-mobile"
@@ -1667,10 +1716,18 @@ export default function IdentityPage() {
                   type="button"
                   variant="outline"
                   onClick={handleSave}
+                  disabled={isSaving}
                   className="min-h-9"
                   data-testid="button-save"
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"

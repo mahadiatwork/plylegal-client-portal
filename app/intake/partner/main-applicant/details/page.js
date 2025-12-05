@@ -116,7 +116,6 @@ export default function MainApplicantDetailsPage() {
       marital_status_date_day: sectionData.marital_status_date_day || "",
       marital_status_date_month: sectionData.marital_status_date_month || "",
       marital_status_date_year: sectionData.marital_status_date_year || "",
-      completing_prefix: sectionData.completing_prefix,
       completing_family_name: sectionData.completing_family_name || "",
       completing_given_names: sectionData.completing_given_names || "",
       completing_preferred_names: sectionData.completing_preferred_names || "",
@@ -135,7 +134,6 @@ export default function MainApplicantDetailsPage() {
   const isMainApplicant = useWatch({ control, name: "is_main_applicant" });
 
   // Watch form values for radio groups and selects
-  const completingPrefix = useWatch({ control, name: "completing_prefix" });
   const completingGender = useWatch({ control, name: "completing_gender" });
   const completingBirthDay = useWatch({ control, name: "completing_birth_day" });
   const completingBirthMonth = useWatch({ control, name: "completing_birth_month" });
@@ -231,7 +229,6 @@ export default function MainApplicantDetailsPage() {
 
     if (isMainApplicant === "Yes") {
       // Clear person completing questionnaire fields when switching to Yes
-      setValue("completing_prefix", "");
       setValue("completing_family_name", "");
       setValue("completing_given_names", "");
       setValue("completing_preferred_names", "");
@@ -304,159 +301,7 @@ export default function MainApplicantDetailsPage() {
             />
             </div>
 
-            {/* Section 1 - Person Completing Questionnaire (shown only if No) */}
-            {isMainApplicant === "No" && (
-              <div className="space-y-6 pt-6 border-t border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Insert the details of the person who is completing this Questionnaire
-                </h2>
-
-                {/* Prefix/Title - Radio Group */}
-                <div>
-                <Label className="text-sm font-medium mb-2 block">Prefix/Title</Label>
-                <RadioGroup
-                  value={completingPrefix || ""}
-                  onValueChange={(value) => setValue("completing_prefix", value)}
-                  className="flex flex-wrap gap-4"
-                >
-                  {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                    <div key={prefix} className="flex items-center">
-                      <RadioGroupItem value={prefix} id={`completing-prefix-${prefix.toLowerCase()}`} />
-                      <Label htmlFor={`completing-prefix-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {prefix}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {errors.completing_prefix && (
-                  <p className="text-sm text-red-600 mt-1">{errors.completing_prefix.message}</p>
-                )}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Field
-                  type="text"
-                  name="completing_family_name"
-                  control={control}
-                  label="Family Name"
-                  required
-                  placeholder="Smith"
-                />
-
-                <Field
-                  type="text"
-                  name="completing_given_names"
-                  control={control}
-                  label="Given Names"
-                  required
-                  placeholder="John David"
-                />
-                </div>
-
-                <Field
-                  type="text"
-                  name="completing_preferred_names"
-                  control={control}
-                  label="Preferred Name(s)"
-                  placeholder="John"
-                />
-
-                {/* Gender - Radio Group */}
-                <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  Gender <span className="text-red-600">*</span>
-                </Label>
-                <RadioGroup
-                  value={completingGender || ""}
-                  onValueChange={(value) => setValue("completing_gender", value)}
-                  className="flex gap-4"
-                >
-                  {["Male", "Female"].map((gender) => (
-                    <div key={gender} className="flex items-center">
-                      <RadioGroupItem value={gender} id={`completing-gender-${gender.toLowerCase()}`} />
-                      <Label htmlFor={`completing-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {gender}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {errors.completing_gender && (
-                  <p className="text-sm text-red-600 mt-1">{errors.completing_gender.message}</p>
-                )}
-                </div>
-
-                {/* Date of Birth - Three Dropdowns */}
-                <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Date of Birth <span className="text-red-600">*</span>
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="completing_birth_day" className="text-xs text-gray-600">Day</Label>
-                    <Select
-                      value={completingBirthDay || ""}
-                      onValueChange={(value) => setValue("completing_birth_day", value)}
-                    >
-                      <SelectTrigger id="completing_birth_day" data-testid="select-completing-birth-day">
-                        <SelectValue placeholder="Day" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {days.map((day) => (
-                          <SelectItem key={day} value={day}>{day}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.completing_birth_day && (
-                      <p className="text-sm text-red-600 mt-1">{errors.completing_birth_day.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="completing_birth_month" className="text-xs text-gray-600">Month</Label>
-                    <Select
-                      value={completingBirthMonth || ""}
-                      onValueChange={(value) => setValue("completing_birth_month", value)}
-                    >
-                      <SelectTrigger id="completing_birth_month" data-testid="select-completing-birth-month">
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {months.map((month, idx) => (
-                          <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.completing_birth_month && (
-                      <p className="text-sm text-red-600 mt-1">{errors.completing_birth_month.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="completing_birth_year" className="text-xs text-gray-600">Year</Label>
-                    <Select
-                      value={completingBirthYear || ""}
-                      onValueChange={(value) => setValue("completing_birth_year", value)}
-                    >
-                      <SelectTrigger id="completing_birth_year" data-testid="select-completing-birth-year">
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {years.map((year) => (
-                          <SelectItem key={year} value={year}>{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.completing_birth_year && (
-                      <p className="text-sm text-red-600 mt-1">{errors.completing_birth_year.message}</p>
-                    )}
-                  </div>
-                </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* Section 2 - Main Applicant's Personal Details (shown if Yes OR No) */}
+            {/* Main Applicant's Personal Details Section */}
             {(isMainApplicant === "Yes" || isMainApplicant === "No") && (
               <div className="space-y-6 pt-6 border-t border-gray-200">
                 {/* Instructional Note (shown only when No is selected) */}

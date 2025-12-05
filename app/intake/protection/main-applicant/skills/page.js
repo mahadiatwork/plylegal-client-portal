@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 const REGISTRATION_TYPES = ["Registration", "Licence", "Professional Membership", "Other"];
 const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Pending", "Other"];
@@ -378,7 +379,7 @@ export default function SkillsPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  const draft = draftSnap.draft;
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -403,27 +404,61 @@ export default function SkillsPage() {
   const assessments = form.watch("assessments") || [];
 
   useEffect(() => {
-    const savedData = draft.protection_skills || {};
+    const savedData = draftSnap.draft?.protection_skills || {};
     if (Object.keys(savedData).length > 0) {
-      form.reset(savedData);
+      // Merge saved data with default values to ensure all fields are set
+      const formData = {
+        has_occupational_registration: savedData.has_occupational_registration || "no",
+        registrations: savedData.registrations || [],
+        has_skills_assessment: savedData.has_skills_assessment || "no",
+        assessments: savedData.assessments || [],
+      };
+      
+      // Use reset to properly update all form fields
+      form.reset(formData);
     }
-  }, []);
+  }, [draftSnap.draft?.protection_skills]);
 
   const handleSave = async () => {
-    const formData = form.getValues();
-    const result = await draftStore.saveSectionData("protection_skills", formData);
-    
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      // Validate form before saving
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const formData = form.getValues();
+      console.log("Saving protection_skills data:", formData); // Debug log
+      const result = await draftStore.saveSectionData("protection_skills", formData);
+      
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error); // Debug log
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error); // Debug log
       toast({
         title: "Error",
-        description: result.error || "Failed to save changes",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -449,8 +484,10 @@ export default function SkillsPage() {
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <StickyNav 
-        title="Skills"
-        description="In this section, provide details about the formal recognition of the main applicant's skills."
+        onPrev={handlePrevious}
+        onSave={handleSave}
+        onNext={form.handleSubmit(onSubmit)}
+        loading={isSaving}
       />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -589,9 +626,17 @@ export default function SkillsPage() {
                   type="button"
                   variant="outline"
                   onClick={handleSave}
+                  disabled={isSaving}
                   data-testid="button-save"
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"

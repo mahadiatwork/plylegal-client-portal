@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -418,6 +419,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -447,13 +449,12 @@ export default function Page() {
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_future_travel || {};
     if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
+      form.reset({
+        has_future_travel: savedData.has_future_travel || "",
+        main_applicant_future_travel: savedData.main_applicant_future_travel || [],
       });
     }
-  }, []);
+  }, [draftSnap.draft?.protection_future_travel]);
 
   // Clear future travel data when "No" is selected
   useEffect(() => {
@@ -479,19 +480,43 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("protection_future_travel", values);
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      const formData = form.getValues();
+      console.log("Saving protection_future_travel data:", formData);
+      const result = await draftStore.saveSectionData("protection_future_travel", formData);
+      
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error);
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
       toast({
         title: "Error",
-        description: "Failed to save draft",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -519,13 +544,14 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        title="Future Travel"
-        description="For everyone who is to be included in this application, provide the following details about their future travel plans:"
-      />
-      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground">Future Travel</h1>
+            <p className="text-muted-foreground mt-2">
+              For everyone who is to be included in this application, provide the following details about their future travel plans:
+            </p>
+          </div>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="space-y-8">
               {/* Gate Question */}
@@ -553,7 +579,7 @@ export default function Page() {
                   </div>
                 </RadioGroup>
               </div>
-
+              <br />
               {/* Future Travel Table - Only show when Yes */}
               {hasFutureTravel === "yes" && (
                 <div className="space-y-4">
@@ -583,36 +609,58 @@ export default function Page() {
               )}
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handlePrevious}
+                className="min-h-9"
                 data-testid="button-previous"
               >
-                Previous
+                ← Previous
               </Button>
               <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleSave}
+                  disabled={isSaving}
+                  className="min-h-9"
                   data-testid="button-save"
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
+                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                  data-testid="button-next"
                 >
-                  Continue
+                  Next →
                 </Button>
               </div>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Mobile Navigation */}
+      <StickyNav
+        onPrev={handlePrevious}
+        onNext={form.handleSubmit(onSubmit)}
+        onSave={handleSave}
+        loading={isSaving}
+        previousTestId="button-previous-mobile"
+        nextTestId="button-next-mobile"
+        saveTestId="button-save-mobile"
+      />
     </div>
   );
 }

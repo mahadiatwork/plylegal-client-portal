@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 const PROFICIENCY_LEVELS = ["Basic", "Intermediate", "Proficient", "Fluent/Native"];
 const TEST_TYPES = ["IELTS Academic", "IELTS General", "PTE Academic", "TOEFL iBT", "OET", "Other"];
@@ -61,7 +62,14 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dialogForm.handleSubmit(handleSubmit)(e);
+      }} 
+      className="space-y-4"
+    >
       <div>
         <Label className="mb-2 block">Language *</Label>
         <Select
@@ -175,7 +183,14 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dialogForm.handleSubmit(handleSubmit)(e);
+      }} 
+      className="space-y-4"
+    >
       <div>
         <Label className="mb-2 block">Test Type *</Label>
         <Select
@@ -334,7 +349,7 @@ export default function LanguagePage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  const draft = draftSnap.draft;
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -359,27 +374,61 @@ export default function LanguagePage() {
   const englishTests = form.watch("english_tests") || [];
 
   useEffect(() => {
-    const savedData = draft.protection_language || {};
+    const savedData = draftSnap.draft?.protection_language || {};
     if (Object.keys(savedData).length > 0) {
-      form.reset(savedData);
+      // Merge saved data with default values to ensure all fields are set
+      const formData = {
+        is_english_main_language: savedData.is_english_main_language || "no",
+        languages: savedData.languages || [],
+        has_english_test: savedData.has_english_test || "no",
+        english_tests: savedData.english_tests || [],
+      };
+      
+      // Use reset to properly update all form fields
+      form.reset(formData);
     }
-  }, []);
+  }, [draftSnap.draft?.protection_language]);
 
   const handleSave = async () => {
-    const formData = form.getValues();
-    const result = await draftStore.saveSectionData("protection_language", formData);
-    
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      // Validate form before saving
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const formData = form.getValues();
+      console.log("Saving protection_language data:", formData); // Debug log
+      const result = await draftStore.saveSectionData("protection_language", formData);
+      
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error); // Debug log
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error); // Debug log
       toast({
         title: "Error",
-        description: result.error || "Failed to save changes",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -405,8 +454,10 @@ export default function LanguagePage() {
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <StickyNav 
-        title="Language"
-        description="In this section, provide details about the main applicant's language skills."
+        onPrev={handlePrevious}
+        onSave={handleSave}
+        onNext={form.handleSubmit(onSubmit)}
+        loading={isSaving}
       />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -544,9 +595,17 @@ export default function LanguagePage() {
                   type="button"
                   variant="outline"
                   onClick={handleSave}
+                  disabled={isSaving}
                   data-testid="button-save"
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"

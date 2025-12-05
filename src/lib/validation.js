@@ -35,7 +35,6 @@ export const detailsSchema = z.object({
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
   // Person completing questionnaire fields (required when is_main_applicant === "No")
-  completing_prefix: z.string().optional(),
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
   completing_preferred_names: z.string().optional(),

@@ -15,12 +15,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
   
   // Person completing questionnaire (shown only if is_main_applicant === "yes")
-  completing_prefix: z.string().optional(),
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
   completing_preferred_names: z.string().optional(),
@@ -56,6 +56,7 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
   
   const [isMainApplicant, setIsMainApplicant] = useState("yes");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -70,7 +71,6 @@ export default function Page() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       is_main_applicant: "yes",
-      completing_prefix: "",
       completing_family_name: "",
       completing_given_names: "",
       completing_preferred_names: "",
@@ -99,16 +99,41 @@ export default function Page() {
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_details || {};
     if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
-      });
+      // Merge saved data with default values to ensure all fields are set
+      const formData = {
+        is_main_applicant: savedData.is_main_applicant || "yes",
+        completing_family_name: savedData.completing_family_name || "",
+        completing_given_names: savedData.completing_given_names || "",
+        completing_preferred_names: savedData.completing_preferred_names || "",
+        completing_gender: savedData.completing_gender || "",
+        completing_birth_day: savedData.completing_birth_day || "",
+        completing_birth_month: savedData.completing_birth_month || "",
+        completing_birth_year: savedData.completing_birth_year || "",
+        prefix: savedData.prefix || "",
+        family_name: savedData.family_name || "",
+        given_names: savedData.given_names || "",
+        preferred_names: savedData.preferred_names || "",
+        gender: savedData.gender || "",
+        birth_day: savedData.birth_day || "",
+        birth_month: savedData.birth_month || "",
+        birth_year: savedData.birth_year || "",
+        country_of_birth: savedData.country_of_birth || "",
+        city_of_birth: savedData.city_of_birth || "",
+        state_of_birth: savedData.state_of_birth || "",
+        marital_status: savedData.marital_status || "",
+        marital_status_date_day: savedData.marital_status_date_day || "",
+        marital_status_date_month: savedData.marital_status_date_month || "",
+        marital_status_date_year: savedData.marital_status_date_year || "",
+      };
+      
+      // Use reset to properly update all form fields including Select components
+      form.reset(formData);
+      
       if (savedData.is_main_applicant) {
         setIsMainApplicant(savedData.is_main_applicant);
       }
     }
-  }, []);
+  }, [draftSnap.draft?.protection_details]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_details", data);
@@ -123,19 +148,24 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("protection_details", values);
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save draft",
-        variant: "destructive",
-      });
+    setIsSaving(true);
+    try {
+      const values = form.getValues();
+      const result = await draftStore.saveSectionData("protection_details", values);
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -157,10 +187,10 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-8 border-b border-gray-200">
+          <div className="px-6 py-6 border-b border-gray-200">
             <h1 className="text-2xl font-semibold text-gray-900">Main Applicant's Details</h1>
             <p className="text-sm text-gray-600 mt-2">
               In the Main Applicant section, please provide details about the person who is intending to be the primary applicant.
@@ -200,155 +230,8 @@ export default function Page() {
               )}
             </div>
 
-            {/* Person Completing Questionnaire Section (shown only if YES) */}
-            {isMainApplicant === "yes" && (
-              <div className="space-y-6 pt-6">
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900 mb-1">
-                    Insert the details of the person who is completing this Questionnaire
-                  </h2>
-                  <p className="text-sm text-gray-600">Prefix/Title</p>
-                </div>
-
-                <div>
-                  <RadioGroup
-                    value={form.watch("completing_prefix")}
-                    onValueChange={(value) => form.setValue("completing_prefix", value)}
-                    className="flex flex-wrap gap-4"
-                    data-testid="radio-completing-prefix"
-                  >
-                    {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                      <div key={prefix} className="flex items-center">
-                        <RadioGroupItem value={prefix} id={`completing-${prefix.toLowerCase()}`} />
-                        <Label htmlFor={`completing-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                          {prefix}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                  {form.formState.errors.completing_prefix?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_prefix.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Family Name</Label>
-                  <Input {...form.register("completing_family_name")} data-testid="input-completing-family-name" />
-                  {form.formState.errors.completing_family_name?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_family_name.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Given Names</Label>
-                  <Input {...form.register("completing_given_names")} data-testid="input-completing-given-names" />
-                  {form.formState.errors.completing_given_names?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_given_names.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Preferred Names</Label>
-                  <Input {...form.register("completing_preferred_names")} data-testid="input-completing-preferred-names" />
-                  {form.formState.errors.completing_preferred_names?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_preferred_names.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Gender</Label>
-                  <RadioGroup
-                    value={form.watch("completing_gender")}
-                    onValueChange={(value) => form.setValue("completing_gender", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-completing-gender"
-                  >
-                    {["Male", "Female"].map((gender) => (
-                      <div key={gender} className="flex items-center">
-                        <RadioGroupItem value={gender} id={`completing-gender-${gender.toLowerCase()}`} />
-                        <Label htmlFor={`completing-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                          {gender}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                  {form.formState.errors.completing_gender?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_gender.message}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Date of Birth - Day</Label>
-                    <Select 
-                      onValueChange={(value) => form.setValue("completing_birth_day", value)} 
-                      value={form.watch("completing_birth_day")}
-                    >
-                      <SelectTrigger data-testid="select-completing-birth-day">
-                        <SelectValue placeholder="Choose Day" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {days.map((day) => (
-                          <SelectItem key={day} value={day}>{day}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {form.formState.errors.completing_birth_day?.message && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_day.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label>Month</Label>
-                    <Select 
-                      onValueChange={(value) => form.setValue("completing_birth_month", value)} 
-                      value={form.watch("completing_birth_month")}
-                    >
-                      <SelectTrigger data-testid="select-completing-birth-month">
-                        <SelectValue placeholder="Choose Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {months.map((month, idx) => (
-                          <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {form.formState.errors.completing_birth_month?.message && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_month.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label>Year</Label>
-                    <Select 
-                      onValueChange={(value) => form.setValue("completing_birth_year", value)} 
-                      value={form.watch("completing_birth_year")}
-                    >
-                      <SelectTrigger data-testid="select-completing-birth-year">
-                        <SelectValue placeholder="Choose Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {years.map((year) => (
-                          <SelectItem key={year} value={year}>{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {form.formState.errors.completing_birth_year?.message && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_year.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-sm text-gray-600 italic">
-                  When entering information into this Questionnaire, ensure that the details which are entered are from the point of view of the <strong>Main Applicant</strong>.
-                </p>
-              </div>
-            )}
-
             {/* Main Applicant's Personal Details Section */}
-            <div className="space-y-6 pt-6 border-t border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Main Applicant's Personal Details</h2>
-
+            <div className="space-y-6 border-gray-200">
               <div className="hidden">
                 <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
                 <RadioGroup
@@ -604,10 +487,18 @@ export default function Page() {
                   type="button"
                   variant="outline"
                   onClick={handleSave}
+                  disabled={isSaving}
                   className="min-h-9"
                   data-testid="button-save"
                 >
-                  Save Draft
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"
@@ -624,9 +515,10 @@ export default function Page() {
 
       {/* Mobile Navigation */}
       <StickyNav
-        onPrevious={handlePrevious}
+        onPrev={handlePrevious}
         onNext={form.handleSubmit(onSubmit)}
         onSave={handleSave}
+        loading={isSaving}
         previousTestId="button-previous-mobile"
         nextTestId="button-next-mobile"
         saveTestId="button-save-mobile"

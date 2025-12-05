@@ -895,7 +895,6 @@ export default function MainApplicantOtherPage() {
             )}
 
             <div className="space-y-6">
-              <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
 
               {/* Question 1: Other Names */}
               <div>

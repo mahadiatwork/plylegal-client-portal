@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { StickyNav } from "@/components/StickyNav";
+import { Loader2 } from "lucide-react";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -170,6 +171,7 @@ export default function EmploymentPage() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -226,29 +228,85 @@ export default function EmploymentPage() {
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_employment_offer || {};
     if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
+      form.reset({
+        is_sponsored: savedData.is_sponsored || "no",
+        business_name: savedData.business_name || "",
+        trading_name: savedData.trading_name || "",
+        abn: savedData.abn || "",
+        industry_sector: savedData.industry_sector || "",
+        business_description: savedData.business_description || "",
+        contact_prefix: savedData.contact_prefix || "",
+        contact_first_name: savedData.contact_first_name || "",
+        contact_family_name: savedData.contact_family_name || "",
+        contact_position: savedData.contact_position || "",
+        contact_phone_country_code: savedData.contact_phone_country_code || "",
+        contact_phone_area_code: savedData.contact_phone_area_code || "",
+        contact_phone_number: savedData.contact_phone_number || "",
+        contact_mobile_country_code: savedData.contact_mobile_country_code || "",
+        contact_mobile_number: savedData.contact_mobile_number || "",
+        contact_email: savedData.contact_email || "",
+        after_hours_phone_country_code: savedData.after_hours_phone_country_code || "",
+        after_hours_phone_area_code: savedData.after_hours_phone_area_code || "",
+        after_hours_phone_number: savedData.after_hours_phone_number || "",
+        office_hours_phone_country_code: savedData.office_hours_phone_country_code || "",
+        office_hours_phone_area_code: savedData.office_hours_phone_area_code || "",
+        office_hours_phone_number: savedData.office_hours_phone_number || "",
+        business_email: savedData.business_email || "",
+        commercial_address_line1: savedData.commercial_address_line1 || "",
+        commercial_address_line2: savedData.commercial_address_line2 || "",
+        commercial_suburb: savedData.commercial_suburb || "",
+        commercial_state: savedData.commercial_state || "",
+        commercial_postcode: savedData.commercial_postcode || "",
+        commercial_country: savedData.commercial_country || "",
+        commercial_address_type: savedData.commercial_address_type || "",
+        postal_address_line1: savedData.postal_address_line1 || "",
+        postal_address_line2: savedData.postal_address_line2 || "",
+        postal_suburb: savedData.postal_suburb || "",
+        postal_state: savedData.postal_state || "",
+        postal_postcode: savedData.postal_postcode || "",
+        postal_country: savedData.postal_country || "",
       });
     }
-  }, []);
+  }, [draftSnap.draft?.protection_employment_offer]);
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("protection_employment_offer", values);
-    
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      const formData = form.getValues();
+      console.log("Saving protection_employment_offer data:", formData);
+      const result = await draftStore.saveSectionData("protection_employment_offer", formData);
+      
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error);
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
       toast({
         title: "Error",
-        description: result.error || "Failed to save draft",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -312,13 +370,14 @@ export default function EmploymentPage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        title="Employment"
-        description="For the main applicant, provide the following details about any offer of employment by a business/organisation in Australia."
-      />
-      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground">Employment</h1>
+            <p className="text-muted-foreground mt-2">
+              For the main applicant, provide the following details about any offer of employment by a business/organisation in Australia.
+            </p>
+          </div>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="space-y-8">
               {/* Main Question */}
@@ -329,7 +388,7 @@ export default function EmploymentPage() {
                 <RadioGroup
                   value={isSponsored}
                   onValueChange={(value) => form.setValue("is_sponsored", value)}
-                  className="flex gap-4"
+                  className="flex gap-4 mb-5"
                   data-testid="radio-is-sponsored"
                 >
                   <div className="flex items-center">
@@ -421,7 +480,7 @@ export default function EmploymentPage() {
                   {/* Contact Person */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Contact Person</h2>
-                    
+{/*                     
                     <div>
                       <Label className="mb-2 block">Prefix/Title</Label>
                       <RadioGroup
@@ -438,7 +497,7 @@ export default function EmploymentPage() {
                           </div>
                         ))}
                       </RadioGroup>
-                    </div>
+                    </div> */}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -757,36 +816,58 @@ export default function EmploymentPage() {
               )}
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handlePrevious}
+                className="min-h-9"
                 data-testid="button-previous"
               >
-                Previous
+                ← Previous
               </Button>
               <div className="flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleSave}
+                  disabled={isSaving}
+                  className="min-h-9"
                   data-testid="button-save"
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
+                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                  data-testid="button-next"
                 >
-                  Continue
+                  Next →
                 </Button>
               </div>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Mobile Navigation */}
+      <StickyNav
+        onPrev={handlePrevious}
+        onNext={form.handleSubmit(onSubmit)}
+        onSave={handleSave}
+        loading={isSaving}
+        previousTestId="button-previous-mobile"
+        nextTestId="button-next-mobile"
+        saveTestId="button-save-mobile"
+      />
     </div>
   );
 }

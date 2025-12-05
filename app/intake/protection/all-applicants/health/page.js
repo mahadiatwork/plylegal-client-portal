@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,8 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StickyNav } from "@/components/StickyNav";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   medical_condition: z.enum(["yes", "no"]).optional(),
@@ -26,6 +28,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -47,13 +50,13 @@ export default function Page() {
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_health || {};
     if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
+      form.reset({
+        medical_condition: savedData.medical_condition || "",
+        requires_assistance: savedData.requires_assistance || "",
+        health_insurance: savedData.health_insurance || "",
       });
     }
-  }, []);
+  }, [draftSnap.draft?.protection_health]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_health", data);
@@ -68,30 +71,48 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("protection_health", values);
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+      const formData = form.getValues();
+      console.log("Saving protection_health data:", formData);
+      const result = await draftStore.saveSectionData("protection_health", formData);
+      
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        console.error("Save failed:", result.error);
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
       toast({
         title: "Error",
-        description: "Failed to save draft",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <StickyNav
-        onPrevious={handlePrevious}
-        onSave={handleSave}
-        onContinue={form.handleSubmit(onSubmit)}
-      />
-
+    <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Health</h1>
@@ -153,8 +174,58 @@ export default function Page() {
               </RadioGroup>
             </div>
           </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              className="min-h-9"
+              data-testid="button-previous"
+            >
+              ← Previous
+            </Button>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="min-h-9"
+                data-testid="button-save"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Draft"
+                )}
+              </Button>
+              <Button
+                type="submit"
+                className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                data-testid="button-next"
+              >
+                Next →
+              </Button>
+            </div>
+          </div>
         </form>
       </div>
+
+      {/* Mobile Navigation */}
+      <StickyNav
+        onPrev={handlePrevious}
+        onNext={form.handleSubmit(onSubmit)}
+        onSave={handleSave}
+        loading={isSaving}
+        previousTestId="button-previous-mobile"
+        nextTestId="button-next-mobile"
+        saveTestId="button-save-mobile"
+      />
     </div>
   );
 }

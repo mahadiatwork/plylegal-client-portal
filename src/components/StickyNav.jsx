@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
 
 export function StickyNav({
   onPrev,
@@ -37,7 +37,11 @@ export function StickyNav({
             data-testid="button-save-draft"
             className="min-h-[44px] flex-1 sm:flex-none"
           >
-            <Save className="w-4 h-4 mr-1" />
+            {loading ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-1" />
+            )}
             Save Draft
           </Button>
 
