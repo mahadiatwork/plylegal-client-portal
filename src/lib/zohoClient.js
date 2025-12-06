@@ -325,6 +325,9 @@ class ZohoCRMClient {
         } else if (relatedListName === 'Matter_Documents') {
           // Fields for Matter_Documents - include multiple name field variations, document_Serial for sorting, and Comments/Decline_Reason fields
           fields = 'id,Matter_Document_Name,Document_Name,Name,Document_Status,Created_Time,File_Name,File_Size,Modified_Time,Owner,Parent_Id,document_Serial,Comments,Rejection_Comments,Decline_Reason';
+        } else if (relatedListName === 'Client_Messages') {
+          // Fields for Client_Messages
+          fields = 'id,Name,Message_from_Client,Reply_Message,Time_Sent,Time_Replied,Created_Time,Modified_Time';
         } else {
           // Default: get id and basic fields
           fields = 'id';

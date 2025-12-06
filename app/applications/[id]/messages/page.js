@@ -1,43 +1,78 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { applicationsStore } from "@/stores/applicationsStore";
-import { appDataStore, addMessage } from "@/stores/appDataStore";
 import { authStore } from "@/stores/authStore";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-
-const messageSchema = z.object({
-  subject: z.string().min(1, "Subject is required"),
-  message: z.string().min(1, "Message is required"),
-});
+import { Paperclip, Send, Loader2, X, RefreshCw } from "lucide-react";
 
 export default function MessagesPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [messageText, setMessageText] = useState("");
+  const [attachments, setAttachments] = useState([]);
+  const [isSending, setIsSending] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const applicationsSnap = useSnapshot(applicationsStore);
-  const appDataSnap = useSnapshot(appDataStore);
   const authSnap = useSnapshot(authStore);
   const { toast } = useToast();
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   
   const appId = params.id;
   const application = applicationsSnap.applications.find(app => app.id === appId);
-  const messages = appDataSnap.cache[appId]?.messages || [];
+  const dealId = application?.zohoId;
 
-  // Load applications and messages data on mount
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Load messages from Zoho CRM
+  const loadMessages = async () => {
+    if (!dealId) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsRefreshing(true);
+      const response = await fetch(`/api/messages/fetch?dealId=${dealId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setMessages(data.messages || []);
+      } else {
+        console.error('Failed to load messages:', data.error);
+        toast({
+          title: "Error",
+          description: data.error || "Failed to load messages",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Load messages on mount and when dealId changes
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -57,54 +92,143 @@ export default function MessagesPage() {
           await applicationsStore.loadApplications(userId);
         }
 
-        // Load messages data from localStorage
-        if (appId && !appDataSnap.cache[appId]?.messages) {
-          appDataStore.loadMessages(appId);
-        }
+        // Load messages from Zoho
+        await loadMessages();
       } catch (error) {
         console.error('Error loading data:', error);
-      } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
-  
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(messageSchema),
-  });
-  
-  const onSubmit = (data) => {
-    const newMessage = {
-      id: `msg-${Date.now()}`,
-      from: "client",
-      subject: data.subject,
-      text: data.message,
-      date: new Date().toISOString(),
-    };
-    
-    addMessage(appId, newMessage);
-    
-    toast({
-      title: "Message sent",
-      description: "Your message has been sent to Ply Legal.",
-    });
-    
-    reset();
+  }, [appId, dealId, authSnap.isAuthenticated, authSnap.user?.id]);
+
+  // Handle file attachment
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
-  
+
+  // Remove attachment
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      
+      return date.toLocaleDateString('en-AU', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      return '';
+    }
+  };
+
+  // Send message
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    
+    if (!messageText.trim() && attachments.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a message or attach a file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!dealId) {
+      toast({
+        title: "Error",
+        description: "Application not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const formData = new FormData();
+      formData.append('dealId', dealId);
+      formData.append('message', messageText.trim());
+      
+      // Add attachments
+      attachments.forEach((file) => {
+        formData.append('attachments', file);
+      });
+
+      const response = await fetch('/api/messages/create', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Clear input and attachments
+        setMessageText("");
+        setAttachments([]);
+        
+        // Reload messages
+        await loadMessages();
+        
+        toast({
+          title: "Message sent",
+          description: "Your message has been sent to Ply Legal.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send message",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   // Show loading state while data is being loaded
   if (isLoading || !application) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-gray-600" />
           <div className="text-lg text-gray-600">Loading...</div>
         </div>
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-background flex">
       <div className="hidden lg:block">
@@ -132,119 +256,156 @@ export default function MessagesPage() {
           <PillNav appId={appId} />
         </div>
         
-        <main className="flex-1 px-6 py-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-6">
-              <h1 className="font-semibold text-gray-900 text-2xl mb-2">Send Message</h1>
-              <p className="text-sm text-gray-700">Communicate securely with your legal team</p>
+        <main className="flex-1 flex flex-col px-6 py-8 overflow-hidden">
+          <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h1 className="font-semibold text-gray-900 text-2xl mb-2">Send Message</h1>
+                <p className="text-sm text-gray-700">Communicate securely with your legal team</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={loadMessages}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+                data-testid="button-refresh-messages"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </div>
-            
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                <CardHeader className="border-b border-gray-200">
-                  <CardTitle className="text-gray-900">New Message</CardTitle>
-                  <CardDescription className="text-gray-700">Send a message to Ply Legal</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-                  <div className="p-4 bg-gray-50 rounded-lg space-y-3 border border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Message Information</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-xs text-gray-600 mb-1">Visa Number</div>
-                        <div className="text-sm font-medium text-gray-900">{application.reference}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-600 mb-1">Application Type</div>
-                        <div className="text-sm font-medium text-gray-900">{application.type}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-600 mb-1">Contact Name</div>
-                        <div className="text-sm font-medium text-gray-900">{authSnap.user?.name || 'User'}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-600 mb-1">Email</div>
-                        <div className="text-sm font-medium text-gray-900">{authSnap.user?.email || 'user@example.com'}</div>
-                      </div>
-                    </div>
-                  </div>
 
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="subject" className="text-gray-900">Subject</Label>
-                      <Input
-                        id="subject"
-                        placeholder="Subject"
-                        {...register("subject")}
-                        data-testid="input-message-subject"
-                        className="bg-white"
-                      />
-                      {errors.subject && (
-                        <p className="text-sm text-red-600">{errors.subject.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="message" className="text-gray-900">Message</Label>
-                      <Textarea
-                        id="message"
-                        placeholder="Type your message..."
-                        rows={6}
-                        {...register("message")}
-                        data-testid="input-message-text"
-                        className="bg-white"
-                      />
-                      {errors.message && (
-                        <p className="text-sm text-red-600">{errors.message.message}</p>
-                      )}
-                    </div>
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={isSubmitting}
-                      data-testid="button-send-message"
-                      className="w-full bg-[#285646] hover:bg-[#1f4236] text-sm"
-                    >
-                      Send
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                <CardHeader className="border-b border-gray-200">
-                  <CardTitle className="text-gray-900">Conversation</CardTitle>
-                  <CardDescription className="text-gray-700">Message history</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    {messages.length > 0 ? (
-                      messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`p-4 rounded-lg border ${
-                            msg.from === 'plylegal' 
-                              ? 'bg-green-50 border-green-200' 
-                              : 'bg-gray-50 border-gray-200'
-                          }`}
-                          data-testid={`message-${msg.id}`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-900">
-                              {msg.from === 'plylegal' ? 'Ply Legal' : 'You'}
-                            </span>
-                            <span className="text-xs text-gray-600">
-                              {msg.subject ? msg.subject : 'Today'}
-                            </span>
+            {/* Messages Area - Scrollable */}
+            <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+              {isRefreshing && messages.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm text-gray-600">No messages yet. Start a conversation!</p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  // Check if this message has a reply
+                  const hasReply = msg.Reply_Message && msg.Reply_Message.trim() !== '';
+                  const clientMessage = msg.Message_from_Client || '';
+                  
+                  return (
+                    <div key={msg.id} className="space-y-3">
+                      {/* Client Message */}
+                      {clientMessage && (
+                        <div className="flex justify-end">
+                          <div className="max-w-[80%] lg:max-w-[70%]">
+                            <div className="bg-[#285646] text-white rounded-lg px-4 py-3 shadow-sm">
+                              <p className="text-sm whitespace-pre-wrap">{clientMessage}</p>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 text-right">
+                              {formatTimestamp(msg.Time_Sent)}
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-700">{msg.text}</p>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-600 text-center py-4">No messages yet</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      )}
+
+                      {/* Ply Legal Reply */}
+                      {hasReply && (
+                        <div className="flex justify-start">
+                          <div className="max-w-[80%] lg:max-w-[70%]">
+                            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm">
+                              <div className="flex items-center mb-1">
+                                <span className="text-sm font-medium text-gray-900">Ply Legal</span>
+                              </div>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.Reply_Message}</p>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatTimestamp(msg.Time_Replied)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area - Fixed at Bottom */}
+            <div className="border-t border-gray-200 pt-4">
+              {/* Attachment Preview */}
+              {attachments.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <Paperclip className="w-4 h-4 text-gray-600" />
+                      <span className="text-gray-700 truncate max-w-[200px]">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Message Input Form */}
+              <form onSubmit={handleSendMessage} className="flex gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="file-input"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-shrink-0"
+                  data-testid="button-attach-file"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </Button>
+                
+                <Textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Type your message..."
+                  rows={3}
+                  className="flex-1 resize-none"
+                  data-testid="input-message-text"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                />
+                
+                <Button
+                  type="submit"
+                  disabled={isSending || (!messageText.trim() && attachments.length === 0)}
+                  className="flex-shrink-0 bg-[#285646] hover:bg-[#1f4236] text-white"
+                  data-testid="button-send-message"
+                >
+                  {isSending ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                </Button>
+              </form>
             </div>
           </div>
         </main>

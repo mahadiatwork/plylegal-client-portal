@@ -217,7 +217,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             onValueChange={(value) => dialogForm.setValue("gender", value, { shouldValidate: true })}
             className="flex gap-4"
           >
-            {["Male", "Female", "Other"].map((option) => (
+            {["Male", "Female"].map((option) => (
               <div key={option} className="flex items-center space-x-2">
                 <RadioGroupItem value={option} id={`gender-${option.toLowerCase()}`} />
                 <Label htmlFor={`gender-${option.toLowerCase()}`} className="cursor-pointer font-normal">
@@ -752,7 +752,7 @@ export default function Page() {
             <div className="space-y-8">
               {/* Personal Contacts Section */}
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 mb-5">
                   Personal Contacts for {mainApplicantName}
                 </h2>
                 
@@ -780,7 +780,7 @@ export default function Page() {
                     </div>
                   </RadioGroup>
                 </div>
-
+                <br />
                 {/* Contacts Table - Only show when Yes */}
                 {hasFamilyInAustralia === "yes" && (
                   <div className="space-y-4">

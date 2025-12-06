@@ -2,6 +2,7 @@
 
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
+import { getIntakeRoutes } from "@/lib/routes";
 
 // Get database adapter (Firebase or localStorage based on env)
 const db = getAdapter();
@@ -253,46 +254,55 @@ export const draftStore = proxy({
   // Get completion percentage
   getCompletionPercentage() {
     // Auto-detect visa type from existing completion keys
-    let visaTypePrefix = '';
+    let visaType = null;
     const completionKeys = Object.keys(this.completionStatus);
     
     if (completionKeys.length > 0) {
       // Check for visa type prefix in existing keys
       const firstKey = completionKeys[0];
       if (firstKey.startsWith('temporary-work/')) {
-        visaTypePrefix = 'temporary-work/';
+        visaType = 'temporary-work';
       } else if (firstKey.startsWith('partner/')) {
-        visaTypePrefix = 'partner/';
+        visaType = 'partner';
       } else if (firstKey.startsWith('protection/')) {
-        visaTypePrefix = 'protection/';
+        visaType = 'protection';
       }
     }
     
-    // Define all intake pages (without visa prefix)
-    const basePages = [
-      'start',
-      'main-applicant/details',
-      'main-applicant/other',
-      'main-applicant/identity',
-      'main-applicant/employment',
-      'main-applicant/education',
-      'main-applicant/language',
-      'main-applicant/family',
-      'all-applicants/contacts',
-      'all-applicants/contact-details',
-      'all-applicants/addresses',
-      'all-applicants/future-addresses',
-      'all-applicants/travel-history',
-      'all-applicants/future-travel',
-      'all-applicants/visas',
-      'all-applicants/health',
-      'all-applicants/character',
-      'children/start',
-      'family-sponsor/details',
-    ];
+    // If no visa type detected, return empty
+    if (!visaType) {
+      return { completed: 0, total: 0, percentage: 0 };
+    }
     
-    // Build full page keys with visa prefix
-    const allPages = basePages.map(page => `${visaTypePrefix}${page}`);
+    // Get routes for the detected visa type
+    const routes = getIntakeRoutes(visaType);
+    
+    // Extract all page paths from routes (excluding submit page)
+    const allPagePaths = [];
+    routes.forEach((route) => {
+      // Skip submit page
+      if (route.href.includes('/submit')) {
+        return;
+      }
+      
+      if (route.subpages) {
+        // Add all subpages
+        route.subpages.forEach((sub) => {
+          allPagePaths.push(sub.href);
+        });
+      } else {
+        // Add main route
+        allPagePaths.push(route.href);
+      }
+    });
+    
+    // Convert paths to completion keys format
+    // e.g., "/intake/protection/main-applicant/details" -> "protection/main-applicant/details"
+    const allPages = allPagePaths.map(path => {
+      // Remove "/intake/" prefix and visa type prefix
+      const pathWithoutPrefix = path.replace(`/intake/${visaType}/`, '');
+      return `${visaType}/${pathWithoutPrefix}`;
+    });
     
     // Count completed pages
     const completedCount = allPages.filter(page => this.isPageComplete(page)).length;
