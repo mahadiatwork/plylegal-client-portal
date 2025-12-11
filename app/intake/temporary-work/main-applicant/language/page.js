@@ -386,7 +386,7 @@ export default function LanguagePage() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_language", data);
     const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/language`);
+    await draftStore.markPageComplete(`${visaType}/main-applicant/language`, null, "temporary_work_language");
     
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {

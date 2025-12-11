@@ -55,7 +55,7 @@ export default function Page() {
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_travel", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`);
+    await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`, null, "temporary_work_travel");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { Button } from "@/components/ui/button";
@@ -14,16 +14,28 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const draftSnap = useSnapshot(draftStore);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
+
   // Prevent hydration mismatch by only rendering interactive elements after mount
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
+  // Keep draft/application context in sync with URL param
+  useEffect(() => {
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId]);
+
+
+
   // Detect visa type from URL path
   const getVisaTypeFromPath = (path) => {
     if (path.includes('/intake/partner/')) return 'partner';
@@ -31,23 +43,30 @@ export default function IntakeLayout({ children }) {
     if (path.includes('/intake/temporary-work/')) return 'temporary-work';
     return 'partner'; // default
   };
-  
+
   const visaType = getVisaTypeFromPath(pathname);
   const INTAKE_ROUTES = getIntakeRoutes(visaType);
-  
+
   const progress = calculateProgress(pathname, visaType);
-  
+
   // Get real completion data from draftStore
   const completionData = draftSnap.completionStatus || {};
   const completionPercentage = mounted ? draftStore.getCompletionPercentage() : { completed: 0, total: 0, percentage: 0 };
-  
+
+  useEffect(() => {
+    if (mounted && completionData) {
+      console.log('Completion Status:', completionData);
+      console.log('Completion Keys:', Object.keys(completionData));
+    }
+  }, [mounted, completionData]);
+
   const isRouteActive = (href) => pathname === href;
-  
+
   // Convert route path to completion key (e.g., /intake/partner/start -> partner/start)
   const getCompletionKey = (href) => {
     return href.replace('/intake/', '');
   };
-  
+
   const isRouteCompleted = (href) => {
     const key = getCompletionKey(href);
     return completionData[key] === true;
@@ -150,6 +169,24 @@ export default function IntakeLayout({ children }) {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Application
               </Button>
+
+              {/* Debug: Reset Progress Button */}
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm('DEBUG: Reset completion status? This will uncheck all boxes.')) {
+                      await draftStore.clearCompletionStatus();
+                      // Force reload to reflect changes
+                      window.location.reload();
+                    }
+                  }}
+                  className="mt-2 w-full justify-start text-xs text-red-500 hover:text-red-700"
+                >
+                  [Debug] Reset Progress
+                </Button>
+              )}
             </div>
 
             {/* Progress */}

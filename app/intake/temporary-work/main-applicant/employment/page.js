@@ -359,7 +359,7 @@ export default function EmploymentPage() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_employment", data);
     const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/employment`);
+    await draftStore.markPageComplete(`${visaType}/main-applicant/employment`, null, "temporary_work_employment");
     
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {

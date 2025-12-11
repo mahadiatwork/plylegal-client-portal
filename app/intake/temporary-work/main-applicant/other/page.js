@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   // Question 1: Other Names
@@ -38,20 +39,6 @@ const formSchema = z.object({
     use_in_application: z.string().optional(),
   })).optional(),
   
-  // Question 2: Chinese Commercial Code
-  use_chinese_code: z.enum(["yes", "no"]),
-  chinese_code: z.string().optional(),
-  
-  // Question 3: Russian Descent
-  russian_descent: z.enum(["yes", "no"]),
-  patronymic_family_name: z.string().optional(),
-  patronymic_given_names: z.string().optional(),
-  
-  // Question 4: Previous Date of Birth
-  has_prev_dob: z.enum(["yes", "no"]),
-  prev_dobs: z.array(z.object({
-    date_of_birth: z.string(),
-  })).optional(),
 });
 
 const REASON_OPTIONS = [
@@ -445,6 +432,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -460,38 +448,28 @@ export default function Page() {
     defaultValues: {
       has_other_names: "no",
       other_names: [],
-      use_chinese_code: "no",
-      chinese_code: "",
-      russian_descent: "no",
-      patronymic_family_name: "",
-      patronymic_given_names: "",
-      has_prev_dob: "no",
-      prev_dobs: [],
     },
   });
 
   // Watch form values
   const hasOtherNames = form.watch("has_other_names");
   const otherNames = form.watch("other_names") || [];
-  const useChineseCode = form.watch("use_chinese_code");
-  const russianDescent = form.watch("russian_descent");
-  const hasPrevDob = form.watch("has_prev_dob");
-  const prevDobs = form.watch("prev_dobs") || [];
 
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_other || {};
     if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
-      });
+      const formData = {
+        has_other_names: savedData.has_other_names || "no",
+        other_names: savedData.other_names || [],
+      };
+
+      form.reset(formData);
     }
-  }, []);
+  }, [draftSnap.draft?.temporary_work_other, form]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_other", data);
-    await draftStore.markPageComplete(`${visaType}/main-applicant/other`);
+    await draftStore.markPageComplete(`${visaType}/main-applicant/other`, null, "temporary_work_other");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
@@ -502,31 +480,47 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("temporary_work_other", values);
-    if (result.success) {
-      await draftStore.markPageComplete(`${visaType}/main-applicant/other`);
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const values = form.getValues();
+      const result = await draftStore.saveSectionData("temporary_work_other", values);
+      if (result.success) {
+        await draftStore.markPageComplete(`${visaType}/main-applicant/other`);
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: result.error || "Failed to save draft",
+        description: error?.message || "Failed to save draft",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const updateOtherNames = (newNames) => {
     form.setValue("other_names", newNames, { shouldValidate: true });
     draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), other_names: newNames });
-  };
-
-  const updatePrevDobs = (newDobs) => {
-    form.setValue("prev_dobs", newDobs, { shouldValidate: true });
-    draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), prev_dobs: newDobs });
   };
 
   const otherNameColumns = [
@@ -624,157 +618,6 @@ export default function Page() {
                 )}
               </div>
 
-              {/* Question 2: Chinese Commercial Code */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Do you use a Chinese Commercial Code for your name?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("use_chinese_code")}
-                    onValueChange={(value) => form.setValue("use_chinese_code", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-use-chinese-code"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
-                      <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
-                      <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {useChineseCode === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <Label htmlFor="chinese_code">Chinese Commercial Code</Label>
-                    <Input
-                      id="chinese_code"
-                      {...form.register("chinese_code")}
-                      className="max-w-md mt-1"
-                      data-testid="input-chinese-code"
-                      placeholder="Enter your Chinese Commercial Code"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Question 3: Russian Descent */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Are you of Russian descent?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("russian_descent")}
-                    onValueChange={(value) => form.setValue("russian_descent", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-russian-descent"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="russian-descent-yes" data-testid="radio-russian-descent-yes" />
-                      <Label htmlFor="russian-descent-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="russian-descent-no" data-testid="radio-russian-descent-no" />
-                      <Label htmlFor="russian-descent-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {russianDescent === "yes" && (
-                  <div className="pl-0 mt-4 space-y-4">
-                    <p className="text-sm text-gray-600">
-                      In English, write your Patronymic Name
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="patronymic_family_name">Family Name</Label>
-                        <Input
-                          id="patronymic_family_name"
-                          {...form.register("patronymic_family_name")}
-                          className="mt-1"
-                          data-testid="input-patronymic-family-name"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="patronymic_given_names">Given Names</Label>
-                        <Input
-                          id="patronymic_given_names"
-                          {...form.register("patronymic_given_names")}
-                          className="mt-1"
-                          data-testid="input-patronymic-given-names"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Question 4: Different Date of Birth */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Have you ever had a different Date of Birth?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("has_prev_dob")}
-                    onValueChange={(value) => form.setValue("has_prev_dob", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-has-prev-dob"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="prev-dob-yes" data-testid="radio-prev-dob-yes" />
-                      <Label htmlFor="prev-dob-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="prev-dob-no" data-testid="radio-prev-dob-no" />
-                      <Label htmlFor="prev-dob-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {hasPrevDob === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of your previous Birth Dates
-                    </p>
-                    <RepeaterTable
-                      data={prevDobs}
-                      columns={prevDobColumns}
-                      onAdd={(row) => updatePrevDobs([...prevDobs, row])}
-                      onEdit={(index, row) => {
-                        const updated = [...prevDobs];
-                        updated[index] = row;
-                        updatePrevDobs(updated);
-                      }}
-                      onDelete={(index) => {
-                        const updated = prevDobs.filter((_, i) => i !== index);
-                        updatePrevDobs(updated);
-                      }}
-                      DialogComponent={PreviousDOBDialog}
-                      addButtonText="Add"
-                      emptyMessage="No previous birth dates added"
-                      dialogTitle="Add previous date of birth"
-                      testIdPrefix="prev-dob"
-                    />
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Desktop Navigation */}
@@ -795,8 +638,16 @@ export default function Page() {
                   onClick={handleSave}
                   className="min-h-9"
                   data-testid="button-save"
+                  disabled={isSaving}
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Draft"
+                  )}
                 </Button>
                 <Button
                   type="submit"
@@ -813,10 +664,11 @@ export default function Page() {
 
       {/* Mobile Navigation */}
       <StickyNav
-        onPrevious={handlePrevious}
+        onPrev={handlePrevious}
         onNext={form.handleSubmit(onSubmit)}
         onSave={handleSave}
         nextLabel="Continue"
+        loading={isSaving}
         previousTestId="button-previous-mobile"
         nextTestId="button-continue-mobile"
         saveTestId="button-save-mobile"

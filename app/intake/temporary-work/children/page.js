@@ -314,7 +314,7 @@ export default function Page() {
       children: children,
     };
     await draftStore.saveSectionData("temporary_work_children", submitData);
-    await draftStore.markPageComplete(`${visaType}/children`);
+    await draftStore.markPageComplete(`${visaType}/children`, null, "temporary_work_children");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };

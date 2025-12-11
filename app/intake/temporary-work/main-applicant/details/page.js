@@ -18,8 +18,6 @@ import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  is_main_applicant: z.enum(["yes", "no"]),
-  
   // Person completing questionnaire (shown only if is_main_applicant === "yes")
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
@@ -28,7 +26,7 @@ const formSchema = z.object({
   completing_birth_day: z.string().optional(),
   completing_birth_month: z.string().optional(),
   completing_birth_year: z.string().optional(),
-  
+
   // Main applicant details
   prefix: z.string().optional(),
   family_name: z.string().optional(),
@@ -54,8 +52,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  
-  const [isMainApplicant, setIsMainApplicant] = useState("yes");
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
@@ -66,11 +63,10 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-  
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      is_main_applicant: "yes",
       completing_family_name: "",
       completing_given_names: "",
       completing_preferred_names: "",
@@ -101,7 +97,6 @@ export default function Page() {
     if (Object.keys(savedData).length > 0) {
       // Merge saved data with default values to ensure all fields are set
       const formData = {
-        is_main_applicant: savedData.is_main_applicant || "yes",
         completing_family_name: savedData.completing_family_name || "",
         completing_given_names: savedData.completing_given_names || "",
         completing_preferred_names: savedData.completing_preferred_names || "",
@@ -125,19 +120,20 @@ export default function Page() {
         marital_status_date_month: savedData.marital_status_date_month || "",
         marital_status_date_year: savedData.marital_status_date_year || "",
       };
-      
+
       // Use reset to properly update all form fields including Select components
       form.reset(formData);
-      
-      if (savedData.is_main_applicant) {
-        setIsMainApplicant(savedData.is_main_applicant);
-      }
     }
   }, [draftSnap.draft?.temporary_work_details]);
 
   const onSubmit = async (data) => {
+    // Save the form data
     await draftStore.saveSectionData("temporary_work_details", data);
-    await draftStore.markPageComplete(`${visaType}/main-applicant/details`);
+
+    // Only mark as complete if we have actual data
+    // We pass the explicit data key "temporary_work_details" to ensure correct validation
+    await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
@@ -198,43 +194,9 @@ export default function Page() {
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
-            {/* Main Applicant Question */}
-            <div className="hidden">
-              <Label className="text-base font-medium text-gray-900">
-                Are you or will you be the Main Applicant in any application?
-              </Label>
-              <RadioGroup
-                value={form.watch("is_main_applicant")}
-                onValueChange={(value) => {
-                  form.setValue("is_main_applicant", value);
-                  setIsMainApplicant(value);
-                }}
-                className="flex gap-4 mt-2"
-                data-testid="radio-is-main-applicant"
-              >
-                <div className="flex items-center">
-                  <RadioGroupItem value="yes" id="yes" data-testid="radio-yes" />
-                  <Label htmlFor="yes" className="ml-2 cursor-pointer font-normal">
-                    Yes
-                  </Label>
-                </div>
-                <div className="flex items-center">
-                  <RadioGroupItem value="no" id="no" data-testid="radio-no" />
-                  <Label htmlFor="no" className="ml-2 cursor-pointer font-normal">
-                    No
-                  </Label>
-                </div>
-              </RadioGroup>
-              {form.formState.errors.is_main_applicant?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.is_main_applicant.message}</p>
-              )}
-            </div>
-
             {/* Main Applicant's Personal Details Section */}
-            <div className="space-y-6 pt-6 border-t border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Main Applicant's Personal Details</h2>
-
-              <div className="hidden">
+            <div className="space-y-6 border-gray-200">
+              {/* <div className="hidden">
                 <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
                 <RadioGroup
                   value={form.watch("prefix")}
@@ -254,7 +216,7 @@ export default function Page() {
                 {form.formState.errors.prefix?.message && (
                   <p className="text-sm text-red-600 mt-1">{form.formState.errors.prefix.message}</p>
                 )}
-              </div>
+              </div> */}
 
               <div>
                 <Label>Family Name</Label>
@@ -305,8 +267,8 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label>Date of Birth - Day</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_day", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_day", value)}
                     value={form.watch("birth_day")}
                   >
                     <SelectTrigger data-testid="select-birth-day">
@@ -325,8 +287,8 @@ export default function Page() {
 
                 <div>
                   <Label>Month</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_month", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_month", value)}
                     value={form.watch("birth_month")}
                   >
                     <SelectTrigger data-testid="select-birth-month">
@@ -345,8 +307,8 @@ export default function Page() {
 
                 <div>
                   <Label>Year</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_year", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_year", value)}
                     value={form.watch("birth_year")}
                   >
                     <SelectTrigger data-testid="select-birth-year">
@@ -390,8 +352,8 @@ export default function Page() {
 
               <div>
                 <Label>What is your marital status?</Label>
-                <Select 
-                  onValueChange={(value) => form.setValue("marital_status", value)} 
+                <Select
+                  onValueChange={(value) => form.setValue("marital_status", value)}
                   value={form.watch("marital_status")}
                 >
                   <SelectTrigger data-testid="select-marital-status">

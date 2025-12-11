@@ -430,7 +430,7 @@ export default function SkillsPage() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_skills", data);
     const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/skills`);
+    await draftStore.markPageComplete(`${visaType}/main-applicant/skills`, null, "temporary_work_skills");
     
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {
