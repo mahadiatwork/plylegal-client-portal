@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -102,7 +102,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <Label htmlFor="institution" className="mb-2 block">Institution Name *</Label>
         <Input
@@ -321,9 +321,16 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -358,12 +365,12 @@ export default function EducationPage() {
     if (Object.keys(savedData).length > 0) {
       form.reset(savedData);
     }
-  }, []);
+  }, [draft.temporary_work_education, form]);
 
   const handleSave = async () => {
     const formData = form.getValues();
     const result = await draftStore.saveSectionData("temporary_work_education", formData);
-    
+
     if (result.success) {
       toast({
         title: "Draft saved",
@@ -381,8 +388,8 @@ export default function EducationPage() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_education", data);
     const visaType = getVisaTypeFromPath(pathname);
-    await draftStore.markPageComplete(`${visaType}/main-applicant/education`, null, "temporary_work_education");
-    
+    draftStore.markPageComplete(`${visaType}/main-applicant/education`);
+
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {
       router.push(nextRoute);
@@ -399,11 +406,8 @@ export default function EducationPage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        title="Education"
-        description="In this section, provide details about the main applicant's education history."
-      />
-      
+
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -449,16 +453,16 @@ export default function EducationPage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...educationHistory, newRow];
-                        form.setValue("education_history", updated);
+                        form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...educationHistory];
                         updated[index] = updatedRow;
-                        form.setValue("education_history", updated);
+                        form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = educationHistory.filter((_, i) => i !== index);
-                        form.setValue("education_history", updated);
+                        form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={EducationDialog}
                       addButtonText="Add"
@@ -469,33 +473,14 @@ export default function EducationPage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  data-testid="button-save"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              saveLabel="Save"
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
+            />
           </form>
         </div>
       </div>

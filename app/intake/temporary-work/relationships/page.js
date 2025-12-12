@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { StickyNav } from "@/components/StickyNav";
+import { StickyNav } from "@/components/StickyNav"; // Remove
+import { FormNavigation } from "@/components/FormNavigation";
 
 const formSchema = z.object({
   marriage_day: z.string().optional(),
@@ -74,7 +75,7 @@ export default function Page() {
         setLivingTogether(savedData.living_together);
       }
     }
-  }, []);
+  }, [draftSnap.draft?.temporary_work_relationships, form]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_relationships", data);
@@ -115,12 +116,6 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-background">
-      <StickyNav
-        onPrevious={handlePrevious}
-        onSave={handleSave}
-        onContinue={form.handleSubmit(onSubmit)}
-      />
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Current Relationship</h1>
@@ -272,6 +267,12 @@ export default function Page() {
               </div>
             )}
           </div>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            loading={draftSnap.isSaving}
+          />
         </form>
       </div>
     </div>

@@ -14,8 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
-import { RepeaterTable } from "@/components/RepeaterTable";
+import { StickyNav } from "@/components/StickyNav"; // Removed? No wait, I should remove it.
+import { FormNavigation } from "@/components/FormNavigation";
 
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
@@ -75,14 +75,14 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
 
   const countries = [
-    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria", 
+    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
     "Bangladesh", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia",
-    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India", 
+    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India",
     "Indonesia", "Iran", "Iraq", "Ireland", "Italy", "Japan", "Kenya", "Malaysia",
     "Mexico", "Netherlands", "New Zealand", "Nigeria", "Norway", "Pakistan",
     "Philippines", "Poland", "Portugal", "Russia", "Saudi Arabia", "Singapore",
     "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", "Thailand",
-    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", 
+    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
     "Vietnam"
   ];
 
@@ -92,7 +92,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
       <div className="space-y-2">
         <Label htmlFor="family_name">Family Name *</Label>
         <Input
@@ -254,11 +254,15 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" data-testid="button-ok">
+        <Button
+          type="button"
+          onClick={form.handleSubmit(handleSubmit)}
+          data-testid="button-ok"
+        >
           Ok
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -306,7 +310,7 @@ export default function Page() {
         form.setValue("children", savedData.children);
       }
     }
-  }, []);
+  }, [draftSnap.draft?.temporary_work_children, form]);
 
   const onSubmit = async (data) => {
     const submitData = {
@@ -346,23 +350,28 @@ export default function Page() {
   };
 
   const handleAddChild = (data) => {
-    setChildren([...children, data]);
+    const updated = [...children, data];
+    setChildren(updated);
+    form.setValue("children", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   const handleEditChild = (index, data) => {
     const updated = [...children];
     updated[index] = data;
     setChildren(updated);
+    form.setValue("children", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   const handleDeleteChild = (index) => {
-    setChildren(children.filter((_, i) => i !== index));
+    const updated = children.filter((_, i) => i !== index);
+    setChildren(updated);
+    form.setValue("children", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   const columns = [
     { key: "given_names", label: "Name" },
-    { 
-      key: "birth_day", 
+    {
+      key: "birth_day",
       label: "Date of Birth",
       render: (row) => `${row.birth_day} ${row.birth_month} ${row.birth_year}`
     },
@@ -372,12 +381,6 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-background">
-      <StickyNav
-        onPrevious={handlePrevious}
-        onSave={handleSave}
-        onContinue={form.handleSubmit(onSubmit)}
-      />
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Children</h1>
@@ -423,6 +426,13 @@ export default function Page() {
                 />
               </div>
             )}
+
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={draftSnap.isSaving}
+            />
           </div>
         </form>
       </div>

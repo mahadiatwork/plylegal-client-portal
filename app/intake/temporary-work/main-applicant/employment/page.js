@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -109,7 +109,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -286,9 +286,16 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -336,12 +343,12 @@ export default function EmploymentPage() {
     if (Object.keys(savedData).length > 0) {
       form.reset(savedData);
     }
-  }, []);
+  }, [draft.temporary_work_employment, form]);
 
   const handleSave = async () => {
     const formData = form.getValues();
     const result = await draftStore.saveSectionData("temporary_work_employment", formData);
-    
+
     if (result.success) {
       toast({
         title: "Draft saved",
@@ -359,8 +366,8 @@ export default function EmploymentPage() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_employment", data);
     const visaType = getVisaTypeFromPath(pathname);
-    await draftStore.markPageComplete(`${visaType}/main-applicant/employment`, null, "temporary_work_employment");
-    
+    draftStore.markPageComplete(`${visaType}/main-applicant/employment`);
+
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {
       router.push(nextRoute);
@@ -377,11 +384,8 @@ export default function EmploymentPage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        title="Employment"
-        description="In this section, provide details about the main applicant's employment history."
-      />
-      
+
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -415,7 +419,7 @@ export default function EmploymentPage() {
                 {isCurrentlyEmployed === "yes" && (
                   <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
                     <h3 className="text-lg font-semibold text-gray-900">Current Job</h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="current_employer" className="mb-2 block">Employer/Organization *</Label>
@@ -618,16 +622,16 @@ export default function EmploymentPage() {
                   ]}
                   onAdd={(newRow) => {
                     const updated = [...employmentHistory, newRow];
-                    form.setValue("employment_history", updated);
+                    form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                   }}
                   onEdit={(index, updatedRow) => {
                     const updated = [...employmentHistory];
                     updated[index] = updatedRow;
-                    form.setValue("employment_history", updated);
+                    form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                   }}
                   onDelete={(index) => {
                     const updated = employmentHistory.filter((_, i) => i !== index);
-                    form.setValue("employment_history", updated);
+                    form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                   }}
                   DialogComponent={EmploymentHistoryDialog}
                   addButtonText="Add"
@@ -636,33 +640,14 @@ export default function EmploymentPage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  data-testid="button-save"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              saveLabel="Save draft"
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
+            />
           </form>
         </div>
       </div>
