@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -37,16 +37,16 @@ const formSchema = z.object({
     place_of_issue: z.string().optional(),
     use_in_application: z.string().optional(),
   })).optional(),
-  
+
   // Question 2: Chinese Commercial Code
   use_chinese_code: z.enum(["yes", "no"]),
   chinese_code: z.string().optional(),
-  
+
   // Question 3: Russian Descent
   russian_descent: z.enum(["yes", "no"]),
   patronymic_family_name: z.string().optional(),
   patronymic_given_names: z.string().optional(),
-  
+
   // Question 4: Previous Date of Birth
   has_prev_dob: z.enum(["yes", "no"]),
   prev_dobs: z.array(z.object({
@@ -111,7 +111,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const initialUseInApplication = row?.use_in_application === "yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
   const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: row || {
@@ -155,14 +155,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
         <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
         <Input
@@ -208,8 +201,8 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div className="flex items-center space-x-2 pt-2">
-        <Checkbox 
-          id="use_in_application" 
+        <Checkbox
+          id="use_in_application"
           checked={useInApplication}
           onCheckedChange={(checked) => {
             setUseInApplication(checked);
@@ -223,7 +216,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
-        
+
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
             Do you have evidence of this Other Name?
@@ -359,30 +352,31 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           data-testid="button-cancel"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleFormSubmit)}
           className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-ok"
         >
           Save
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
 // Previous Date of Birth Dialog Component
 function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(prevDobDialogSchema),
     defaultValues: row || {
@@ -395,14 +389,7 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form 
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
         <Label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
         <Input
@@ -418,23 +405,24 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           data-testid="button-cancel-dob"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleFormSubmit)}
           className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-save-dob"
         >
           Save
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -487,7 +475,7 @@ export default function Page() {
         }
       });
     }
-  }, []);
+  }, [draftSnap.draft?.temporary_work_other, form]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_other", data);
@@ -520,12 +508,12 @@ export default function Page() {
   };
 
   const updateOtherNames = (newNames) => {
-    form.setValue("other_names", newNames, { shouldValidate: true });
+    form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), other_names: newNames });
   };
 
   const updatePrevDobs = (newDobs) => {
-    form.setValue("prev_dobs", newDobs, { shouldValidate: true });
+    form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), prev_dobs: newDobs });
   };
 
@@ -536,8 +524,8 @@ export default function Page() {
   ];
 
   const prevDobColumns = [
-    { 
-      key: "date_of_birth", 
+    {
+      key: "date_of_birth",
       label: "Date of Birth",
       format: (row) => {
         if (!row.date_of_birth) return "";
@@ -778,49 +766,19 @@ export default function Page() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
+            />
           </form>
         </div>
       </div>
 
       {/* Mobile Navigation */}
-      <StickyNav
-        onPrevious={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        nextLabel="Continue"
-        previousTestId="button-previous-mobile"
-        nextTestId="button-continue-mobile"
-        saveTestId="button-save-mobile"
-      />
+
     </div>
   );
 }

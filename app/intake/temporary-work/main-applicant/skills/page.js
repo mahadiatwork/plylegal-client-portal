@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -85,7 +85,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <Label className="mb-2 block">Type *</Label>
         <Select
@@ -211,9 +211,16 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -251,7 +258,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <Label htmlFor="assessing_authority" className="mb-2 block">Assessing Authority *</Label>
         <Input
@@ -366,9 +373,16 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -407,12 +421,12 @@ export default function SkillsPage() {
     if (Object.keys(savedData).length > 0) {
       form.reset(savedData);
     }
-  }, []);
+  }, [draft.temporary_work_skills, form]);
 
   const handleSave = async () => {
     const formData = form.getValues();
     const result = await draftStore.saveSectionData("temporary_work_skills", formData);
-    
+
     if (result.success) {
       toast({
         title: "Draft saved",
@@ -431,7 +445,7 @@ export default function SkillsPage() {
     await draftStore.saveSectionData("temporary_work_skills", data);
     const visaType = getVisaTypeFromPath(pathname);
     draftStore.markPageComplete(`${visaType}/main-applicant/skills`);
-    
+
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {
       router.push(nextRoute);
@@ -448,11 +462,8 @@ export default function SkillsPage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        title="Skills"
-        description="In this section, provide details about the formal recognition of the main applicant's skills."
-      />
-      
+
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -497,16 +508,16 @@ export default function SkillsPage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...registrations, newRow];
-                        form.setValue("registrations", updated);
+                        form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...registrations];
                         updated[index] = updatedRow;
-                        form.setValue("registrations", updated);
+                        form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = registrations.filter((_, i) => i !== index);
-                        form.setValue("registrations", updated);
+                        form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={RegistrationDialog}
                       addButtonText="Add"
@@ -555,16 +566,16 @@ export default function SkillsPage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...assessments, newRow];
-                        form.setValue("assessments", updated);
+                        form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...assessments];
                         updated[index] = updatedRow;
-                        form.setValue("assessments", updated);
+                        form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = assessments.filter((_, i) => i !== index);
-                        form.setValue("assessments", updated);
+                        form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={AssessmentDialog}
                       addButtonText="Add"
@@ -575,33 +586,13 @@ export default function SkillsPage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  data-testid="button-save"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
+            />
           </form>
         </div>
       </div>

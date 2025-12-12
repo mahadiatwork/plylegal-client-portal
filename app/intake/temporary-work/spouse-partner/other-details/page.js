@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { StickyNav } from "@/components/StickyNav"; // Remove
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -66,7 +67,7 @@ const otherNameDialogSchema = z.object({
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [hasEvidence, setHasEvidence] = useState(row?.has_evidence || "no");
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(otherNameDialogSchema),
     defaultValues: row || {
@@ -105,14 +106,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
         <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
         <Input
@@ -159,7 +153,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
-        
+
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
             Do you have evidence of this Other Name? <span className="text-red-500">*</span>
@@ -298,23 +292,24 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           data-testid="button-cancel"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleFormSubmit)}
           className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-ok"
         >
           Ok
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -378,7 +373,7 @@ export default function Page() {
         }
       });
     }
-  }, []);
+  }, [draftSnap.draft?.temporary_work_spouse_other, form]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_spouse_other", data);
@@ -410,7 +405,7 @@ export default function Page() {
   };
 
   const updateOtherNames = (newNames) => {
-    form.setValue("other_names", newNames, { shouldValidate: true });
+    form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     draftStore.saveSectionData("temporary_work_spouse_other", { ...form.getValues(), other_names: newNames });
   };
 
@@ -535,50 +530,16 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrevious={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        nextLabel="Continue"
-        previousTestId="button-previous-mobile"
-        nextTestId="button-continue-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }

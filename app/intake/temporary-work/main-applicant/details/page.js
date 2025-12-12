@@ -14,12 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
-import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
-  
+
   // Person completing questionnaire (shown only if is_main_applicant === "yes")
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
@@ -28,7 +27,7 @@ const formSchema = z.object({
   completing_birth_day: z.string().optional(),
   completing_birth_month: z.string().optional(),
   completing_birth_year: z.string().optional(),
-  
+
   // Main applicant details
   prefix: z.string().optional(),
   family_name: z.string().optional(),
@@ -54,7 +53,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  
+
   const [isMainApplicant, setIsMainApplicant] = useState("yes");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -66,7 +65,7 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-  
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -125,15 +124,15 @@ export default function Page() {
         marital_status_date_month: savedData.marital_status_date_month || "",
         marital_status_date_year: savedData.marital_status_date_year || "",
       };
-      
+
       // Use reset to properly update all form fields including Select components
       form.reset(formData);
-      
+
       if (savedData.is_main_applicant) {
         setIsMainApplicant(savedData.is_main_applicant);
       }
     }
-  }, [draftSnap.draft?.temporary_work_details]);
+  }, [draftSnap.draft?.temporary_work_details, form]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_details", data);
@@ -305,8 +304,8 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label>Date of Birth - Day</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_day", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_day", value)}
                     value={form.watch("birth_day")}
                   >
                     <SelectTrigger data-testid="select-birth-day">
@@ -325,8 +324,8 @@ export default function Page() {
 
                 <div>
                   <Label>Month</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_month", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_month", value)}
                     value={form.watch("birth_month")}
                   >
                     <SelectTrigger data-testid="select-birth-month">
@@ -345,8 +344,8 @@ export default function Page() {
 
                 <div>
                   <Label>Year</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_year", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_year", value)}
                     value={form.watch("birth_year")}
                   >
                     <SelectTrigger data-testid="select-birth-year">
@@ -390,8 +389,8 @@ export default function Page() {
 
               <div>
                 <Label>What is your marital status?</Label>
-                <Select 
-                  onValueChange={(value) => form.setValue("marital_status", value)} 
+                <Select
+                  onValueChange={(value) => form.setValue("marital_status", value)}
                   value={form.watch("marital_status")}
                 >
                   <SelectTrigger data-testid="select-marital-status">
@@ -473,58 +472,18 @@ export default function Page() {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            {/* Form Navigation */}
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              saveLabel="Save Draft"
+              nextLabel="Continue"
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }

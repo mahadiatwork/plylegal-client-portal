@@ -8,6 +8,11 @@ export function StickyNav({
   loading = false,
   disabledNext = false,
   showPrev = true,
+  nextLabel = "Continue",
+  saveLabel = "Save Draft",
+  previousTestId,
+  nextTestId,
+  saveTestId,
 }) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
@@ -19,7 +24,7 @@ export function StickyNav({
               variant="outline"
               onClick={onPrev}
               disabled={loading}
-              data-testid="button-previous"
+              data-testid={previousTestId || "button-previous"}
               className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
@@ -29,30 +34,32 @@ export function StickyNav({
             <div className="flex-1 sm:flex-none sm:min-w-[120px]" />
           )}
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onSave}
-            disabled={loading}
-            data-testid="button-save-draft"
-            className="min-h-[44px] flex-1 sm:flex-none"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-1" />
-            )}
-            Save Draft
-          </Button>
+          {onSave && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onSave}
+              disabled={loading}
+              data-testid={saveTestId || "button-save-draft"}
+              className="min-h-[44px] flex-1 sm:flex-none"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-1" />
+              )}
+              {saveLabel}
+            </Button>
+          )}
 
           <Button
             type="button"
             onClick={onNext}
             disabled={loading || disabledNext}
-            data-testid="button-continue"
+            data-testid={nextTestId || "button-continue"}
             className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
           >
-            Continue
+            {nextLabel}
             <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>

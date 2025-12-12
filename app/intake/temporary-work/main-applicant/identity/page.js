@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -167,7 +167,7 @@ const citizenshipDialogSchema = z.object({
   date_obtained_year: z.string().optional(),
 });
 
-function CitizenshipDialog({ row, onSubmit, onCancel }) {
+function CitizenshipDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   const dialogForm = useForm({
     resolver: zodResolver(citizenshipDialogSchema),
     defaultValues: row || {
@@ -192,12 +192,12 @@ function CitizenshipDialog({ row, onSubmit, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -323,10 +323,10 @@ const passportDialogSchema = z.object({
   }
 );
 
-function PassportDialog({ row, onSubmit, onCancel }) {
+function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   const initialIsOriginal = row?.is_original_date !== undefined ? row.is_original_date : "yes";
   const [isOriginalDate, setIsOriginalDate] = useState(initialIsOriginal);
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(passportDialogSchema),
     defaultValues: row || {
@@ -371,12 +371,12 @@ function PassportDialog({ row, onSubmit, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4 max-h-[600px] overflow-y-auto pr-2"
     >
       <div>
@@ -701,7 +701,7 @@ const identityDocDialogSchema = z.object({
   date_issued_year: z.string().optional(),
 });
 
-function IdentityDocumentDialog({ row, onSubmit, onCancel }) {
+function IdentityDocumentDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   const dialogForm = useForm({
     resolver: zodResolver(identityDocDialogSchema),
     defaultValues: row || {
@@ -730,12 +730,12 @@ function IdentityDocumentDialog({ row, onSubmit, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4 max-h-[600px] overflow-y-auto pr-2"
     >
       <div>
@@ -882,7 +882,8 @@ export default function IdentityPage() {
   const snapshot = useSnapshot(draftStore);
 
   const visaType = getVisaTypeFromPath(pathname);
-  const currentData = snapshot?.data?.temporary_work_identity || {};
+  const currentData = snapshot?.draft?.temporary_work_identity || {};
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -912,41 +913,68 @@ export default function IdentityPage() {
   const hasPassport = form.watch("has_passport");
   const hasIdentityDocument = form.watch("has_identity_document");
 
+  useEffect(() => {
+    const savedData = snapshot?.draft?.temporary_work_identity || {};
+    if (Object.keys(savedData).length > 0) {
+      const formData = {
+        is_current_citizen: savedData.is_current_citizen || "yes",
+        stateless_explanation: savedData.stateless_explanation || "",
+        has_been_citizen: savedData.has_been_citizen || "no",
+        citizenships: savedData.citizenships || [],
+        has_passport: savedData.has_passport || "no",
+        passports: savedData.passports || [],
+        has_identity_document: savedData.has_identity_document || "no",
+        identity_documents: savedData.identity_documents || [],
+      };
+      form.reset(formData);
+    }
+  }, [snapshot?.draft?.temporary_work_identity, form]);
+
   const handleSave = async () => {
-    const data = form.getValues();
-    const result = await draftStore.saveSectionData("temporary_work_identity", data);
-    
-    if (result.success) {
-      draftStore.markPageComplete("temporary-work/main-applicant/identity");
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save changes",
-        variant: "destructive",
-      });
+    setIsSaving(true);
+    try {
+      const data = form.getValues();
+      const result = await draftStore.saveSectionData("temporary_work_identity", data);
+
+      if (result.success) {
+        draftStore.markPageComplete("temporary-work/main-applicant/identity");
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const onSubmit = async (data) => {
-    const result = await draftStore.saveSectionData("temporary_work_identity", data);
-    
-    if (result.success) {
-      draftStore.markPageComplete("temporary-work/main-applicant/identity");
-      const visaType = getVisaTypeFromPath(pathname);
-      const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
-      if (nextRoute) {
-        router.push(nextRoute);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData("temporary_work_identity", data);
+
+      if (result.success) {
+        draftStore.markPageComplete("temporary-work/main-applicant/identity");
+        const visaType = getVisaTypeFromPath(pathname);
+        const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+        if (nextRoute) {
+          router.push(nextRoute);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
       }
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save changes",
-        variant: "destructive",
-      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -965,15 +993,7 @@ export default function IdentityPage() {
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <StickyNav
-          onSave={handleSave}
-          onPrevious={handlePrevious}
-          onNext={form.handleSubmit(onSubmit)}
-          nextLabel="Continue"
-          previousTestId="button-previous-mobile"
-          nextTestId="button-continue-mobile"
-          saveTestId="button-save-mobile"
-        />
+
 
         <div className="max-w-4xl mx-auto p-6">
           <div className="bg-white rounded-lg shadow-sm p-8">
@@ -1068,16 +1088,16 @@ export default function IdentityPage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...citizenships, newRow];
-                        form.setValue("citizenships", updated);
+                        form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...citizenships];
                         updated[index] = updatedRow;
-                        form.setValue("citizenships", updated);
+                        form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = citizenships.filter((_, i) => i !== index);
-                        form.setValue("citizenships", updated);
+                        form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={CitizenshipDialog}
                       addButtonText="Add"
@@ -1132,16 +1152,16 @@ export default function IdentityPage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...passports, newRow];
-                        form.setValue("passports", updated);
+                        form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...passports];
                         updated[index] = updatedRow;
-                        form.setValue("passports", updated);
+                        form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = passports.filter((_, i) => i !== index);
-                        form.setValue("passports", updated);
+                        form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={PassportDialog}
                       addButtonText="Add"
@@ -1196,16 +1216,16 @@ export default function IdentityPage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...identityDocuments, newRow];
-                        form.setValue("identity_documents", updated);
+                        form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...identityDocuments];
                         updated[index] = updatedRow;
-                        form.setValue("identity_documents", updated);
+                        form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = identityDocuments.filter((_, i) => i !== index);
-                        form.setValue("identity_documents", updated);
+                        form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={IdentityDocumentDialog}
                       addButtonText="Add"
@@ -1220,35 +1240,15 @@ export default function IdentityPage() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200 mt-8">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  Save Draft
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              loading={isSaving}
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+
+              saveLabel="Save Draft"
+              nextLabel="Continue"
+            />
           </div>
         </div>
       </form>

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
@@ -61,7 +61,7 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <Label className="mb-2 block">Language *</Label>
         <Select
@@ -131,9 +131,16 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -175,7 +182,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <Label className="mb-2 block">Test Type *</Label>
         <Select
@@ -322,9 +329,16 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -363,12 +377,12 @@ export default function LanguagePage() {
     if (Object.keys(savedData).length > 0) {
       form.reset(savedData);
     }
-  }, []);
+  }, [draft.temporary_work_language, form]);
 
   const handleSave = async () => {
     const formData = form.getValues();
     const result = await draftStore.saveSectionData("temporary_work_language", formData);
-    
+
     if (result.success) {
       toast({
         title: "Draft saved",
@@ -387,7 +401,7 @@ export default function LanguagePage() {
     await draftStore.saveSectionData("temporary_work_language", data);
     const visaType = getVisaTypeFromPath(pathname);
     draftStore.markPageComplete(`${visaType}/main-applicant/language`);
-    
+
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {
       router.push(nextRoute);
@@ -404,11 +418,8 @@ export default function LanguagePage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        title="Language"
-        description="In this section, provide details about the main applicant's language skills."
-      />
-      
+
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -451,16 +462,16 @@ export default function LanguagePage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...languages, newRow];
-                        form.setValue("languages", updated);
+                        form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...languages];
                         updated[index] = updatedRow;
-                        form.setValue("languages", updated);
+                        form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = languages.filter((_, i) => i !== index);
-                        form.setValue("languages", updated);
+                        form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={LanguageDialog}
                       addButtonText="Add"
@@ -510,16 +521,16 @@ export default function LanguagePage() {
                       ]}
                       onAdd={(newRow) => {
                         const updated = [...englishTests, newRow];
-                        form.setValue("english_tests", updated);
+                        form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onEdit={(index, updatedRow) => {
                         const updated = [...englishTests];
                         updated[index] = updatedRow;
-                        form.setValue("english_tests", updated);
+                        form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       onDelete={(index) => {
                         const updated = englishTests.filter((_, i) => i !== index);
-                        form.setValue("english_tests", updated);
+                        form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                       }}
                       DialogComponent={EnglishTestDialog}
                       addButtonText="Add"
@@ -530,33 +541,13 @@ export default function LanguagePage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  data-testid="button-save"
-                >
-                  Save
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
+            />
           </form>
         </div>
       </div>
