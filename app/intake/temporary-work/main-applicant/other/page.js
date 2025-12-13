@@ -450,6 +450,14 @@ export default function Page() {
     defaultValues: {
       has_other_names: "no",
       other_names: [],
+      // FIX: Add all missing fields here with their default/initial values
+      use_chinese_code: "no",
+      chinese_code: "",
+      russian_descent: "no",
+      patronymic_family_name: "",
+      patronymic_given_names: "",
+      has_prev_dob: "no",
+      prev_dobs: [],
     },
   });
 
@@ -457,14 +465,31 @@ export default function Page() {
   const hasOtherNames = form.watch("has_other_names");
   const otherNames = form.watch("other_names") || [];
 
+  // Populate Form
   useEffect(() => {
-    const savedData = draftSnap.draft?.temporary_work_other || {};
-    if (Object.keys(savedData).length > 0) {
+    const savedData = draftSnap.draft?.temporary_work_other;
+
+    // FIX: Only reset if we actually have data, preventing overwrites with empty objects
+    if (savedData && Object.keys(savedData).length > 0) {
+      
+      // FIX: Helper to safely convert incoming DB data to Strings for Select components
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
       const formData = {
-        has_other_names: savedData.has_other_names || "no",
+        // FIX: Ensure all fields are explicitly loaded and default to something safe
+        has_other_names: safeStr(savedData.has_other_names) || "no",
         other_names: savedData.other_names || [],
+        
+        use_chinese_code: safeStr(savedData.use_chinese_code) || "no",
+        chinese_code: safeStr(savedData.chinese_code) || "",
+        russian_descent: safeStr(savedData.russian_descent) || "no",
+        patronymic_family_name: safeStr(savedData.patronymic_family_name) || "",
+        patronymic_given_names: safeStr(savedData.patronymic_given_names) || "",
+        has_prev_dob: safeStr(savedData.has_prev_dob) || "no",
+        prev_dobs: savedData.prev_dobs || [],
       };
 
+      // Use reset to properly update all form fields
       form.reset(formData);
     }
   }, [draftSnap.draft?.temporary_work_other, form]);
@@ -520,14 +545,26 @@ export default function Page() {
     }
   };
 
+  // FIX: Update the synchronization logic for other_names
   const updateOtherNames = (newNames) => {
     form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), other_names: newNames });
+    
+    // FIX: Use the complete current state and override just the updated array
+    draftStore.saveSectionData("temporary_work_other", { 
+      ...form.getValues(), 
+      other_names: newNames // Pass the new array explicitly
+    });
   };
 
+  // FIX: Update the synchronization logic for prev_dobs
   const updatePrevDobs = (newDobs) => {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    draftStore.saveSectionData("temporary_work_other", { ...form.getValues(), prev_dobs: newDobs });
+    
+    // FIX: Use the complete current state and override just the updated array
+    draftStore.saveSectionData("temporary_work_other", { 
+      ...form.getValues(), 
+      prev_dobs: newDobs // Pass the new array explicitly
+    });
   };
 
   const otherNameColumns = [

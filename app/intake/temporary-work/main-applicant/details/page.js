@@ -54,7 +54,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
 
-  const [isMainApplicant, setIsMainApplicant] = useState("yes");
   const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
@@ -62,13 +61,17 @@ export default function Page() {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
-      draftStore.loadDraft(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl).then((loadedData) => {
+        console.log('📦 Data loaded from database:', loadedData);
+        console.log('📦 Temporary work details:', loadedData?.temporary_work_details);
+      });
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      is_main_applicant: "yes", // FIX: Add default value for validation
       completing_family_name: "",
       completing_given_names: "",
       completing_preferred_names: "",
@@ -94,48 +97,62 @@ export default function Page() {
     },
   });
 
+  // Watch this for UI conditionals (instead of using useState)
+  const isMainApplicant = form.watch("is_main_applicant");
+
+  // Populate Form
   useEffect(() => {
-    const savedData = draftSnap.draft?.temporary_work_details || {};
-    if (Object.keys(savedData).length > 0) {
-      // Merge saved data with default values to ensure all fields are set
+    const savedData = draftSnap.draft?.temporary_work_details;
+
+    // FIX: Only reset if we actually have data, preventing overwrites with empty objects
+    if (savedData && Object.keys(savedData).length > 0) {
+      
+      // FIX: Helper to safely convert incoming DB data to Strings for Select components
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
       const formData = {
-        completing_family_name: savedData.completing_family_name || "",
-        completing_given_names: savedData.completing_given_names || "",
-        completing_preferred_names: savedData.completing_preferred_names || "",
-        completing_gender: savedData.completing_gender || "",
-        completing_birth_day: savedData.completing_birth_day || "",
-        completing_birth_month: savedData.completing_birth_month || "",
-        completing_birth_year: savedData.completing_birth_year || "",
-        prefix: savedData.prefix || "",
-        family_name: savedData.family_name || "",
-        given_names: savedData.given_names || "",
-        preferred_names: savedData.preferred_names || "",
-        gender: savedData.gender || "",
-        birth_day: savedData.birth_day || "",
-        birth_month: savedData.birth_month || "",
-        birth_year: savedData.birth_year || "",
-        country_of_birth: savedData.country_of_birth || "",
-        city_of_birth: savedData.city_of_birth || "",
-        state_of_birth: savedData.state_of_birth || "",
-        marital_status: savedData.marital_status || "",
-        marital_status_date_day: savedData.marital_status_date_day || "",
-        marital_status_date_month: savedData.marital_status_date_month || "",
-        marital_status_date_year: savedData.marital_status_date_year || "",
+        // FIX: Include the required validation field in the reset
+        is_main_applicant: safeStr(savedData.is_main_applicant) || "yes",
+        
+        completing_family_name: safeStr(savedData.completing_family_name),
+        completing_given_names: safeStr(savedData.completing_given_names),
+        completing_preferred_names: safeStr(savedData.completing_preferred_names),
+        completing_gender: safeStr(savedData.completing_gender),
+        completing_birth_day: safeStr(savedData.completing_birth_day),
+        completing_birth_month: safeStr(savedData.completing_birth_month),
+        completing_birth_year: safeStr(savedData.completing_birth_year),
+        
+        prefix: safeStr(savedData.prefix),
+        family_name: safeStr(savedData.family_name),
+        given_names: safeStr(savedData.given_names),
+        preferred_names: safeStr(savedData.preferred_names),
+        gender: safeStr(savedData.gender),
+        
+        // FIX: Explicitly convert numbers to strings for Selects
+        birth_day: safeStr(savedData.birth_day),
+        birth_month: safeStr(savedData.birth_month),
+        birth_year: safeStr(savedData.birth_year),
+        
+        country_of_birth: safeStr(savedData.country_of_birth),
+        city_of_birth: safeStr(savedData.city_of_birth),
+        state_of_birth: safeStr(savedData.state_of_birth),
+        marital_status: safeStr(savedData.marital_status),
+        marital_status_date_day: safeStr(savedData.marital_status_date_day),
+        marital_status_date_month: safeStr(savedData.marital_status_date_month),
+        marital_status_date_year: safeStr(savedData.marital_status_date_year),
       };
 
       // Use reset to properly update all form fields including Select components
       form.reset(formData);
-
-      if (savedData.is_main_applicant) {
-        setIsMainApplicant(savedData.is_main_applicant);
-      }
     }
   }, [draftSnap.draft?.temporary_work_details, form]);
 
   const onSubmit = async (data) => {
     // Save the form data
     await draftStore.saveSectionData("temporary_work_details", data);
+    console.log("📦 Data saved to database:", data);
 
+    // FIX: Removed early return - this was preventing navigation and completion marking
     // Only mark as complete if we have actual data
     // We pass the explicit data key "temporary_work_details" to ensure correct validation
     await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
@@ -153,12 +170,14 @@ export default function Page() {
     setIsSaving(true);
     try {
       const values = form.getValues();
+      console.log("📦 Data saved to database:", values);
       const result = await draftStore.saveSectionData("temporary_work_details", values);
       if (result.success) {
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully",
         });
+
       } else {
         toast({
           title: "Error",
@@ -251,7 +270,7 @@ export default function Page() {
               <div>
                 <Label>Gender</Label>
                 <RadioGroup
-                  value={form.watch("gender")}
+                  value={form.watch("gender") || ""}
                   onValueChange={(value) => form.setValue("gender", value)}
                   className="flex gap-4 mt-2"
                   data-testid="radio-gender"
@@ -275,7 +294,7 @@ export default function Page() {
                   <Label>Date of Birth - Day</Label>
                   <Select
                     onValueChange={(value) => form.setValue("birth_day", value)}
-                    value={form.watch("birth_day")}
+                    value={form.watch("birth_day") || ""}
                   >
                     <SelectTrigger data-testid="select-birth-day">
                       <SelectValue placeholder="Choose Day" />
@@ -295,7 +314,7 @@ export default function Page() {
                   <Label>Month</Label>
                   <Select
                     onValueChange={(value) => form.setValue("birth_month", value)}
-                    value={form.watch("birth_month")}
+                    value={form.watch("birth_month") || ""}
                   >
                     <SelectTrigger data-testid="select-birth-month">
                       <SelectValue placeholder="Choose Month" />
@@ -315,7 +334,7 @@ export default function Page() {
                   <Label>Year</Label>
                   <Select
                     onValueChange={(value) => form.setValue("birth_year", value)}
-                    value={form.watch("birth_year")}
+                    value={form.watch("birth_year") || ""}
                   >
                     <SelectTrigger data-testid="select-birth-year">
                       <SelectValue placeholder="Choose Year" />
@@ -360,7 +379,7 @@ export default function Page() {
                 <Label>What is your marital status?</Label>
                 <Select
                   onValueChange={(value) => form.setValue("marital_status", value)}
-                  value={form.watch("marital_status")}
+                  value={form.watch("marital_status") || ""}
                 >
                   <SelectTrigger data-testid="select-marital-status">
                     <SelectValue placeholder="Choose Marital Status" />
@@ -389,7 +408,7 @@ export default function Page() {
                     <div>
                       <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">Day</Label>
                       <Select
-                        value={form.watch("marital_status_date_day")}
+                        value={form.watch("marital_status_date_day") || ""}
                         onValueChange={(value) => form.setValue("marital_status_date_day", value)}
                       >
                         <SelectTrigger id="marital_status_date_day">
@@ -406,7 +425,7 @@ export default function Page() {
                     <div>
                       <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">Month</Label>
                       <Select
-                        value={form.watch("marital_status_date_month")}
+                        value={form.watch("marital_status_date_month") || ""}
                         onValueChange={(value) => form.setValue("marital_status_date_month", value)}
                       >
                         <SelectTrigger id="marital_status_date_month">
@@ -423,7 +442,7 @@ export default function Page() {
                     <div>
                       <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">Year</Label>
                       <Select
-                        value={form.watch("marital_status_date_year")}
+                        value={form.watch("marital_status_date_year") || ""}
                         onValueChange={(value) => form.setValue("marital_status_date_year", value)}
                       >
                         <SelectTrigger id="marital_status_date_year">

@@ -1056,7 +1056,6 @@ export default function IdentityPage() {
   const draftSnap = useSnapshot(draftStore);
 
   const visaType = getVisaTypeFromPath(pathname);
-  const currentData = snapshot?.draft?.temporary_work_identity || {};
   const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
@@ -1082,44 +1081,42 @@ export default function IdentityPage() {
     },
   });
 
+  // 2. Load Saved Data (Fixed Logic)
   useEffect(() => {
-    const savedData = draftSnap.draft?.temporary_work_identity || {};
-    if (Object.keys(savedData).length > 0) {
+    // ✅ FIX: Use draftSnap, not snapshot
+    const savedData = draftSnap.draft?.temporary_work_identity;
+
+    if (savedData && Object.keys(savedData).length > 0) {
+      
+      // ✅ FIX: Helper to prevent "Empty Select" bugs
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
       const formData = {
-        is_current_citizen: savedData.is_current_citizen || "yes",
-        stateless_explanation: savedData.stateless_explanation || "",
-        has_been_citizen: savedData.has_been_citizen || "no",
+        is_current_citizen: safeStr(savedData.is_current_citizen) || "yes",
+        stateless_explanation: safeStr(savedData.stateless_explanation),
+        has_been_citizen: safeStr(savedData.has_been_citizen) || "no",
         citizenships: savedData.citizenships || [],
-        has_passport: savedData.has_passport || "no",
+        has_passport: safeStr(savedData.has_passport) || "no",
         passports: savedData.passports || [],
-        has_identity_document: savedData.has_identity_document || "no",
+        has_identity_document: safeStr(savedData.has_identity_document) || "no",
         identity_documents: savedData.identity_documents || [],
       };
+      
       form.reset(formData);
     }
   }, [draftSnap.draft?.temporary_work_identity, form]);
+
+  // ✅ NOTE: Removed the duplicate useEffect that referenced 'snapshot'. 
+  // You only need the one above.
 
   const isCurrentCitizen = form.watch("is_current_citizen");
   const hasBeenCitizen = form.watch("has_been_citizen");
   const hasPassport = form.watch("has_passport");
   const hasIdentityDocument = form.watch("has_identity_document");
 
-  useEffect(() => {
-    const savedData = snapshot?.draft?.temporary_work_identity || {};
-    if (Object.keys(savedData).length > 0) {
-      const formData = {
-        is_current_citizen: savedData.is_current_citizen || "yes",
-        stateless_explanation: savedData.stateless_explanation || "",
-        has_been_citizen: savedData.has_been_citizen || "no",
-        citizenships: savedData.citizenships || [],
-        has_passport: savedData.has_passport || "no",
-        passports: savedData.passports || [],
-        has_identity_document: savedData.has_identity_document || "no",
-        identity_documents: savedData.identity_documents || [],
-      };
-      form.reset(formData);
-    }
-  }, [snapshot?.draft?.temporary_work_identity, form]);
+  const citizenships = form.watch("citizenships") || [];
+  const passports = form.watch("passports") || [];
+  const identityDocuments = form.watch("identity_documents") || [];
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -1128,7 +1125,8 @@ export default function IdentityPage() {
       const result = await draftStore.saveSectionData("temporary_work_identity", data);
 
       if (result.success) {
-        draftStore.markPageComplete("temporary-work/main-applicant/identity");
+        // Optional: You can remove markPageComplete here if you only want it on "Continue"
+        // draftStore.markPageComplete("temporary-work/main-applicant/identity"); 
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully",
@@ -1151,9 +1149,10 @@ export default function IdentityPage() {
       const result = await draftStore.saveSectionData("temporary_work_identity", data);
 
       if (result.success) {
-        draftStore.markPageComplete("temporary-work/main-applicant/identity");
-        const visaType = getVisaTypeFromPath(pathname);
-        const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+        // Mark complete on navigation
+        await draftStore.markPageComplete(`${visaType}/main-applicant/identity`, null, "temporary_work_identity");
+        
+        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         if (nextRoute) {
           router.push(nextRoute);
         }
@@ -1170,22 +1169,15 @@ export default function IdentityPage() {
   };
 
   const handlePrevious = () => {
-    const visaType = getVisaTypeFromPath(pathname);
-    const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
+    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (previousRoute) {
       router.push(previousRoute);
     }
   };
 
-  const citizenships = form.watch("citizenships") || [];
-  const passports = form.watch("passports") || [];
-  const identityDocuments = form.watch("identity_documents") || [];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <form onSubmit={form.handleSubmit(onSubmit)}>
-
-
         <div className="max-w-4xl mx-auto p-6">
           <div className="bg-white rounded-lg shadow-sm p-8">
             <div className="mb-6">
@@ -1302,7 +1294,6 @@ export default function IdentityPage() {
                     )}
                   </div>
                 )}
-              </div>
 
               {/* Question 3: Do you currently hold or have you ever held a Passport or Travel Document? */}
               <div>
@@ -1440,7 +1431,6 @@ export default function IdentityPage() {
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}
-
               saveLabel="Save Draft"
               nextLabel="Continue"
             />
