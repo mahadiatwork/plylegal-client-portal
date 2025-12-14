@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
@@ -55,13 +57,24 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showJsonData, setShowJsonData] = useState(false);
+  const isSavingRef = useRef(false);
 
   // Set application ID from URL params if available
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'details/page.js:64',message:'Application ID useEffect triggered',data:{appIdFromUrl:searchParams.get('applicationId'),currentAppId:draftSnap.currentApplicationId,hasDraft:!!draftSnap.draft,hasTemporaryWorkDetails:!!draftSnap.draft?.temporary_work_details},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'details/page.js:67',message:'Loading draft - before loadDraft',data:{appId:appIdFromUrl,currentDraftKeys:Object.keys(draftSnap.draft||{})},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl).then((loadedData) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'details/page.js:70',message:'Draft loaded - after loadDraft',data:{hasLoadedData:!!loadedData,loadedDataKeys:Object.keys(loadedData||{}),hasTemporaryWorkDetails:!!loadedData?.temporary_work_details,temporaryWorkDetailsKeys:Object.keys(loadedData?.temporary_work_details||{}),birth_day:loadedData?.temporary_work_details?.birth_day,marital_status:loadedData?.temporary_work_details?.marital_status},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         console.log('📦 Data loaded from database:', loadedData);
         console.log('📦 Temporary work details:', loadedData?.temporary_work_details);
       });
@@ -100,62 +113,103 @@ export default function Page() {
   // Watch this for UI conditionals (instead of using useState)
   const isMainApplicant = form.watch("is_main_applicant");
 
-  // Populate Form
-  useEffect(() => {
-    const savedData = draftSnap.draft?.temporary_work_details;
+// Populate Form
+useEffect(() => {
+  // 1. Safety Check: If saving, do not touch the form
+  if (isSavingRef.current) return;
 
-    // FIX: Only reset if we actually have data, preventing overwrites with empty objects
-    if (savedData && Object.keys(savedData).length > 0) {
+  // 2. Wait for loading: If loading AND we have no data, wait.
+  // NOTE: This will now properly re-run when loading finishes because we added it to dependencies.
+  if (draftSnap.isLoading && !draftSnap.draft?.temporary_work_details) {
+    return;
+  }
+
+  const savedData = draftSnap.draft?.temporary_work_details;
+
+  // 3. Populate: Only if we have actual data
+  if (savedData && Object.keys(savedData).length > 0) {
+    
+    // --- NORMALIZATION HELPERS (Fixes the "07" vs "7" bug) ---
+    const monthsList = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const normalizeNumber = (val) => {
+      if (!val) return "";
+      const num = Number(val);
+      return isNaN(num) ? val : String(num); 
+    };
+
+    const normalizeMonth = (val) => {
+      if (!val) return "";
+      if (!isNaN(Number(val))) return String(Number(val));
+      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
+      return monthIndex !== -1 ? String(monthIndex + 1) : val;
+    };
+
+    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+    // 4. Prepare the clean data object
+    const formData = {
+      is_main_applicant: safeStr(savedData.is_main_applicant) || "yes",
       
-      // FIX: Helper to safely convert incoming DB data to Strings for Select components
-      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+      completing_family_name: safeStr(savedData.completing_family_name),
+      completing_given_names: safeStr(savedData.completing_given_names),
+      completing_preferred_names: safeStr(savedData.completing_preferred_names),
+      completing_gender: safeStr(savedData.completing_gender),
+      completing_birth_day: normalizeNumber(savedData.completing_birth_day),
+      completing_birth_month: normalizeMonth(savedData.completing_birth_month),
+      completing_birth_year: safeStr(savedData.completing_birth_year),
 
-      const formData = {
-        // FIX: Include the required validation field in the reset
-        is_main_applicant: safeStr(savedData.is_main_applicant) || "yes",
-        
-        completing_family_name: safeStr(savedData.completing_family_name),
-        completing_given_names: safeStr(savedData.completing_given_names),
-        completing_preferred_names: safeStr(savedData.completing_preferred_names),
-        completing_gender: safeStr(savedData.completing_gender),
-        completing_birth_day: safeStr(savedData.completing_birth_day),
-        completing_birth_month: safeStr(savedData.completing_birth_month),
-        completing_birth_year: safeStr(savedData.completing_birth_year),
-        
-        prefix: safeStr(savedData.prefix),
-        family_name: safeStr(savedData.family_name),
-        given_names: safeStr(savedData.given_names),
-        preferred_names: safeStr(savedData.preferred_names),
-        gender: safeStr(savedData.gender),
-        
-        // FIX: Explicitly convert numbers to strings for Selects
-        birth_day: safeStr(savedData.birth_day),
-        birth_month: safeStr(savedData.birth_month),
-        birth_year: safeStr(savedData.birth_year),
-        
-        country_of_birth: safeStr(savedData.country_of_birth),
-        city_of_birth: safeStr(savedData.city_of_birth),
-        state_of_birth: safeStr(savedData.state_of_birth),
-        marital_status: safeStr(savedData.marital_status),
-        marital_status_date_day: safeStr(savedData.marital_status_date_day),
-        marital_status_date_month: safeStr(savedData.marital_status_date_month),
-        marital_status_date_year: safeStr(savedData.marital_status_date_year),
-      };
+      prefix: safeStr(savedData.prefix),
+      family_name: safeStr(savedData.family_name),
+      given_names: safeStr(savedData.given_names),
+      preferred_names: safeStr(savedData.preferred_names),
+      gender: safeStr(savedData.gender),
+      
+      // APPLICANT BIRTH DATES (Normalized)
+      birth_day: normalizeNumber(savedData.birth_day),
+      birth_month: normalizeMonth(savedData.birth_month),
+      birth_year: safeStr(savedData.birth_year),
+      
+      country_of_birth: safeStr(savedData.country_of_birth),
+      city_of_birth: safeStr(savedData.city_of_birth),
+      state_of_birth: safeStr(savedData.state_of_birth),
+      
+      marital_status: safeStr(savedData.marital_status),
+      marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
+      marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
+      marital_status_date_year: safeStr(savedData.marital_status_date_year),
+    };
 
-      // Use reset to properly update all form fields including Select components
-      form.reset(formData);
-    }
-  }, [draftSnap.draft?.temporary_work_details, form]);
+    // 5. Reset the form with the clean data
+    form.reset(formData);
+
+    // 6. FORCE UPDATE (Safety Net): Explicitly set these fields to ensure UI catches up
+    // We wrap this in a tiny timeout to ensure the render cycle is complete
+    setTimeout(() => {
+      if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
+      if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
+      if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
+      if (savedData.marital_status) form.setValue("marital_status", safeStr(savedData.marital_status));
+    }, 0);
+  }
+
+// DEPENDENCY ARRAY FIX:
+// 1. Added draftSnap.isLoading (Critical!)
+// 2. Added JSON.stringify to ensure it runs whenever the CONTENT changes, not just the reference.
+}, [
+  draftSnap.isLoading, 
+  JSON.stringify(draftSnap.draft?.temporary_work_details)
+]);
 
   const onSubmit = async (data) => {
-    // Save the form data
-    await draftStore.saveSectionData("temporary_work_details", data);
-    console.log("📦 Data saved to database:", data);
-
-    // FIX: Removed early return - this was preventing navigation and completion marking
-    // Only mark as complete if we have actual data
-    // We pass the explicit data key "temporary_work_details" to ensure correct validation
-    await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+    // NOTE: Saving is now handled by the "Save Draft" button only
+    // Continue button just navigates without saving
+    // await draftStore.saveSectionData("temporary_work_details", data);
+    // console.log("📦 Data saved to database:", data);
+    // await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
 
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
@@ -168,6 +222,7 @@ export default function Page() {
 
   const handleSave = async () => {
     setIsSaving(true);
+    isSavingRef.current = true;
     try {
       const values = form.getValues();
       console.log("📦 Data saved to database:", values);
@@ -187,6 +242,7 @@ export default function Page() {
       }
     } finally {
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 
@@ -207,6 +263,27 @@ export default function Page() {
     "Separated"
   ];
 
+    // Helper references for cleaner logic
+    const savedDetails = draftSnap.draft?.temporary_work_details;
+    const currentFormValues = form.getValues();
+
+// Prepare JSON data for display
+const jsonData = {
+  fullDraft: draftSnap.draft,
+  temporaryWorkDetails: savedDetails,
+  completionStatus: draftSnap.completionStatus,
+  currentApplicationId: draftSnap.currentApplicationId,
+  formValues: currentFormValues,
+
+  // USE || HERE so that "" falls back to the saved data
+  birth_day: currentFormValues.birth_day || savedDetails?.birth_day,
+  birth_month: currentFormValues.birth_month || savedDetails?.birth_month,
+  birth_year: currentFormValues.birth_year || savedDetails?.birth_year,
+  marital_status: currentFormValues.marital_status || savedDetails?.marital_status,
+};
+
+
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -221,28 +298,6 @@ export default function Page() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
             {/* Main Applicant's Personal Details Section */}
             <div className="space-y-6 border-gray-200">
-              {/* <div className="hidden">
-                <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
-                <RadioGroup
-                  value={form.watch("prefix")}
-                  onValueChange={(value) => form.setValue("prefix", value)}
-                  className="flex flex-wrap gap-4"
-                  data-testid="radio-prefix"
-                >
-                  {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                    <div key={prefix} className="flex items-center">
-                      <RadioGroupItem value={prefix} id={`main-${prefix.toLowerCase()}`} />
-                      <Label htmlFor={`main-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {prefix}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {form.formState.errors.prefix?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.prefix.message}</p>
-                )}
-              </div> */}
-
               <div>
                 <Label>Family Name</Label>
                 <Input {...form.register("family_name")} data-testid="input-family-name" />
@@ -293,8 +348,8 @@ export default function Page() {
                 <div>
                   <Label>Date of Birth - Day</Label>
                   <Select
-                    onValueChange={(value) => form.setValue("birth_day", value)}
                     value={form.watch("birth_day") || ""}
+                    onValueChange={(value) => form.setValue("birth_day", value)}
                   >
                     <SelectTrigger data-testid="select-birth-day">
                       <SelectValue placeholder="Choose Day" />
@@ -313,8 +368,8 @@ export default function Page() {
                 <div>
                   <Label>Month</Label>
                   <Select
-                    onValueChange={(value) => form.setValue("birth_month", value)}
                     value={form.watch("birth_month") || ""}
+                    onValueChange={(value) => form.setValue("birth_month", value)}
                   >
                     <SelectTrigger data-testid="select-birth-month">
                       <SelectValue placeholder="Choose Month" />
@@ -333,8 +388,8 @@ export default function Page() {
                 <div>
                   <Label>Year</Label>
                   <Select
-                    onValueChange={(value) => form.setValue("birth_year", value)}
                     value={form.watch("birth_year") || ""}
+                    onValueChange={(value) => form.setValue("birth_year", value)}
                   >
                     <SelectTrigger data-testid="select-birth-year">
                       <SelectValue placeholder="Choose Year" />
@@ -378,8 +433,8 @@ export default function Page() {
               <div>
                 <Label>What is your marital status?</Label>
                 <Select
-                  onValueChange={(value) => form.setValue("marital_status", value)}
                   value={form.watch("marital_status") || ""}
+                  onValueChange={(value) => form.setValue("marital_status", value)}
                 >
                   <SelectTrigger data-testid="select-marital-status">
                     <SelectValue placeholder="Choose Marital Status" />

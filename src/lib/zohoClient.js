@@ -10,8 +10,6 @@ class ZohoCRMClient {
     this.accessToken = null;
     this.tokenExpiry = null;
     this.tokenCacheDuration = 50 * 60 * 1000; // 50 minutes (tokens typically last 1 hour)
-    
-    console.log(`🌍 Zoho CRM configured: ${this.baseURL} (datacenter: ${datacenter})`);
   }
 
   async getAccessToken(forceRefresh = false) {

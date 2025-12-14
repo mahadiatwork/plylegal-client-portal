@@ -56,6 +56,9 @@ export const draftStore = proxy({
 
   async loadDraft(applicationId) {
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'draftStore.js:57',message:'loadDraft entry',data:{applicationId,currentAppId:this.currentApplicationId,currentDraftKeys:Object.keys(this.draft||{})},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       this.isLoading = true;
 
       const appId = applicationId || this.currentApplicationId;
@@ -66,7 +69,13 @@ export const draftStore = proxy({
       }
 
       const data = await db.loadDraft(appId);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'draftStore.js:68',message:'After db.loadDraft',data:{hasData:!!data,dataKeys:Object.keys(data||{}),hasTemporaryWorkDetails:!!data?.temporary_work_details,temporaryWorkDetailsKeys:Object.keys(data?.temporary_work_details||{}),birth_day:data?.temporary_work_details?.birth_day,marital_status:data?.temporary_work_details?.marital_status},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       this.draft = data || {};
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'draftStore.js:69',message:'After setting this.draft',data:{draftKeys:Object.keys(this.draft||{}),hasTemporaryWorkDetails:!!this.draft?.temporary_work_details,birth_day:this.draft?.temporary_work_details?.birth_day,marital_status:this.draft?.temporary_work_details?.marital_status},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
 
       // Load completion status
       const completionData = await db.loadCompletionStatus(appId);
@@ -85,6 +94,9 @@ export const draftStore = proxy({
       this.shouldPrefill = prefill;
 
       this.isLoading = false;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'draftStore.js:88',message:'loadDraft exit',data:{returnDraftKeys:Object.keys(this.draft||{}),hasTemporaryWorkDetails:!!this.draft?.temporary_work_details,birth_day:this.draft?.temporary_work_details?.birth_day,marital_status:this.draft?.temporary_work_details?.marital_status},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       return this.draft;
     } catch (error) {
       console.error("Error loading draft:", error);

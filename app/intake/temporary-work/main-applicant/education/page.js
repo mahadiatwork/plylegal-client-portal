@@ -477,7 +477,7 @@ export default function EducationPage() {
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}
-              saveLabel="Save"
+              saveLabel="Save Draft"
               nextLabel="Continue"
               loading={draftSnap.isSaving}
             />

@@ -41,8 +41,6 @@ function getDatabaseType() {
 export function createAdapter() {
   const dbType = getDatabaseType();
   
-  console.log(`📦 Using database adapter: ${dbType}`);
-  
   switch (dbType) {
     case 'localStorage':
       return new LocalStorageAdapter();

@@ -49,9 +49,6 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
-  
-  console.log('✅ Firebase initialized successfully');
-  console.log(`📦 Project ID: ${firebaseConfig.projectId}`);
 } catch (error) {
   console.error('❌ Firebase initialization failed:', error);
   throw error;

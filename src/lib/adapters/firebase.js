@@ -36,7 +36,6 @@ export class FirebaseAdapter extends BaseAdapter {
     super();
     this.auth = auth;
     this.db = db;
-    console.log('✅ Firebase adapter initialized');
   }
   
   /**
@@ -68,8 +67,6 @@ export class FirebaseAdapter extends BaseAdapter {
           credentials.password
         );
         
-        console.log('✅ Sign in successful, user ID:', userCredential.user.uid);
-        
         // Ensure user profile document exists in Firestore
         await this.getUserProfile(userCredential.user.uid);
         
@@ -78,7 +75,6 @@ export class FirebaseAdapter extends BaseAdapter {
         try {
           const userProfile = await this.getUserProfile(userCredential.user.uid);
           if (userProfile?.zohoContactId) {
-            console.log('🔍 Fetching deals/applications from Zoho CRM on login...');
             // Get ID token for authenticated Firestore requests
             const idToken = await userCredential.user.getIdToken();
             // Use API route to fetch and save to Firebase (ensures correct field mapping)
@@ -94,12 +90,10 @@ export class FirebaseAdapter extends BaseAdapter {
               .then(async (response) => {
                 const result = await response.json();
                 if (result.success) {
-                  console.log(`✅ ${result.rawDealsData?.length || 0} deals fetched from Zoho and saved to Firebase`);
                   // Store raw deals data in store for JSON display
                   applicationsStore.rawDealsData = result.rawDealsData || [];
                   // Reload applications from Firebase to show the newly saved deals
                   await applicationsStore.loadApplications(userCredential.user.uid);
-                  console.log('✅ Applications reloaded from Firebase after Zoho sync');
                 } else {
                   console.error('⚠️ Failed to fetch deals from Zoho:', result.error);
                 }
@@ -107,8 +101,6 @@ export class FirebaseAdapter extends BaseAdapter {
               .catch((dealError) => {
                 console.error('⚠️ Failed to fetch deals from Zoho on login (non-critical):', dealError.message);
               });
-          } else {
-            console.log('ℹ️ No Zoho contact ID found, skipping deals fetch');
           }
         } catch (zohoError) {
           // Log but don't fail login
@@ -137,7 +129,6 @@ export class FirebaseAdapter extends BaseAdapter {
               credentials.password
             );
             
-            console.log('✅ User created successfully, ID:', userCredential.user.uid);
             
             // Set display name from email
             const displayName = credentials.email.split('@')[0];
@@ -151,26 +142,21 @@ export class FirebaseAdapter extends BaseAdapter {
             
             // Try to populate profile from Zoho CRM (non-blocking)
             try {
-              console.log('🔍 Attempting to populate profile from Zoho CRM...');
               const populateResult = await this.populateFromZoho(
                 userCredential.user.uid,
                 userCredential.user.email
               );
               
               if (populateResult.populated) {
-                console.log('✅ Profile populated from Zoho CRM');
                 // Reload profile to get updated data
                 await this.getUserProfile(userCredential.user.uid);
                 
                 // Reload applications to get any new deals/applications from Zoho
                 try {
                   await applicationsStore.loadApplications(userCredential.user.uid);
-                  console.log('✅ Applications reloaded after Zoho population');
                 } catch (appError) {
                   console.error('⚠️ Failed to reload applications (non-critical):', appError.message);
                 }
-              } else {
-                console.log('ℹ️ No Zoho contact found or profile already populated');
               }
             } catch (zohoError) {
               // Log error but don't fail registration
@@ -378,20 +364,14 @@ export class FirebaseAdapter extends BaseAdapter {
    */
   async populateFromZoho(userId, email) {
     try {
-      console.log('🔍 Checking Zoho CRM for contact:', email);
-      
       const zohoClient = new ZohoCRMClient();
       
       // Find contact by email
       const contact = await zohoClient.findContactByEmail(email);
       
       if (!contact) {
-        console.log('📭 No Zoho contact found for email:', email);
         return { success: true, populated: false };
       }
-      
-      console.log('✅ Found Zoho contact:', contact.id);
-      console.log('📦 Contact data received:', JSON.stringify(contact, null, 2));
       
       // Map Zoho contact fields to Firebase profile structure
       // Note: Zoho uses exact field names like First_Name, Last_Name, Mailing_State, etc.
@@ -493,19 +473,13 @@ export class FirebaseAdapter extends BaseAdapter {
       }
 
       // Update Firebase profile
-      console.log('💾 Updating Firebase profile with Zoho data...');
       const updateResult = await this.updateUserProfile(userId, profileData);
       
       if (updateResult.success) {
-        console.log('✅ Profile updated in Firebase');
-        
         // Verify the update by reading the profile back
         const updatedProfile = await this.getUserProfile(userId);
-        console.log('📖 Profile after update:', JSON.stringify(updatedProfile, null, 2));
         
-        if (updatedProfile) {
-          console.log('✅ Profile populated from Zoho CRM successfully');
-        } else {
+        if (!updatedProfile) {
           console.warn('⚠️ Profile update may have failed - could not read profile back');
         }
       } else {
@@ -518,17 +492,7 @@ export class FirebaseAdapter extends BaseAdapter {
         const deals = await zohoClient.getRelatedRecords('Contacts', contact.id, 'Deals');
         
         if (deals && deals.length > 0) {
-          console.log(`📋 Found ${deals.length} deals in Deals related list`);
-          console.log('📦 Raw deals JSON data from populateFromZoho:', JSON.stringify(deals, null, 2));
-          
           for (const deal of deals) {
-            console.log(`📋 Processing deal in populateFromZoho:`, JSON.stringify(deal, null, 2));
-            console.log(`🔑 Deal keys:`, Object.keys(deal));
-            console.log(`🔍 Deal.id:`, deal.id);
-            console.log(`🔍 Deal.Deal_Name:`, deal.Deal_Name);
-            console.log(`🔍 Deal.DealName:`, deal.DealName);
-            console.log(`🔍 Deal.Stage:`, deal.Stage);
-            console.log(`🔍 Deal.Deal_Stage:`, deal.Deal_Stage);
             
             try {
               // Check if application already exists by zohoId
@@ -543,7 +507,6 @@ export class FirebaseAdapter extends BaseAdapter {
                 // Update existing application
                 const existingApp = existingApps.docs[0];
                 appId = existingApp.id;
-                console.log(`🔄 Updating existing application ${appId} from Deal ${deal.id}`);
                 
                 // Extract Visa Type from Deal_Name or use Visa_Type field
                 const dealName = deal.Deal_Name || deal.DealName || '';
@@ -563,7 +526,6 @@ export class FirebaseAdapter extends BaseAdapter {
                 // Create new application
                 appId = nanoid(12);
                 isNew = true;
-                console.log(`➕ Creating new application ${appId} from Deal ${deal.id}`);
                 
               const now = new Date();
               
@@ -591,20 +553,13 @@ export class FirebaseAdapter extends BaseAdapter {
                 zohoId: deal.id, // Reference to deal number in Zoho
               };
                 
-                console.log(`💾 Creating application with data:`, JSON.stringify(newApp, null, 2));
                 await setDoc(doc(this.db, 'applications', appId), newApp);
               }
-              
-              console.log(`✅ ${isNew ? 'Created' : 'Updated'} application ${appId} from Deal ${deal.id}`);
             } catch (dealError) {
               console.error(`⚠️ Failed to process Deal ${deal.id}:`, dealError.message);
               // Continue with other deals even if one fails
             }
           }
-          
-          console.log(`✅ Processed ${deals.length} deals from Zoho CRM`);
-        } else {
-          console.log('📋 No deals found in Deals related list');
         }
       } catch (dealsError) {
         console.error('⚠️ Failed to fetch deals from related list (non-critical):', dealsError.message);
@@ -628,34 +583,22 @@ export class FirebaseAdapter extends BaseAdapter {
    */
   async fetchDealsFromZoho(userId, zohoContactId) {
     try {
-      console.log(`🔍 Fetching deals for contact ${zohoContactId} from Zoho CRM...`);
       const zohoClient = new ZohoCRMClient();
       
       // STEP 1: Fetch Deals directly from Zoho CRM (not from Firebase)
       const deals = await zohoClient.getRelatedRecords('Contacts', zohoContactId, 'Deals');
       
       if (!deals || deals.length === 0) {
-        console.log('📋 No deals found in Deals related list');
         // Still update store with empty array to clear any stale data
         applicationsStore.applications = [];
         applicationsStore.rawDealsData = []; // Store empty array for debugging
         return [];
       }
       
-      console.log(`📋 Found ${deals.length} deals in Deals related list`);
-      console.log('📦 Raw deals JSON data:', JSON.stringify(deals, null, 2));
-      
       // STEP 2: Convert Zoho deals to application format and update store immediately
       const applicationsFromZoho = [];
       
       for (const deal of deals) {
-        console.log(`📋 Processing deal:`, JSON.stringify(deal, null, 2));
-        console.log(`🔑 Deal keys:`, Object.keys(deal));
-        console.log(`🔍 Deal.id:`, deal.id);
-        console.log(`🔍 Deal.Deal_Name:`, deal.Deal_Name);
-        console.log(`🔍 Deal.DealName:`, deal.DealName);
-        console.log(`🔍 Deal.Stage:`, deal.Stage);
-        console.log(`🔍 Deal.Deal_Stage:`, deal.Deal_Stage);
         
         try {
           // Extract Visa Type from Deal_Name or use Visa_Type field
@@ -694,8 +637,6 @@ export class FirebaseAdapter extends BaseAdapter {
             appId = existingApp.id;
             const existingAppData = existingApp.data();
             
-            console.log(`🔄 Application already exists in Firebase with id ${appId}, updating...`);
-            
             // Update with Zoho data (keep existing Firebase id)
             await updateDoc(doc(this.db, 'applications', appId), {
               ...applicationData,
@@ -718,7 +659,6 @@ export class FirebaseAdapter extends BaseAdapter {
             // Application doesn't exist - create new one in Firebase
             appId = nanoid(12);
             isNew = true;
-            console.log(`➕ Creating new application in Firebase with id ${appId} from Deal ${deal.id}`);
             
             const newApp = {
               id: appId,
@@ -727,7 +667,6 @@ export class FirebaseAdapter extends BaseAdapter {
               updatedAt: serverTimestamp(),
             };
             
-            console.log(`💾 Creating application in Firebase:`, JSON.stringify(newApp, null, 2));
             await setDoc(doc(this.db, 'applications', appId), newApp);
             
             applicationData.id = appId;
@@ -735,7 +674,6 @@ export class FirebaseAdapter extends BaseAdapter {
           }
           
           applicationsFromZoho.push(applicationData);
-          console.log(`✅ ${isNew ? 'Created' : 'Updated'} application ${appId} from Deal ${deal.id}`);
         } catch (dealError) {
           console.error(`⚠️ Failed to process Deal ${deal.id}:`, dealError.message);
           // Continue with other deals even if one fails
@@ -745,8 +683,6 @@ export class FirebaseAdapter extends BaseAdapter {
       // STEP 4: Update applicationsStore immediately with Zoho data (before Firebase sync)
       applicationsStore.applications = applicationsFromZoho;
       applicationsStore.rawDealsData = deals; // Store raw deals JSON for debugging
-      console.log(`✅ Updated applicationsStore with ${applicationsFromZoho.length} applications from Zoho CRM`);
-      console.log(`✅ Synced ${applicationsFromZoho.length} applications to Firebase`);
       
       return applicationsFromZoho;
     } catch (error) {
@@ -843,7 +779,6 @@ export class FirebaseAdapter extends BaseAdapter {
   
   async syncZohoToFirebase(userId, zohoContact) {
     try {
-      console.log('🔄 Syncing Zoho contact to Firebase for user:', userId);
       
       const userRef = doc(this.db, 'users', userId);
       
@@ -886,7 +821,6 @@ export class FirebaseAdapter extends BaseAdapter {
       // Update main profile with mapped data
       await setDoc(userRef, profileData, { merge: true });
       
-      console.log('✅ Zoho data synced to Firebase successfully');
       return { success: true };
     } catch (error) {
       console.error('❌ Error syncing Zoho to Firebase:', error);
@@ -1091,11 +1025,9 @@ export class FirebaseAdapter extends BaseAdapter {
     try {
       const uid = userId || this.auth.currentUser?.uid;
       if (!uid) {
-        console.log('⚠️ No userId provided for loadApplications');
         return [];
       }
       
-      console.log(`📋 Loading applications from Firebase for user: ${uid}`);
       const appsRef = collection(this.db, 'applications');
       const q = query(appsRef, where('userId', '==', uid));
       const snapshot = await getDocs(q);
@@ -1104,11 +1036,6 @@ export class FirebaseAdapter extends BaseAdapter {
         id: doc.id,
         ...doc.data()
       }));
-      
-      console.log(`✅ Loaded ${applications.length} applications from Firebase`);
-      if (applications.length > 0) {
-        console.log('📋 Application references:', applications.map(app => app.reference || app.id));
-      }
       
       return applications;
     } catch (error) {
@@ -1150,10 +1077,8 @@ export class FirebaseAdapter extends BaseAdapter {
         updatedAt: serverTimestamp()
       };
       
-      console.log(`💾 Creating application in Firestore with id: ${app.id}, userId: ${uid}`);
       const appRef = doc(this.db, 'applications', app.id);
       await setDoc(appRef, appData);
-      console.log(`✅ Application ${app.id} created successfully in Firestore`);
       
       return {
         success: true,
@@ -1180,7 +1105,6 @@ export class FirebaseAdapter extends BaseAdapter {
         return { success: false, error: 'Not authenticated' };
       }
       
-      console.log(`💾 Updating application ${id} in Firestore, userId: ${uid}`);
       const appRef = doc(this.db, 'applications', id);
       
       // Remove id from updates if present (it's the document ID, not a field)
@@ -1191,8 +1115,6 @@ export class FirebaseAdapter extends BaseAdapter {
         userId: uid, // Ensure userId is set
         updatedAt: serverTimestamp()
       });
-      
-      console.log(`✅ Application ${id} updated successfully in Firestore`);
       
       // Get updated application
       const appSnap = await getDoc(appRef);

@@ -20,7 +20,6 @@ export default function ApplicationsPage() {
   // Load user profile first
   useEffect(() => {
     if (authSnap.user?.id && !authSnap.userProfile) {
-      console.log('📋 Loading user profile...');
       authStore.loadUserProfile();
     }
   }, [authSnap.user?.id]);
@@ -37,7 +36,6 @@ export default function ApplicationsPage() {
         await applicationsStore.loadApplications(authSnap.user.id);
         
         // Sync with Zoho CRM (only once per page load)
-        console.log('📋 Syncing applications with Zoho CRM...');
         setHasSynced(true); // Set flag immediately to prevent duplicate calls
         
         try {
@@ -58,8 +56,6 @@ export default function ApplicationsPage() {
           if (result.success) {
             // Store raw deals data for debugging
             applicationsStore.rawDealsData = result.rawDealsData || [];
-            console.log(`✅ Synced ${result.applicationsCount || 0} applications from Zoho CRM`);
-            console.log(`📊 Raw deals count: ${result.rawDealsData?.length || 0}`);
             // Reload from Firebase after syncing
             await applicationsStore.loadApplications(authSnap.user.id);
           } else {
@@ -133,7 +129,6 @@ export default function ApplicationsPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {appsSnap.applications.map((app) => {
-                        console.log('📋 Rendering application:', app.id, app.reference, app.type, app.status);
                         return (
                           <tr 
                             key={app.id} 
