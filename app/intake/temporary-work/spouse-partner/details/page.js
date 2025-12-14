@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 
 const formSchema = z.object({
@@ -38,6 +40,9 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showJsonData, setShowJsonData] = useState(false);
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -64,16 +69,84 @@ export default function Page() {
     },
   });
 
-  useEffect(() => {
-    const savedData = draftSnap.draft?.temporary_work_spouse_details || {};
-    if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
-      });
-    }
-  }, [draftSnap.draft?.temporary_work_spouse_details, form]);
+ // Populate Form
+ useEffect(() => {
+  // 1. Safety Check: If saving, do not touch the form
+  if (isSavingRef.current) return;
+
+  // 2. Wait for loading
+  if (draftSnap.isLoading && !draftSnap.draft?.temporary_work_spouse_details) {
+    return;
+  }
+
+  const savedData = draftSnap.draft?.temporary_work_spouse_details;
+
+  // 3. Populate: Only if we have actual data
+  if (savedData && Object.keys(savedData).length > 0) {
+    
+    const monthsList = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const normalizeNumber = (val) => {
+      if (!val) return "";
+      const num = Number(val);
+      return isNaN(num) ? val : String(num); 
+    };
+
+    const normalizeMonth = (val) => {
+      if (!val) return "";
+      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
+      if (monthIndex !== -1) return monthsList[monthIndex];
+      if (!isNaN(Number(val))) {
+        const num = Number(val);
+        if (num >= 1 && num <= 12) return monthsList[num - 1];
+      }
+      return String(val);
+    };
+
+    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+    // 4. Prepare the clean data object
+    const formData = {
+      family_name: safeStr(savedData.family_name),
+      given_names: safeStr(savedData.given_names),
+      preferred_names: safeStr(savedData.preferred_names),
+      gender: safeStr(savedData.gender),
+      
+      birth_day: normalizeNumber(savedData.birth_day),
+      birth_month: normalizeMonth(savedData.birth_month),
+      birth_year: safeStr(savedData.birth_year),
+      
+      intending_to_migrate: safeStr(savedData.intending_to_migrate),
+      country_of_birth: safeStr(savedData.country_of_birth),
+      city_of_birth: safeStr(savedData.city_of_birth),
+      country_of_residence: safeStr(savedData.country_of_residence),
+    };
+
+    // 5. Reset the form
+    form.reset(formData);
+
+    // 6. FORCE UPDATE (Safety Net)
+    // FIX: Added Countries and Radio button here to force the UI to update
+    setTimeout(() => {
+      // Dates
+      if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
+      if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
+      if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
+      
+      // Selects & Radios (Add these lines!)
+      if (savedData.country_of_birth) form.setValue("country_of_birth", safeStr(savedData.country_of_birth));
+      if (savedData.country_of_residence) form.setValue("country_of_residence", safeStr(savedData.country_of_residence));
+      if (savedData.intending_to_migrate) form.setValue("intending_to_migrate", safeStr(savedData.intending_to_migrate));
+    }, 0);
+  }
+
+}, [
+  draftSnap.isLoading, 
+  JSON.stringify(draftSnap.draft?.temporary_work_spouse_details)
+]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_spouse_details", data);
@@ -88,23 +161,30 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = await draftStore.saveSectionData("temporary_work_spouse_details", values);
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to save draft",
-        variant: "destructive",
-      });
+    setIsSaving(true);
+    isSavingRef.current = true;
+    try {
+      const values = form.getValues();
+      const result = await draftStore.saveSectionData("temporary_work_spouse_details", values);
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 
-  const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -124,6 +204,24 @@ export default function Page() {
     "Vietnam"
   ];
 
+  // Helper references for cleaner logic
+  const savedDetails = draftSnap.draft?.temporary_work_spouse_details;
+  const currentFormValues = form.getValues();
+
+  // Prepare JSON data for display
+  const jsonData = {
+    fullDraft: draftSnap.draft,
+    temporaryWorkSpouseDetails: savedDetails,
+    completionStatus: draftSnap.completionStatus,
+    currentApplicationId: draftSnap.currentApplicationId,
+    formValues: currentFormValues,
+
+    // USE || HERE so that "" falls back to the saved data
+    birth_day: currentFormValues.birth_day || savedDetails?.birth_day,
+    birth_month: currentFormValues.birth_month || savedDetails?.birth_month,
+    birth_year: currentFormValues.birth_year || savedDetails?.birth_year,
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -133,6 +231,32 @@ export default function Page() {
             Provide information about your spouse or partner.
           </p>
         </div>
+
+        {/* JSON Data Viewer Card */}
+        <Card className="mb-6 border-blue-200">
+          <CardHeader 
+            className="cursor-pointer hover:bg-blue-50 transition-colors"
+            onClick={() => setShowJsonData(!showJsonData)}
+          >
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-blue-700">
+                Database Data (JSON Viewer)
+              </CardTitle>
+              {showJsonData ? (
+                <ChevronUp className="w-4 h-4 text-blue-600" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-blue-600" />
+              )}
+            </div>
+          </CardHeader>
+          {showJsonData && (
+            <CardContent>
+              <pre className="text-xs bg-white p-4 rounded border border-blue-200 overflow-auto max-h-96">
+                {JSON.stringify(jsonData, null, 2)}
+              </pre>
+            </CardContent>
+          )}
+        </Card>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
@@ -301,7 +425,7 @@ export default function Page() {
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}
-            loading={draftSnap.isSaving}
+            loading={isSaving}
           />
         </form>
       </div>

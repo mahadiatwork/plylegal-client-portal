@@ -14,8 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav"; // Removed? No wait, I should remove it.
 import { FormNavigation } from "@/components/FormNavigation";
+import { RepeaterTable } from "@/components/RepeaterTable";
 
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
