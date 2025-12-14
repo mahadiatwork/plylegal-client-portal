@@ -15,10 +15,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { StickyNav } from "@/components/StickyNav"; // Remove
 import { FormNavigation } from "@/components/FormNavigation";
 
 const formSchema = z.object({
+  met_in_person: z.string().optional(),
+  first_met_day: z.string().optional(),
+  first_met_month: z.string().optional(),
+  first_met_year: z.string().optional(),
   marriage_day: z.string().optional(),
   marriage_month: z.string().optional(),
   marriage_year: z.string().optional(),
@@ -51,6 +54,10 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      met_in_person: "No",
+      first_met_day: "",
+      first_met_month: "",
+      first_met_year: "",
       marriage_day: "",
       marriage_month: "",
       marriage_year: "",
@@ -63,16 +70,59 @@ export default function Page() {
     },
   });
 
+  const metInPerson = form.watch("met_in_person");
+
   useEffect(() => {
-    const savedData = draftSnap.draft?.temporary_work_relationships || {};
-    if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
-      });
+    // 1. Safety Check: If saving, do not touch the form
+    // Note: We don't have isSavingRef here, but we can rely on data presence check
+
+    const savedData = draftSnap.draft?.temporary_work_relationships;
+
+    // 2. Populate: Only if we have actual data
+    if (savedData && Object.keys(savedData).length > 0) {
+
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+      // 3. Prepare clean data
+      const formData = {
+        ...savedData,
+        met_in_person: safeStr(savedData.met_in_person) || "No", // Default to No if missing
+        living_together: safeStr(savedData.living_together),
+        marriage_day: safeStr(savedData.marriage_day),
+        marriage_month: safeStr(savedData.marriage_month),
+        marriage_year: safeStr(savedData.marriage_year),
+        first_met_day: safeStr(savedData.first_met_day),
+        first_met_month: safeStr(savedData.first_met_month),
+        first_met_year: safeStr(savedData.first_met_year),
+        separation_day: safeStr(savedData.separation_day),
+        separation_month: safeStr(savedData.separation_month),
+        separation_year: safeStr(savedData.separation_year),
+      };
+
+      // 4. Reset form with data
+      form.reset(formData);
+
       if (savedData.living_together) {
         setLivingTogether(savedData.living_together);
+      }
+
+      // 5. Force Update Pattern for Selects/conditional fields
+      setTimeout(() => {
+        if (savedData.marriage_day) form.setValue("marriage_day", safeStr(savedData.marriage_day));
+        if (savedData.marriage_month) form.setValue("marriage_month", safeStr(savedData.marriage_month));
+        if (savedData.marriage_year) form.setValue("marriage_year", safeStr(savedData.marriage_year));
+
+        if (savedData.first_met_day) form.setValue("first_met_day", safeStr(savedData.first_met_day));
+        if (savedData.first_met_month) form.setValue("first_met_month", safeStr(savedData.first_met_month));
+        if (savedData.first_met_year) form.setValue("first_met_year", safeStr(savedData.first_met_year));
+
+        form.setValue("met_in_person", safeStr(savedData.met_in_person) || "No");
+      }, 0);
+    } else {
+      // Even if no data, ensure default "No"
+      const currentMet = form.getValues("met_in_person");
+      if (!currentMet) {
+        form.setValue("met_in_person", "No");
       }
     }
   }, [draftSnap.draft?.temporary_work_relationships, form]);
@@ -126,6 +176,75 @@ export default function Page() {
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+
+            {/* New Question: Met in person? */}
+            <div className="space-y-2">
+              <Label>Have you and your Spouse/Partner met in person? *</Label>
+              <RadioGroup
+                value={metInPerson}
+                onValueChange={(value) => form.setValue("met_in_person", value)}
+              >
+                <div className="flex gap-4">
+                  {["Yes", "No"].map((option) => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option} id={`met-${option}`} data-testid={`radio-met-${option.toLowerCase()}`} />
+                      <Label htmlFor={`met-${option}`}>{option}</Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Conditional Date: First met */}
+            {metInPerson === "Yes" && (
+              <div className="space-y-2">
+                <Label>When did you and your Spouse/Partner first meet in person?</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_met_day">Day</Label>
+                    <Select value={form.watch("first_met_day")} onValueChange={(value) => form.setValue("first_met_day", value)}>
+                      <SelectTrigger id="first_met_day" data-testid="select-first-met-day">
+                        <SelectValue placeholder="Day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {days.map((day) => (
+                          <SelectItem key={day} value={day}>{day}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="first_met_month">Month</Label>
+                    <Select value={form.watch("first_met_month")} onValueChange={(value) => form.setValue("first_met_month", value)}>
+                      <SelectTrigger id="first_met_month" data-testid="select-first-met-month">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((month) => (
+                          <SelectItem key={month} value={month}>{month}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="first_met_year">Year</Label>
+                    <Select value={form.watch("first_met_year")} onValueChange={(value) => form.setValue("first_met_year", value)}>
+                      <SelectTrigger id="first_met_year" data-testid="select-first-met-year">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year}>{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>What date did you marry? *</Label>
               <div className="grid grid-cols-3 gap-4">

@@ -19,8 +19,8 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 
-const REGISTRATION_TYPES = ["Registration", "Licence", "Professional Membership", "Other"];
-const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Pending", "Other"];
+const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Unexpected", "Pending", "Other"];
+const ASSESSMENT_TYPES = ["Full Skills Assessment", "Provisional Skills Assessment", "Job Ready Program", "Points Test Advice", "Other"];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -55,27 +55,45 @@ const COUNTRIES = [
 
 function RegistrationDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
-    type: z.string().min(1, "Type is required"),
+    authority: z.string().min(1, "Name of Authority is required"),
+    title: z.string().min(1, "Title/Name of Licence is required"),
+    licence_number: z.string().min(1, "Licence/Registration Number is required"),
+    english_requirement: z.enum(["yes", "no"]),
+    english_requirement_details: z.string().optional(),
     occupation: z.string().min(1, "Occupation is required"),
-    date_day: z.string().min(1, "Day is required"),
-    date_month: z.string().min(1, "Month is required"),
-    date_year: z.string().min(1, "Year is required"),
-    authority: z.string().min(1, "Authority is required"),
     country: z.string().min(1, "Country is required"),
-    reference: z.string().optional(),
+    issue_date_day: z.string().min(1, "Day is required"),
+    issue_date_month: z.string().min(1, "Month is required"),
+    issue_date_year: z.string().min(1, "Year is required"),
+    expiry_date_day: z.string().optional(),
+    expiry_date_month: z.string().optional(),
+    expiry_date_year: z.string().optional(),
+  }).refine((data) => {
+    if (data.english_requirement === "yes" && !data.english_requirement_details?.trim()) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Details are required",
+    path: ["english_requirement_details"],
   });
 
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
-      type: "",
-      occupation: "",
-      date_day: "",
-      date_month: "",
-      date_year: "",
       authority: "",
+      title: "",
+      licence_number: "",
+      english_requirement: "no",
+      english_requirement_details: "",
+      occupation: "",
       country: "",
-      reference: "",
+      issue_date_day: "",
+      issue_date_month: "",
+      issue_date_year: "",
+      expiry_date_day: "",
+      expiry_date_month: "",
+      expiry_date_year: "",
     }
   });
 
@@ -85,89 +103,9 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <div>
-        <Label className="mb-2 block">Type *</Label>
-        <Select
-          value={dialogForm.watch("type")}
-          onValueChange={(value) => dialogForm.setValue("type", value)}
-        >
-          <SelectTrigger data-testid="select-type">
-            <SelectValue placeholder="Choose Type" />
-          </SelectTrigger>
-          <SelectContent>
-            {REGISTRATION_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.type && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.type.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="occupation" className="mb-2 block">Occupation *</Label>
-        <Input
-          id="occupation"
-          {...dialogForm.register("occupation")}
-          data-testid="input-occupation"
-        />
-        {dialogForm.formState.errors.occupation && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.occupation.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Date *</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Select
-            value={dialogForm.watch("date_day")}
-            onValueChange={(value) => dialogForm.setValue("date_day", value)}
-          >
-            <SelectTrigger data-testid="select-date-day">
-              <SelectValue placeholder="Day" />
-            </SelectTrigger>
-            <SelectContent>
-              {DAYS.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_month")}
-            onValueChange={(value) => dialogForm.setValue("date_month", value)}
-          >
-            <SelectTrigger data-testid="select-date-month">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map((month) => (
-                <SelectItem key={month} value={month}>{month}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_year")}
-            onValueChange={(value) => dialogForm.setValue("date_year", value)}
-          >
-            <SelectTrigger data-testid="select-date-year">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {YEARS.map((year) => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {dialogForm.formState.errors.date_day && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_day.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="authority" className="mb-2 block">Authority/Issuing Body *</Label>
+        <Label htmlFor="authority" className="mb-2 block">Name of Authority granting Licence or Registration or Membership</Label>
         <Input
           id="authority"
           {...dialogForm.register("authority")}
@@ -179,7 +117,83 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Country *</Label>
+        <Label htmlFor="title" className="mb-2 block">Title/Name of Licence or Registration or Membership</Label>
+        <Input
+          id="title"
+          {...dialogForm.register("title")}
+          data-testid="input-title"
+        />
+        {dialogForm.formState.errors.title && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.title.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="licence_number" className="mb-2 block">Licence/Registration Number</Label>
+        <Input
+          id="licence_number"
+          {...dialogForm.register("licence_number")}
+          data-testid="input-licence-number"
+        />
+        {dialogForm.formState.errors.licence_number && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.licence_number.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="text-sm font-medium mb-3 block">
+          Is there an English Language Requirement associated with obtaining this registration/licence?
+        </Label>
+        <RadioGroup
+          value={dialogForm.watch("english_requirement")}
+          onValueChange={(value) => dialogForm.setValue("english_requirement", value)}
+          className="flex gap-4"
+          data-testid="radio-english-requirement"
+        >
+          <div className="flex items-center">
+            <RadioGroupItem value="yes" id="english-yes" />
+            <Label htmlFor="english-yes" className="ml-2 cursor-pointer font-normal">
+              Yes
+            </Label>
+          </div>
+          <div className="flex items-center">
+            <RadioGroupItem value="no" id="english-no" />
+            <Label htmlFor="english-no" className="ml-2 cursor-pointer font-normal">
+              No
+            </Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {dialogForm.watch("english_requirement") === "yes" && (
+        <div>
+          <Label htmlFor="english_requirement_details" className="mb-2 block">Enter details of the language requirement</Label>
+          <Textarea
+            id="english_requirement_details"
+            {...dialogForm.register("english_requirement_details")}
+            rows={3}
+            data-testid="textarea-english-details"
+          />
+          {dialogForm.formState.errors.english_requirement_details && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.english_requirement_details.message}</p>
+          )}
+        </div>
+      )}
+
+      <div>
+        <Label htmlFor="occupation" className="mb-2 block">Occupation</Label>
+        <Input
+          id="occupation"
+          {...dialogForm.register("occupation")}
+          data-testid="input-occupation"
+        />
+        {dialogForm.formState.errors.occupation && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.occupation.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Country of Licence or Registration or Membership</Label>
         <Select
           value={dialogForm.watch("country")}
           onValueChange={(value) => dialogForm.setValue("country", value)}
@@ -199,12 +213,96 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="reference" className="mb-2 block">Reference/Number</Label>
-        <Input
-          id="reference"
-          {...dialogForm.register("reference")}
-          data-testid="input-reference"
-        />
+        <Label className="mb-2 block">Issue Date</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("issue_date_day")}
+            onValueChange={(value) => dialogForm.setValue("issue_date_day", value)}
+          >
+            <SelectTrigger data-testid="select-issue-date-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("issue_date_month")}
+            onValueChange={(value) => dialogForm.setValue("issue_date_month", value)}
+          >
+            <SelectTrigger data-testid="select-issue-date-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("issue_date_year")}
+            onValueChange={(value) => dialogForm.setValue("issue_date_year", value)}
+          >
+            <SelectTrigger data-testid="select-issue-date-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {dialogForm.formState.errors.issue_date_day && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.issue_date_day.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Expiry Date (If applicable)</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("expiry_date_day")}
+            onValueChange={(value) => dialogForm.setValue("expiry_date_day", value)}
+          >
+            <SelectTrigger data-testid="select-expiry-date-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("expiry_date_month")}
+            onValueChange={(value) => dialogForm.setValue("expiry_date_month", value)}
+          >
+            <SelectTrigger data-testid="select-expiry-date-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("expiry_date_year")}
+            onValueChange={(value) => dialogForm.setValue("expiry_date_year", value)}
+          >
+            <SelectTrigger data-testid="select-expiry-date-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <DialogFooter>
@@ -226,31 +324,39 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
 
 function AssessmentDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
-    assessing_authority: z.string().min(1, "Assessing authority is required"),
-    occupation: z.string().min(1, "Occupation is required"),
-    reference_number: z.string().optional(),
+    assessing_authority: z.string().min(1, "Name of Skills Assessing Authority is required"),
+    assessment_type: z.string().min(1, "Type of Skills Assessment is required"),
+    anzsco_code: z.string().min(1, "ANZSCO Code is required"),
+    lodgement_date_day: z.string().min(1, "Day is required"),
+    lodgement_date_month: z.string().min(1, "Month is required"),
+    lodgement_date_year: z.string().min(1, "Year is required"),
+    receipt_number: z.string().optional(),
+
+    // Outcome section
     outcome: z.string().min(1, "Outcome is required"),
     outcome_date_day: z.string().optional(),
     outcome_date_month: z.string().optional(),
     outcome_date_year: z.string().optional(),
-    comments: z.string().optional(),
+    outcome_reference_number: z.string().optional(),
   });
 
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
       assessing_authority: "",
-      occupation: "",
-      reference_number: "",
+      assessment_type: "",
+      anzsco_code: "",
+      lodgement_date_day: "",
+      lodgement_date_month: "",
+      lodgement_date_year: "",
+      receipt_number: "",
       outcome: "",
       outcome_date_day: "",
       outcome_date_month: "",
       outcome_date_year: "",
-      comments: "",
+      outcome_reference_number: "",
     }
   });
-
-  const outcome = dialogForm.watch("outcome");
 
   const handleSubmit = (data) => {
     onSave(data);
@@ -258,9 +364,13 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Skills Assessment</h3>
+      <p className="text-sm text-gray-500 mb-4">Enter details of the Skill Assessment you have applied for</p>
+
+      {/* Authority */}
       <div>
-        <Label htmlFor="assessing_authority" className="mb-2 block">Assessing Authority *</Label>
+        <Label htmlFor="assessing_authority" className="mb-2 block">Name of Skills Assessing Authority</Label>
         <Input
           id="assessing_authority"
           {...dialogForm.register("assessing_authority")}
@@ -271,57 +381,134 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
+      {/* Type */}
       <div>
-        <Label htmlFor="occupation" className="mb-2 block">Occupation (ANZSCO if available) *</Label>
-        <Input
-          id="occupation"
-          {...dialogForm.register("occupation")}
-          data-testid="input-occupation"
-        />
-        {dialogForm.formState.errors.occupation && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.occupation.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="reference_number" className="mb-2 block">Application/Reference Number</Label>
-        <Input
-          id="reference_number"
-          {...dialogForm.register("reference_number")}
-          data-testid="input-reference-number"
-        />
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Outcome *</Label>
+        <Label className="mb-2 block">Type of Skills Assessment</Label>
         <Select
-          value={dialogForm.watch("outcome")}
-          onValueChange={(value) => dialogForm.setValue("outcome", value)}
+          value={dialogForm.watch("assessment_type")}
+          onValueChange={(value) => dialogForm.setValue("assessment_type", value)}
         >
-          <SelectTrigger data-testid="select-outcome">
-            <SelectValue placeholder="Choose Outcome" />
+          <SelectTrigger data-testid="select-assessment-type">
+            <SelectValue placeholder="Choose Type" />
           </SelectTrigger>
           <SelectContent>
-            {ASSESSMENT_OUTCOMES.map((outcome) => (
-              <SelectItem key={outcome} value={outcome}>{outcome}</SelectItem>
+            {ASSESSMENT_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {dialogForm.formState.errors.outcome && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.outcome.message}</p>
+        {dialogForm.formState.errors.assessment_type && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.assessment_type.message}</p>
         )}
       </div>
 
-      {outcome !== "Pending" && (
-        <div>
-          <Label className="mb-2 block">Outcome Date *</Label>
+      {/* ANZSCO Code */}
+      <div>
+        <Label htmlFor="anzsco_code" className="mb-2 block">ANZSCO Code</Label>
+        <Input
+          id="anzsco_code"
+          {...dialogForm.register("anzsco_code")}
+          data-testid="input-anzsco-code"
+        />
+        {dialogForm.formState.errors.anzsco_code && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.anzsco_code.message}</p>
+        )}
+      </div>
+
+      {/* Lodgement Date */}
+      <div>
+        <Label className="mb-2 block">Logement Date</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("lodgement_date_day")}
+            onValueChange={(value) => dialogForm.setValue("lodgement_date_day", value)}
+          >
+            <SelectTrigger data-testid="select-lodgement-date-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("lodgement_date_month")}
+            onValueChange={(value) => dialogForm.setValue("lodgement_date_month", value)}
+          >
+            <SelectTrigger data-testid="select-lodgement-date-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("lodgement_date_year")}
+            onValueChange={(value) => dialogForm.setValue("lodgement_date_year", value)}
+          >
+            <SelectTrigger data-testid="select-lodgement-date-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {dialogForm.formState.errors.lodgement_date_day && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.lodgement_date_day.message}</p>
+        )}
+      </div>
+
+      {/* Receipt Number */}
+      <div>
+        <Label htmlFor="receipt_number" className="mb-2 block">Receipt Number</Label>
+        <Input
+          id="receipt_number"
+          {...dialogForm.register("receipt_number")}
+          data-testid="input-receipt-number"
+        />
+      </div>
+
+      <div className="pt-4 pb-2">
+        <h3 className="text-base font-bold text-gray-900 mb-2">Assessment Outcome</h3>
+        <p className="text-sm text-gray-500 mb-4">Enter details on the outcome of the Skills Assessment</p>
+
+        {/* Outcome */}
+        <div className="mb-4">
+          <Label className="mb-2 block">Outcome</Label>
+          <Select
+            value={dialogForm.watch("outcome")}
+            onValueChange={(value) => dialogForm.setValue("outcome", value)}
+          >
+            <SelectTrigger data-testid="select-outcome">
+              <SelectValue placeholder="Choose Outcome" />
+            </SelectTrigger>
+            <SelectContent>
+              {ASSESSMENT_OUTCOMES.map((outcome) => (
+                <SelectItem key={outcome} value={outcome}>{outcome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {dialogForm.formState.errors.outcome && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.outcome.message}</p>
+          )}
+        </div>
+
+        {/* Outcome Date */}
+        <div className="mb-4">
+          <Label className="mb-2 block">Outcome Date</Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
               value={dialogForm.watch("outcome_date_day")}
               onValueChange={(value) => dialogForm.setValue("outcome_date_day", value)}
             >
               <SelectTrigger data-testid="select-outcome-date-day">
-                <SelectValue placeholder="Day" />
+                <SelectValue placeholder="Choose Day" />
               </SelectTrigger>
               <SelectContent>
                 {DAYS.map((day) => (
@@ -334,7 +521,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("outcome_date_month", value)}
             >
               <SelectTrigger data-testid="select-outcome-date-month">
-                <SelectValue placeholder="Month" />
+                <SelectValue placeholder="Choose Month" />
               </SelectTrigger>
               <SelectContent>
                 {MONTHS.map((month) => (
@@ -347,7 +534,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("outcome_date_year", value)}
             >
               <SelectTrigger data-testid="select-outcome-date-year">
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent>
                 {YEARS.map((year) => (
@@ -357,16 +544,16 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
             </Select>
           </div>
         </div>
-      )}
 
-      <div>
-        <Label htmlFor="comments" className="mb-2 block">Comments/Notes</Label>
-        <Textarea
-          id="comments"
-          {...dialogForm.register("comments")}
-          rows={3}
-          data-testid="textarea-comments"
-        />
+        {/* Outcome Reference Number */}
+        <div className="mb-4">
+          <Label htmlFor="outcome_reference_number" className="mb-2 block">Outcome Reference Number</Label>
+          <Input
+            id="outcome_reference_number"
+            {...dialogForm.register("outcome_reference_number")}
+            data-testid="input-outcome-reference-number"
+          />
+        </div>
       </div>
 
       <DialogFooter>
@@ -500,10 +687,10 @@ export default function SkillsPage() {
                     <RepeaterTable
                       data={registrations}
                       columns={[
-                        { key: "type", label: "Type" },
-                        { key: "occupation", label: "Occupation" },
-                        { key: "date_day", label: "Date", format: (row) => `${row.date_day}/${row.date_month}/${row.date_year}` },
                         { key: "authority", label: "Authority" },
+                        { key: "title", label: "Title" },
+                        { key: "licence_number", label: "Licence Number" },
+                        { key: "issue_date_year", label: "Year" },
                         { key: "country", label: "Country" },
                       ]}
                       onAdd={(newRow) => {
@@ -560,8 +747,8 @@ export default function SkillsPage() {
                       data={assessments}
                       columns={[
                         { key: "assessing_authority", label: "Authority" },
-                        { key: "occupation", label: "Occupation" },
-                        { key: "outcome_date_day", label: "Outcome Date", format: (row) => row.outcome_date_day ? `${row.outcome_date_day}/${row.outcome_date_month}/${row.outcome_date_year}` : "Pending" },
+                        { key: "assessment_type", label: "Type" },
+                        { key: "anzsco_code", label: "ANZSCO" },
                         { key: "outcome", label: "Outcome" },
                       ]}
                       onAdd={(newRow) => {

@@ -27,7 +27,21 @@ const QUALIFICATION_LEVELS = [
   "Other"
 ];
 
-const STUDY_MODES = ["Full-time", "Part-time"];
+// Replaced STUDY_MODES with COURSE_STATUSES based on snapshot inference, 
+// though snapshot specifically requested "Course Status" dropdown.
+const COURSE_STATUSES = [
+  "Completed",
+  "Current/Ongoing",
+  "Deferred",
+  "Withdrawn"
+];
+
+const LANGUAGES = [
+  "English", "Arabic", "Bengali", "Chinese (Mandarin)", "Chinese (Cantonese)",
+  "French", "German", "Hindi", "Indonesian", "Italian", "Japanese",
+  "Korean", "Malay", "Portuguese", "Punjabi", "Russian", "Spanish",
+  "Tagalog", "Thai", "Turkish", "Urdu", "Vietnamese", "Other"
+];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -62,36 +76,50 @@ const COUNTRIES = [
 
 function EducationDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
-    institution: z.string().min(1, "Institution name is required"),
-    country: z.string().min(1, "Country is required"),
-    qualification: z.string().min(1, "Qualification is required"),
-    field: z.string().min(1, "Field of study is required"),
     date_from_day: z.string().min(1, "Day is required"),
     date_from_month: z.string().min(1, "Month is required"),
     date_from_year: z.string().min(1, "Year is required"),
-    date_to_day: z.string().min(1, "Day is required"),
-    date_to_month: z.string().min(1, "Month is required"),
-    date_to_year: z.string().min(1, "Year is required"),
-    study_mode: z.string().min(1, "Study mode is required"),
-    graduated: z.enum(["yes", "no"]),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    qualification: z.string().min(1, "Qualification is required"),
+    is_highest_qualification: z.enum(["yes", "no"]),
+    course_name: z.string().min(1, "Course Name / Research Description is required"),
+    course_language: z.string().min(1, "Course Language is required"),
+    course_status: z.string().min(1, "Course Status is required"),
+
+    // Institution Details
+    institution: z.string().min(1, "Institution name is required"),
+    country: z.string().min(1, "Country is required"),
+    institution_address: z.string().min(1, "Address is required"),
+    institution_suburb: z.string().min(1, "Suburb/Town/City is required"),
+    institution_state: z.string().min(1, "State is required"),
+    institution_postcode: z.string().min(1, "Postcode is required"),
+
+    // Kept optional existing fields just in case
     certificate_number: z.string().optional(),
   });
 
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
-      institution: "",
-      country: "",
-      qualification: "",
-      field: "",
       date_from_day: "",
       date_from_month: "",
       date_from_year: "",
       date_to_day: "",
       date_to_month: "",
       date_to_year: "",
-      study_mode: "",
-      graduated: "no",
+      qualification: "",
+      is_highest_qualification: "no",
+      course_name: "",
+      course_language: "",
+      course_status: "",
+      institution: "",
+      country: "",
+      institution_address: "",
+      institution_suburb: "",
+      institution_state: "",
+      institution_postcode: "",
       certificate_number: "",
     }
   });
@@ -102,80 +130,18 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="institution" className="mb-2 block">Institution Name *</Label>
-        <Input
-          id="institution"
-          {...dialogForm.register("institution")}
-          data-testid="input-institution"
-        />
-        {dialogForm.formState.errors.institution && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution.message}</p>
-        )}
-      </div>
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
 
+      {/* Date From */}
       <div>
-        <Label className="mb-2 block">Country *</Label>
-        <Select
-          value={dialogForm.watch("country")}
-          onValueChange={(value) => dialogForm.setValue("country", value)}
-        >
-          <SelectTrigger data-testid="select-country">
-            <SelectValue placeholder="Choose Country" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((country) => (
-              <SelectItem key={country} value={country}>{country}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.country && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Qualification/Level *</Label>
-        <Select
-          value={dialogForm.watch("qualification")}
-          onValueChange={(value) => dialogForm.setValue("qualification", value)}
-        >
-          <SelectTrigger data-testid="select-qualification">
-            <SelectValue placeholder="Choose Qualification" />
-          </SelectTrigger>
-          <SelectContent>
-            {QUALIFICATION_LEVELS.map((qual) => (
-              <SelectItem key={qual} value={qual}>{qual}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.qualification && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.qualification.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="field" className="mb-2 block">Field of Study *</Label>
-        <Input
-          id="field"
-          {...dialogForm.register("field")}
-          data-testid="input-field"
-        />
-        {dialogForm.formState.errors.field && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.field.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Date From *</Label>
+        <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_from_day")}
             onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
           >
             <SelectTrigger data-testid="select-date-from-day">
-              <SelectValue placeholder="Day" />
+              <SelectValue placeholder="Choose Day" />
             </SelectTrigger>
             <SelectContent>
               {DAYS.map((day) => (
@@ -188,7 +154,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
             onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
           >
             <SelectTrigger data-testid="select-date-from-month">
-              <SelectValue placeholder="Month" />
+              <SelectValue placeholder="Choose Month" />
             </SelectTrigger>
             <SelectContent>
               {MONTHS.map((month) => (
@@ -201,7 +167,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
             onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
           >
             <SelectTrigger data-testid="select-date-from-year">
-              <SelectValue placeholder="Year" />
+              <SelectValue placeholder="Choose Year" />
             </SelectTrigger>
             <SelectContent>
               {YEARS.map((year) => (
@@ -215,15 +181,16 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
+      {/* Date To */}
       <div>
-        <Label className="mb-2 block">Date To *</Label>
+        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_to_day")}
             onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
           >
             <SelectTrigger data-testid="select-date-to-day">
-              <SelectValue placeholder="Day" />
+              <SelectValue placeholder="Choose Day" />
             </SelectTrigger>
             <SelectContent>
               {DAYS.map((day) => (
@@ -236,7 +203,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
             onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
           >
             <SelectTrigger data-testid="select-date-to-month">
-              <SelectValue placeholder="Month" />
+              <SelectValue placeholder="Choose Month" />
             </SelectTrigger>
             <SelectContent>
               {MONTHS.map((month) => (
@@ -249,7 +216,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
             onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
           >
             <SelectTrigger data-testid="select-date-to-year">
-              <SelectValue placeholder="Year" />
+              <SelectValue placeholder="Choose Year" />
             </SelectTrigger>
             <SelectContent>
               {YEARS.map((year) => (
@@ -258,63 +225,199 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
             </SelectContent>
           </Select>
         </div>
-        {dialogForm.formState.errors.date_to_day && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day.message}</p>
-        )}
       </div>
 
+      {/* Qualification Type */}
       <div>
-        <Label className="mb-2 block">Study Mode *</Label>
+        <Label className="mb-2 block">Qualification Type/Course Type</Label>
         <Select
-          value={dialogForm.watch("study_mode")}
-          onValueChange={(value) => dialogForm.setValue("study_mode", value)}
+          value={dialogForm.watch("qualification")}
+          onValueChange={(value) => dialogForm.setValue("qualification", value)}
         >
-          <SelectTrigger data-testid="select-study-mode">
-            <SelectValue placeholder="Choose Study Mode" />
+          <SelectTrigger data-testid="select-qualification">
+            <SelectValue placeholder="Choose Type" />
           </SelectTrigger>
           <SelectContent>
-            {STUDY_MODES.map((mode) => (
-              <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+            {QUALIFICATION_LEVELS.map((qual) => (
+              <SelectItem key={qual} value={qual}>{qual}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {dialogForm.formState.errors.study_mode && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.study_mode.message}</p>
+        {dialogForm.formState.errors.qualification && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.qualification.message}</p>
         )}
       </div>
 
+      {/* Highest Level Check */}
       <div>
-        <Label className="text-base font-medium mb-3 block">
-          Graduated/Completed? *
+        <Label className="text-sm font-medium mb-3 block">
+          Is this your highest level of qualification?
         </Label>
         <RadioGroup
-          value={dialogForm.watch("graduated")}
-          onValueChange={(value) => dialogForm.setValue("graduated", value)}
+          value={dialogForm.watch("is_highest_qualification")}
+          onValueChange={(value) => dialogForm.setValue("is_highest_qualification", value)}
           className="flex gap-4"
-          data-testid="radio-graduated"
+          data-testid="radio-highest-qual"
         >
           <div className="flex items-center">
-            <RadioGroupItem value="yes" id="graduated-yes" />
-            <Label htmlFor="graduated-yes" className="ml-2 cursor-pointer font-normal">
+            <RadioGroupItem value="yes" id="highest-yes" />
+            <Label htmlFor="highest-yes" className="ml-2 cursor-pointer font-normal">
               Yes
             </Label>
           </div>
           <div className="flex items-center">
-            <RadioGroupItem value="no" id="graduated-no" />
-            <Label htmlFor="graduated-no" className="ml-2 cursor-pointer font-normal">
+            <RadioGroupItem value="no" id="highest-no" />
+            <Label htmlFor="highest-no" className="ml-2 cursor-pointer font-normal">
               No
             </Label>
           </div>
         </RadioGroup>
       </div>
 
+      {/* Course Name */}
       <div>
-        <Label htmlFor="certificate_number" className="mb-2 block">Document/Certificate Number</Label>
+        <Label htmlFor="course_name" className="mb-2 block">Course Name or Research Description</Label>
         <Input
-          id="certificate_number"
-          {...dialogForm.register("certificate_number")}
-          data-testid="input-certificate-number"
+          id="course_name"
+          {...dialogForm.register("course_name")}
+          data-testid="input-course-name"
         />
+        {dialogForm.formState.errors.course_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.course_name.message}</p>
+        )}
+      </div>
+
+      {/* Course Language */}
+      <div>
+        <Label htmlFor="course_language" className="mb-2 block">Course Language</Label>
+        <Select
+          value={dialogForm.watch("course_language")}
+          onValueChange={(value) => dialogForm.setValue("course_language", value)}
+        >
+          <SelectTrigger data-testid="select-course-language">
+            <SelectValue placeholder="Choose Language" />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGUAGES.map((lang) => (
+              <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.course_language && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.course_language.message}</p>
+        )}
+      </div>
+
+      {/* Course Status */}
+      <div>
+        <Label className="mb-2 block">Course Status</Label>
+        <Select
+          value={dialogForm.watch("course_status")}
+          onValueChange={(value) => dialogForm.setValue("course_status", value)}
+        >
+          <SelectTrigger data-testid="select-course-status">
+            <SelectValue placeholder="Choose Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {COURSE_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>{status}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.course_status && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.course_status.message}</p>
+        )}
+      </div>
+
+      {/* Institution Details Header */}
+      <div className="pt-2">
+        <h3 className="text-base font-bold text-gray-900 mb-4">Institution Details</h3>
+
+        {/* Institution Name */}
+        <div className="mb-4">
+          <Label htmlFor="institution" className="mb-2 block">Institution Name</Label>
+          <Input
+            id="institution"
+            {...dialogForm.register("institution")}
+            data-testid="input-institution"
+          />
+          {dialogForm.formState.errors.institution && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution.message}</p>
+          )}
+        </div>
+
+        {/* Country */}
+        <div className="mb-4">
+          <Label className="mb-2 block">Country</Label>
+          <Select
+            value={dialogForm.watch("country")}
+            onValueChange={(value) => dialogForm.setValue("country", value)}
+          >
+            <SelectTrigger data-testid="select-country">
+              <SelectValue placeholder="Choose Country" />
+            </SelectTrigger>
+            <SelectContent>
+              {COUNTRIES.map((country) => (
+                <SelectItem key={country} value={country}>{country}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {dialogForm.formState.errors.country && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
+          )}
+        </div>
+
+        {/* Address */}
+        <div className="mb-4">
+          <Label htmlFor="institution_address" className="mb-2 block">Address (including Street Number and Name)</Label>
+          <Input
+            id="institution_address"
+            {...dialogForm.register("institution_address")}
+            data-testid="input-institution-address"
+          />
+          {dialogForm.formState.errors.institution_address && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution_address.message}</p>
+          )}
+        </div>
+
+        {/* Suburb */}
+        <div className="mb-4">
+          <Label htmlFor="institution_suburb" className="mb-2 block">Suburb/Town/City</Label>
+          <Input
+            id="institution_suburb"
+            {...dialogForm.register("institution_suburb")}
+            data-testid="input-institution-suburb"
+          />
+          {dialogForm.formState.errors.institution_suburb && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution_suburb.message}</p>
+          )}
+        </div>
+
+        {/* State */}
+        <div className="mb-4">
+          <Label htmlFor="institution_state" className="mb-2 block">State</Label>
+          <Input
+            id="institution_state"
+            {...dialogForm.register("institution_state")}
+            data-testid="input-institution-state"
+          />
+          {dialogForm.formState.errors.institution_state && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution_state.message}</p>
+          )}
+        </div>
+
+        {/* Postcode */}
+        <div className="mb-4">
+          <Label htmlFor="institution_postcode" className="mb-2 block">Postcode</Label>
+          <Input
+            id="institution_postcode"
+            {...dialogForm.register("institution_postcode")}
+            data-testid="input-institution-postcode"
+          />
+          {dialogForm.formState.errors.institution_postcode && (
+            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution_postcode.message}</p>
+          )}
+        </div>
       </div>
 
       <DialogFooter>
@@ -446,9 +549,8 @@ export default function EducationPage() {
                       columns={[
                         { key: "institution", label: "Institution" },
                         { key: "qualification", label: "Qualification" },
-                        { key: "field", label: "Field" },
-                        { key: "date_from_day", label: "From", format: (row) => `${row.date_from_day}/${row.date_from_month}/${row.date_from_year}` },
-                        { key: "date_to_day", label: "To", format: (row) => `${row.date_to_day}/${row.date_to_month}/${row.date_to_year}` },
+                        { key: "course_name", label: "Course Name" },
+                        { key: "date_from_year", label: "Year Started" },
                         { key: "country", label: "Country" },
                       ]}
                       onAdd={(newRow) => {

@@ -62,91 +62,91 @@ export default function Page() {
       birth_day: "",
       birth_month: "",
       birth_year: "",
-      intending_to_migrate: "",
+      intending_to_migrate: "No",
       country_of_birth: "",
       city_of_birth: "",
       country_of_residence: "",
     },
   });
 
- // Populate Form
- useEffect(() => {
-  // 1. Safety Check: If saving, do not touch the form
-  if (isSavingRef.current) return;
+  // Populate Form
+  useEffect(() => {
+    // 1. Safety Check: If saving, do not touch the form
+    if (isSavingRef.current) return;
 
-  // 2. Wait for loading
-  if (draftSnap.isLoading && !draftSnap.draft?.temporary_work_spouse_details) {
-    return;
-  }
+    // 2. Wait for loading
+    if (draftSnap.isLoading && !draftSnap.draft?.temporary_work_spouse_details) {
+      return;
+    }
 
-  const savedData = draftSnap.draft?.temporary_work_spouse_details;
+    const savedData = draftSnap.draft?.temporary_work_spouse_details;
 
-  // 3. Populate: Only if we have actual data
-  if (savedData && Object.keys(savedData).length > 0) {
-    
-    const monthsList = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
+    // 3. Populate: Only if we have actual data
+    if (savedData && Object.keys(savedData).length > 0) {
 
-    const normalizeNumber = (val) => {
-      if (!val) return "";
-      const num = Number(val);
-      return isNaN(num) ? val : String(num); 
-    };
+      const monthsList = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
 
-    const normalizeMonth = (val) => {
-      if (!val) return "";
-      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
-      if (monthIndex !== -1) return monthsList[monthIndex];
-      if (!isNaN(Number(val))) {
+      const normalizeNumber = (val) => {
+        if (!val) return "";
         const num = Number(val);
-        if (num >= 1 && num <= 12) return monthsList[num - 1];
-      }
-      return String(val);
-    };
+        return isNaN(num) ? val : String(num);
+      };
 
-    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+      const normalizeMonth = (val) => {
+        if (!val) return "";
+        const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
+        if (monthIndex !== -1) return monthsList[monthIndex];
+        if (!isNaN(Number(val))) {
+          const num = Number(val);
+          if (num >= 1 && num <= 12) return monthsList[num - 1];
+        }
+        return String(val);
+      };
 
-    // 4. Prepare the clean data object
-    const formData = {
-      family_name: safeStr(savedData.family_name),
-      given_names: safeStr(savedData.given_names),
-      preferred_names: safeStr(savedData.preferred_names),
-      gender: safeStr(savedData.gender),
-      
-      birth_day: normalizeNumber(savedData.birth_day),
-      birth_month: normalizeMonth(savedData.birth_month),
-      birth_year: safeStr(savedData.birth_year),
-      
-      intending_to_migrate: safeStr(savedData.intending_to_migrate),
-      country_of_birth: safeStr(savedData.country_of_birth),
-      city_of_birth: safeStr(savedData.city_of_birth),
-      country_of_residence: safeStr(savedData.country_of_residence),
-    };
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
 
-    // 5. Reset the form
-    form.reset(formData);
+      // 4. Prepare the clean data object
+      const formData = {
+        family_name: safeStr(savedData.family_name),
+        given_names: safeStr(savedData.given_names),
+        preferred_names: safeStr(savedData.preferred_names),
+        gender: safeStr(savedData.gender),
 
-    // 6. FORCE UPDATE (Safety Net)
-    // FIX: Added Countries and Radio button here to force the UI to update
-    setTimeout(() => {
-      // Dates
-      if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
-      if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
-      if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
-      
-      // Selects & Radios (Add these lines!)
-      if (savedData.country_of_birth) form.setValue("country_of_birth", safeStr(savedData.country_of_birth));
-      if (savedData.country_of_residence) form.setValue("country_of_residence", safeStr(savedData.country_of_residence));
-      if (savedData.intending_to_migrate) form.setValue("intending_to_migrate", safeStr(savedData.intending_to_migrate));
-    }, 0);
-  }
+        birth_day: normalizeNumber(savedData.birth_day),
+        birth_month: normalizeMonth(savedData.birth_month),
+        birth_year: safeStr(savedData.birth_year),
 
-}, [
-  draftSnap.isLoading, 
-  JSON.stringify(draftSnap.draft?.temporary_work_spouse_details)
-]);
+        intending_to_migrate: safeStr(savedData.intending_to_migrate) || "No",
+        country_of_birth: safeStr(savedData.country_of_birth),
+        city_of_birth: safeStr(savedData.city_of_birth),
+        country_of_residence: safeStr(savedData.country_of_residence),
+      };
+
+      // 5. Reset the form
+      form.reset(formData);
+
+      // 6. FORCE UPDATE (Safety Net)
+      // FIX: Added Countries and Radio button here to force the UI to update
+      setTimeout(() => {
+        // Dates
+        if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
+        if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
+        if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
+
+        // Selects & Radios (Add these lines!)
+        if (savedData.country_of_birth) form.setValue("country_of_birth", safeStr(savedData.country_of_birth));
+        if (savedData.country_of_residence) form.setValue("country_of_residence", safeStr(savedData.country_of_residence));
+        form.setValue("intending_to_migrate", safeStr(savedData.intending_to_migrate) || "No");
+      }, 0);
+    }
+
+  }, [
+    draftSnap.isLoading,
+    JSON.stringify(draftSnap.draft?.temporary_work_spouse_details)
+  ]);
 
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_spouse_details", data);
@@ -234,7 +234,7 @@ export default function Page() {
 
         {/* JSON Data Viewer Card */}
         <Card className="mb-6 border-blue-200">
-          <CardHeader 
+          <CardHeader
             className="cursor-pointer hover:bg-blue-50 transition-colors"
             onClick={() => setShowJsonData(!showJsonData)}
           >
@@ -407,19 +407,21 @@ export default function Page() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="country_of_residence">Country of Current Residence *</Label>
-              <Select value={form.watch("country_of_residence")} onValueChange={(value) => form.setValue("country_of_residence", value)}>
-                <SelectTrigger id="country_of_residence" data-testid="select-country-residence">
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countries.map((country) => (
-                    <SelectItem key={country} value={country}>{country}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {form.watch("intending_to_migrate") !== "Yes" && (
+              <div className="space-y-2">
+                <Label htmlFor="country_of_residence">Country of Current Residence *</Label>
+                <Select value={form.watch("country_of_residence")} onValueChange={(value) => form.setValue("country_of_residence", value)}>
+                  <SelectTrigger id="country_of_residence" data-testid="select-country-residence">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((country) => (
+                      <SelectItem key={country} value={country}>{country}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <FormNavigation
             onPrev={handlePrevious}
