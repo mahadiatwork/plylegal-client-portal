@@ -50,7 +50,17 @@ const COUNTRIES = [
 ];
 
 const LEGAL_STATUSES = [
-  "Citizen", "Permanent Resident", "Temporary Resident", "Student", "Visitor", "Work Visa", "Other"
+  "Citizen",
+  "Permanent Resident",
+  "Temporary Resident",
+  "Student",
+  "Visitor/Tourist",
+  "Work Visa",
+  "Refugee",
+  "Illegal Resident",
+  "Asylum Applicant",
+  "No Legal Status",
+  "Other",
 ];
 
 function AddressDialog({ editingRow, onSave, onCancel }) {

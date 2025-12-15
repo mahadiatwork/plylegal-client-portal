@@ -50,12 +50,42 @@ const COUNTRIES = [
 ];
 
 const REASONS = [
-  "Employment", "Study", "To visit parent", "To visit family", "To visit partner", "To visit friend", "Holiday/Leisure", "Business", "Military deployment", "Other"
+  "Visit Family",
+  "Visit Friends",
+  "Business",
+  "Holiday",
+  "Study",
+  "Work",
+  "Medical",
+  "Temporary Residence",
+  "Permanent Residence",
+  "Residence",
+  "Live There",
+  "Transit",
+  "Travel",
+  "Working Holiday",
+  "Military Deployment",
+  "Other",
 ];
 
 const LEGAL_STATUSES = [
-  "Citizen", "Permanent Resident", "Temporary Resident", "Student", "Visitor", "Work Visa", "Other"
+  "Citizen",
+  "Permanent Resident",
+  "Temporary Resident",
+  "Student",
+  "Visitor/Tourist",
+  "Work Visa",
+  "Refugee",
+  "Illegal Resident",
+  "Asylum Applicant",
+  "No Legal Status",
+  "Other",
 ];
+
+const formatDate = (day, month, year) => {
+  if (!day || !month || !year) return "";
+  return `${day} ${month} ${year}`;
+};
 
 function TravelDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
@@ -67,6 +97,9 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
     date_arrived_day: z.string().min(1, "Day is required"),
     date_arrived_month: z.string().min(1, "Month is required"),
     date_arrived_year: z.string().min(1, "Year is required"),
+    departure_day: z.string().optional(),
+    departure_month: z.string().optional(),
+    departure_year: z.string().optional(),
   });
 
   const dialogForm = useForm({
@@ -79,6 +112,9 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
       date_arrived_day: "",
       date_arrived_month: "",
       date_arrived_year: "",
+      departure_day: "",
+      departure_month: "",
+      departure_year: "",
     }
   });
 
@@ -86,6 +122,8 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
     onSave(data);
     dialogForm.reset();
   };
+
+  const isCurrentLocation = dialogForm.watch("is_current_location");
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
@@ -98,11 +136,19 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
       {/* Country */}
       <div>
         <Label className="mb-2 block">Country</Label>
-        <Input
-          {...dialogForm.register("country")}
-          placeholder="Choose Country"
-          data-testid="input-country"
-        />
+        <Select
+          value={dialogForm.watch("country")}
+          onValueChange={(value) => dialogForm.setValue("country", value)}
+        >
+          <SelectTrigger data-testid="select-country">
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>{country}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {dialogForm.formState.errors.country && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
@@ -110,7 +156,7 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
 
       {/* Current Location */}
       <div>
-        <Label className="mb-2 block">Is this the applicant&#39;s current location?</Label>
+        <Label className="mb-2 block">Is this the main applicant&apos;s current location?</Label>
         <div className="flex gap-4">
           {["Yes", "No"].map((option) => (
             <div key={option} className="flex items-center space-x-2">
@@ -169,56 +215,102 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
-      {/* Date Arrived - Conditional */}
-      {dialogForm.watch("is_current_location") && (
-        <div>
-          <Label className="mb-2 block">Date Arrived</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_arrived_day")}
-              onValueChange={(value) => dialogForm.setValue("date_arrived_day", value)}
-            >
-              <SelectTrigger data-testid="select-date-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {DAYS.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_arrived_month")}
-              onValueChange={(value) => dialogForm.setValue("date_arrived_month", value)}
-            >
-              <SelectTrigger data-testid="select-date-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTHS.map((month) => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_arrived_year")}
-              onValueChange={(value) => dialogForm.setValue("date_arrived_year", value)}
-            >
-              <SelectTrigger data-testid="select-date-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {YEARS.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {dialogForm.formState.errors.date_arrived_day && (
-            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_arrived_day.message}</p>
-          )}
+      {/* Date Arrived */}
+      <div>
+        <Label className="mb-2 block">Date Arrived</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_arrived_day")}
+            onValueChange={(value) => dialogForm.setValue("date_arrived_day", value)}
+          >
+            <SelectTrigger data-testid="select-arrived-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_arrived_month")}
+            onValueChange={(value) => dialogForm.setValue("date_arrived_month", value)}
+          >
+            <SelectTrigger data-testid="select-arrived-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_arrived_year")}
+            onValueChange={(value) => dialogForm.setValue("date_arrived_year", value)}
+          >
+            <SelectTrigger data-testid="select-arrived-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+        {dialogForm.formState.errors.date_arrived_day && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_arrived_day.message}</p>
+        )}
+      </div>
+
+      {/* Departure Date / Intended Departure Date */}
+      <div>
+        <Label className="mb-2 block">
+          {isCurrentLocation === "Yes" ? "Intended Departure Date" : "Departure Date"}
+        </Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("departure_day")}
+            onValueChange={(value) => dialogForm.setValue("departure_day", value)}
+          >
+            <SelectTrigger data-testid="select-departure-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("departure_month")}
+            onValueChange={(value) => dialogForm.setValue("departure_month", value)}
+          >
+            <SelectTrigger data-testid="select-departure-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("departure_year")}
+            onValueChange={(value) => dialogForm.setValue("departure_year", value)}
+          >
+            <SelectTrigger data-testid="select-departure-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
@@ -256,32 +348,34 @@ export default function Page() {
 
   const form = useForm({
     defaultValues: {
-      travelled_to_australia: "",
-      travelled_internationally: "no",
+      has_travel_history: "",
       travel_history: [],
     },
   });
 
-  const travelledInternationally = form.watch("travelled_internationally");
+  const hasTravelHistory = form.watch("has_travel_history");
   const travelHistory = form.watch("travel_history") || [];
 
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_travel || {};
     if (Object.keys(savedData).length > 0) {
       const formData = {
-        travelled_to_australia: savedData.travelled_to_australia || "",
-        travelled_internationally: savedData.travelled_internationally || "no",
+        has_travel_history:
+          savedData.has_travel_history ??
+          savedData.travelled_internationally ??
+          "",
         travel_history: savedData.travel_history || [],
       };
 
       form.reset(formData);
 
-      // Force update logic for radio persistence
       setTimeout(() => {
-        form.setValue("travelled_internationally", savedData.travelled_internationally || "no");
-        if (savedData.travelled_to_australia) {
-          form.setValue("travelled_to_australia", savedData.travelled_to_australia);
-        }
+        form.setValue(
+          "has_travel_history",
+          savedData.has_travel_history ??
+            savedData.travelled_internationally ??
+            ""
+        );
       }, 0);
     }
   }, [draftSnap.draft?.temporary_work_travel, form]);
@@ -331,75 +425,107 @@ export default function Page() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Travel History</h1>
           <p className="text-muted-foreground mt-2">
-            Provide information about your travel history.
+            In this section you are to provide the travel history of the following included Applicants:
           </p>
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
 
-            {/* Q1: Travelled to Australia */}
-            <div className="space-y-2">
-              <Label>Have you or any family member ever travelled to Australia?</Label>
+            {/* Main question block */}
+            <div className="space-y-4">
+              <div className="text-sm text-foreground space-y-1">
+                <p className="font-semibold">Has the main applicant:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>travelled to any country in the last 10 years (since turning 16), OR</li>
+                  <li>spent more than 3 consecutive months outside of their usual country of passport in the last 5 years?</li>
+                </ul>
+              </div>
+
               <RadioGroup
-                value={form.watch("travelled_to_australia")}
-                onValueChange={(value) => form.setValue("travelled_to_australia", value)}
+                value={hasTravelHistory}
+                onValueChange={(value) => form.setValue("has_travel_history", value)}
               >
                 <div className="flex gap-4">
                   {["yes", "no"].map((option) => (
                     <div key={option} className="flex items-center space-x-2">
-                      <RadioGroupItem value={option} id={`australia-${option}`} data-testid={`radio-australia-${option}`} />
-                      <Label htmlFor={`australia-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
+                      <RadioGroupItem value={option} id={`travel-history-${option}`} data-testid={`radio-travel-history-${option}`} />
+                      <Label htmlFor={`travel-history-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
                     </div>
                   ))}
                 </div>
               </RadioGroup>
             </div>
 
-            {/* Q2: Travelled Internationally */}
-            <div className="space-y-2">
-              <Label>Have you or any family member travelled internationally in the last 10 years?</Label>
-              <RadioGroup
-                value={travelledInternationally}
-                onValueChange={(value) => form.setValue("travelled_internationally", value)}
-              >
-                <div className="flex gap-4">
-                  {["yes", "no"].map((option) => (
-                    <div key={option} className="flex items-center space-x-2">
-                      <RadioGroupItem value={option} id={`international-${option}`} data-testid={`radio-international-${option}`} />
-                      <Label htmlFor={`international-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-            </div>
-
-            {/* Repeater (shown if Yes) */}
-            {travelledInternationally === "yes" && (
+            {/* Travel history table (shown if Yes) */}
+            {hasTravelHistory === "yes" && (
               <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Travel History Details</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Travel History for main applicant</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Enter details of their current location and of previous travel including travel for work, study, holiday,
+                  leisure, business, military deployments and visits back to their own country:
+                </p>
                 <RepeaterTable
                   data={travelHistory}
                   columns={[
                     { key: "country", label: "Country" },
-                    { key: "reason_for_visit", label: "Reason" },
-                    { key: "date_arrived_year", label: "Year Arrived" },
+                    { key: "arrival_display", label: "Arrival Date" },
+                    { key: "departure_display", label: "Departure Date" },
+                    { key: "reason_for_visit", label: "Reason for Travel" },
                   ]}
                   onAdd={(newRow) => {
-                    const updated = [...travelHistory, newRow];
-                    form.setValue("travel_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    const row = {
+                      ...newRow,
+                      arrival_display: formatDate(
+                        newRow.date_arrived_day,
+                        newRow.date_arrived_month,
+                        newRow.date_arrived_year
+                      ),
+                      departure_display: formatDate(
+                        newRow.departure_day,
+                        newRow.departure_month,
+                        newRow.departure_year
+                      ),
+                    };
+                    const updated = [...travelHistory, row];
+                    form.setValue("travel_history", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
                   }}
                   onEdit={(index, updatedRow) => {
+                    const row = {
+                      ...updatedRow,
+                      arrival_display: formatDate(
+                        updatedRow.date_arrived_day,
+                        updatedRow.date_arrived_month,
+                        updatedRow.date_arrived_year
+                      ),
+                      departure_display: formatDate(
+                        updatedRow.departure_day,
+                        updatedRow.departure_month,
+                        updatedRow.departure_year
+                      ),
+                    };
                     const updated = [...travelHistory];
-                    updated[index] = updatedRow;
-                    form.setValue("travel_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    updated[index] = row;
+                    form.setValue("travel_history", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
                   }}
                   onDelete={(index) => {
                     const updated = travelHistory.filter((_, i) => i !== index);
-                    form.setValue("travel_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    form.setValue("travel_history", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
                   }}
                   DialogComponent={TravelDialog}
-                  addButtonText="Add Travel Entry"
+                  addButtonText="Add"
                   testIdPrefix="travel"
                 />
               </div>
