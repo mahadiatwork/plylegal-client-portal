@@ -24,6 +24,26 @@ const formSchema = z.object({
   medical_condition: z.enum(["yes", "no"]).optional(),
   requires_assistance: z.enum(["yes", "no"]).optional(),
   health_insurance: z.enum(["yes", "no"]).optional(),
+  has_health_examinations: z.enum(["yes", "no"]).optional(),
+  health_examinations: z.array(z.any()).optional(),
+  intends_hospital_entry: z.enum(["yes", "no"]).optional(),
+  hospital_details: z.array(z.any()).optional(),
+  intends_healthcare_work: z.enum(["yes", "no"]).optional(),
+  healthcare_work_details: z.array(z.any()).optional(),
+  intends_aged_care: z.enum(["yes", "no"]).optional(),
+  aged_care_work_details: z.array(z.any()).optional(),
+  intends_childcare: z.enum(["yes", "no"]).optional(),
+  childcare_work_details: z.array(z.any()).optional(),
+  intends_classroom: z.enum(["yes", "no"]).optional(),
+  classroom_work_details: z.array(z.any()).optional(),
+  had_tuberculosis: z.enum(["yes", "no"]).optional(),
+  tuberculosis_details: z.array(z.any()).optional(),
+  close_contact_tb: z.enum(["yes", "no"]).optional(),
+  tuberculosis_exposure_details: z.array(z.any()).optional(),
+  health_conditions_details: z.array(z.any()).optional(),
+  health_conditions_list: z.array(z.string()).optional(),
+  medical_assistance_details: z.array(z.any()).optional(),
+  health_insurance_details: z.array(z.any()).optional(),
 });
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
@@ -82,6 +102,37 @@ const HEALTH_CONDITIONS = [
   "Neurological condition",
   "Pregnancy",
   "Respiratory condition (including asthma)",
+  "Other",
+];
+
+const HEALTH_CARE_ROLES = [
+  "Amb Ambulance Officer / Paramedic",
+  "Chiropractor",
+  "Dentist",
+  "Medical Practitioner",
+  "Nurse",
+  "Occupational Therapist",
+  "Optometrist",
+  "Osteopath",
+  "Pharmacist",
+  "Physiotherapist",
+  "Podiatrist",
+  "Psychologist",
+  "Speech Pathologist",
+  "Other",
+  "Other",
+];
+
+const AGED_CARE_ROLES = ["Aged Care", "Disability Care", "Other"];
+
+const CHILDCARE_ROLES = ["Childcare Worker", "Teacher", "Trainee", "Volunteer", "Other"];
+
+const COURSE_TYPES = [
+  "Secondary",
+  "Diploma/Certificate",
+  "Bachelor's",
+  "Master's",
+  "Doctorate/PhD",
   "Other",
 ];
 
@@ -326,6 +377,961 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
   );
 }
 
+function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    role: z.string().min(1, "Role is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        role: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Health Care Work</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who intends to work as, or study or train to be, a
+        health care worker or work within a health care facility while in Australia
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Role</Label>
+        <Select value={dialogForm.watch("role")} onValueChange={(value) => dialogForm.setValue("role", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Role" />
+          </SelectTrigger>
+          <SelectContent>
+            {HEALTH_CARE_ROLES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    role: z.string().min(1, "Role is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        role: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Aged and Disability Care Work</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who intends to work, study or train within aged care,
+        or disability care while in Australia
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Role</Label>
+        <Select value={dialogForm.watch("role")} onValueChange={(value) => dialogForm.setValue("role", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Role" />
+          </SelectTrigger>
+          <SelectContent>
+            {AGED_CARE_ROLES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    institution: z.string().optional(),
+    role: z.string().min(1, "Role is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        institution: "",
+        role: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Childcare Details</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who intends to work, or be a trainee, at a Childcare
+        Centre (including pre-schools and creches) while in Australia.
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Institution (if known)</Label>
+        <Input {...dialogForm.register("institution")} />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Role</Label>
+        <Select value={dialogForm.watch("role")} onValueChange={(value) => dialogForm.setValue("role", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Role" />
+          </SelectTrigger>
+          <SelectContent>
+            {CHILDCARE_ROLES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    course_type: z.string().min(1, "Course type is required"),
+    course_name: z.string().optional(),
+    institution: z.string().optional(),
+    start_date_day: z.string().optional(),
+    start_date_month: z.string().optional(),
+    start_date_year: z.string().optional(),
+    end_date_day: z.string().optional(),
+    end_date_month: z.string().optional(),
+    end_date_year: z.string().optional(),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        course_type: "",
+        course_name: "",
+        institution: "",
+        start_date_day: "",
+        start_date_month: "",
+        start_date_year: "",
+        end_date_day: "",
+        end_date_month: "",
+        end_date_year: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave({
+      ...data,
+      start_date_display: formatDate(data.start_date_day, data.start_date_month, data.start_date_year),
+      end_date_display: formatDate(data.end_date_day, data.end_date_month, data.end_date_year),
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Classroom Details</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who intends to be in a Classroom situation for more
+        than 3 months (as a student, teacher, lecturer, or observer, etc) in Australia
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Course Type</Label>
+        <Select value={dialogForm.watch("course_type")} onValueChange={(value) => dialogForm.setValue("course_type", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Course Type" />
+          </SelectTrigger>
+          <SelectContent>
+            {COURSE_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Course Name</Label>
+        <Input {...dialogForm.register("course_name")} />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Institution</Label>
+        <Input {...dialogForm.register("institution")} />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Start Date</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("start_date_day")}
+            onValueChange={(value) => dialogForm.setValue("start_date_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("start_date_month")}
+            onValueChange={(value) => dialogForm.setValue("start_date_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("start_date_year")}
+            onValueChange={(value) => dialogForm.setValue("start_date_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">End Date</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("end_date_day")}
+            onValueChange={(value) => dialogForm.setValue("end_date_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("end_date_month")}
+            onValueChange={(value) => dialogForm.setValue("end_date_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("end_date_year")}
+            onValueChange={(value) => dialogForm.setValue("end_date_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis Details</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who has ever had or currently has Tuberculosis or had a
+        chest X-ray which showed an abnormality
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis Exposure Details</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who has ever been in close contact at home or at work
+        with a person who has had Tuberculosis
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    condition: z.string().min(1, "Health Condition is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        condition: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Health Conditions</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who has any of the following Health Conditions that may
+        incur medical costs, require treatment or medical follow up. Enter details of each condition including the expected
+        medical costs, treatments or follow-up required.
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Health Condition</Label>
+        <Select value={dialogForm.watch("condition")} onValueChange={(value) => dialogForm.setValue("condition", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Condition" />
+          </SelectTrigger>
+          <SelectContent>
+            {HEALTH_CONDITIONS.map((cond) => (
+              <SelectItem key={cond} value={cond}>
+                {cond}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Assistive Technology and Activities of Daily Living</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant who requires health or community care
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    type_of_cover: z.string().optional(),
+    insurer: z.string().optional(),
+    policy_number: z.string().optional(),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        type_of_cover: "",
+        insurer: "",
+        policy_number: "",
+        date_from_day: "",
+        date_from_month: "",
+        date_from_year: "",
+        date_to_day: "",
+        date_to_month: "",
+        date_to_year: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave({
+      ...data,
+      date_from_display: formatDate(data.date_from_day, data.date_from_month, data.date_from_year),
+      date_to_display: formatDate(data.date_to_day, data.date_to_month, data.date_to_year),
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Health Insurance</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant included in this application who holds Private Health Insurance that will cover them
+        during their stay in Australia
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Type of Cover</Label>
+        <Input {...dialogForm.register("type_of_cover")} />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Insurer</Label>
+        <Input {...dialogForm.register("insurer")} />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Insurance Policy Number</Label>
+        <Input {...dialogForm.register("policy_number")} />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_from_day")}
+            onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_month")}
+            onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_year")}
+            onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date To</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_to_day")}
+            onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_month")}
+            onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_year")}
+            onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -402,20 +1408,29 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      medical_condition: "",
-      requires_assistance: "",
-      health_insurance: "",
-      has_health_examinations: "",
+      medical_condition: "no",
+      requires_assistance: "no",
+      health_insurance: "no",
+      has_health_examinations: "no",
       health_examinations: [],
-      intends_hospital_entry: "",
+      intends_hospital_entry: "no",
       hospital_details: [],
-      intends_healthcare_work: "",
-      intends_aged_care: "",
-      intends_childcare: "",
-      intends_classroom: "",
-      had_tuberculosis: "",
-      close_contact_tb: "",
-      health_conditions_list: [],
+      intends_healthcare_work: "no",
+      healthcare_work_details: [],
+      intends_aged_care: "no",
+      aged_care_work_details: [],
+      intends_childcare: "no",
+      childcare_work_details: [],
+      intends_classroom: "no",
+      classroom_work_details: [],
+      had_tuberculosis: "no",
+      tuberculosis_details: [],
+      close_contact_tb: "no",
+      tuberculosis_exposure_details: [],
+
+      health_conditions_list: [], // Keeping for backward compatibility if needed, or remove if fully deprecated
+      medical_assistance_details: [],
+      health_insurance_details: [],
     },
   });
 
@@ -423,8 +1438,27 @@ export default function Page() {
     const savedData = draftSnap.draft?.temporary_work_health || {};
     if (Object.keys(savedData).length > 0) {
       Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
+        let value = savedData[key];
+
+        // Handle legacy empty strings by defaulting to "no" for question fields
+        if (value === "" && [
+          "medical_condition",
+          "requires_assistance",
+          "health_insurance",
+          "has_health_examinations",
+          "intends_hospital_entry",
+          "intends_healthcare_work",
+          "intends_aged_care",
+          "intends_childcare",
+          "intends_classroom",
+          "had_tuberculosis",
+          "close_contact_tb"
+        ].includes(key)) {
+          value = "no";
+        }
+
+        if (value !== undefined && value !== null) {
+          form.setValue(key, value);
         }
       });
     }
@@ -642,6 +1676,53 @@ export default function Page() {
               </RadioGroup>
             </div>
 
+            {form.watch("intends_healthcare_work") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of any applicant included in this application who intends to work as, or study or train to
+                  be, a health care worker or work within a health care facility while in Australia
+                </p>
+                <RepeaterTable
+                  data={form.watch("healthcare_work_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "role", label: "Role" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("healthcare_work_details") || [];
+                    form.setValue("healthcare_work_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("healthcare_work_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("healthcare_work_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("healthcare_work_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("healthcare_work_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <HealthCareWorkDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="healthcare-work"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>
                 Does any applicant intend to work, study or train with aged care, or disability care while in Australia?
@@ -660,6 +1741,53 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
+
+            {form.watch("intends_aged_care") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of any applicant included in this application who intends to work, study or train within
+                  aged care, or disability care while in Australia
+                </p>
+                <RepeaterTable
+                  data={form.watch("aged_care_work_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "role", label: "Role" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("aged_care_work_details") || [];
+                    form.setValue("aged_care_work_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("aged_care_work_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("aged_care_work_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("aged_care_work_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("aged_care_work_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <AgedCareWorkDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="aged-care-work"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>
@@ -681,6 +1809,54 @@ export default function Page() {
               </RadioGroup>
             </div>
 
+            {form.watch("intends_childcare") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of any applicant included in this application who intends to work, or be a trainee, at a
+                  Childcare Centre (including pre-schools and creches) while in Australia.
+                </p>
+                <RepeaterTable
+                  data={form.watch("childcare_work_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "role", label: "Role" },
+                    { key: "institution", label: "Institution" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("childcare_work_details") || [];
+                    form.setValue("childcare_work_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("childcare_work_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("childcare_work_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("childcare_work_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("childcare_work_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <ChildcareWorkDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="childcare-work"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>
                 Does any applicant intend to be in a Classroom situation for more than 3 months in their usual country
@@ -700,6 +1876,54 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
+
+            {form.watch("intends_classroom") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of any applicant included in this application who intends to be in a Classroom situation
+                  for more than 3 months (as a student, teacher, lecturer, or observer, etc) in Australia
+                </p>
+                <RepeaterTable
+                  data={form.watch("classroom_work_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "course_type", label: "Course Type" },
+                    { key: "institution", label: "Institution" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("classroom_work_details") || [];
+                    form.setValue("classroom_work_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("classroom_work_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("classroom_work_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("classroom_work_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("classroom_work_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <ClassroomWorkDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="classroom-work"
+                />
+              </div>
+            )}
 
             {/* Tuberculosis questions */}
             <div className="space-y-2 pt-4">
@@ -722,6 +1946,53 @@ export default function Page() {
               </RadioGroup>
             </div>
 
+            {form.watch("had_tuberculosis") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of any applicant included in this application who has ever had or currently has Tuberculosis
+                  or had a chest X-ray which showed an abnormality
+                </p>
+                <RepeaterTable
+                  data={form.watch("tuberculosis_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "details", label: "Details" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("tuberculosis_details") || [];
+                    form.setValue("tuberculosis_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("tuberculosis_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("tuberculosis_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("tuberculosis_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("tuberculosis_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <TuberculosisDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="tuberculosis-details"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>
                 Has any applicant been in close contact at home or at work with a person who has had Tuberculosis?
@@ -740,6 +2011,53 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
+
+            {form.watch("close_contact_tb") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of any applicant included in this application who has ever been in close contact at home or
+                  at work with a person who has had Tuberculosis
+                </p>
+                <RepeaterTable
+                  data={form.watch("tuberculosis_exposure_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "details", label: "Details" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("tuberculosis_exposure_details") || [];
+                    form.setValue("tuberculosis_exposure_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("tuberculosis_exposure_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("tuberculosis_exposure_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("tuberculosis_exposure_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("tuberculosis_exposure_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <TuberculosisExposureDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="tuberculosis-exposure"
+                />
+              </div>
+            )}
 
             {/* Health conditions list */}
             <div className="space-y-3 pt-4">
@@ -762,35 +2080,54 @@ export default function Page() {
               </RadioGroup>
 
               {form.watch("medical_condition") === "yes" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  {HEALTH_CONDITIONS.map((cond) => {
-                    const selected = (form.watch("health_conditions_list") || []).includes(cond);
-                    return (
-                      <label key={cond} className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={selected}
-                          onCheckedChange={(checked) => {
-                            const current = form.watch("health_conditions_list") || [];
-                            if (checked) {
-                              if (!current.includes(cond)) {
-                                form.setValue("health_conditions_list", [...current, cond], {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                });
-                              }
-                            } else {
-                              form.setValue(
-                                "health_conditions_list",
-                                current.filter((c) => c !== cond),
-                                { shouldDirty: true, shouldTouch: true }
-                              );
-                            }
-                          }}
-                        />
-                        <span>{cond}</span>
-                      </label>
-                    );
-                  })}
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Enter details of any applicant included in this application who has any of the following Health
+                    Conditions that may incur medical costs, require treatment or medical follow up. Enter details of each
+                    condition including the expected medical costs, treatments or follow-up required.
+                  </p>
+                  <div className="text-sm text-gray-600 mb-2 pl-2 border-l-2 border-gray-300">
+                    Conditions to report: {HEALTH_CONDITIONS.join(", ")}
+                  </div>
+                  <RepeaterTable
+                    data={form.watch("health_conditions_details") || []}
+                    columns={[
+                      { key: "applicant_name", label: "Name" },
+                      { key: "condition", label: "Condition" },
+                      { key: "details", label: "Details" },
+                    ]}
+                    onAdd={(row) => {
+                      const current = form.watch("health_conditions_details") || [];
+                      form.setValue("health_conditions_details", [...current, row], {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const current = [...(form.watch("health_conditions_details") || [])];
+                      current[index] = updatedRow;
+                      form.setValue("health_conditions_details", current, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onDelete={(index) => {
+                      const current = form.watch("health_conditions_details") || [];
+                      const updated = current.filter((_, i) => i !== index);
+                      form.setValue("health_conditions_details", updated, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    DialogComponent={(props) => (
+                      <HealthConditionsDialog {...props} applicantOptions={applicantOptions} />
+                    )}
+                    addButtonText="Add"
+                    testIdPrefix="health-condition"
+                  />
                 </div>
               )}
             </div>
@@ -814,6 +2151,53 @@ export default function Page() {
                   ))}
                 </div>
               </RadioGroup>
+
+              {form.watch("requires_assistance") === "yes" && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Enter details of any applicant included in this application who requires ongoing medical care or need
+                    special equipment, assistive technology or assistance from others for their daily living
+                  </p>
+                  <RepeaterTable
+                    data={form.watch("medical_assistance_details") || []}
+                    columns={[
+                      { key: "applicant_name", label: "Name" },
+                      { key: "details", label: "Details" },
+                    ]}
+                    onAdd={(row) => {
+                      const current = form.watch("medical_assistance_details") || [];
+                      form.setValue("medical_assistance_details", [...current, row], {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const current = [...(form.watch("medical_assistance_details") || [])];
+                      current[index] = updatedRow;
+                      form.setValue("medical_assistance_details", current, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onDelete={(index) => {
+                      const current = form.watch("medical_assistance_details") || [];
+                      const updated = current.filter((_, i) => i !== index);
+                      form.setValue("medical_assistance_details", updated, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    DialogComponent={(props) => (
+                      <AssistiveTechnologyDialog {...props} applicantOptions={applicantOptions} />
+                    )}
+                    addButtonText="Add"
+                    testIdPrefix="medical-assistance"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Private health insurance */}
@@ -834,6 +2218,54 @@ export default function Page() {
                   ))}
                 </div>
               </RadioGroup>
+
+              {form.watch("health_insurance") === "yes" && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Enter details of any applicant included in this application who holds Private Health Insurance that will
+                    cover them during their stay in Australia
+                  </p>
+                  <RepeaterTable
+                    data={form.watch("health_insurance_details") || []}
+                    columns={[
+                      { key: "applicant_name", label: "Name" },
+                      { key: "type_of_cover", label: "Type of Cover" },
+                      { key: "insurer", label: "Insurer" },
+                    ]}
+                    onAdd={(row) => {
+                      const current = form.watch("health_insurance_details") || [];
+                      form.setValue("health_insurance_details", [...current, row], {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const current = [...(form.watch("health_insurance_details") || [])];
+                      current[index] = updatedRow;
+                      form.setValue("health_insurance_details", current, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onDelete={(index) => {
+                      const current = form.watch("health_insurance_details") || [];
+                      const updated = current.filter((_, i) => i !== index);
+                      form.setValue("health_insurance_details", updated, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    DialogComponent={(props) => (
+                      <HealthInsuranceDialog {...props} applicantOptions={applicantOptions} />
+                    )}
+                    addButtonText="Add"
+                    testIdPrefix="health-insurance"
+                  />
+                </div>
+              )}
             </div>
             <FormNavigation
               onPrev={handlePrevious}
