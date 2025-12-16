@@ -20,6 +20,7 @@ const dateRangeSchema = z.object({
 }, { message: "End date must be after start date" });
 
 // Main Applicant - Details
+// Main Applicant - Details
 export const detailsSchema = z.object({
   is_main_applicant: yesNoSchema,
   prefix: z.enum(["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"]).optional(),
@@ -27,20 +28,59 @@ export const detailsSchema = z.object({
   given_names: z.string().min(1, "Given names are required"),
   preferred_names: z.string().optional(),
   gender: z.enum(["Male", "Female", "Other"]),
-  dob: z.string().min(1, "Date of birth is required").refine((date) => {
-    const dob = parseISO(date);
-    const now = new Date();
-    const hundredYearsAgo = subYears(now, 100);
-    return isAfter(dob, hundredYearsAgo) && isBefore(dob, now);
-  }, { message: "Date of birth must be within the last 100 years" }).refine((date) => {
-    const age = differenceInYears(new Date(), parseISO(date));
-    return age >= 18;
-  }, { message: "Applicant must be at least 18 years old" }),
+  birth_day: z.string().optional(),
+  birth_month: z.string().optional(),
+  birth_year: z.string().optional(),
+  dob: z.string().min(1, "Date of birth is required").optional(), // Making optional to avoid immediate fail, will validate via superRefine or specific fields
   country_of_birth: z.string().min(1, "Country of birth is required"),
   suburb_of_birth: z.string().optional(),
   city_of_birth: z.string().optional(),
   state_of_birth: z.string().optional(),
-  marital_status: z.enum(["Never Married", "Married", "De Facto", "Divorced", "Widowed", "Separated"]),
+  marital_status: z.enum(["Never Married or been in a De Facto Relationship", "Married", "De Facto", "Divorced", "Widowed", "Separated"]), // Updated enum to match page.js
+  marital_status_date_day: z.string().optional(),
+  marital_status_date_month: z.string().optional(),
+  marital_status_date_year: z.string().optional(),
+
+  // Completing Person Details
+  completing_family_name: z.string().optional(),
+  completing_given_names: z.string().optional(),
+  completing_preferred_names: z.string().optional(),
+  completing_gender: z.enum(["Male", "Female", "Other"]).optional(),
+  completing_birth_day: z.string().optional(),
+  completing_birth_month: z.string().optional(),
+  completing_birth_year: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // Validate Main Applicant DOB
+  if (!data.birth_day || !data.birth_month || !data.birth_year) {
+    if (!data.birth_day) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Day is required", path: ["birth_day"] });
+    if (!data.birth_month) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Month is required", path: ["birth_month"] });
+    if (!data.birth_year) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Year is required", path: ["birth_year"] });
+  } else {
+    const dob = parseISO(`${data.birth_year}-${data.birth_month.padStart(2, '0')}-${data.birth_day.padStart(2, '0')}`);
+    const now = new Date();
+    const hundredYearsAgo = subYears(now, 100);
+
+    if (!isAfter(dob, hundredYearsAgo) || !isBefore(dob, now)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth must be within the last 100 years", path: ["birth_year"] });
+    }
+    const age = differenceInYears(new Date(), dob);
+    if (age < 18) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Applicant must be at least 18 years old", path: ["birth_year"] });
+    }
+  }
+
+  // Validate Completing Person Details
+  if (data.is_main_applicant === "No") {
+    if (!data.completing_family_name) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Family name is required", path: ["completing_family_name"] });
+    if (!data.completing_given_names) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Given names are required", path: ["completing_given_names"] });
+    if (!data.completing_gender) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Gender is required", path: ["completing_gender"] });
+
+    if (!data.completing_birth_day || !data.completing_birth_month || !data.completing_birth_year) {
+      if (!data.completing_birth_day) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Day is required", path: ["completing_birth_day"] });
+      if (!data.completing_birth_month) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Month is required", path: ["completing_birth_month"] });
+      if (!data.completing_birth_year) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Year is required", path: ["completing_birth_year"] });
+    }
+  }
 });
 
 // Main Applicant - Other
@@ -63,24 +103,24 @@ export const otherSchema = z.object({
   }
   return true;
 }, { message: "At least one other name is required when 'Yes' is selected", path: ["other_names"] })
-.refine((data) => {
-  if (data.use_chinese_code === "Yes") {
-    return data.chinese_code && data.chinese_code.length > 0;
-  }
-  return true;
-}, { message: "Chinese code is required when 'Yes' is selected", path: ["chinese_code"] })
-.refine((data) => {
-  if (data.russian_descent === "Yes") {
-    return data.patronymic_name && data.patronymic_name.family_name && data.patronymic_name.given_names;
-  }
-  return true;
-}, { message: "Patronymic name is required when 'Yes' is selected", path: ["patronymic_name"] })
-.refine((data) => {
-  if (data.has_prev_dob === "Yes") {
-    return data.prev_dobs && data.prev_dobs.length > 0;
-  }
-  return true;
-}, { message: "At least one previous date of birth is required when 'Yes' is selected", path: ["prev_dobs"] });
+  .refine((data) => {
+    if (data.use_chinese_code === "Yes") {
+      return data.chinese_code && data.chinese_code.length > 0;
+    }
+    return true;
+  }, { message: "Chinese code is required when 'Yes' is selected", path: ["chinese_code"] })
+  .refine((data) => {
+    if (data.russian_descent === "Yes") {
+      return data.patronymic_name && data.patronymic_name.family_name && data.patronymic_name.given_names;
+    }
+    return true;
+  }, { message: "Patronymic name is required when 'Yes' is selected", path: ["patronymic_name"] })
+  .refine((data) => {
+    if (data.has_prev_dob === "Yes") {
+      return data.prev_dobs && data.prev_dobs.length > 0;
+    }
+    return true;
+  }, { message: "At least one previous date of birth is required when 'Yes' is selected", path: ["prev_dobs"] });
 
 // Identity
 export const identitySchema = z.object({
@@ -88,8 +128,14 @@ export const identitySchema = z.object({
   citizenships: z.array(z.object({
     country: z.string().min(1, "Country is required"),
     obtained_method: z.string().min(1, "Method is required"),
-    date_obtained: z.string().optional(),
-    still_citizen: z.boolean().optional(),
+    date_obtained_day: z.string().optional(),
+    date_obtained_month: z.string().optional(),
+    date_obtained_year: z.string().optional(),
+    still_citizen: yesNoSchema.optional(),
+    date_ceased_day: z.string().optional(),
+    date_ceased_month: z.string().optional(),
+    date_ceased_year: z.string().optional(),
+    reason: z.string().optional(),
   })).optional(),
   has_passport: yesNoSchema.optional(),
   passports: z.array(z.object({
@@ -117,18 +163,18 @@ export const identitySchema = z.object({
   }
   return true;
 }, { message: "At least one citizenship is required", path: ["citizenships"] })
-.refine((data) => {
-  if (data.has_passport === "Yes") {
-    return data.passports && data.passports.length > 0;
-  }
-  return true;
-}, { message: "At least one passport is required", path: ["passports"] })
-.refine((data) => {
-  if (data.has_identity_doc === "Yes") {
-    return data.identity_docs && data.identity_docs.length > 0;
-  }
-  return true;
-}, { message: "At least one identity document is required", path: ["identity_docs"] });
+  .refine((data) => {
+    if (data.has_passport === "Yes") {
+      return data.passports && data.passports.length > 0;
+    }
+    return true;
+  }, { message: "At least one passport is required", path: ["passports"] })
+  .refine((data) => {
+    if (data.has_identity_doc === "Yes") {
+      return data.identity_docs && data.identity_docs.length > 0;
+    }
+    return true;
+  }, { message: "At least one identity document is required", path: ["identity_docs"] });
 
 // Employment
 export const employmentSchema = z.object({
@@ -146,12 +192,23 @@ export const employmentSchema = z.object({
 export const educationSchema = z.object({
   has_education: yesNoSchema.optional(),
   education_history: z.array(z.object({
-    date_from: z.string().optional(),
-    date_to: z.string().optional(),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    qualification_type: z.string().min(1, "Qualification Type is required"),
+    is_highest_qualification: z.string().optional(),
     course_name: z.string().min(1, "Course name is required"),
+    course_language: z.string().min(1, "Language is required"),
+    course_status: z.string().min(1, "Status is required"),
     institution_name: z.string().min(1, "Institution name is required"),
-    country: z.string().optional(),
-    status: z.enum(["Completed", "Ongoing", "Withdrawn"]).optional(),
+    country: z.string().min(1, "Country is required"),
+    institution_address: z.string().optional(),
+    institution_suburb: z.string().optional(),
+    institution_state: z.string().optional(),
+    institution_postcode: z.string().optional(),
   })).optional(),
 }).refine((data) => {
   if (data.has_education === "Yes") {
@@ -173,6 +230,18 @@ export const languageSchema = z.object({
 // Family (Main Applicant)
 export const familyMainSchema = z.object({
   has_children: yesNoSchema.optional(),
+  children: z.array(z.object({
+    family_name: z.string().min(1, "Family Name is required"),
+    given_names: z.string().min(1, "Given Names is required"),
+    gender: z.enum(["Male", "Female"]),
+    birth_day: z.string().optional(),
+    birth_month: z.string().optional(),
+    birth_year: z.string().optional(),
+    relationship: z.string().min(1, "Relationship is required"),
+    date_relationship_started_day: z.string().optional(),
+    date_relationship_started_month: z.string().optional(),
+    date_relationship_started_year: z.string().optional(),
+  })).optional(),
 });
 
 // Children

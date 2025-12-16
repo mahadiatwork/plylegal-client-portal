@@ -8,7 +8,7 @@ import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { educationSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -126,12 +126,12 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -410,8 +410,10 @@ export default function MainApplicantEducationPage() {
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
+
   const { toast } = useToast();
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -434,7 +436,7 @@ export default function MainApplicantEducationPage() {
     resolver: zodResolver(educationSchema),
     mode: "onChange",
     defaultValues: {
-      has_education: sectionData.has_education || "",
+      has_education: sectionData.has_education || "No",
       education_history: sectionData.education_history || [],
     },
   });
@@ -449,7 +451,7 @@ export default function MainApplicantEducationPage() {
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -467,7 +469,7 @@ export default function MainApplicantEducationPage() {
     };
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -477,10 +479,30 @@ export default function MainApplicantEducationPage() {
       return;
     }
 
-    draftStore.saveSectionData('mainApplicant.education', data);
-    draftStore.markPageComplete('partner/main-applicant/education');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('mainApplicant.education', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/education');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -498,21 +520,32 @@ export default function MainApplicantEducationPage() {
       return;
     }
 
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('mainApplicant.education', currentData);
-    
-    if (result.success) {
-      await draftStore.markPageComplete('partner/main-applicant/education');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('mainApplicant.education', currentData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/education');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -523,22 +556,26 @@ export default function MainApplicantEducationPage() {
   };
 
   const educationColumns = [
-    { key: "date_from", label: "Date From", format: (row) => {
-      if (row.date_from_day && row.date_from_month && row.date_from_year) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIdx = parseInt(row.date_from_month) - 1;
-        return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
+    {
+      key: "date_from", label: "Date From", format: (row) => {
+        if (row.date_from_day && row.date_from_month && row.date_from_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.date_from_month) - 1;
+          return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
+        }
+        return "";
       }
-      return "";
-    }},
-    { key: "date_to", label: "Date To", format: (row) => {
-      if (row.date_to_day && row.date_to_month && row.date_to_year) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIdx = parseInt(row.date_to_month) - 1;
-        return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
+    },
+    {
+      key: "date_to", label: "Date To", format: (row) => {
+        if (row.date_to_day && row.date_to_month && row.date_to_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.date_to_month) - 1;
+          return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
+        }
+        return "Ongoing";
       }
-      return "Ongoing";
-    }},
+    },
     { key: "qualification_type", label: "Qualification" },
     { key: "course_name", label: "Course Name" },
     { key: "institution_name", label: "Institution" },
@@ -624,44 +661,16 @@ export default function MainApplicantEducationPage() {
               </div>
             )}
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }

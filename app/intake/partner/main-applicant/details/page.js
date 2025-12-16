@@ -8,10 +8,10 @@ import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { detailsSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -57,7 +57,8 @@ export default function MainApplicantDetailsPage() {
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -65,7 +66,7 @@ export default function MainApplicantDetailsPage() {
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     const currentAppId = draftSnap.currentApplicationId;
-    
+
     if (appIdFromUrl && appIdFromUrl !== currentAppId) {
       // If URL has applicationId, use it and load draft
       draftStore.setApplicationId(appIdFromUrl);
@@ -99,7 +100,7 @@ export default function MainApplicantDetailsPage() {
   const { control, handleSubmit, getValues, setValue, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(detailsSchema),
     defaultValues: {
-      is_main_applicant: sectionData.is_main_applicant || "Yes",
+      is_main_applicant: sectionData.is_main_applicant || "No",
       prefix: sectionData.prefix,
       family_name: sectionData.family_name || "",
       given_names: sectionData.given_names || "",
@@ -175,11 +176,41 @@ export default function MainApplicantDetailsPage() {
     };
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
-    draftStore.saveSectionData('mainApplicant.details', data);
-    draftStore.markPageComplete('partner/main-applicant/details');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+  const onSubmit = async (data) => {
+    // Check if applicationId is set before attempting to save
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error saving draft",
+        description: "No application selected. Please navigate to this page from an application.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('mainApplicant.details', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/details');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -198,24 +229,35 @@ export default function MainApplicantDetailsPage() {
       return;
     }
 
-    // Manual save trigger
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('mainApplicant.details', currentData);
-    
-    if (result.success) {
-      // Mark this page as complete
-      await draftStore.markPageComplete('partner/main-applicant/details');
-      
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      // Manual save trigger
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('mainApplicant.details', currentData);
+
+      if (result.success) {
+        // Mark this page as complete
+        await draftStore.markPageComplete('partner/main-applicant/details');
+
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -287,19 +329,146 @@ export default function MainApplicantDetailsPage() {
               </div>
             )}
 
-            <div className="hidden">
-            <Field
-              type="radio"
-              name="is_main_applicant"
-              control={control}
-              label="Are you or will you be the Main Applicant in any application?"
-              required
-              options={[
-                { value: "Yes", label: "Yes" },
-                { value: "No", label: "No" },
-              ]}
-            />
+            <div>
+              <Field
+                type="radio"
+                name="is_main_applicant"
+                control={control}
+                label="Are you or will you be the Main Applicant in any application?"
+                required
+                options={[
+                  { value: "Yes", label: "Yes" },
+                  { value: "No", label: "No" },
+                ]}
+              />
             </div>
+
+            {/* Person Completing Questionnaire Section (Only if NOT Main Applicant) */}
+            {isMainApplicant === "No" && (
+              <div className="space-y-6 pt-6 border-t border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Insert the details of the person who is completing this Questionnaire</h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Field
+                    type="text"
+                    name="completing_family_name"
+                    control={control}
+                    label="Family Name"
+                    required
+                    placeholder="Smith"
+                  />
+
+                  <Field
+                    type="text"
+                    name="completing_given_names"
+                    control={control}
+                    label="Given Names"
+                    required
+                    placeholder="John David"
+                  />
+                </div>
+
+                <Field
+                  type="text"
+                  name="completing_preferred_names"
+                  control={control}
+                  label="Preferred Name(s)"
+                  placeholder="John"
+                />
+
+                {/* Completing Person Gender */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Gender <span className="text-red-600">*</span>
+                  </Label>
+                  <RadioGroup
+                    value={completingGender || ""}
+                    onValueChange={(value) => setValue("completing_gender", value)}
+                    className="flex gap-4"
+                  >
+                    {["Male", "Female"].map((genderOption) => (
+                      <div key={genderOption} className="flex items-center">
+                        <RadioGroupItem value={genderOption} id={`completing-gender-${genderOption.toLowerCase()}`} />
+                        <Label htmlFor={`completing-gender-${genderOption.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                          {genderOption}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  {errors.completing_gender && (
+                    <p className="text-sm text-red-600 mt-1">{errors.completing_gender.message}</p>
+                  )}
+                </div>
+
+                {/* Completing Person Date of Birth */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Date of Birth <span className="text-red-600">*</span>
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="completing_birth_day" className="text-xs text-gray-600">Day</Label>
+                      <Select
+                        value={completingBirthDay || ""}
+                        onValueChange={(value) => setValue("completing_birth_day", value)}
+                      >
+                        <SelectTrigger id="completing_birth_day" data-testid="select-completing-birth-day">
+                          <SelectValue placeholder="Choose Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {days.map((day) => (
+                            <SelectItem key={day} value={day}>{day}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.completing_birth_day && (
+                        <p className="text-sm text-red-600 mt-1">{errors.completing_birth_day.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="completing_birth_month" className="text-xs text-gray-600">Month</Label>
+                      <Select
+                        value={completingBirthMonth || ""}
+                        onValueChange={(value) => setValue("completing_birth_month", value)}
+                      >
+                        <SelectTrigger id="completing_birth_month" data-testid="select-completing-birth-month">
+                          <SelectValue placeholder="Choose Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month, idx) => (
+                            <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.completing_birth_month && (
+                        <p className="text-sm text-red-600 mt-1">{errors.completing_birth_month.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="completing_birth_year" className="text-xs text-gray-600">Year</Label>
+                      <Select
+                        value={completingBirthYear || ""}
+                        onValueChange={(value) => setValue("completing_birth_year", value)}
+                      >
+                        <SelectTrigger id="completing_birth_year" data-testid="select-completing-birth-year">
+                          <SelectValue placeholder="Choose Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.completing_birth_year && (
+                        <p className="text-sm text-red-600 mt-1">{errors.completing_birth_year.message}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Main Applicant's Personal Details Section */}
             {(isMainApplicant === "Yes" || isMainApplicant === "No") && (
@@ -314,44 +483,44 @@ export default function MainApplicantDetailsPage() {
 
                 {/* Prefix/Title - Radio Group */}
                 <div className="hidden">
-                <Label className="text-sm font-medium mb-2 block">Prefix/Title</Label>
-                <RadioGroup
-                  value={prefix || ""}
-                  onValueChange={(value) => setValue("prefix", value)}
-                  className="flex flex-wrap gap-4"
-                >
-                  {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                    <div key={prefix} className="flex items-center">
-                      <RadioGroupItem value={prefix} id={`prefix-${prefix.toLowerCase()}`} />
-                      <Label htmlFor={`prefix-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {prefix}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {errors.prefix && (
-                  <p className="text-sm text-red-600 mt-1">{errors.prefix.message}</p>
-                )}
+                  <Label className="text-sm font-medium mb-2 block">Prefix/Title</Label>
+                  <RadioGroup
+                    value={prefix || ""}
+                    onValueChange={(value) => setValue("prefix", value)}
+                    className="flex flex-wrap gap-4"
+                  >
+                    {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
+                      <div key={prefix} className="flex items-center">
+                        <RadioGroupItem value={prefix} id={`prefix-${prefix.toLowerCase()}`} />
+                        <Label htmlFor={`prefix-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                          {prefix}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  {errors.prefix && (
+                    <p className="text-sm text-red-600 mt-1">{errors.prefix.message}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Field
-                  type="text"
-                  name="family_name"
-                  control={control}
-                  label="Family Name"
-                  required={isMainApplicant === "Yes"}
-                  placeholder="Smith"
-                />
+                  <Field
+                    type="text"
+                    name="family_name"
+                    control={control}
+                    label="Family Name"
+                    required={isMainApplicant === "Yes"}
+                    placeholder="Smith"
+                  />
 
-                <Field
-                  type="text"
-                  name="given_names"
-                  control={control}
-                  label="Given Names"
-                  required={isMainApplicant === "Yes"}
-                  placeholder="John David"
-                />
+                  <Field
+                    type="text"
+                    name="given_names"
+                    control={control}
+                    label="Given Names"
+                    required={isMainApplicant === "Yes"}
+                    placeholder="John David"
+                  />
                 </div>
 
                 <Field
@@ -364,131 +533,131 @@ export default function MainApplicantDetailsPage() {
 
                 {/* Gender - Radio Group */}
                 <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  Gender {isMainApplicant === "Yes" && <span className="text-red-600">*</span>}
-                </Label>
-                <RadioGroup
-                  value={gender || ""}
-                  onValueChange={(value) => setValue("gender", value)}
-                  className="flex gap-4"
-                >
-                  {["Male", "Female"].map((gender) => (
-                    <div key={gender} className="flex items-center">
-                      <RadioGroupItem value={gender} id={`gender-${gender.toLowerCase()}`} />
-                      <Label htmlFor={`gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {gender}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {errors.gender && (
-                  <p className="text-sm text-red-600 mt-1">{errors.gender.message}</p>
-                )}
+                  <Label className="text-sm font-medium mb-2 block">
+                    Gender {isMainApplicant === "Yes" && <span className="text-red-600">*</span>}
+                  </Label>
+                  <RadioGroup
+                    value={gender || ""}
+                    onValueChange={(value) => setValue("gender", value)}
+                    className="flex gap-4"
+                  >
+                    {["Male", "Female"].map((gender) => (
+                      <div key={gender} className="flex items-center">
+                        <RadioGroupItem value={gender} id={`gender-${gender.toLowerCase()}`} />
+                        <Label htmlFor={`gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                          {gender}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  {errors.gender && (
+                    <p className="text-sm text-red-600 mt-1">{errors.gender.message}</p>
+                  )}
                 </div>
 
                 {/* Date of Birth - Three Dropdowns */}
                 <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Date of Birth {isMainApplicant === "Yes" && <span className="text-red-600">*</span>}
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="birth_day" className="text-xs text-gray-600">Day</Label>
-                    <Select
-                      value={birthDay || ""}
-                      onValueChange={(value) => setValue("birth_day", value)}
-                    >
-                      <SelectTrigger id="birth_day" data-testid="select-birth-day">
-                        <SelectValue placeholder="Choose Day" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {days.map((day) => (
-                          <SelectItem key={day} value={day}>{day}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.birth_day && (
-                      <p className="text-sm text-red-600 mt-1">{errors.birth_day.message}</p>
-                    )}
+                  <Label className="text-sm font-medium">
+                    Date of Birth {isMainApplicant === "Yes" && <span className="text-red-600">*</span>}
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="birth_day" className="text-xs text-gray-600">Day</Label>
+                      <Select
+                        value={birthDay || ""}
+                        onValueChange={(value) => setValue("birth_day", value)}
+                      >
+                        <SelectTrigger id="birth_day" data-testid="select-birth-day">
+                          <SelectValue placeholder="Choose Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {days.map((day) => (
+                            <SelectItem key={day} value={day}>{day}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.birth_day && (
+                        <p className="text-sm text-red-600 mt-1">{errors.birth_day.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="birth_month" className="text-xs text-gray-600">Month</Label>
+                      <Select
+                        value={birthMonth || ""}
+                        onValueChange={(value) => setValue("birth_month", value)}
+                      >
+                        <SelectTrigger id="birth_month" data-testid="select-birth-month">
+                          <SelectValue placeholder="Choose Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month, idx) => (
+                            <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.birth_month && (
+                        <p className="text-sm text-red-600 mt-1">{errors.birth_month.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="birth_year" className="text-xs text-gray-600">Year</Label>
+                      <Select
+                        value={birthYear || ""}
+                        onValueChange={(value) => setValue("birth_year", value)}
+                      >
+                        <SelectTrigger id="birth_year" data-testid="select-birth-year">
+                          <SelectValue placeholder="Choose Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.birth_year && (
+                        <p className="text-sm text-red-600 mt-1">{errors.birth_year.message}</p>
+                      )}
+                    </div>
                   </div>
-
-                  <div>
-                    <Label htmlFor="birth_month" className="text-xs text-gray-600">Month</Label>
-                    <Select
-                      value={birthMonth || ""}
-                      onValueChange={(value) => setValue("birth_month", value)}
-                    >
-                      <SelectTrigger id="birth_month" data-testid="select-birth-month">
-                        <SelectValue placeholder="Choose Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {months.map((month, idx) => (
-                          <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.birth_month && (
-                      <p className="text-sm text-red-600 mt-1">{errors.birth_month.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="birth_year" className="text-xs text-gray-600">Year</Label>
-                    <Select
-                      value={birthYear || ""}
-                      onValueChange={(value) => setValue("birth_year", value)}
-                    >
-                      <SelectTrigger id="birth_year" data-testid="select-birth-year">
-                        <SelectValue placeholder="Choose Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {years.map((year) => (
-                          <SelectItem key={year} value={year}>{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.birth_year && (
-                      <p className="text-sm text-red-600 mt-1">{errors.birth_year.message}</p>
-                    )}
-                  </div>
-                </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Field
-                  type="select"
-                  name="country_of_birth"
-                  control={control}
-                  label="Country of Birth"
-                  required={isMainApplicant === "Yes"}
-                  options={COUNTRIES.map(country => ({ value: country, label: country }))}
-                />
-
-                <Field
-                  type="text"
-                  name="suburb_of_birth"
-                  control={control}
-                  label="Suburb of Birth"
-                  placeholder="Westminster"
-                />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Field
-                  type="text"
-                  name="city_of_birth"
-                  control={control}
-                  label="City/Town of Birth"
-                  placeholder="London"
-                />
+                  <Field
+                    type="select"
+                    name="country_of_birth"
+                    control={control}
+                    label="Country of Birth"
+                    required={isMainApplicant === "Yes"}
+                    options={COUNTRIES.map(country => ({ value: country, label: country }))}
+                  />
 
-                <Field
-                  type="text"
-                  name="state_of_birth"
-                  control={control}
-                  label="State/Province of Birth"
-                  placeholder="Greater London"
-                />
+                  <Field
+                    type="text"
+                    name="suburb_of_birth"
+                    control={control}
+                    label="Suburb of Birth"
+                    placeholder="Westminster"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Field
+                    type="text"
+                    name="city_of_birth"
+                    control={control}
+                    label="City/Town of Birth"
+                    placeholder="London"
+                  />
+
+                  <Field
+                    type="text"
+                    name="state_of_birth"
+                    control={control}
+                    label="State/Province of Birth"
+                    placeholder="Greater London"
+                  />
                 </div>
 
                 <Field
@@ -582,44 +751,16 @@ export default function MainApplicantDetailsPage() {
               </div>
             )}
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }

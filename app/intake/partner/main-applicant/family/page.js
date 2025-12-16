@@ -8,7 +8,7 @@ import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { familyMainSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -60,11 +60,14 @@ const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString()
 const familyMemberDialogSchema = z.object({
   family_name: z.string().min(1, "Family Name is required"),
   given_names: z.string().min(1, "Given Names is required"),
-  gender: z.string().min(1, "Gender is required"),
+  gender: z.enum(["Male", "Female"]),
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
   relationship: z.string().min(1, "Relationship to Main Applicant is required"),
+  date_relationship_started_day: z.string().optional(),
+  date_relationship_started_month: z.string().optional(),
+  date_relationship_started_year: z.string().optional(),
 });
 
 function FamilyMemberDialog({ editingRow, onSave, onCancel }) {
@@ -78,20 +81,25 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel }) {
       birth_month: "",
       birth_year: "",
       relationship: "",
+      date_relationship_started_day: "",
+      date_relationship_started_month: "",
+      date_relationship_started_year: "",
     },
   });
+
+  const relationship = dialogForm.watch("relationship");
 
   const handleFormSubmit = (data) => {
     onSave(data);
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div className="mb-4">
@@ -148,10 +156,6 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel }) {
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="Female" id="gender-female" />
             <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="Other" id="gender-other" />
-            <Label htmlFor="gender-other" className="cursor-pointer">Other</Label>
           </div>
         </RadioGroup>
         {dialogForm.formState.errors.gender && (
@@ -224,6 +228,35 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
+      {relationship === "Spouse/Partner" && (
+        <div className="mt-4">
+          <Label>Date relationship started</Label>
+          <div className="grid grid-cols-3 gap-2">
+            <Select
+              value={dialogForm.watch("date_relationship_started_day")}
+              onValueChange={(value) => dialogForm.setValue("date_relationship_started_day", value)}
+            >
+              <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+              <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select
+              value={dialogForm.watch("date_relationship_started_month")}
+              onValueChange={(value) => dialogForm.setValue("date_relationship_started_month", value)}
+            >
+              <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
+              <SelectContent>{months.map((m, i) => <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select
+              value={dialogForm.watch("date_relationship_started_year")}
+              onValueChange={(value) => dialogForm.setValue("date_relationship_started_year", value)}
+            >
+              <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
+              <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
@@ -243,8 +276,10 @@ export default function MainApplicantFamilyPage() {
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
+
   const { toast } = useToast();
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -267,7 +302,7 @@ export default function MainApplicantFamilyPage() {
     resolver: zodResolver(familyMainSchema),
     mode: "onChange",
     defaultValues: {
-      has_children: sectionData.has_children || "",
+      has_children: sectionData.has_children || "No",
       children: sectionData.children || [],
     },
   });
@@ -282,7 +317,7 @@ export default function MainApplicantFamilyPage() {
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -300,7 +335,7 @@ export default function MainApplicantFamilyPage() {
     };
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -310,10 +345,30 @@ export default function MainApplicantFamilyPage() {
       return;
     }
 
-    draftStore.saveSectionData('mainApplicant.family', data);
-    draftStore.markPageComplete('partner/main-applicant/family');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('mainApplicant.family', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/family');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -331,21 +386,32 @@ export default function MainApplicantFamilyPage() {
       return;
     }
 
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('mainApplicant.family', currentData);
-    
-    if (result.success) {
-      await draftStore.markPageComplete('partner/main-applicant/family');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('mainApplicant.family', currentData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/family');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -356,20 +422,24 @@ export default function MainApplicantFamilyPage() {
   };
 
   const childrenColumns = [
-    { key: "name", label: "Name", format: (row) => {
-      if (row.family_name || row.given_names) {
-        return `${row.given_names || ""} ${row.family_name || ""}`.trim();
+    {
+      key: "name", label: "Name", format: (row) => {
+        if (row.family_name || row.given_names) {
+          return `${row.given_names || ""} ${row.family_name || ""}`.trim();
+        }
+        return row.name || "";
       }
-      return row.name || "";
-    }},
-    { key: "dob", label: "Date of Birth", format: (row) => {
-      if (row.birth_day && row.birth_month && row.birth_year) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIdx = parseInt(row.birth_month) - 1;
-        return `${monthNames[monthIdx]} ${row.birth_day}, ${row.birth_year}`;
+    },
+    {
+      key: "dob", label: "Date of Birth", format: (row) => {
+        if (row.birth_day && row.birth_month && row.birth_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.birth_month) - 1;
+          return `${monthNames[monthIdx]} ${row.birth_day}, ${row.birth_year}`;
+        }
+        return row.dob || "";
       }
-      return row.dob || "";
-    }},
+    },
     { key: "gender", label: "Gender" },
     { key: "relationship", label: "Relationship" },
   ];
@@ -417,12 +487,12 @@ export default function MainApplicantFamilyPage() {
               />
             </div>
 
-            {/* Children Information Section */}
-            {hasChildren === "Yes" && (
+            {/* Children Information Section - Shown for both Yes and No */}
+            {(hasChildren === "Yes" || hasChildren === "No") && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Children Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Family Members</h3>
                 <p className="text-sm text-gray-600">
-                  Please provide details about your children
+                  Please provide details about your family members (children, etc.)
                 </p>
                 <RepeaterTable
                   data={children}
@@ -438,7 +508,7 @@ export default function MainApplicantFamilyPage() {
                     updateChildren(updated);
                   }}
                   DialogComponent={FamilyMemberDialog}
-                  addButtonText="Add Child"
+                  addButtonText="Add Family Member"
                   testIdPrefix="family"
                   dialogTitle="Add Family Member"
                   dialogClassName="max-w-4xl w-[90vw] max-h-[98vh] bg-white overflow-y-auto"
@@ -446,44 +516,16 @@ export default function MainApplicantFamilyPage() {
               </div>
             )}
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }

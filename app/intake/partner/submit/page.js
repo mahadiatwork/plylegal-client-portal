@@ -10,7 +10,7 @@ import { applicationsStore } from "@/stores/applicationsStore";
 import { useToast } from "@/hooks/use-toast";
 import { getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { CheckCircle2, AlertCircle, Send } from "lucide-react";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -20,12 +20,12 @@ export default function SubmitPage() {
   const draftSnap = useSnapshot(draftStore);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
-  
+
   useEffect(() => {
     const data = draftStore.getCompletionPercentage();
     setCompletionData(data);
   }, [draftSnap.completionStatus]);
-  
+
   const completionPercentage = completionData.percentage;
   const isFullyComplete = completionPercentage === 100;
 
@@ -47,26 +47,26 @@ export default function SubmitPage() {
     setIsSubmitting(true);
     try {
       const appId = draftSnap.currentApplicationId;
-      
+
       if (!appId) {
         throw new Error("No application ID found");
       }
-      
+
       // Update application status to submitted
       const result = await applicationsStore.updateApplication(appId, {
         status: "submitted",
         submittedAt: new Date().toISOString(),
       });
-      
+
       if (!result.success) {
         throw new Error(result.error || "Failed to update application status");
       }
-      
+
       toast({
         title: "Application Submitted Successfully",
         description: "Your application has been submitted and is now under review.",
       });
-      
+
       // Navigate back to the intake start page using dynamic routing
       router.push(`/intake/${visaType}/start`);
     } catch (error) {
@@ -108,7 +108,7 @@ export default function SubmitPage() {
                       {isFullyComplete ? 'Application Complete' : 'Application Incomplete'}
                     </h3>
                     <p className={`text-sm mt-1 ${isFullyComplete ? 'text-green-700' : 'text-yellow-700'}`}>
-                      {isFullyComplete 
+                      {isFullyComplete
                         ? 'All sections have been completed. You may now submit your application.'
                         : `You have completed ${completionPercentage}% of the application. Please complete all sections before submitting.`
                       }
@@ -141,48 +141,17 @@ export default function SubmitPage() {
               </div>
 
               {/* Action Buttons - Desktop */}
-              <div className="hidden lg:flex items-center justify-between pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrevious}
-                  className="min-h-9"
-                  data-testid="button-previous"
-                >
-                  ← Previous
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!isFullyComplete || isSubmitting}
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-submit"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="animate-pulse">Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Submit Application
-                    </>
-                  )}
-                </Button>
-              </div>
+              <FormNavigation
+                onPrev={handlePrevious}
+                onNext={handleSubmit}
+                disabledNext={!isFullyComplete || isSubmitting}
+                nextLabel={isSubmitting ? "Submitting..." : "Submit Application"}
+                loading={isSubmitting}
+              />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrevious={handlePrevious}
-        onNext={handleSubmit}
-        nextLabel={isSubmitting ? "Submitting..." : "Submit Application"}
-        nextDisabled={!isFullyComplete || isSubmitting}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-submit-mobile"
-      />
     </div>
   );
 }

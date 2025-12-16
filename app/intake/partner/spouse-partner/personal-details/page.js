@@ -7,14 +7,14 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -74,7 +74,8 @@ export default function SpousePartnerPersonalDetailsPage() {
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -120,7 +121,7 @@ export default function SpousePartnerPersonalDetailsPage() {
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -138,7 +139,7 @@ export default function SpousePartnerPersonalDetailsPage() {
     };
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -148,10 +149,30 @@ export default function SpousePartnerPersonalDetailsPage() {
       return;
     }
 
-    draftStore.saveSectionData('spousePartner.personalDetails', data);
-    draftStore.markPageComplete('partner/spouse-partner/personal-details');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('spousePartner.personalDetails', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/spouse-partner/personal-details');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -169,21 +190,32 @@ export default function SpousePartnerPersonalDetailsPage() {
       return;
     }
 
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('spousePartner.personalDetails', currentData);
-    
-    if (result.success) {
-      await draftStore.markPageComplete('partner/spouse-partner/personal-details');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('spousePartner.personalDetails', currentData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/spouse-partner/personal-details');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -394,45 +426,16 @@ export default function SpousePartnerPersonalDetailsPage() {
               </div>
             </div>
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }
-

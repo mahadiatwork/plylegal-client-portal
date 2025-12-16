@@ -8,7 +8,7 @@ import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -74,7 +74,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
   const initialUseInApplication = row?.use_in_application === "Yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
   const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(otherNameDialogSchema),
     defaultValues: row || {
@@ -110,12 +110,12 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -163,8 +163,8 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <div className="flex items-center space-x-2 pt-2">
-        <Checkbox 
-          id="use_in_application" 
+        <Checkbox
+          id="use_in_application"
           checked={useInApplication}
           onCheckedChange={(checked) => {
             setUseInApplication(checked);
@@ -178,7 +178,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
 
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
-        
+
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
             Do you have evidence of this Other Name?
@@ -314,16 +314,16 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           data-testid="button-cancel"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="bg-primary text-primary-foreground"
           data-testid="button-ok"
         >
@@ -355,7 +355,7 @@ function PrevDobDialog({ row, onSubmit, onCancel }) {
   };
 
   const initialDate = parseDate(row);
-  
+
   const dialogForm = useForm({
     defaultValues: initialDate,
   });
@@ -378,12 +378,12 @@ function PrevDobDialog({ row, onSubmit, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -437,16 +437,16 @@ function PrevDobDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           data-testid="button-cancel"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="bg-primary text-primary-foreground"
           data-testid="button-ok"
         >
@@ -729,7 +729,8 @@ export default function MainApplicantOtherPage() {
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -777,7 +778,7 @@ export default function MainApplicantOtherPage() {
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -795,7 +796,7 @@ export default function MainApplicantOtherPage() {
     };
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -805,10 +806,30 @@ export default function MainApplicantOtherPage() {
       return;
     }
 
-    draftStore.saveSectionData('mainApplicant.otherNames', data);
-    draftStore.markPageComplete('partner/main-applicant/other');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('mainApplicant.otherNames', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/other');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -826,21 +847,32 @@ export default function MainApplicantOtherPage() {
       return;
     }
 
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('mainApplicant.otherNames', currentData);
-    
-    if (result.success) {
-      await draftStore.markPageComplete('partner/main-applicant/other');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('mainApplicant.otherNames', currentData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/other');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -872,7 +904,7 @@ export default function MainApplicantOtherPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <form 
+          <form
             onSubmit={handleSubmit(onSubmit)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
@@ -1030,44 +1062,16 @@ export default function MainApplicantOtherPage() {
               </div>
             </div>
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }

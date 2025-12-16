@@ -7,7 +7,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -101,12 +101,12 @@ function SpousePartnerDialog({ isOpen, onClose, onSave, existingData }) {
             You have indicated the Main Applicant has a Spouse/Partner based on their marital status. Enter details of the Spouse/Partner.
           </p>
         </DialogHeader>
-        <form 
+        <form
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
             dialogForm.handleSubmit(handleFormSubmit)(e);
-          }} 
+          }}
           className="space-y-4"
         >
           <div>
@@ -232,9 +232,11 @@ export default function SpousePartnerDetailsPage() {
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const { toast } = useToast();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [spousePartnerData, setSpousePartnerData] = useState(null);
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -293,25 +295,36 @@ export default function SpousePartnerDetailsPage() {
       return;
     }
 
-    if (spousePartnerData) {
-      const result = await draftStore.saveSectionData('spousePartner.details', spousePartnerData);
-      if (result.success) {
-        await draftStore.markPageComplete('partner/spouse-partner/details');
-        toast({
-          title: "Draft saved",
-          description: "Your changes have been saved successfully.",
-        });
-      } else {
-        toast({
-          title: "Error saving draft",
-          description: result.error || "Failed to save draft. Please try again.",
-          variant: "destructive",
-        });
+    setIsSaving(true);
+    try {
+      if (spousePartnerData) {
+        const result = await draftStore.saveSectionData('spousePartner.details', spousePartnerData);
+        if (result.success) {
+          await draftStore.markPageComplete('partner/spouse-partner/details');
+          toast({
+            title: "Draft saved",
+            description: "Your changes have been saved successfully.",
+          });
+        } else {
+          toast({
+            title: "Error saving draft",
+            description: result.error || "Failed to save draft. Please try again.",
+            variant: "destructive",
+          });
+        }
       }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!spousePartnerData) {
       toast({
         title: "Required",
@@ -330,10 +343,30 @@ export default function SpousePartnerDetailsPage() {
       return;
     }
 
-    draftStore.saveSectionData('spousePartner.details', spousePartnerData);
-    draftStore.markPageComplete('partner/spouse-partner/details');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('spousePartner.details', spousePartnerData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/spouse-partner/details');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -408,45 +441,16 @@ export default function SpousePartnerDetailsPage() {
               </Button>
             )}
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={handleContinue}
-                  disabled={!spousePartnerData}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleContinue}
+              disabledNext={!spousePartnerData}
+              loading={isSaving}
+            />
           </div>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleContinue}
-        disabledNext={!spousePartnerData}
-      />
 
       <SpousePartnerDialog
         isOpen={isDialogOpen}

@@ -8,7 +8,7 @@ import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -123,8 +123,8 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
   });
 
   const status = dialogForm.watch("status");
-  const isEmploymentStatus = status === "Employed" || status === "Self-Employed" || 
-                             status === "Work Experience/Internships" || status === "Unpaid Employment/Volunteer";
+  const isEmploymentStatus = status === "Employed" || status === "Self-Employed" ||
+    status === "Work Experience/Internships" || status === "Unpaid Employment/Volunteer";
   const isNonEmploymentStatus = status === "Student" || status === "Retired" || status === "Unemployed";
 
   const handleFormSubmit = (data) => {
@@ -132,12 +132,12 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -390,7 +390,7 @@ export default function MainApplicantEmploymentPage() {
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
-  
+
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -424,11 +424,12 @@ export default function MainApplicantEmploymentPage() {
 
   // Watch all form values for auto-save
   const watchedValues = useWatch({ control });
+  const [isSaving, setIsSaving] = useState(false);
 
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -446,7 +447,7 @@ export default function MainApplicantEmploymentPage() {
     };
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -456,10 +457,30 @@ export default function MainApplicantEmploymentPage() {
       return;
     }
 
-    draftStore.saveSectionData('mainApplicant.employment', data);
-    draftStore.markPageComplete('partner/main-applicant/employment');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('mainApplicant.employment', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/employment');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -477,21 +498,32 @@ export default function MainApplicantEmploymentPage() {
       return;
     }
 
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('mainApplicant.employment', currentData);
-    
-    if (result.success) {
-      await draftStore.markPageComplete('partner/main-applicant/employment');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('mainApplicant.employment', currentData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/main-applicant/employment');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -502,22 +534,26 @@ export default function MainApplicantEmploymentPage() {
   };
 
   const employmentColumns = [
-    { key: "date_from", label: "Date From", format: (row) => {
-      if (row.date_from_day && row.date_from_month && row.date_from_year) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIdx = parseInt(row.date_from_month) - 1;
-        return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
+    {
+      key: "date_from", label: "Date From", format: (row) => {
+        if (row.date_from_day && row.date_from_month && row.date_from_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.date_from_month) - 1;
+          return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
+        }
+        return "";
       }
-      return "";
-    }},
-    { key: "date_to", label: "Date To", format: (row) => {
-      if (row.date_to_day && row.date_to_month && row.date_to_year) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIdx = parseInt(row.date_to_month) - 1;
-        return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
+    },
+    {
+      key: "date_to", label: "Date To", format: (row) => {
+        if (row.date_to_day && row.date_to_month && row.date_to_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.date_to_month) - 1;
+          return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
+        }
+        return "Ongoing";
       }
-      return "Ongoing";
-    }},
+    },
     { key: "status", label: "Status" },
     { key: "position", label: "Position" },
     { key: "country", label: "Country" },
@@ -597,44 +633,16 @@ export default function MainApplicantEmploymentPage() {
               />
             </div>
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }

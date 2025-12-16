@@ -8,7 +8,7 @@ import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -49,7 +49,7 @@ const childDialogSchema = z.object({
 function ChildDialog({ editingRow, onSave, onCancel }) {
   const [mode, setMode] = useState(editingRow ? "add" : "select"); // "select" or "add"
   const [selectedExistingChild, setSelectedExistingChild] = useState(null);
-  
+
   // Get existing children from family members and other sources
   const draftSnap = useSnapshot(draftStore);
   const mainApplicantFamily = draftStore.getSectionData('mainApplicant.family')?.children || [];
@@ -102,10 +102,10 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
   };
 
   const formatChildOption = (child, index) => {
-    const name = child.given_names && child.family_name 
+    const name = child.given_names && child.family_name
       ? `${child.given_names} ${child.family_name}`
       : child.name || `Child ${index + 1}`;
-    
+
     let dobStr = "";
     if (child.birth_day && child.birth_month && child.birth_year) {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -114,12 +114,12 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
     } else if (child.dob) {
       dobStr = ` (DOB: ${child.dob})`;
     }
-    
+
     return `${name}${dobStr}`;
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -128,7 +128,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
         } else {
           handleSelectExisting();
         }
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -312,9 +312,9 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          className="bg-primary text-primary-foreground" 
+        <Button
+          type="submit"
+          className="bg-primary text-primary-foreground"
           data-testid="button-ok"
           disabled={mode === "select" && !selectedExistingChild}
         >
@@ -332,6 +332,7 @@ export default function ChildrenStartPage() {
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
@@ -369,7 +370,7 @@ export default function ChildrenStartPage() {
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    
+
     const timeoutId = setTimeout(() => {
       if (watchedValues && Object.keys(watchedValues).length > 0) {
         draftStore.saveSectionData('children.details', watchedValues);
@@ -378,7 +379,7 @@ export default function ChildrenStartPage() {
     return () => clearTimeout(timeoutId);
   }, [watchedValues, draftSnap.currentApplicationId]);
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -388,10 +389,30 @@ export default function ChildrenStartPage() {
       return;
     }
 
-    draftStore.saveSectionData('children.details', data);
-    draftStore.markPageComplete('partner/children/start');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveSectionData('children.details', data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/children/start');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -409,21 +430,32 @@ export default function ChildrenStartPage() {
       return;
     }
 
-    const currentData = getValues();
-    const result = await draftStore.saveSectionData('children.details', currentData);
-    
-    if (result.success) {
-      await draftStore.markPageComplete('partner/children/start');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveSectionData('children.details', currentData);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/children/start');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -450,20 +482,24 @@ export default function ChildrenStartPage() {
   };
 
   const childColumns = [
-    { key: "name", label: "Name", format: (row) => {
-      if (row.given_names && row.family_name) {
-        return `${row.given_names} ${row.family_name}`;
+    {
+      key: "name", label: "Name", format: (row) => {
+        if (row.given_names && row.family_name) {
+          return `${row.given_names} ${row.family_name}`;
+        }
+        return row.name || "";
       }
-      return row.name || "";
-    }},
-    { key: "dob", label: "Date of Birth", format: (row) => {
-      if (row.birth_day && row.birth_month && row.birth_year) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIdx = parseInt(row.birth_month) - 1;
-        return `${monthNames[monthIdx]} ${row.birth_day}, ${row.birth_year}`;
+    },
+    {
+      key: "dob", label: "Date of Birth", format: (row) => {
+        if (row.birth_day && row.birth_month && row.birth_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.birth_month) - 1;
+          return `${monthNames[monthIdx]} ${row.birth_day}, ${row.birth_year}`;
+        }
+        return row.dob || "";
       }
-      return row.dob || "";
-    }},
+    },
     { key: "gender", label: "Gender" },
     { key: "relationship", label: "Relationship" },
   ];
@@ -534,44 +570,16 @@ export default function ChildrenStartPage() {
               </div>
             )}
 
-            <div className="hidden lg:flex justify-between items-center pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-save-draft"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              disabledNext={!isValid}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-        disabledNext={!isValid}
-      />
     </>
   );
 }

@@ -7,13 +7,13 @@ import { usePathname } from "next/navigation";
 import { draftStore } from "@/stores/draftStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { familyMembersSchema } from "@/lib/validation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 function FamilyMemberDialog({ row, onSubmit, onCancel }) {
@@ -30,26 +30,26 @@ function FamilyMemberDialog({ row, onSubmit, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
-      <Field 
-        type="text" 
-        name="name" 
-        control={control} 
-        label="Name" 
-        required 
+      <Field
+        type="text"
+        name="name"
+        control={control}
+        label="Name"
+        required
         data-testid="input-family-member-name"
       />
-      <Field 
-        type="date" 
-        name="dob" 
-        control={control} 
+      <Field
+        type="date"
+        name="dob"
+        control={control}
         label="Date of Birth"
         data-testid="input-family-member-dob"
       />
@@ -73,9 +73,9 @@ function FamilyMemberDialog({ row, onSubmit, onCancel }) {
         data-testid="select-family-member-relationship"
       />
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
+        <Button
+          type="button"
+          variant="outline"
           onClick={(e) => {
             e.stopPropagation();
             onCancel();
@@ -84,7 +84,7 @@ function FamilyMemberDialog({ row, onSubmit, onCancel }) {
         >
           Cancel
         </Button>
-        <Button 
+        <Button
           type="submit"
           data-testid="button-submit"
         >
@@ -101,6 +101,7 @@ export default function FamilyMembersPage() {
   const visaType = getVisaTypeFromPath(pathname);
   const draft = draftStore.draft;
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   const { control, handleSubmit, watch, setValue, getValues, formState: { errors } } = useForm({
     resolver: zodResolver(familyMembersSchema),
@@ -121,11 +122,31 @@ export default function FamilyMembersPage() {
     return () => clearTimeout(timeoutId);
   }, [watchedValues]);
 
-  const onSubmit = (data) => {
-    draftStore.saveDraft(data);
-    draftStore.markPageComplete('partner/family');
-    const next = getNextRoute(pathname, visaType);
-    if (next) router.push(next);
+  const onSubmit = async (data) => {
+    setIsSaving(true);
+    try {
+      const result = await draftStore.saveDraft(data);
+
+      if (result.success) {
+        await draftStore.markPageComplete('partner/family');
+        const next = getNextRoute(pathname, visaType);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -134,22 +155,33 @@ export default function FamilyMembersPage() {
   };
 
   const handleSave = async () => {
-    const currentData = getValues();
-    const result = await draftStore.saveDraft(currentData);
-    
-    if (result.success) {
-      // Mark this page as complete
-      await draftStore.markPageComplete('partner/family');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
+    setIsSaving(true);
+    try {
+      const currentData = getValues();
+      const result = await draftStore.saveDraft(currentData);
+
+      if (result.success) {
+        // Mark this page as complete
+        await draftStore.markPageComplete('partner/family');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -185,8 +217,8 @@ export default function FamilyMembersPage() {
           <CardTitle className="text-2xl font-semibold">Family Members</CardTitle>
         </CardHeader>
         <CardContent>
-          <form 
-            onSubmit={handleSubmit(onSubmit)} 
+          <form
+            onSubmit={handleSubmit(onSubmit)}
             className="space-y-8"
           >
             <div className="space-y-4">
@@ -200,10 +232,10 @@ export default function FamilyMembersPage() {
                 onEdit={handleEditMember}
                 onDelete={handleDeleteMember}
                 dialogForm={(row, onSubmit, onCancel) => (
-                  <FamilyMemberDialog 
-                    row={row} 
-                    onSubmit={onSubmit} 
-                    onCancel={onCancel} 
+                  <FamilyMemberDialog
+                    row={row}
+                    onSubmit={onSubmit}
+                    onCancel={onCancel}
                   />
                 )}
                 emptyMessage="No family members added yet."
@@ -212,42 +244,15 @@ export default function FamilyMembersPage() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous-desktop"
-              >
-                Previous
-              </Button>
-              
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSave}
-                data-testid="button-save-desktop"
-              >
-                Save Draft
-              </Button>
-
-              <Button
-                type="submit"
-                data-testid="button-continue-desktop"
-              >
-                Continue →
-              </Button>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onSave={handleSave}
+              onNext={handleSubmit(onSubmit)}
+              loading={isSaving}
+            />
           </form>
         </CardContent>
       </Card>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={handleSubmit(onSubmit)}
-      />
     </>
   );
 }
