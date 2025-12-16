@@ -20,26 +20,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 const COUNTRIES = [
-  "Australia",
-  "Bangladesh",
-  "Canada",
-  "China",
-  "France",
-  "Germany",
-  "India",
-  "Indonesia",
-  "Italy",
-  "Japan",
-  "Malaysia",
-  "New Zealand",
-  "Pakistan",
-  "Philippines",
-  "Singapore",
-  "South Korea",
-  "Thailand",
-  "United Kingdom",
-  "United States",
-  "Vietnam",
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
+  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
+  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
+  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
+  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
+  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
+  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
+  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
+  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
+  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
+  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
+  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
+  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
+  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
+  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
+  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
+  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
 ];
 
 const CHARACTER_QUESTIONS = [
@@ -403,12 +404,1158 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
   );
 }
 
-const DAYS = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
-const YEARS = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
+const YEARS = Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i));
+
+function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    issuing_country: z.string().min(1, "Issuing Country is required"),
+    application_date_day: z.string().min(1, "Day is required"),
+    application_date_month: z.string().min(1, "Month is required"),
+    application_date_year: z.string().min(1, "Year is required"),
+    date_issue_day: z.string().optional(),
+    date_issue_month: z.string().optional(),
+    date_issue_year: z.string().optional(),
+    reference_number: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || {
+      applicant_name: "",
+      issuing_country: "",
+      application_date_day: "",
+      application_date_month: "",
+      application_date_year: "",
+      date_issue_day: "",
+      date_issue_month: "",
+      date_issue_year: "",
+      reference_number: "",
+    },
+  });
+
+  const handleSubmit = (data) => {
+    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
+    let dateOfBirthDisplay = "";
+    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
+    if (dobMatch) {
+      dateOfBirthDisplay = dobMatch[1];
+    }
+
+    onSave({
+      ...data,
+      date_of_birth_display: dateOfBirthDisplay,
+      application_date_display: `${data.application_date_day} ${data.application_date_month} ${data.application_date_year}`,
+      date_issue_display: data.date_issue_day && data.date_issue_month && data.date_issue_year
+        ? `${data.date_issue_day} ${data.date_issue_month} ${data.date_issue_year}`
+        : "",
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Police Clearance Certificate</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant who is included in this application who has applied for a Police Clearance Certificate in the last 12 months
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.applicant_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Issuing Country</Label>
+        <Select
+          value={dialogForm.watch("issuing_country")}
+          onValueChange={(value) => dialogForm.setValue("issuing_country", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>
+                {country}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.issuing_country && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.issuing_country.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Application Date</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("application_date_day")}
+            onValueChange={(value) => dialogForm.setValue("application_date_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("application_date_month")}
+            onValueChange={(value) => dialogForm.setValue("application_date_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("application_date_year")}
+            onValueChange={(value) => dialogForm.setValue("application_date_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {dialogForm.formState.errors.application_date_day && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.application_date_day.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date of Issue</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_issue_day")}
+            onValueChange={(value) => dialogForm.setValue("date_issue_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_issue_month")}
+            onValueChange={(value) => dialogForm.setValue("date_issue_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_issue_year")}
+            onValueChange={(value) => dialogForm.setValue("date_issue_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Reference Number</Label>
+        <Input {...dialogForm.register("reference_number")} placeholder="Enter reference number" />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    location_type: z.string().min(1, "Type of Location is required"),
+    centre_name: z.string().min(1, "Name of Centre / Camp is required"),
+    country: z.string().min(1, "Country is required"),
+    location: z.string().optional(),
+    organiser: z.string().optional(),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        location_type: "",
+        centre_name: "",
+        country: "",
+        location: "",
+        organiser: "",
+        date_from_day: "",
+        date_from_month: "",
+        date_from_year: "",
+        date_to_day: "",
+        date_to_month: "",
+        date_to_year: "",
+        details: "",
+      },
+  });
+
+  const handleSubmit = (data) => {
+    onSave({
+      ...data,
+      date_from_display:
+        data.date_from_day && data.date_from_month && data.date_from_year
+          ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
+          : "",
+      date_to_display:
+        data.date_to_day && data.date_to_month && data.date_to_year
+          ? `${data.date_to_day} ${data.date_to_month} ${data.date_to_year}`
+          : "",
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Immigration Detention / Refugee Camp History</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant who is included in this application who has previously been in Immigration
+        Detention, a Refugee Camp or Centre for Refugees
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Type of Location</Label>
+        <Input {...dialogForm.register("location_type")} placeholder="Enter type of location" />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Name of Centre / Camp</Label>
+        <Input {...dialogForm.register("centre_name")} placeholder="Enter name of Centre / Camp" />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Country</Label>
+        <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Location</Label>
+        <Input {...dialogForm.register("location")} placeholder="Enter location" />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Name of Organiser who ran the Centre/Camp</Label>
+        <Input {...dialogForm.register("organiser")} placeholder="Enter name of organiser" />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select value={dialogForm.watch("date_from_day")} onValueChange={(value) => dialogForm.setValue("date_from_day", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_from_month")} onValueChange={(value) => dialogForm.setValue("date_from_month", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
+            <SelectContent>{MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_from_year")} onValueChange={(value) => dialogForm.setValue("date_from_year", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
+            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select value={dialogForm.watch("date_to_day")} onValueChange={(value) => dialogForm.setValue("date_to_day", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_to_month")} onValueChange={(value) => dialogForm.setValue("date_to_month", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
+            <SelectContent>{MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_to_year")} onValueChange={(value) => dialogForm.setValue("date_to_year", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
+            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">Ok</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    country: z.string().optional(),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || {
+      applicant_name: "",
+      date_from_day: "",
+      date_from_month: "",
+      date_from_year: "",
+      date_to_day: "",
+      date_to_month: "",
+      date_to_year: "",
+      country: "",
+      details: "",
+    },
+  });
+
+  const handleSubmit = (data) => {
+    onSave({
+      ...data,
+      date_from_display:
+        data.date_from_day && data.date_from_month && data.date_from_year
+          ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
+          : "",
+      date_to_display:
+        data.date_to_day && data.date_to_month && data.date_to_year
+          ? `${data.date_to_day} ${data.date_to_month} ${data.date_to_year}`
+          : "",
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Prison / Institution History</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant who is included in this application who has been confined in a prison or psychiatric
+        institution by order of a court in relation to criminal proceedings
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Applicant Name <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.applicant_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_from_day")}
+            onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_month")}
+            onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_year")}
+            onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date To</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_to_day")}
+            onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_month")}
+            onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_year")}
+            onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Country</Label>
+        <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+const TRAINING_TYPES = [
+  "Military Training",
+  "Paramilitary Training",
+  "Weapons Training",
+  "Explosives Training",
+  "Chemical Product Manufacturing",
+  "Biological Product Manufacturing",
+  "Other",
+];
+
+const SERVICE_TYPES = [
+  "Intelligence",
+  "Military - Voluntary Service",
+  "Military - Compulsory National Service",
+  "Military - Conscription",
+  "Military - Reserve",
+  "National Guard",
+  "Militia",
+  "Paramilitary",
+  "Police",
+  "Secret Police",
+];
+
+function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    country_of_service: z.string().min(1, "Country of Service is required"),
+    country_of_deployment: z.string().optional(),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    service_type: z.string().optional(),
+    organisation_name: z.string().optional(),
+    position_rank: z.string().optional(),
+    duties_description: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || {
+      applicant_name: "",
+      country_of_service: "",
+      country_of_deployment: "",
+      date_from_day: "",
+      date_from_month: "",
+      date_from_year: "",
+      date_to_day: "",
+      date_to_month: "",
+      date_to_year: "",
+      service_type: "",
+      organisation_name: "",
+      position_rank: "",
+      duties_description: "",
+    },
+  });
+
+  const handleSubmit = (data) => {
+    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
+    let dateOfBirthDisplay = "";
+    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
+    if (dobMatch) {
+      dateOfBirthDisplay = dobMatch[1];
+    }
+
+    onSave({
+      ...data,
+      date_of_birth_display: dateOfBirthDisplay,
+      date_from_display:
+        data.date_from_day && data.date_from_month && data.date_from_year
+          ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
+          : "",
+      date_to_display:
+        data.date_to_day && data.date_to_month && data.date_to_year
+          ? `${data.date_to_day} ${data.date_to_month} ${data.date_to_year}`
+          : "",
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Military Service History</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant who is included in this application who has ever served in a military force,
+        police force, state sponsored militia, private militia, secret police or intelligence agency
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.applicant_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Country of Service</Label>
+        <Select
+          value={dialogForm.watch("country_of_service")}
+          onValueChange={(value) => dialogForm.setValue("country_of_service", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>
+                {country}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.country_of_service && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_service.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Country of Deployment</Label>
+        <Select
+          value={dialogForm.watch("country_of_deployment")}
+          onValueChange={(value) => dialogForm.setValue("country_of_deployment", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>
+                {country}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_from_day")}
+            onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_month")}
+            onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_year")}
+            onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_to_day")}
+            onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_month")}
+            onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_year")}
+            onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Type of Service</Label>
+        <Select
+          value={dialogForm.watch("service_type")}
+          onValueChange={(value) => dialogForm.setValue("service_type", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Service" />
+          </SelectTrigger>
+          <SelectContent>
+            {SERVICE_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Name of Organisation/Unit/Brigade Group</Label>
+        <Input {...dialogForm.register("organisation_name")} placeholder="Enter organisation name" />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Position/Rank</Label>
+        <Input {...dialogForm.register("position_rank")} placeholder="Enter position or rank" />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Description of Duties</Label>
+        <Textarea rows={3} {...dialogForm.register("duties_description")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    country_of_training: z.string().min(1, "Country of Training is required"),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    training_type: z.string().optional(),
+    details: z.string().optional(),
+  });
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || {
+      applicant_name: "",
+      country_of_training: "",
+      date_from_day: "",
+      date_from_month: "",
+      date_from_year: "",
+      date_to_day: "",
+      date_to_month: "",
+      date_to_year: "",
+      training_type: "",
+      details: "",
+    },
+  });
+
+  const handleSubmit = (data) => {
+    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
+    let dateOfBirthDisplay = "";
+    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
+    if (dobMatch) {
+      dateOfBirthDisplay = dobMatch[1];
+    }
+
+    onSave({
+      ...data,
+      date_of_birth_display: dateOfBirthDisplay,
+      date_from_display:
+        data.date_from_day && data.date_from_month && data.date_from_year
+          ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
+          : "",
+      date_to_display:
+        data.date_to_day && data.date_to_month && data.date_to_year
+          ? `${data.date_to_day} ${data.date_to_month} ${data.date_to_year}`
+          : "",
+    });
+    dialogForm.reset();
+  };
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Military Training History</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of any applicant who is included in this application who has undergone any military/paramilitary
+        training, been trained in weapons/explosives or in the manufacture of chemical/biological products
+      </p>
+
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.applicant_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Country of Training</Label>
+        <Select
+          value={dialogForm.watch("country_of_training")}
+          onValueChange={(value) => dialogForm.setValue("country_of_training", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>
+                {country}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.country_of_training && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_training.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_from_day")}
+            onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_month")}
+            onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_year")}
+            onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_to_day")}
+            onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_month")}
+            onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_year")}
+            onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Type of Training</Label>
+        <Select
+          value={dialogForm.watch("training_type")}
+          onValueChange={(value) => dialogForm.setValue("training_type", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Type" />
+          </SelectTrigger>
+          <SelectContent>
+            {TRAINING_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
 
 function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
@@ -897,6 +2044,257 @@ export default function Page() {
 
                 {form.watch(q.key) === "yes" && (
                   <div className="mt-4">
+                    {q.key === "police_check_last_12_months" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has applied for a Police Clearance Certificate in the last 12 months
+                        </p>
+                        <RepeaterTable
+                          data={form.watch("police_check_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "date_of_birth_display", label: "Date of Birth" },
+                            { key: "application_date_display", label: "Date of Application" },
+                            { key: "issuing_country", label: "Country" },
+                          ]}
+                          onAdd={(row) => {
+                            const current = form.watch("police_check_details") || [];
+                            form.setValue("police_check_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("police_check_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("police_check_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("police_check_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("police_check_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          DialogComponent={(props) => (
+                            <PoliceClearanceDialog {...props} applicantOptions={applicantOptions} />
+                          )}
+                          addButtonText="Add"
+                          testIdPrefix="police-clearance"
+                        />
+                      </div>
+                    )}
+
+                    {q.key === "immigration_detention" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has previously been in Immigration Detention,
+                          a Refugee Camp or Centre for Refugees
+                        </p>
+                        <RepeaterTable
+                          data={form.watch("immigration_detention_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "centre_name", label: "Name of Centre / Camp" },
+                            { key: "country", label: "Country" },
+                            { key: "date_from_display", label: "Date From" },
+                            { key: "date_to_display", label: "Date To" },
+                          ]}
+                          onAdd={(row) => {
+                            const current = form.watch("immigration_detention_details") || [];
+                            form.setValue("immigration_detention_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("immigration_detention_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("immigration_detention_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("immigration_detention_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("immigration_detention_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          DialogComponent={(props) => (
+                            <ImmigrationDetentionDialog {...props} applicantOptions={applicantOptions} />
+                          )}
+                          addButtonText="Add"
+                          testIdPrefix="immigration-detention"
+                        />
+                      </div>
+                    )}
+
+                    {q.key === "psychiatric_institution" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has been confined in a
+                          prison or psychiatric institution by order of a court in relation to criminal proceedings
+                        </p>
+                        <RepeaterTable
+                          data={form.watch("psychiatric_institution_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "date_from_display", label: "Date From" },
+                            { key: "date_to_display", label: "Date To" },
+                            { key: "country", label: "Country" },
+                          ]}
+                          onAdd={(row) => {
+                            const current = form.watch("psychiatric_institution_details") || [];
+                            form.setValue("psychiatric_institution_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("psychiatric_institution_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("psychiatric_institution_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("psychiatric_institution_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("psychiatric_institution_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          DialogComponent={(props) => (
+                            <PrisonInstitutionDialog {...props} applicantOptions={applicantOptions} />
+                          )}
+                          addButtonText="Add"
+                          testIdPrefix="prison-institution"
+                        />
+                      </div>
+                    )}
+
+                    {q.key === "military_training" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has undergone any
+                          military/paramilitary training, been trained in weapons/explosives or in the manufacture of
+                          chemical/biological products
+                        </p>
+                        <RepeaterTable
+                          data={form.watch("military_training_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "date_of_birth_display", label: "Date of Birth" },
+                            { key: "date_from_display", label: "Date From" },
+                            { key: "date_to_display", label: "Date To" },
+                            { key: "country_of_training", label: "Country" },
+                          ]}
+                          onAdd={(row) => {
+                            const current = form.watch("military_training_details") || [];
+                            form.setValue("military_training_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("military_training_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("military_training_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("military_training_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("military_training_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          DialogComponent={(props) => (
+                            <MilitaryTrainingDialog {...props} applicantOptions={applicantOptions} />
+                          )}
+                          addButtonText="Add"
+                          testIdPrefix="military-training"
+                        />
+                      </div>
+                    )}
+
+                    {q.key === "military_service" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has ever served in a
+                          military force, police force, state sponsored militia, private militia, secret police or
+                          intelligence agency
+                        </p>
+                        <RepeaterTable
+                          data={form.watch("military_service_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "date_of_birth_display", label: "Date of Birth" },
+                            { key: "date_from_display", label: "Date From" },
+                            { key: "date_to_display", label: "Date To" },
+                            { key: "country_of_service", label: "Country of Service" },
+                            { key: "country_of_deployment", label: "Country of Deployment" },
+                            { key: "position_rank", label: "Position" },
+                          ]}
+                          onAdd={(row) => {
+                            const current = form.watch("military_service_details") || [];
+                            form.setValue("military_service_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("military_service_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("military_service_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("military_service_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("military_service_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          DialogComponent={(props) => (
+                            <MilitaryServiceDialog {...props} applicantOptions={applicantOptions} />
+                          )}
+                          addButtonText="Add"
+                          testIdPrefix="military-service"
+                        />
+                      </div>
+                    )}
+
                     {GENERIC_DIALOG_CONFIG[q.key] && (
                       <RepeaterTable
                         data={form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []}
