@@ -2086,7 +2086,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <PoliceClearanceDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add"
+                          addButtonText="Add Details"
                           testIdPrefix="police-clearance"
                         />
                       </div>
@@ -2136,7 +2136,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <ImmigrationDetentionDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add"
+                          addButtonText="Add Details"
                           testIdPrefix="immigration-detention"
                         />
                       </div>
@@ -2185,7 +2185,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <PrisonInstitutionDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add"
+                          addButtonText="Add Details"
                           testIdPrefix="prison-institution"
                         />
                       </div>
@@ -2236,7 +2236,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <MilitaryTrainingDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add"
+                          addButtonText="Add Details"
                           testIdPrefix="military-training"
                         />
                       </div>
@@ -2289,7 +2289,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <MilitaryServiceDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add"
+                          addButtonText="Add Details"
                           testIdPrefix="military-service"
                         />
                       </div>
