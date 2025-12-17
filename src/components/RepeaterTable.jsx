@@ -57,6 +57,21 @@ export function RepeaterTable({
     onDelete(index);
   };
 
+  const handleOpenChange = (open) => {
+    if (!open) {
+      // Check if a Select dropdown is currently open
+      const selectContent = document.querySelector('[data-radix-select-content][data-state="open"]');
+      if (selectContent) {
+        // Don't close if Select is open
+        return;
+      }
+      setIsDialogOpen(false);
+      setEditingIndex(null);
+    } else {
+      setIsDialogOpen(open);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -129,8 +144,20 @@ export function RepeaterTable({
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={dialogClassName || "max-w-2xl max-h-[90vh] bg-white overflow-y-auto"}>
+      <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
+        <DialogContent 
+          className={dialogClassName || "max-w-2xl max-h-[90vh] bg-white overflow-y-auto"}
+          onInteractOutside={(e) => {
+            // Prevent closing when clicking on Select dropdowns
+            const target = e.target;
+            if (target?.closest('[role="listbox"]') || 
+                target?.closest('[data-radix-select-content]') ||
+                target?.closest('[data-radix-select-viewport]') ||
+                target?.closest('[data-radix-select-item]')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {dialogTitle || (editingIndex !== null ? "Edit Entry" : "Add Entry")}

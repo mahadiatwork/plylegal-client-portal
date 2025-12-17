@@ -43,18 +43,11 @@ const childDialogSchema = z.object({
   birth_day: z.string().min(1, "Day is required"),
   birth_month: z.string().min(1, "Month is required"),
   birth_year: z.string().min(1, "Year is required"),
-  relationship: z.string().min(1, "Relationship is required"),
+  relationship: z.string().min(1, "Relationship to Main Applicant is required"),
+  relationship_to_spouse: z.string().min(1, "Relationship to Spouse/Partner is required"),
 });
 
 function ChildDialog({ editingRow, onSave, onCancel }) {
-  const [mode, setMode] = useState(editingRow ? "add" : "select"); // "select" or "add"
-  const [selectedExistingChild, setSelectedExistingChild] = useState(null);
-
-  // Get existing children from family members and other sources
-  const draftSnap = useSnapshot(draftStore);
-  const mainApplicantFamily = draftStore.getSectionData('mainApplicant.family')?.children || [];
-  const existingChildren = mainApplicantFamily.filter(child => child.relationship === "Child" || child.relationship === "Step-Child" || child.relationship === "Adopted Child");
-
   const dialogForm = useForm({
     resolver: zodResolver(childDialogSchema),
     defaultValues: editingRow || {
@@ -65,18 +58,24 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
       birth_month: "",
       birth_year: "",
       relationship: "",
+      relationship_to_spouse: "",
     },
   });
 
   // Get main applicant name
   const mainApplicantDetails = draftStore.getSectionData('mainApplicant.details');
   const mainApplicantName = mainApplicantDetails?.given_names || "Main Applicant";
+  
+  // Get spouse/partner name
+  const spousePartnerDetails = draftStore.getSectionData('spousePartner.details');
+  const spouseName = spousePartnerDetails?.given_names 
+    ? `${spousePartnerDetails.given_names}${spousePartnerDetails.family_name ? ` ${spousePartnerDetails.family_name}` : ''}`
+    : spousePartnerDetails?.family_name || "Spouse/Partner";
 
   // Reset form when dialog opens/closes or editingRow changes
   useEffect(() => {
     if (editingRow) {
       dialogForm.reset(editingRow);
-      setMode("add");
     } else {
       dialogForm.reset({
         family_name: "",
@@ -86,8 +85,8 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
         birth_month: "",
         birth_year: "",
         relationship: "",
+        relationship_to_spouse: "",
       });
-      setMode("select");
     }
   }, [editingRow]);
 
@@ -95,98 +94,17 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
     onSave(data);
   };
 
-  const handleSelectExisting = () => {
-    if (selectedExistingChild) {
-      onSave(selectedExistingChild);
-    }
-  };
-
-  const formatChildOption = (child, index) => {
-    const name = child.given_names && child.family_name
-      ? `${child.given_names} ${child.family_name}`
-      : child.name || `Child ${index + 1}`;
-
-    let dobStr = "";
-    if (child.birth_day && child.birth_month && child.birth_year) {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const monthIdx = parseInt(child.birth_month) - 1;
-      dobStr = ` (DOB: ${monthNames[monthIdx]} ${child.birth_day}, ${child.birth_year})`;
-    } else if (child.dob) {
-      dobStr = ` (DOB: ${child.dob})`;
-    }
-
-    return `${name}${dobStr}`;
-  };
-
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (mode === "add") {
-          dialogForm.handleSubmit(handleFormSubmit)(e);
-        } else {
-          handleSelectExisting();
-        }
+        dialogForm.handleSubmit(handleFormSubmit)(e);
       }}
       className="space-y-4"
     >
       <div>
-        <Label className="mb-2 block">Do you want to select a Person already entered or add a new Child?</Label>
-        <div className="flex gap-4 mt-2">
-          <Button
-            type="button"
-            variant={mode === "select" ? "default" : "outline"}
-            onClick={() => setMode("select")}
-            className={mode === "select" ? "bg-primary text-primary-foreground" : ""}
-          >
-            Select
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "add" ? "default" : "outline"}
-            onClick={() => setMode("add")}
-            className={mode === "add" ? "bg-primary text-primary-foreground" : ""}
-          >
-            Add
-          </Button>
-        </div>
-      </div>
-
-      {mode === "select" && existingChildren.length > 0 && (
-        <div>
-          <Label htmlFor="existing_child">Child</Label>
-          <Select
-            value={selectedExistingChild ? JSON.stringify(selectedExistingChild) : ""}
-            onValueChange={(value) => {
-              const child = JSON.parse(value);
-              setSelectedExistingChild(child);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Choose Child" />
-            </SelectTrigger>
-            <SelectContent>
-              {existingChildren.map((child, index) => (
-                <SelectItem key={index} value={JSON.stringify(child)}>
-                  {formatChildOption(child, index)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {mode === "select" && existingChildren.length === 0 && (
-        <p className="text-sm text-gray-600">
-          No existing children found. Please select "Add" to add a new child.
-        </p>
-      )}
-
-      {mode === "add" && (
-        <>
-          <div>
-            <Label className="mb-2 block font-semibold">Personal Details</Label>
+        <Label className="mb-2 block font-semibold">Personal Details</Label>
             <div className="space-y-4 mt-4">
               <div>
                 <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
@@ -243,7 +161,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
                     <SelectTrigger data-testid="select-birth-day">
                       <SelectValue placeholder="Choose Day" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" className="z-[100]">
                       {days.map((day) => (
                         <SelectItem key={day} value={day}>{day}</SelectItem>
                       ))}
@@ -256,7 +174,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
                     <SelectTrigger data-testid="select-birth-month">
                       <SelectValue placeholder="Choose Month" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" className="z-[100]">
                       {months.map((month, idx) => (
                         <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
                       ))}
@@ -269,7 +187,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
                     <SelectTrigger data-testid="select-birth-year">
                       <SelectValue placeholder="Choose Year" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" className="z-[100]">
                       {years.map((year) => (
                         <SelectItem key={year} value={year}>{year}</SelectItem>
                       ))}
@@ -285,28 +203,48 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
 
           <div>
             <Label className="mb-2 block font-semibold">Relationship Details</Label>
-            <div className="mt-4">
-              <Label htmlFor="relationship">This person is the Main Applicant ({mainApplicantName})'s: <span className="text-red-500">*</span></Label>
-              <Select
-                value={dialogForm.watch("relationship")}
-                onValueChange={(value) => dialogForm.setValue("relationship", value, { shouldValidate: true })}
-              >
-                <SelectTrigger data-testid="select-relationship">
-                  <SelectValue placeholder="Choose Relationship" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RELATIONSHIP_OPTIONS.map((rel) => (
-                    <SelectItem key={rel} value={rel}>{rel}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {dialogForm.formState.errors.relationship && (
-                <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship.message}</p>
-              )}
+            <div className="mt-4 space-y-4">
+              <div>
+                <Label htmlFor="relationship">This person is the Main Applicant ({mainApplicantName})'s: <span className="text-red-500">*</span></Label>
+                <Select
+                  value={dialogForm.watch("relationship")}
+                  onValueChange={(value) => dialogForm.setValue("relationship", value, { shouldValidate: true })}
+                >
+                  <SelectTrigger data-testid="select-relationship">
+                    <SelectValue placeholder="Choose Relationship" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="z-[100]">
+                    {RELATIONSHIP_OPTIONS.map((rel) => (
+                      <SelectItem key={rel} value={rel}>{rel}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {dialogForm.formState.errors.relationship && (
+                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="relationship_to_spouse">This person is {spouseName}'s: <span className="text-red-500">*</span></Label>
+                <Select
+                  value={dialogForm.watch("relationship_to_spouse")}
+                  onValueChange={(value) => dialogForm.setValue("relationship_to_spouse", value, { shouldValidate: true })}
+                >
+                  <SelectTrigger data-testid="select-relationship-to-spouse">
+                    <SelectValue placeholder="Choose Relationship" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="z-[100]">
+                    {RELATIONSHIP_OPTIONS.map((rel) => (
+                      <SelectItem key={rel} value={rel}>{rel}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {dialogForm.formState.errors.relationship_to_spouse && (
+                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship_to_spouse.message}</p>
+                )}
+              </div>
             </div>
           </div>
-        </>
-      )}
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
@@ -316,7 +254,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           type="submit"
           className="bg-primary text-primary-foreground"
           data-testid="button-ok"
-          disabled={mode === "select" && !selectedExistingChild}
         >
           Ok
         </Button>
@@ -352,7 +289,7 @@ export default function ChildrenStartPage() {
   // Load section data
   const sectionData = draftStore.getSectionData('children.details');
 
-  const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
+  const { control, handleSubmit, watch, setValue, getValues, reset, formState: { errors, isValid } } = useForm({
     resolver: zodResolver(childrenSchema),
     mode: "onChange",
     defaultValues: {
@@ -366,6 +303,16 @@ export default function ChildrenStartPage() {
 
   // Watch all form values for auto-save
   const watchedValues = useWatch({ control });
+
+  // Reset form when section data loads
+  useEffect(() => {
+    if (sectionData && draftSnap.currentApplicationId) {
+      reset({
+        has_children_joint: sectionData.has_children_joint || "",
+        children: sectionData.children || [],
+      });
+    }
+  }, [draftSnap.currentApplicationId, JSON.stringify(sectionData?.children), sectionData?.has_children_joint, reset]);
 
   // Auto-save form data with debounce
   useEffect(() => {
@@ -432,8 +379,18 @@ export default function ChildrenStartPage() {
 
     setIsSaving(true);
     try {
-      const currentData = getValues();
-      const result = await draftStore.saveSectionData('children.details', currentData);
+      // Use watched values which are always current, or fallback to getValues()
+      const dataToSave = watchedValues && Object.keys(watchedValues).length > 0 
+        ? watchedValues 
+        : getValues();
+      
+      // Ensure we always have the children array and has_children_joint
+      const finalData = {
+        has_children_joint: dataToSave.has_children_joint || watch("has_children_joint") || "",
+        children: dataToSave.children || watch("children") || [],
+      };
+      
+      const result = await draftStore.saveSectionData('children.details', finalData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/children/start');
@@ -459,26 +416,101 @@ export default function ChildrenStartPage() {
     }
   };
 
-  const handleAddChild = (child) => {
+  const handleAddChild = async (child) => {
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updatedChildren = [...children, child];
     setValue("children", updatedChildren, { shouldValidate: true });
     const currentData = getValues();
-    draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+    
+    try {
+      const result = await draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+      if (!result.success) {
+        toast({
+          title: "Error saving",
+          description: result.error || "Failed to save child. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditChild = (index, child) => {
+  const handleEditChild = async (index, child) => {
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updatedChildren = [...children];
     updatedChildren[index] = child;
     setValue("children", updatedChildren, { shouldValidate: true });
     const currentData = getValues();
-    draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+    
+    try {
+      const result = await draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+      if (!result.success) {
+        toast({
+          title: "Error saving",
+          description: result.error || "Failed to save changes. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteChild = (index) => {
+  const handleDeleteChild = async (index) => {
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updatedChildren = children.filter((_, i) => i !== index);
     setValue("children", updatedChildren, { shouldValidate: true });
     const currentData = getValues();
-    draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+    
+    try {
+      const result = await draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+      if (!result.success) {
+        toast({
+          title: "Error saving",
+          description: result.error || "Failed to delete child. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const childColumns = [
@@ -501,7 +533,16 @@ export default function ChildrenStartPage() {
       }
     },
     { key: "gender", label: "Gender" },
-    { key: "relationship", label: "Relationship" },
+    { 
+      key: "relationship", label: "Relationship", format: (row) => {
+        const mainRel = row.relationship || "";
+        const spouseRel = row.relationship_to_spouse || "";
+        if (mainRel && spouseRel) {
+          return `${mainRel} / ${spouseRel}`;
+        }
+        return mainRel || spouseRel || "";
+      }
+    },
   ];
 
   return (
