@@ -3,36 +3,92 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
-import { applicationsStore } from "@/stores/applicationsStore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/Field";
-import { FormNavigation } from "@/components/FormNavigation";
+import { useToast } from "@/hooks/use-toast";
+import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { otherSchema } from "@/lib/validation";
-import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Plus } from "lucide-react";
-import { z } from "zod";
+import { FormNavigation } from "@/components/FormNavigation";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
-// Constants
+const formSchema = z.object({
+  // Question 1: Other Names
+  has_other_names: z.enum(["yes", "no"]),
+  other_names: z.array(z.object({
+    family_name: z.string(),
+    given_names: z.string(),
+    reason_for_change: z.string(),
+    has_evidence: z.string().optional(),
+    evidence_type: z.string().optional(),
+    document_issue_day: z.string().optional(),
+    document_issue_month: z.string().optional(),
+    document_issue_year: z.string().optional(),
+    document_reference_number: z.string().optional(),
+    issuing_country: z.string().optional(),
+    issuing_state: z.string().optional(),
+    place_of_issue: z.string().optional(),
+    use_in_application: z.string().optional(),
+  })).optional(),
+
+  // Question 2: Chinese Commercial Code
+  use_chinese_code: z.enum(["yes", "no"]),
+  chinese_code: z.string().optional(),
+
+  // Question 3: Russian Descent
+  russian_descent: z.enum(["yes", "no"]),
+  patronymic_family_name: z.string().optional(),
+  patronymic_given_names: z.string().optional(),
+
+  // Question 4: Previous Date of Birth
+  has_prev_dob: z.enum(["yes", "no"]),
+  prev_dobs: z.array(z.object({
+    date_of_birth: z.string(),
+    date_of_birth_day: z.string().optional(),
+    date_of_birth_month: z.string().optional(),
+    date_of_birth_year: z.string().optional(),
+  })).optional(),
+}).refine((data) => {
+  if (data.use_chinese_code === "yes") {
+    return data.chinese_code && data.chinese_code.trim().length > 0;
+  }
+  return true;
+}, { message: "Chinese Commercial Code is required when 'Yes' is selected", path: ["chinese_code"] })
+.refine((data) => {
+  if (data.russian_descent === "yes") {
+    return data.patronymic_family_name && data.patronymic_family_name.trim().length > 0 &&
+           data.patronymic_given_names && data.patronymic_given_names.trim().length > 0;
+  }
+  return true;
+}, { message: "Patronymic name fields are required when 'Yes' is selected", path: ["patronymic_family_name"] });
+
 const REASON_OPTIONS = [
-  "Marriage",
-  "Divorce",
-  "Deed Poll",
-  "Alias",
-  "Spelling Variation",
   "Adoption",
-  "Religious Name",
-  "Translation/Transliteration",
+  "Alternative spelling",
+  "Anglicisation of name",
+  "Birth",
+  "Cultural origins",
+  "Divorce",
+  "Gender change",
+  "Maiden name",
+  "Marriage",
+  "Name in full",
+  "Nickname",
+  "Preferred name",
+  "Prefix and/or suffix",
+  "Religious name",
+  "Reordering of name",
+  "Split or joining name",
+  "Transliteration",
+  "Truncation",
   "Other"
 ];
 
@@ -44,20 +100,11 @@ const EVIDENCE_TYPE_OPTIONS = [
   "Other Document"
 ];
 
-const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-
-// Other Name Dialog Schema
-const otherNameDialogSchema = z.object({
+const dialogSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
   reason_for_change: z.string().min(1, "Reason for change is required"),
-  has_evidence: z.string().optional(),
+  has_evidence: z.string(),
   evidence_type: z.string().optional(),
   document_issue_day: z.string().optional(),
   document_issue_month: z.string().optional(),
@@ -69,19 +116,35 @@ const otherNameDialogSchema = z.object({
   use_in_application: z.string().optional(),
 });
 
-function OtherNameDialog({ row, onSubmit, onCancel }) {
-  const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "No";
-  const initialUseInApplication = row?.use_in_application === "Yes";
+const prevDobDialogSchema = z.object({
+  date_of_birth_day: z.string().optional(),
+  date_of_birth_month: z.string().optional(),
+  date_of_birth_year: z.string().optional(),
+  date_of_birth: z.string().min(1, "Date of birth is required"),
+}).refine((data) => {
+  // Either all three fields are provided OR date_of_birth is provided
+  if (data.date_of_birth) return true;
+  return !!(data.date_of_birth_day && data.date_of_birth_month && data.date_of_birth_year);
+}, {
+  message: "Please provide a complete date of birth",
+  path: ["date_of_birth"]
+});
+
+// Other Name Dialog Component
+function OtherNameDialog({ editingRow, onSave, onCancel }) {
+  const row = editingRow;
+  const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
+  const initialUseInApplication = row?.use_in_application === "yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
   const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
 
   const dialogForm = useForm({
-    resolver: zodResolver(otherNameDialogSchema),
+    resolver: zodResolver(dialogSchema),
     defaultValues: row || {
       family_name: "",
       given_names: "",
       reason_for_change: "",
-      has_evidence: "No",
+      has_evidence: "no",
       evidence_type: "",
       document_issue_day: "",
       document_issue_month: "",
@@ -90,7 +153,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       issuing_country: "",
       issuing_state: "",
       place_of_issue: "",
-      use_in_application: "No",
+      use_in_application: "no",
     },
   });
 
@@ -100,26 +163,33 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       dialogForm.setValue("has_evidence", row.has_evidence);
     }
     if (row?.use_in_application !== undefined) {
-      setUseInApplication(row.use_in_application === "Yes");
+      setUseInApplication(row.use_in_application === "yes");
       dialogForm.setValue("use_in_application", row.use_in_application);
     }
-  }, [row, dialogForm]);
+  }, [row]);
 
   const handleFormSubmit = (data) => {
-    onSubmit(data);
+    onSave(data);
   };
 
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dialogForm.handleSubmit(handleFormSubmit)(e);
+  };
+
+  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
-        <Label htmlFor="family_name">Family Name</Label>
+        <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
         <Input
           id="family_name"
           {...dialogForm.register("family_name")}
@@ -131,7 +201,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="given_names">Given Names</Label>
+        <Label htmlFor="given_names">Given Names <span className="text-red-500">*</span></Label>
         <Input
           id="given_names"
           {...dialogForm.register("given_names")}
@@ -143,7 +213,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="reason_for_change">Reason for Change</Label>
+        <Label htmlFor="reason_for_change">Reason for Change <span className="text-red-500">*</span></Label>
         <Select
           value={dialogForm.watch("reason_for_change")}
           onValueChange={(value) => dialogForm.setValue("reason_for_change", value, { shouldValidate: true })}
@@ -151,7 +221,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
           <SelectTrigger data-testid="select-reason-for-change">
             <SelectValue placeholder="Choose Reason for Change" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
             {REASON_OPTIONS.map((reason) => (
               <SelectItem key={reason} value={reason}>{reason}</SelectItem>
             ))}
@@ -168,7 +238,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
           checked={useInApplication}
           onCheckedChange={(checked) => {
             setUseInApplication(checked);
-            dialogForm.setValue("use_in_application", checked ? "Yes" : "No");
+            dialogForm.setValue("use_in_application", checked ? "yes" : "no");
           }}
         />
         <Label htmlFor="use_in_application" className="text-sm font-normal cursor-pointer">
@@ -193,13 +263,13 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
             data-testid="radio-has-evidence"
           >
             <div className="flex items-center" data-testid="radio-evidence-yes">
-              <RadioGroupItem value="Yes" id="evidence-yes" />
+              <RadioGroupItem value="yes" id="evidence-yes" />
               <Label htmlFor="evidence-yes" className="ml-2 cursor-pointer font-normal">
                 Yes
               </Label>
             </div>
             <div className="flex items-center" data-testid="radio-evidence-no">
-              <RadioGroupItem value="No" id="evidence-no" />
+              <RadioGroupItem value="no" id="evidence-no" />
               <Label htmlFor="evidence-no" className="ml-2 cursor-pointer font-normal">
                 No
               </Label>
@@ -207,7 +277,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
           </RadioGroup>
         </div>
 
-        {hasEvidence === "Yes" && (
+        {hasEvidence === "yes" && (
           <div className="space-y-4">
             <div>
               <Label htmlFor="evidence_type">Evidence Type</Label>
@@ -218,7 +288,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                 <SelectTrigger data-testid="select-evidence-type">
                   <SelectValue placeholder="Choose Evidence Type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {EVIDENCE_TYPE_OPTIONS.map((type) => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
@@ -236,7 +306,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                   <SelectTrigger data-testid="select-document-day">
                     <SelectValue placeholder="Choose Day" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {days.map((day) => (
                       <SelectItem key={day} value={day}>{day}</SelectItem>
                     ))}
@@ -250,7 +320,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                   <SelectTrigger data-testid="select-document-month">
                     <SelectValue placeholder="Choose Month" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {months.map((month, idx) => (
                       <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
                     ))}
@@ -264,7 +334,7 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
                   <SelectTrigger data-testid="select-document-year">
                     <SelectValue placeholder="Choose Year" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {years.map((year) => (
                       <SelectItem key={year} value={year}>{year}</SelectItem>
                     ))}
@@ -323,116 +393,142 @@ function OtherNameDialog({ row, onSubmit, onCancel }) {
           Cancel
         </Button>
         <Button
-          type="submit"
-          className="bg-primary text-primary-foreground"
+          type="button"
+          onClick={handleSaveClick}
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-ok"
         >
-          Ok
+          Save
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
-function PrevDobDialog({ row, onSubmit, onCancel }) {
-  // Parse row data - it could be a string date or an object with day/month/year
-  const parseDate = (dateValue) => {
-    if (!dateValue) return { day: "", month: "", year: "" };
-    if (typeof dateValue === "object" && dateValue.day && dateValue.month && dateValue.year) {
-      return dateValue;
+// Previous Date of Birth Dialog Component
+function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
+  const row = editingRow;
+
+  // Parse existing date_of_birth if it's in ISO format
+  const parseExistingDate = (dateStr) => {
+    if (!dateStr) return { day: "", month: "", year: "" };
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return { day: "", month: "", year: "" };
+      return {
+        day: String(date.getDate()),
+        month: String(date.getMonth() + 1),
+        year: String(date.getFullYear()),
+      };
+    } catch {
+      return { day: "", month: "", year: "" };
     }
-    if (typeof dateValue === "string" && dateValue) {
-      const date = new Date(dateValue);
-      if (!isNaN(date.getTime())) {
-        return {
-          day: date.getDate().toString(),
-          month: (date.getMonth() + 1).toString(),
-          year: date.getFullYear().toString(),
-        };
-      }
-    }
-    return { day: "", month: "", year: "" };
   };
 
-  const initialDate = parseDate(row);
+  const existingDate = row?.date_of_birth ? parseExistingDate(row.date_of_birth) : { day: "", month: "", year: "" };
 
   const dialogForm = useForm({
-    defaultValues: initialDate,
+    resolver: zodResolver(prevDobDialogSchema),
+    defaultValues: row ? {
+      date_of_birth_day: existingDate.day,
+      date_of_birth_month: existingDate.month,
+      date_of_birth_year: existingDate.year,
+      date_of_birth: row.date_of_birth || "",
+    } : {
+      date_of_birth_day: "",
+      date_of_birth_month: "",
+      date_of_birth_year: "",
+      date_of_birth: "",
+    },
   });
 
   const handleFormSubmit = (data) => {
-    if (!data.day || !data.month || !data.year) {
-      dialogForm.setError("day", { message: "Date of birth is required" });
-      return;
+    // Construct date_of_birth from day/month/year if provided
+    let dateOfBirth = data.date_of_birth;
+    if (!dateOfBirth && data.date_of_birth_day && data.date_of_birth_month && data.date_of_birth_year) {
+      const month = data.date_of_birth_month.padStart(2, '0');
+      const day = data.date_of_birth_day.padStart(2, '0');
+      dateOfBirth = `${data.date_of_birth_year}-${month}-${day}`;
     }
-    // Format as ISO date string for storage
-    const day = parseInt(data.day);
-    const month = parseInt(data.month) - 1;
-    const year = parseInt(data.year);
-    const date = new Date(year, month, day);
-    if (isNaN(date.getTime())) {
-      dialogForm.setError("day", { message: "Invalid date" });
-      return;
-    }
-    onSubmit({ day: data.day, month: data.month, year: data.year, date: date.toISOString().split('T')[0] });
+    onSave({ date_of_birth: dateOfBirth });
   };
 
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dialogForm.handleSubmit(handleFormSubmit)(e);
+  };
+
+  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
-        <Label className="mb-2 block">Date of Birth</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Select
-            value={dialogForm.watch("day")}
-            onValueChange={(value) => dialogForm.setValue("day", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-dob-day">
-              <SelectValue placeholder="Choose Day" />
-            </SelectTrigger>
-            <SelectContent>
-              {days.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={dialogForm.watch("month")}
-            onValueChange={(value) => dialogForm.setValue("month", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-dob-month">
-              <SelectValue placeholder="Choose Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month, idx) => (
-                <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={dialogForm.watch("year")}
-            onValueChange={(value) => dialogForm.setValue("year", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-dob-year">
-              <SelectValue placeholder="Choose Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Label>Date of Birth <span className="text-red-500">*</span></Label>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          <div>
+            <Select
+              value={dialogForm.watch("date_of_birth_day") || ""}
+              onValueChange={(value) => {
+                dialogForm.setValue("date_of_birth_day", value);
+                dialogForm.setValue("date_of_birth", ""); // Clear the combined date when parts change
+              }}
+            >
+              <SelectTrigger data-testid="select-dob-day">
+                <SelectValue placeholder="Choose Day" />
+              </SelectTrigger>
+              <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                {days.map((day) => (
+                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Select
+              value={dialogForm.watch("date_of_birth_month") || ""}
+              onValueChange={(value) => {
+                dialogForm.setValue("date_of_birth_month", value);
+                dialogForm.setValue("date_of_birth", ""); // Clear the combined date when parts change
+              }}
+            >
+              <SelectTrigger data-testid="select-dob-month">
+                <SelectValue placeholder="Choose Month" />
+              </SelectTrigger>
+              <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                {months.map((month, idx) => (
+                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Select
+              value={dialogForm.watch("date_of_birth_year") || ""}
+              onValueChange={(value) => {
+                dialogForm.setValue("date_of_birth_year", value);
+                dialogForm.setValue("date_of_birth", ""); // Clear the combined date when parts change
+              }}
+            >
+              <SelectTrigger data-testid="select-dob-year">
+                <SelectValue placeholder="Choose Year" />
+              </SelectTrigger>
+              <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                {years.map((year) => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        {(dialogForm.formState.errors.day || dialogForm.formState.errors.month || dialogForm.formState.errors.year) && (
-          <p className="text-sm text-red-600 mt-1">Date of birth is required</p>
+        {dialogForm.formState.errors.date_of_birth && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth.message}</p>
         )}
       </div>
 
@@ -441,298 +537,31 @@ function PrevDobDialog({ row, onSubmit, onCancel }) {
           type="button"
           variant="outline"
           onClick={onCancel}
-          data-testid="button-cancel"
+          data-testid="button-cancel-dob"
         >
           Cancel
         </Button>
         <Button
-          type="submit"
-          className="bg-primary text-primary-foreground"
-          data-testid="button-ok"
+          type="button"
+          onClick={handleSaveClick}
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          data-testid="button-save-dob"
         >
-          Ok
+          Save
         </Button>
       </DialogFooter>
-    </form>
-  );
-}
-
-// Custom table component for other names
-function OtherNamesTable({ rows, columns, onAdd, onEdit, onDelete, DialogComponent }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
-
-  const handleAdd = () => {
-    setEditingIndex(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleEdit = (index) => {
-    setEditingIndex(index);
-    setIsDialogOpen(true);
-  };
-
-  const handleSubmit = (data) => {
-    if (editingIndex !== null) {
-      onEdit(editingIndex, data);
-    } else {
-      onAdd(data);
-    }
-    setIsDialogOpen(false);
-    setEditingIndex(null);
-  };
-
-  const handleCancel = () => {
-    setIsDialogOpen(false);
-    setEditingIndex(null);
-  };
-
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={handleAdd}
-          className="bg-primary text-primary-foreground"
-          data-testid="button-add-other-name"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </Button>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          No other names added
-        </div>
-      ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                {columns.map((col) => (
-                  <th
-                    key={col.key}
-                    className="text-left py-3 px-4 text-sm font-medium"
-                  >
-                    {col.label}
-                  </th>
-                ))}
-                <th className="w-24 py-3 px-4 text-sm font-medium">Edit</th>
-                <th className="w-24 py-3 px-4 text-sm font-medium">Remove</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr
-                  key={index}
-                  className="border-t border-border hover:bg-muted/30"
-                >
-                  {columns.map((col) => (
-                    <td key={col.key} className="py-3 px-4 text-sm">
-                      {row[col.key] || ""}
-                    </td>
-                  ))}
-                  <td className="py-3 px-4">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(index)}
-                      className="text-primary hover:text-primary/80 transition-colors"
-                      data-testid={`button-edit-${index}`}
-                      aria-label={`Edit other name row ${index + 1}`}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                  <td className="py-3 px-4">
-                    <button
-                      type="button"
-                      onClick={() => onDelete(index)}
-                      className="text-destructive hover:text-destructive/80 transition-colors"
-                      data-testid={`button-delete-${index}`}
-                      aria-label={`Remove other name row ${index + 1}`}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Other Name</DialogTitle>
-          </DialogHeader>
-          {DialogComponent && (
-            <DialogComponent
-              row={editingIndex !== null ? rows[editingIndex] : null}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-// Custom table component for previous DOBs
-function PrevDobTable({ rows, onAdd, onEdit, onDelete, DialogComponent }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
-
-  const handleAdd = () => {
-    setEditingIndex(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleEdit = (index) => {
-    setEditingIndex(index);
-    setIsDialogOpen(true);
-  };
-
-  const handleSubmit = (data) => {
-    if (editingIndex !== null) {
-      onEdit(editingIndex, data);
-    } else {
-      onAdd(data);
-    }
-    setIsDialogOpen(false);
-    setEditingIndex(null);
-  };
-
-  const handleCancel = () => {
-    setIsDialogOpen(false);
-    setEditingIndex(null);
-  };
-
-  const formatDate = (dateValue) => {
-    if (!dateValue) return "";
-    if (typeof dateValue === "object" && dateValue.date) {
-      const date = new Date(dateValue.date);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    }
-    if (typeof dateValue === "object" && dateValue.day && dateValue.month && dateValue.year) {
-      const day = parseInt(dateValue.day);
-      const month = parseInt(dateValue.month) - 1;
-      const year = parseInt(dateValue.year);
-      const date = new Date(year, month, day);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    }
-    if (typeof dateValue === "string") {
-      const date = new Date(dateValue);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    }
-    return dateValue.toString();
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={handleAdd}
-          className="bg-primary text-primary-foreground"
-          data-testid="button-add-prev-dob"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </Button>
-      </div>
-
-      {rows.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          No previous dates of birth added
-        </div>
-      ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left py-3 px-4 text-sm font-medium">Date of Birth</th>
-                <th className="w-24 py-3 px-4 text-sm font-medium">Edit</th>
-                <th className="w-24 py-3 px-4 text-sm font-medium">Remove</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr
-                  key={index}
-                  className="border-t border-border hover:bg-muted/30"
-                >
-                  <td className="py-3 px-4 text-sm">
-                    {formatDate(row)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(index)}
-                      className="text-primary hover:text-primary/80 transition-colors"
-                      data-testid={`button-edit-dob-${index}`}
-                      aria-label={`Edit previous date of birth row ${index + 1}`}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                  <td className="py-3 px-4">
-                    <button
-                      type="button"
-                      onClick={() => onDelete(index)}
-                      className="text-destructive hover:text-destructive/80 transition-colors"
-                      data-testid={`button-delete-dob-${index}`}
-                      aria-label={`Remove previous date of birth row ${index + 1}`}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Previous Date of Birth</DialogTitle>
-          </DialogHeader>
-          {DialogComponent && (
-            <DialogComponent
-              row={editingIndex !== null ? rows[editingIndex] : null}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-export default function MainApplicantOtherPage() {
+export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const draftSnap = useSnapshot(draftStore);
-  const appsSnap = useSnapshot(applicationsStore);
-  const saveTimeoutRef = useRef(null);
-  const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
+  const { toast } = useToast();
+  const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -740,61 +569,67 @@ export default function MainApplicantOtherPage() {
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
-    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
-      router.replace(newUrl);
     }
-  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
+  }, [searchParams, draftSnap.currentApplicationId]);
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      has_other_names: "no",
+      other_names: [],
+      // FIX: Add all missing fields here with their default/initial values
+      use_chinese_code: "no",
+      chinese_code: "",
+      russian_descent: "no",
+      patronymic_family_name: "",
+      patronymic_given_names: "",
+      has_prev_dob: "no",
+      prev_dobs: [],
+    },
+  });
+
+  // Watch form values
+  const hasOtherNames = form.watch("has_other_names");
+  const otherNames = form.watch("other_names") || [];
+  const useChineseCode = form.watch("use_chinese_code");
+  const russianDescent = form.watch("russian_descent");
+  const hasPrevDob = form.watch("has_prev_dob");
+  const prevDobs = form.watch("prev_dobs") || [];
+  
+  // Watch all form values for auto-save
+  const watchedValues = useWatch({ control: form.control });
 
   // Load section data
   const sectionData = draftStore.getSectionData('mainApplicant.otherNames');
 
-  const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
-    resolver: zodResolver(otherSchema),
-    mode: "onChange",
-    defaultValues: {
-      has_other_names: sectionData.has_other_names || "",
-      other_names: sectionData.other_names || [],
-      use_chinese_code: sectionData.use_chinese_code || "",
-      chinese_code: sectionData.chinese_code || "",
-      russian_descent: sectionData.russian_descent || "",
-      patronymic_name: sectionData.patronymic_name || { family_name: "", given_names: "" },
-      has_prev_dob: sectionData.has_prev_dob || "",
-      prev_dobs: sectionData.prev_dobs || [],
-    },
-  });
-
-  // Watch form values for conditional rendering
-  const hasOtherNames = watch("has_other_names");
-  const useChineseCode = watch("use_chinese_code");
-  const russianDescent = watch("russian_descent");
-  const hasPrevDob = watch("has_prev_dob");
-  const otherNames = watch("other_names") || [];
-  const prevDobs = watch("prev_dobs") || [];
-
-  // Watch all form values for auto-save
-  const watchedValues = useWatch({ control });
-
-  // Auto-save form data with debounce
+  // Populate Form
   useEffect(() => {
-    if (!draftSnap.currentApplicationId) return;
+    const savedData = sectionData;
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+    // FIX: Only reset if we actually have data, preventing overwrites with empty objects
+    if (savedData && Object.keys(savedData).length > 0) {
+      
+      // FIX: Helper to safely convert incoming DB data to Strings for Select components
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+      const formData = {
+        // FIX: Ensure all fields are explicitly loaded and default to something safe
+        has_other_names: safeStr(savedData.has_other_names) || "no",
+        other_names: savedData.other_names || [],
+        
+        use_chinese_code: safeStr(savedData.use_chinese_code) || "no",
+        chinese_code: safeStr(savedData.chinese_code) || "",
+        russian_descent: safeStr(savedData.russian_descent) || "no",
+        patronymic_family_name: safeStr(savedData.patronymic_family_name) || "",
+        patronymic_given_names: safeStr(savedData.patronymic_given_names) || "",
+        has_prev_dob: safeStr(savedData.has_prev_dob) || "no",
+        prev_dobs: savedData.prev_dobs || [],
+      };
+
+      // Use reset to properly update all form fields
+      form.reset(formData);
     }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveSectionData('mainApplicant.otherNames', watchedValues);
-      }
-    }, 2000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [watchedValues, draftSnap.currentApplicationId]);
+  }, [draftSnap.isLoading, JSON.stringify(sectionData), form]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -808,8 +643,12 @@ export default function MainApplicantOtherPage() {
 
     setIsSaving(true);
     try {
-      const result = await draftStore.saveSectionData('mainApplicant.otherNames', data);
-
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+      const mergedData = { ...existingData, ...data };
+      
+      const result = await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+      
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/other');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
@@ -838,37 +677,41 @@ export default function MainApplicantOtherPage() {
   };
 
   const handleSave = async () => {
-    if (!draftSnap.currentApplicationId) {
-      toast({
-        title: "Error",
-        description: "Application ID required. Please return to the applications page and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSaving(true);
     try {
-      const currentData = getValues();
-      const result = await draftStore.saveSectionData('mainApplicant.otherNames', currentData);
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
 
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+      const values = form.getValues();
+      const mergedData = { ...existingData, ...values };
+      
+      const result = await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/other');
         toast({
           title: "Draft saved",
-          description: "Your changes have been saved successfully.",
+          description: "Your changes have been saved successfully",
         });
       } else {
         toast({
-          title: "Error saving draft",
-          description: result.error || "Failed to save draft. Please try again.",
+          title: "Error",
+          description: result.error || "Failed to save draft",
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Error saving draft",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Error",
+        description: error?.message || "Failed to save draft",
         variant: "destructive",
       });
     } finally {
@@ -876,16 +719,49 @@ export default function MainApplicantOtherPage() {
     }
   };
 
+  // Auto-save form data when it changes (with debounce)
+  useEffect(() => {
+    if (!draftSnap.currentApplicationId) return;
+    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
+    // Don't auto-save immediately after form reset or while loading
+    if (draftSnap.isLoading) return;
+    
+    const timeoutId = setTimeout(() => {
+      // Merge with existing section data
+      const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+      const mergedData = { ...existingData, ...watchedValues };
+      draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+    }, 1000); // Debounce: save 1 second after last change
+
+    return () => clearTimeout(timeoutId);
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading]);
+
+  // FIX: Update the synchronization logic for other_names
   const updateOtherNames = (newNames) => {
-    setValue("other_names", newNames, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.otherNames', { ...currentData, other_names: newNames });
+    form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // FIX: Merge with existing section data
+    const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+    const currentValues = form.getValues();
+    draftStore.saveSectionData("mainApplicant.otherNames", { 
+      ...existingData,
+      ...currentValues,
+      other_names: newNames // Pass the new array explicitly
+    });
   };
 
+  // FIX: Update the synchronization logic for prev_dobs
   const updatePrevDobs = (newDobs) => {
-    setValue("prev_dobs", newDobs, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.otherNames', { ...currentData, prev_dobs: newDobs });
+    form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // FIX: Merge with existing section data
+    const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+    const currentValues = form.getValues();
+    draftStore.saveSectionData("mainApplicant.otherNames", { 
+      ...existingData,
+      ...currentValues,
+      prev_dobs: newDobs // Pass the new array explicitly
+    });
   };
 
   const otherNameColumns = [
@@ -894,59 +770,87 @@ export default function MainApplicantOtherPage() {
     { key: "reason_for_change", label: "Reason for Change" },
   ];
 
-  return (
-    <>
-      <Card className="rounded-2xl shadow-md bg-white">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Main Applicant's Other Details</CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            In this section, provide additional details about the main applicant.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-                e.preventDefault();
-              }
-            }}
-            className="space-y-8"
-          >
-            {Object.keys(errors).length > 0 && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-red-800 mb-2">
-                  Please correct the following errors:
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(errors).map(([field, error]) => (
-                    <li key={field}>{field}: {error.message || "Required"}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+  const prevDobColumns = [
+    {
+      key: "date_of_birth",
+      label: "Date of Birth",
+      format: (row) => {
+        // Try to format from day/month/year if available
+        if (row.date_of_birth_day && row.date_of_birth_month && row.date_of_birth_year) {
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthIdx = parseInt(row.date_of_birth_month) - 1;
+          if (monthIdx >= 0 && monthIdx < 12) {
+            return `${row.date_of_birth_day} ${monthNames[monthIdx]} ${row.date_of_birth_year}`;
+          }
+        }
+        // Fallback to date_of_birth string if available
+        if (row.date_of_birth) {
+          try {
+            const date = new Date(row.date_of_birth);
+            if (!isNaN(date.getTime())) {
+              return date.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+            }
+          } catch {
+            // Fall through
+          }
+        }
+        return "";
+      }
+    },
+  ];
 
-            <div className="space-y-6">
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-8 border-b border-gray-200">
+            <h1 className="text-2xl font-semibold text-gray-900">Main Applicant's Other Details</h1>
+            <p className="text-sm text-gray-600 mt-2">
+              In this section, provide additional details about the main applicant.
+            </p>
+          </div>
+
+          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
+            <div className="space-y-8">
+              <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
 
               {/* Question 1: Other Names */}
-              <div>
-                <Field
-                  type="radio"
-                  name="has_other_names"
-                  control={control}
-                  label="Have you ever had or been known by any other Name or Alias, or had a different name spelling?"
-                  options={[
-                    { value: "Yes", label: "Yes" },
-                    { value: "No", label: "No" },
-                  ]}
-                />
-                {hasOtherNames === "Yes" && (
-                  <div className="mt-4">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Have you ever had or been known by any other Name or Alias, or had a different name spelling?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("has_other_names")}
+                    onValueChange={(value) => form.setValue("has_other_names", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-has-other-names"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
+                      <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
+                      <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {form.formState.errors.has_other_names?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
+                  )}
+                </div>
+
+                {hasOtherNames === "yes" && (
+                  <div className="pl-0 mt-4">
                     <p className="text-sm text-gray-600 mb-4">
                       Enter details of the other names you have been known by, including names before marriage
                     </p>
-                    <OtherNamesTable
-                      rows={otherNames}
+                    <RepeaterTable
+                      data={otherNames}
                       columns={otherNameColumns}
                       onAdd={(row) => updateOtherNames([...otherNames, row])}
                       onEdit={(index, row) => {
@@ -959,92 +863,167 @@ export default function MainApplicantOtherPage() {
                         updateOtherNames(updated);
                       }}
                       DialogComponent={OtherNameDialog}
+                      addButtonText="Add"
+                      emptyMessage="No other names added"
+                      dialogTitle="Add other name"
+                      testIdPrefix="other-name"
                     />
                   </div>
                 )}
               </div>
 
               {/* Question 2: Chinese Commercial Code */}
-              <div>
-                <Field
-                  type="radio"
-                  name="use_chinese_code"
-                  control={control}
-                  label="Do you use a Chinese Commercial Code for your name?"
-                  options={[
-                    { value: "Yes", label: "Yes" },
-                    { value: "No", label: "No" },
-                  ]}
-                />
-                {useChineseCode === "Yes" && (
-                  <div className="mt-4">
-                    <Field
-                      type="text"
-                      name="chinese_code"
-                      control={control}
-                      label="Chinese Commercial Code"
-                      required
-                    />
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Do you use a Chinese Commercial Code for your name?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("use_chinese_code")}
+                    onValueChange={(value) => form.setValue("use_chinese_code", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-use-chinese-code"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
+                      <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
+                      <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {form.formState.errors.use_chinese_code?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.use_chinese_code.message}</p>
+                  )}
+                </div>
+
+                {useChineseCode === "yes" && (
+                  <div className="pl-0 mt-4">
+                    <div>
+                      <Label htmlFor="chinese_code">Chinese Commercial Code <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="chinese_code"
+                        {...form.register("chinese_code")}
+                        placeholder="Enter Chinese Commercial Code"
+                        data-testid="input-chinese-code"
+                        className="mt-2"
+                      />
+                      {form.formState.errors.chinese_code?.message && (
+                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.chinese_code.message}</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Question 3: Russian Descent */}
-              <div>
-                <Field
-                  type="radio"
-                  name="russian_descent"
-                  control={control}
-                  label="Are you of Russian descent?"
-                  options={[
-                    { value: "Yes", label: "Yes" },
-                    { value: "No", label: "No" },
-                  ]}
-                />
-                {russianDescent === "Yes" && (
-                  <div className="mt-4 space-y-4 p-6 bg-muted/50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-2">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Are you of Russian descent?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("russian_descent")}
+                    onValueChange={(value) => form.setValue("russian_descent", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-russian-descent"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="russian-descent-yes" data-testid="radio-russian-descent-yes" />
+                      <Label htmlFor="russian-descent-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="russian-descent-no" data-testid="radio-russian-descent-no" />
+                      <Label htmlFor="russian-descent-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {form.formState.errors.russian_descent?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.russian_descent.message}</p>
+                  )}
+                </div>
+
+                {russianDescent === "yes" && (
+                  <div className="pl-0 mt-4 space-y-4">
+                    <p className="text-sm text-gray-600">
                       In English, write your Patronymic Name
                     </p>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <Field
-                        type="text"
-                        name="patronymic_name.family_name"
-                        control={control}
-                        label="Family Name"
-                        required
+                    <div>
+                      <Label htmlFor="patronymic_family_name">Family Name <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="patronymic_family_name"
+                        {...form.register("patronymic_family_name")}
+                        placeholder="Enter Family Name"
+                        data-testid="input-patronymic-family-name"
+                        className="mt-2"
                       />
-                      <Field
-                        type="text"
-                        name="patronymic_name.given_names"
-                        control={control}
-                        label="Given Names"
-                        required
+                      {form.formState.errors.patronymic_family_name?.message && (
+                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.patronymic_family_name.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="patronymic_given_names">Given Names <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="patronymic_given_names"
+                        {...form.register("patronymic_given_names")}
+                        placeholder="Enter Given Names"
+                        data-testid="input-patronymic-given-names"
+                        className="mt-2"
                       />
+                      {form.formState.errors.patronymic_given_names?.message && (
+                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.patronymic_given_names.message}</p>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Question 4: Previous Date of Birth */}
-              <div>
-                <Field
-                  type="radio"
-                  name="has_prev_dob"
-                  control={control}
-                  label="Have you ever had a different Date of Birth?"
-                  options={[
-                    { value: "Yes", label: "Yes" },
-                    { value: "No", label: "No" },
-                  ]}
-                />
-                {hasPrevDob === "Yes" && (
-                  <div className="mt-4">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-normal text-gray-900">
+                    Have you ever had a different Date of Birth?
+                  </Label>
+                  <RadioGroup
+                    value={form.watch("has_prev_dob")}
+                    onValueChange={(value) => form.setValue("has_prev_dob", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-has-prev-dob"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="yes" id="prev-dob-yes" data-testid="radio-prev-dob-yes" />
+                      <Label htmlFor="prev-dob-yes" className="ml-2 cursor-pointer font-normal">
+                        Yes
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="no" id="prev-dob-no" data-testid="radio-prev-dob-no" />
+                      <Label htmlFor="prev-dob-no" className="ml-2 cursor-pointer font-normal">
+                        No
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {form.formState.errors.has_prev_dob?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_prev_dob.message}</p>
+                  )}
+                </div>
+
+                {hasPrevDob === "yes" && (
+                  <div className="pl-0 mt-4">
                     <p className="text-sm text-gray-600 mb-4">
-                      Enter details of your previous Birth Dates
+                      Enter details of your previous Birth Dates.
                     </p>
-                    <PrevDobTable
-                      rows={prevDobs}
+                    <RepeaterTable
+                      data={prevDobs}
+                      columns={prevDobColumns}
                       onAdd={(row) => updatePrevDobs([...prevDobs, row])}
                       onEdit={(index, row) => {
                         const updated = [...prevDobs];
@@ -1055,23 +1034,32 @@ export default function MainApplicantOtherPage() {
                         const updated = prevDobs.filter((_, i) => i !== index);
                         updatePrevDobs(updated);
                       }}
-                      DialogComponent={PrevDobDialog}
+                      DialogComponent={PreviousDOBDialog}
+                      addButtonText="Add"
+                      emptyMessage="No previous dates of birth added"
+                      dialogTitle="Previous Date of Birth"
+                      testIdPrefix="prev-dob"
                     />
                   </div>
                 )}
               </div>
+
             </div>
 
+            {/* Desktop Navigation */}
             <FormNavigation
               onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}
-              onNext={handleSubmit(onSubmit)}
-              disabledNext={!isValid}
-              loading={isSaving}
+              nextLabel="Continue"
+              loading={draftSnap.isSaving}
             />
           </form>
-        </CardContent>
-      </Card>
-    </>
+        </div>
+      </div>
+
+      {/* Mobile Navigation */}
+
+    </div>
   );
 }

@@ -320,7 +320,16 @@ export default function ChildrenStartPage() {
 
     const timeoutId = setTimeout(() => {
       if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveSectionData('children.details', watchedValues);
+        // Get existing section data to preserve any other fields
+        const existingData = draftStore.getSectionData('children.details') || {};
+        
+        // Merge existing data with watched values to preserve all fields
+        const finalData = {
+          ...existingData, // Preserve any existing fields
+          ...watchedValues, // Override with current form values
+        };
+        
+        draftStore.saveSectionData('children.details', finalData);
       }
     }, 2000);
     return () => clearTimeout(timeoutId);
@@ -338,7 +347,16 @@ export default function ChildrenStartPage() {
 
     setIsSaving(true);
     try {
-      const result = await draftStore.saveSectionData('children.details', data);
+      // Get existing section data to preserve any other fields
+      const existingData = draftStore.getSectionData('children.details') || {};
+      
+      // Merge existing data with form submission data to preserve all fields
+      const finalData = {
+        ...existingData, // Preserve any existing fields
+        ...data, // Override with form data
+      };
+      
+      const result = await draftStore.saveSectionData('children.details', finalData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/children/start');
@@ -379,15 +397,23 @@ export default function ChildrenStartPage() {
 
     setIsSaving(true);
     try {
+      // Get existing section data to preserve any other fields
+      const existingData = draftStore.getSectionData('children.details') || {};
+      
       // Use watched values which are always current, or fallback to getValues()
       const dataToSave = watchedValues && Object.keys(watchedValues).length > 0 
         ? watchedValues 
         : getValues();
       
-      // Ensure we always have the children array and has_children_joint
+      // Merge existing data with current form values to preserve all fields
       const finalData = {
-        has_children_joint: dataToSave.has_children_joint || watch("has_children_joint") || "",
-        children: dataToSave.children || watch("children") || [],
+        ...existingData, // Preserve any existing fields
+        has_children_joint: dataToSave.has_children_joint !== undefined 
+          ? dataToSave.has_children_joint 
+          : watch("has_children_joint") || existingData.has_children_joint || "",
+        children: dataToSave.children !== undefined 
+          ? dataToSave.children 
+          : watch("children") || existingData.children || [],
       };
       
       const result = await draftStore.saveSectionData('children.details', finalData);
@@ -431,7 +457,17 @@ export default function ChildrenStartPage() {
     const currentData = getValues();
     
     try {
-      const result = await draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+      // Get existing section data to preserve any other fields
+      const existingData = draftStore.getSectionData('children.details') || {};
+      
+      // Merge existing data with current form data and updated children
+      const finalData = {
+        ...existingData, // Preserve any existing fields
+        ...currentData, // Include current form values
+        children: updatedChildren, // Override with updated children array
+      };
+      
+      const result = await draftStore.saveSectionData('children.details', finalData);
       if (!result.success) {
         toast({
           title: "Error saving",
@@ -464,7 +500,17 @@ export default function ChildrenStartPage() {
     const currentData = getValues();
     
     try {
-      const result = await draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+      // Get existing section data to preserve any other fields
+      const existingData = draftStore.getSectionData('children.details') || {};
+      
+      // Merge existing data with current form data and updated children
+      const finalData = {
+        ...existingData, // Preserve any existing fields
+        ...currentData, // Include current form values
+        children: updatedChildren, // Override with updated children array
+      };
+      
+      const result = await draftStore.saveSectionData('children.details', finalData);
       if (!result.success) {
         toast({
           title: "Error saving",
@@ -496,7 +542,17 @@ export default function ChildrenStartPage() {
     const currentData = getValues();
     
     try {
-      const result = await draftStore.saveSectionData('children.details', { ...currentData, children: updatedChildren });
+      // Get existing section data to preserve any other fields
+      const existingData = draftStore.getSectionData('children.details') || {};
+      
+      // Merge existing data with current form data and updated children
+      const finalData = {
+        ...existingData, // Preserve any existing fields
+        ...currentData, // Include current form values
+        children: updatedChildren, // Override with updated children array
+      };
+      
+      const result = await draftStore.saveSectionData('children.details', finalData);
       if (!result.success) {
         toast({
           title: "Error saving",
