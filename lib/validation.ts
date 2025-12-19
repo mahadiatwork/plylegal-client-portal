@@ -125,6 +125,8 @@ export const otherSchema = z.object({
 // Identity
 export const identitySchema = z.object({
   citizen_of_country: yesNoSchema.optional(),
+  stateless_explanation: z.string().optional(),
+  ever_been_citizen: yesNoSchema.optional(),
   citizenships: z.array(z.object({
     country: z.string().min(1, "Country is required"),
     obtained_method: z.string().min(1, "Method is required"),
@@ -158,7 +160,25 @@ export const identitySchema = z.object({
     country: z.string().min(1, "Country is required"),
   })).optional(),
 }).refine((data) => {
+  // If not currently a citizen, stateless explanation is required
+  if (data.citizen_of_country === "No") {
+    return data.stateless_explanation && data.stateless_explanation.trim().length > 0;
+  }
+  return true;
+}, { message: "Statelessness explanation is required when you are not currently a citizen", path: ["stateless_explanation"] })
+.refine((data) => {
+  // If not currently a citizen, the "ever been citizen" question is required
+  if (data.citizen_of_country === "No") {
+    return data.ever_been_citizen === "Yes" || data.ever_been_citizen === "No";
+  }
+  return true;
+}, { message: "Please answer whether you have ever been a citizen", path: ["ever_been_citizen"] })
+.refine((data) => {
+  // Citizenships required if: currently a citizen OR (not currently a citizen AND ever been a citizen)
   if (data.citizen_of_country === "Yes") {
+    return data.citizenships && data.citizenships.length > 0;
+  }
+  if (data.citizen_of_country === "No" && data.ever_been_citizen === "Yes") {
     return data.citizenships && data.citizenships.length > 0;
   }
   return true;

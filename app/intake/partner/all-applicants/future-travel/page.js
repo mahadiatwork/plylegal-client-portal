@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -52,14 +52,29 @@ function FutureTravelDialog({ row, onSubmit, onCancel }) {
 export default function FutureTravelPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
   const draft = useSnapshot(draftStore.draft);
+  const draftSnap = useSnapshot(draftStore);
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Sync applicationId in URL
+  useEffect(() => {
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
+      // If we have applicationId in store but not in URL, update URL to include it
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   const {
     control,

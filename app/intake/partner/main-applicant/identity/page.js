@@ -22,31 +22,11 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Plus } from "lucide-react";
+import { monthNames } from "@/reuseable/months";
+import { COUNTRIES } from "@/reuseable/countries";
+import { DateSelector } from "@/components/DateSelecters";
 
-// Constants
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 
 const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation"];
 const PASSPORT_TYPE_OPTIONS = ["Passport", "Emergency Passport", "Travel Document"];
@@ -76,13 +56,7 @@ const DOCUMENT_TYPE_OPTIONS = [
   "Other"
 ];
 
-const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+// DateSelector component handles days and years internally
 
 const CITIZENSHIP_CEASED_REASON_OPTIONS = ["Renounced", "Revoked", "Other"];
 
@@ -155,50 +129,19 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
-      <div>
-        <Label>Date Obtained</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Select
-            value={dialogForm.watch("date_obtained_day")}
-            onValueChange={(value) => dialogForm.setValue("date_obtained_day", value)}
-          >
-            <SelectTrigger data-testid="select-obtained-day">
-              <SelectValue placeholder="Choose Day" />
-            </SelectTrigger>
-            <SelectContent>
-              {days.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_obtained_month")}
-            onValueChange={(value) => dialogForm.setValue("date_obtained_month", value)}
-          >
-            <SelectTrigger data-testid="select-obtained-month">
-              <SelectValue placeholder="Choose Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month, idx) => (
-                <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_obtained_year")}
-            onValueChange={(value) => dialogForm.setValue("date_obtained_year", value)}
-          >
-            <SelectTrigger data-testid="select-obtained-year">
-              <SelectValue placeholder="Choose Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <DateSelector
+        label="Date Obtained"
+        values={{
+          day: dialogForm.watch("date_obtained_day") || "",
+          month: dialogForm.watch("date_obtained_month") || "",
+          year: dialogForm.watch("date_obtained_year") || "",
+        }}
+        onValueChange={(type, value) => {
+          const fieldName = `date_obtained_${type}`;
+          dialogForm.setValue(fieldName, value);
+        }}
+        testIdPrefix="select-obtained"
+      />
 
       <div>
         <Label className="mb-2 block">Are you still a Citizen of this country?</Label>
@@ -223,32 +166,19 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
 
       {stillCitizen === "No" && (
         <>
-          <div>
-            <Label>Date ceased</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Select
-                value={dialogForm.watch("date_ceased_day")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_day", value)}
-              >
-                <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
-                <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("date_ceased_month")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_month", value)}
-              >
-                <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
-                <SelectContent>{months.map((m, i) => <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("date_ceased_year")}
-                onValueChange={(value) => dialogForm.setValue("date_ceased_year", value)}
-              >
-                <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
-                <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
+          <DateSelector
+            label="Date ceased"
+            values={{
+              day: dialogForm.watch("date_ceased_day") || "",
+              month: dialogForm.watch("date_ceased_month") || "",
+              year: dialogForm.watch("date_ceased_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `date_ceased_${type}`;
+              dialogForm.setValue(fieldName, value);
+            }}
+            testIdPrefix="select-ceased"
+          />
 
           <div>
             <Label>Reason</Label>
@@ -438,48 +368,19 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
         </p>
 
         <div>
-          <Label>Date of Issue</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_issued_day")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_day", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-issue-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_issued_month")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_month", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-issue-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, idx) => (
-                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_issued_year")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_year", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-issue-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DateSelector
+            label="Date of Issue"
+            values={{
+              day: dialogForm.watch("date_issued_day") || "",
+              month: dialogForm.watch("date_issued_month") || "",
+              year: dialogForm.watch("date_issued_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `date_issued_${type}`;
+              dialogForm.setValue(fieldName, value, { shouldValidate: true });
+            }}
+            testIdPrefix="select-passport-issue"
+          />
         </div>
 
         <div className="mt-4">
@@ -512,94 +413,36 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
 
         {isOriginalDate === "No" && (
           <div className="mt-4">
-            <Label>Original Date of Issue</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Select
-                value={dialogForm.watch("original_date_day")}
-                onValueChange={(value) => dialogForm.setValue("original_date_day", value)}
-              >
-                <SelectTrigger data-testid="select-original-day">
-                  <SelectValue placeholder="Choose Day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {days.map((day) => (
-                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("original_date_month")}
-                onValueChange={(value) => dialogForm.setValue("original_date_month", value)}
-              >
-                <SelectTrigger data-testid="select-original-month">
-                  <SelectValue placeholder="Choose Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, idx) => (
-                    <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("original_date_year")}
-                onValueChange={(value) => dialogForm.setValue("original_date_year", value)}
-              >
-                <SelectTrigger data-testid="select-original-year">
-                  <SelectValue placeholder="Choose Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <DateSelector
+              label="Original Date of Issue"
+              values={{
+                day: dialogForm.watch("original_date_day") || "",
+                month: dialogForm.watch("original_date_month") || "",
+                year: dialogForm.watch("original_date_year") || "",
+              }}
+              onValueChange={(type, value) => {
+                const fieldName = `original_date_${type}`;
+                dialogForm.setValue(fieldName, value);
+              }}
+              testIdPrefix="select-original"
+            />
           </div>
         )}
 
         <div className="mt-4">
-          <Label>Date of Expiry</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_expiry_day")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_day", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-expiry-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_expiry_month")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_month", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-expiry-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, idx) => (
-                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_expiry_year")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_year", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-expiry-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DateSelector
+            label="Date of Expiry"
+            values={{
+              day: dialogForm.watch("date_expiry_day") || "",
+              month: dialogForm.watch("date_expiry_month") || "",
+              year: dialogForm.watch("date_expiry_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `date_expiry_${type}`;
+              dialogForm.setValue(fieldName, value, { shouldValidate: true });
+            }}
+            testIdPrefix="select-passport-expiry"
+          />
         </div>
 
         <div className="mt-4">
@@ -752,93 +595,35 @@ function IdentityDocDialog({ editingRow, onSave, onCancel }) {
         </p>
 
         <div>
-          <Label>Date Issued</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_issued_day")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_day", value)}
-            >
-              <SelectTrigger data-testid="select-identity-doc-issue-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_issued_month")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_month", value)}
-            >
-              <SelectTrigger data-testid="select-identity-doc-issue-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, idx) => (
-                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_issued_year")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_year", value)}
-            >
-              <SelectTrigger data-testid="select-identity-doc-issue-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DateSelector
+            label="Date Issued"
+            values={{
+              day: dialogForm.watch("date_issued_day") || "",
+              month: dialogForm.watch("date_issued_month") || "",
+              year: dialogForm.watch("date_issued_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `date_issued_${type}`;
+              dialogForm.setValue(fieldName, value);
+            }}
+            testIdPrefix="select-identity-doc-issue"
+          />
         </div>
 
         <div className="mt-4">
-          <Label>Date of Expiry</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_expiry_day")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_day", value)}
-            >
-              <SelectTrigger data-testid="select-identity-doc-expiry-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_expiry_month")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_month", value)}
-            >
-              <SelectTrigger data-testid="select-identity-doc-expiry-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, idx) => (
-                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_expiry_year")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_year", value)}
-            >
-              <SelectTrigger data-testid="select-identity-doc-expiry-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DateSelector
+            label="Date of Expiry"
+            values={{
+              day: dialogForm.watch("date_expiry_day") || "",
+              month: dialogForm.watch("date_expiry_month") || "",
+              year: dialogForm.watch("date_expiry_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `date_expiry_${type}`;
+              dialogForm.setValue(fieldName, value);
+            }}
+            testIdPrefix="select-identity-doc-expiry"
+          />
         </div>
       </div>
 
@@ -930,48 +715,19 @@ function CountryDialog({ editingRow, onSave, onCancel }) {
 
       {residencyStatus === "Temporary" && (
         <div>
-          <Label>Expiry Date of Temporary Residency</Label>
-          <div className="grid grid-cols-3 gap-2 mt-2">
-            <Select
-              value={dialogForm.watch("expiry_date_day")}
-              onValueChange={(value) => dialogForm.setValue("expiry_date_day", value)}
-            >
-              <SelectTrigger data-testid="select-expiry-day">
-                <SelectValue placeholder="Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("expiry_date_month")}
-              onValueChange={(value) => dialogForm.setValue("expiry_date_month", value)}
-            >
-              <SelectTrigger data-testid="select-expiry-month">
-                <SelectValue placeholder="Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, idx) => (
-                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("expiry_date_year")}
-              onValueChange={(value) => dialogForm.setValue("expiry_date_year", value)}
-            >
-              <SelectTrigger data-testid="select-expiry-year">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DateSelector
+            label="Expiry Date of Temporary Residency"
+            values={{
+              day: dialogForm.watch("expiry_date_day") || "",
+              month: dialogForm.watch("expiry_date_month") || "",
+              year: dialogForm.watch("expiry_date_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `expiry_date_${type}`;
+              dialogForm.setValue(fieldName, value);
+            }}
+            testIdPrefix="select-expiry"
+          />
           {dialogForm.formState.errors.expiry_date_day && (
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.expiry_date_day.message}</p>
           )}
@@ -1019,47 +775,97 @@ export default function MainApplicantIdentityPage() {
   // Load section data
   const sectionData = draftStore.getSectionData('mainApplicant.identity');
 
-  const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
+  const form = useForm({
     resolver: zodResolver(identitySchema),
     mode: "onChange",
     defaultValues: {
-      citizen_of_country: sectionData.citizen_of_country || "No",
-      stateless_explanation: sectionData.stateless_explanation || "",
-      citizenships: sectionData.citizenships || [],
-      has_passport: sectionData.has_passport || "No",
-      passports: sectionData.passports || [],
-      has_identity_doc: sectionData.has_identity_doc || "No",
-      identity_docs: sectionData.identity_docs || [],
-      permanent_residency_rights: sectionData.permanent_residency_rights || "No",
-      pr_countries: sectionData.pr_countries || [],
+      citizen_of_country: sectionData?.citizen_of_country || "No",
+      stateless_explanation: sectionData?.stateless_explanation || "",
+      ever_been_citizen: sectionData?.ever_been_citizen || "",
+      citizenships: sectionData?.citizenships || [],
+      has_passport: sectionData?.has_passport || "No",
+      passports: sectionData?.passports || [],
+      has_identity_doc: sectionData?.has_identity_doc || "No",
+      identity_docs: sectionData?.identity_docs || [],
+      permanent_residency_rights: sectionData?.permanent_residency_rights || "No",
+      pr_countries: sectionData?.pr_countries || [],
     },
   });
+  const { reset } = form; // Add this line
 
+  
   // Watch form values for conditional rendering
-  const citizenOfCountry = watch("citizen_of_country");
-  const hasPassport = watch("has_passport");
-  const hasIdentityDoc = watch("has_identity_doc");
-  const permanentResidencyRights = watch("permanent_residency_rights");
-  const citizenships = watch("citizenships") || [];
-  const passports = watch("passports") || [];
-  const identityDocs = watch("identity_docs") || [];
-  const prCountries = watch("pr_countries") || [];
+  const citizenOfCountry = form.watch("citizen_of_country");
+  const everBeenCitizen = form.watch("ever_been_citizen");
+  const hasPassport = form.watch("has_passport");
+  const hasIdentityDoc = form.watch("has_identity_doc");
+  const permanentResidencyRights = form.watch("permanent_residency_rights");
+  const citizenships = form.watch("citizenships") || [];
+  const passports = form.watch("passports") || [];
+  const identityDocs = form.watch("identity_docs") || [];
+  const prCountries = form.watch("pr_countries") || [];
 
   // Watch all form values for auto-save
-  const watchedValues = useWatch({ control });
+  const watchedValues = useWatch({ control: form.control });
+
+  // Sync form with store data once it's loaded from the database
+  useEffect(() => {
+    // Only reset if we have an ID and aren't loading
+    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
+      // Use 'keepDefaultValues: true' to prevent flickering
+      reset({
+        citizen_of_country: sectionData.citizen_of_country || "No",
+        stateless_explanation: sectionData.stateless_explanation || "",
+        ever_been_citizen: sectionData.ever_been_citizen || "",
+        citizenships: sectionData.citizenships || [],
+        has_passport: sectionData.has_passport || "No",
+        passports: sectionData.passports || [],
+        has_identity_doc: sectionData.has_identity_doc || "No",
+        identity_docs: sectionData.identity_docs || [],
+        permanent_residency_rights: sectionData.permanent_residency_rights || "No",
+        pr_countries: sectionData.pr_countries || [],
+      }, { keepDefaultValues: true });
+    }
+  }, [draftSnap.isLoading, sectionData, reset]);
+
+  // Reset fields when citizen_of_country changes
+  useEffect(() => {
+    if (citizenOfCountry === "Yes") {
+      // If user selects "Yes", clear stateless explanation and ever_been_citizen
+      // These fields are only relevant when answer is "No"
+      form.setValue("stateless_explanation", "");
+      form.setValue("ever_been_citizen", "");
+    }
+    // Note: We don't clear citizenships when switching to "No" because
+    // the user might have already entered past citizenships that are still valid
+  }, [citizenOfCountry, form]);
+
+  // Reset citizenships when ever_been_citizen changes to "No" (only when first question is "No")
+  useEffect(() => {
+    if (citizenOfCountry === "No" && everBeenCitizen === "No") {
+      // If user says they've never been a citizen, clear any existing citizenships
+      form.setValue("citizenships", []);
+    }
+  }, [everBeenCitizen, citizenOfCountry, form]);
 
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
+    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
+    // Don't auto-save immediately after form reset or while loading
+    if (draftSnap.isLoading) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveSectionData('mainApplicant.identity', watchedValues);
-      }
+      // Use form.getValues() to get the actual current state of all fields
+      const currentFormValues = form.getValues();
+      const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+      const mergedData = { ...existingData, ...currentFormValues };
+      
+      draftStore.saveSectionData('mainApplicant.identity', mergedData);
     }, 2000);
 
     return () => {
@@ -1067,7 +873,7 @@ export default function MainApplicantIdentityPage() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [watchedValues, draftSnap.currentApplicationId]);
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -1081,7 +887,11 @@ export default function MainApplicantIdentityPage() {
 
     setIsSaving(true);
     try {
-      const result = await draftStore.saveSectionData('mainApplicant.identity', data);
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+      const mergedData = { ...existingData, ...data };
+      
+      const result = await draftStore.saveSectionData('mainApplicant.identity', mergedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/identity');
@@ -1122,14 +932,33 @@ export default function MainApplicantIdentityPage() {
 
     setIsSaving(true);
     try {
-      const currentData = getValues();
-      const result = await draftStore.saveSectionData('mainApplicant.identity', currentData);
+      // Trigger validation and check for errors
+      const isValid = await form.trigger();
+      
+      if (!isValid) {
+        // DEBUG: This will show you exactly what is stopping the save in the browser console
+        console.log("Validation Errors:", form.formState.errors);
+        
+        toast({
+          title: "Validation error",
+          description: "Please check the console for specific field errors.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+      const currentData = form.getValues();
+      const mergedData = { ...existingData, ...currentData };
+      
+      const result = await draftStore.saveSectionData('mainApplicant.identity', mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/identity');
         toast({
           title: "Draft saved",
-          description: "Your changes have been saved successfully.",
+          description: "Progress saved successfully.",
         });
       } else {
         toast({
@@ -1139,6 +968,7 @@ export default function MainApplicantIdentityPage() {
         });
       }
     } catch (error) {
+      console.error("Save Error:", error);
       toast({
         title: "Error saving draft",
         description: "An unexpected error occurred. Please try again.",
@@ -1150,27 +980,55 @@ export default function MainApplicantIdentityPage() {
   };
 
   const updateCitizenships = (newCitizenships) => {
-    setValue("citizenships", newCitizenships, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.identity', { ...currentData, citizenships: newCitizenships });
+    form.setValue("citizenships", newCitizenships, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // Merge with existing section data
+    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const currentData = form.getValues();
+    draftStore.saveSectionData('mainApplicant.identity', { 
+      ...existingData,
+      ...currentData,
+      citizenships: newCitizenships 
+    });
   };
 
   const updatePassports = (newPassports) => {
-    setValue("passports", newPassports, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.identity', { ...currentData, passports: newPassports });
+    form.setValue("passports", newPassports, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // Merge with existing section data
+    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const currentData = form.getValues();
+    draftStore.saveSectionData('mainApplicant.identity', { 
+      ...existingData,
+      ...currentData,
+      passports: newPassports 
+    });
   };
 
   const updateIdentityDocs = (newDocs) => {
-    setValue("identity_docs", newDocs, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.identity', { ...currentData, identity_docs: newDocs });
+    form.setValue("identity_docs", newDocs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // Merge with existing section data
+    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const currentData = form.getValues();
+    draftStore.saveSectionData('mainApplicant.identity', { 
+      ...existingData,
+      ...currentData,
+      identity_docs: newDocs 
+    });
   };
 
   const updatePrCountries = (newCountries) => {
-    setValue("pr_countries", newCountries, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.identity', { ...currentData, pr_countries: newCountries });
+    form.setValue("pr_countries", newCountries, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // Merge with existing section data
+    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const currentData = form.getValues();
+    draftStore.saveSectionData('mainApplicant.identity', { 
+      ...existingData,
+      ...currentData,
+      pr_countries: newCountries 
+    });
   };
 
   const citizenshipColumns = [
@@ -1179,7 +1037,6 @@ export default function MainApplicantIdentityPage() {
     {
       key: "date_obtained", label: "Date Obtained", format: (row) => {
         if (row.date_obtained_day && row.date_obtained_month && row.date_obtained_year) {
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIdx = parseInt(row.date_obtained_month) - 1;
           return `${monthNames[monthIdx]} ${row.date_obtained_day}, ${row.date_obtained_year}`;
         }
@@ -1196,7 +1053,6 @@ export default function MainApplicantIdentityPage() {
     {
       key: "date_issued", label: "Date of Issue", format: (row) => {
         if (row.date_issued_day && row.date_issued_month && row.date_issued_year) {
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIdx = parseInt(row.date_issued_month) - 1;
           return `${monthNames[monthIdx]} ${row.date_issued_day}, ${row.date_issued_year}`;
         }
@@ -1214,7 +1070,6 @@ export default function MainApplicantIdentityPage() {
     {
       key: "date_issued", label: "Date of Issue", format: (row) => {
         if (row.date_issued_day && row.date_issued_month && row.date_issued_year) {
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIdx = parseInt(row.date_issued_month) - 1;
           return `${monthNames[monthIdx]} ${row.date_issued_day}, ${row.date_issued_year}`;
         }
@@ -1229,7 +1084,6 @@ export default function MainApplicantIdentityPage() {
     {
       key: "expiry_date", label: "Expiry Date", format: (row) => {
         if (row.residency_status === "Temporary" && row.expiry_date_day && row.expiry_date_month && row.expiry_date_year) {
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIdx = parseInt(row.expiry_date_month) - 1;
           return `${monthNames[monthIdx]} ${row.expiry_date_day}, ${row.expiry_date_year}`;
         }
@@ -1249,7 +1103,7 @@ export default function MainApplicantIdentityPage() {
         </CardHeader>
         <CardContent>
           <form
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(onSubmit)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
                 e.preventDefault();
@@ -1257,13 +1111,13 @@ export default function MainApplicantIdentityPage() {
             }}
             className="space-y-8"
           >
-            {Object.keys(errors).length > 0 && (
+            {Object.keys(form.formState.errors).length > 0 && (
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
                   Please correct the following errors:
                 </h3>
                 <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(errors).map(([field, error]) => (
+                  {Object.entries(form.formState.errors).map(([field, error]) => (
                     <li key={field}>{error.message}</li>
                   ))}
                 </ul>
@@ -1275,7 +1129,7 @@ export default function MainApplicantIdentityPage() {
               <Field
                 type="radio"
                 name="citizen_of_country"
-                control={control}
+                control={form.control}
                 label="Are you currently a Citizen of any Country?"
                 options={[
                   { value: "Yes", label: "Yes" },
@@ -1283,26 +1137,52 @@ export default function MainApplicantIdentityPage() {
                 ]}
               />
               {citizenOfCountry === "No" && (
-                <div className="mt-4">
-                  <Label htmlFor="stateless_explanation" className="text-sm font-normal mb-2 block">
-                    You have answered that you are not a Citizen of any country. You must provide details of how, when and why you are stateless
-                  </Label>
-                  <Textarea
-                    id="stateless_explanation"
-                    {...control.register("stateless_explanation")}
-                    rows={4}
-                    className="w-full"
-                    data-testid="textarea-stateless-explanation"
-                  />
-                </div>
+                <>
+                  <div className="mt-4">
+                    <Label htmlFor="stateless_explanation" className="text-sm font-normal mb-2 block">
+                      You have answered that you are not a Citizen of any country. You must provide details of how, when and why you are stateless <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      id="stateless_explanation"
+                      {...form.register("stateless_explanation")}
+                      rows={4}
+                      className="w-full"
+                      data-testid="textarea-stateless-explanation"
+                      placeholder="Please provide details of how, when and why you are stateless"
+                    />
+                    {form.formState.errors.stateless_explanation && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.stateless_explanation.message}</p>
+                    )}
+                  </div>
+                  
+                  {/* Question 2: Have you ever been a citizen in the past? (only shown when Question 1 is No) */}
+                  <div className="mt-4">
+                    <Field
+                      type="radio"
+                      name="ever_been_citizen"
+                      control={form.control}
+                      label="Have you ever been a citizen in the past?"
+                      options={[
+                        { value: "Yes", label: "Yes" },
+                        { value: "No", label: "No" },
+                      ]}
+                    />
+                    {form.formState.errors.ever_been_citizen && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.ever_been_citizen.message}</p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
-            {/* Question 2: Citizenship Details (shown when Question 1 is Yes) */}
-            {citizenOfCountry === "Yes" && (
+            {/* Citizenship Details Table */}
+            {/* Shown when: (Question 1 is Yes) OR (Question 1 is No AND Question 2 is Yes) */}
+            {((citizenOfCountry === "Yes") || (citizenOfCountry === "No" && everBeenCitizen === "Yes")) && (
               <div className="mt-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all Citizenships that you hold or have previously held
+                  {citizenOfCountry === "Yes" 
+                    ? "Enter details of all Citizenships that you hold or have previously held"
+                    : "Enter details of all Citizenships that you have previously held"}
                 </p>
                 <RepeaterTable
                   data={citizenships}
@@ -1322,6 +1202,9 @@ export default function MainApplicantIdentityPage() {
                   testIdPrefix="citizenship"
                   dialogTitle="Citizenship"
                 />
+                {form.formState.errors.citizenships && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.citizenships.message}</p>
+                )}
               </div>
             )}
 
@@ -1330,7 +1213,7 @@ export default function MainApplicantIdentityPage() {
               <Field
                 type="radio"
                 name="has_passport"
-                control={control}
+                control={form.control}
                 label="Do you currently hold or have you ever held a Passport or Travel Document?"
                 options={[
                   { value: "Yes", label: "Yes" },
@@ -1370,7 +1253,7 @@ export default function MainApplicantIdentityPage() {
               <Field
                 type="radio"
                 name="has_identity_doc"
-                control={control}
+                control={form.control}
                 label="Do you have or have you ever had a government issued Identity Document or Identity Number?"
                 options={[
                   { value: "Yes", label: "Yes" },
@@ -1410,7 +1293,7 @@ export default function MainApplicantIdentityPage() {
               <Field
                 type="radio"
                 name="permanent_residency_rights"
-                control={control}
+                control={form.control}
                 label="Do you have the right to temporary or permanently reside in any country of which you are not a citizen?"
                 options={[
                   { value: "Yes", label: "Yes" },
@@ -1448,8 +1331,8 @@ export default function MainApplicantIdentityPage() {
             <FormNavigation
               onPrev={handlePrevious}
               onSave={handleSave}
-              onNext={handleSubmit(onSubmit)}
-              disabledNext={!isValid}
+              onNext={form.handleSubmit(onSubmit)}
+              disabledNext={!form.formState.isValid}
               loading={isSaving}
             />
           </form>

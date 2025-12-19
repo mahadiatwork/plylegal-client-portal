@@ -5,19 +5,16 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
-import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { employmentSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -31,9 +28,8 @@ const EMPLOYMENT_STATUS_OPTIONS = [
   "Student",
   "Retired",
   "Self-Employed",
-  "Unemployed",
-  "Work Experience/Internships",
-  "Unpaid Employment/Volunteer"
+  "Unpaid Employment/Volunteer",
+  "Work Experience/Internships"
 ];
 
 const employmentHistoryDialogSchema = z.object({
@@ -51,10 +47,8 @@ const employmentHistoryDialogSchema = z.object({
   business_address_suburb: z.string().optional(),
   business_address_state: z.string().optional(),
   business_address_postcode: z.string().optional(),
-  main_duties: z.string().optional(),
-  occupied_time: z.string().optional(),
-  financial_support: z.string().optional(),
   country: z.string().min(1, "Country is required"),
+  financial_support: z.string().optional(),
 }).superRefine((data, ctx) => {
   // If status is employment-related, position is required
   const employmentStatuses = ["Employed", "Self-Employed", "Work Experience/Internships", "Unpaid Employment/Volunteer"];
@@ -63,6 +57,40 @@ const employmentHistoryDialogSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: "Position is required for this status",
       path: ["position"],
+    });
+  }
+  
+  // Validate date ranges: Date From must be before or equal to Date To
+  if (data.date_to_day && data.date_to_month && data.date_to_year && 
+      data.date_from_day && data.date_from_month && data.date_from_year) {
+    const fromDate = new Date(
+      parseInt(data.date_from_year),
+      parseInt(data.date_from_month) - 1,
+      parseInt(data.date_from_day)
+    );
+    const toDate = new Date(
+      parseInt(data.date_to_year),
+      parseInt(data.date_to_month) - 1,
+      parseInt(data.date_to_day)
+    );
+    if (fromDate > toDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Date From must be before or equal to Date To",
+        path: ["date_to_day"],
+      });
+    }
+  }
+  
+  // Validate that all date parts are completed or all are empty for Date To
+  const dateToParts = [data.date_to_day, data.date_to_month, data.date_to_year];
+  const hasSomeDateTo = dateToParts.some(part => part && part.trim() !== "");
+  const hasAllDateTo = dateToParts.every(part => part && part.trim() !== "");
+  if (hasSomeDateTo && !hasAllDateTo) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "All date parts must be completed or left empty",
+      path: ["date_to_day"],
     });
   }
 });
@@ -85,26 +113,18 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       business_address_suburb: "",
       business_address_state: "",
       business_address_postcode: "",
-      main_duties: "",
-      occupied_time: "",
-      financial_support: "",
       country: "",
+      financial_support: "",
     },
   });
 
   const status = dialogForm.watch("status");
   const isEmploymentStatus = status === "Employed" || status === "Self-Employed" ||
     status === "Work Experience/Internships" || status === "Unpaid Employment/Volunteer";
-  const isNonEmploymentStatus = status === "Student" || status === "Retired" || status === "Unemployed";
+  const isNonEmploymentStatus = status === "Student" || status === "Retired";
 
   const handleFormSubmit = (data) => {
     onSave(data);
-  };
-
-  const handleSaveClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dialogForm.handleSubmit(handleFormSubmit)(e);
   };
 
   return (
@@ -114,8 +134,14 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
       }}
-      className="space-y-4"
+      className="space-y-4 pr-2"
     >
+      <div className="mb-2">
+        <p className="text-sm text-gray-600">
+          Enter details of your Family Sponsor's current employment status
+        </p>
+      </div>
+
       <DateSelector
         label="Date From"
         values={{
@@ -142,10 +168,13 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         }}
         onValueChange={(type, value) => {
           const fieldName = `date_to_${type}`;
-          dialogForm.setValue(fieldName, value);
+          dialogForm.setValue(fieldName, value, { shouldValidate: true });
         }}
         testIdPrefix="select-date-to"
       />
+      {(dialogForm.formState.errors.date_to_day || dialogForm.formState.errors.date_to_month || dialogForm.formState.errors.date_to_year) && (
+        <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day?.message || dialogForm.formState.errors.date_to_month?.message || dialogForm.formState.errors.date_to_year?.message}</p>
+      )}
 
       <div>
         <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
@@ -164,26 +193,6 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         </Select>
         {dialogForm.formState.errors.status && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.status.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
-        <Select
-          value={dialogForm.watch("country")}
-          onValueChange={(value) => dialogForm.setValue("country", value, { shouldValidate: true })}
-        >
-          <SelectTrigger data-testid="select-country">
-            <SelectValue placeholder="Choose Country" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((country) => (
-              <SelectItem key={country} value={country}>{country}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.country && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
 
@@ -246,42 +255,40 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
               />
             </div>
           </div>
-
-          <div>
-            <Label htmlFor="main_duties">Enter details of the main duties performed in this position</Label>
-            <Textarea
-              id="main_duties"
-              {...dialogForm.register("main_duties")}
-              rows={4}
-              data-testid="textarea-main-duties"
-            />
-          </div>
         </>
       )}
 
-      {/* Fields for Student, Retired, Unemployed */}
-      {isNonEmploymentStatus && (
-        <>
-          <div>
-            <Label htmlFor="occupied_time">Detail how you occupied your time</Label>
-            <Textarea
-              id="occupied_time"
-              {...dialogForm.register("occupied_time")}
-              rows={4}
-              data-testid="textarea-occupied-time"
-            />
-          </div>
+      <div>
+        <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+        <Select
+          value={dialogForm.watch("country")}
+          onValueChange={(value) => dialogForm.setValue("country", value, { shouldValidate: true })}
+        >
+          <SelectTrigger data-testid="select-country">
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>{country}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.country && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
+        )}
+      </div>
 
-          <div>
-            <Label htmlFor="financial_support">Detail how you financially supported yourself</Label>
-            <Textarea
-              id="financial_support"
-              {...dialogForm.register("financial_support")}
-              rows={4}
-              data-testid="textarea-financial-support"
-            />
-          </div>
-        </>
+      {/* Fields for Student, Retired */}
+      {isNonEmploymentStatus && (
+        <div>
+          <Label htmlFor="financial_support">Enter details of how they financially supported themselves</Label>
+          <Textarea
+            id="financial_support"
+            {...dialogForm.register("financial_support")}
+            rows={4}
+            data-testid="textarea-financial-support"
+          />
+        </div>
       )}
 
       <DialogFooter>
@@ -289,26 +296,58 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           Cancel
         </Button>
         <Button
-          type="button"
-          onClick={handleSaveClick}
-          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          type="submit"
+          className="bg-primary text-primary-foreground"
           data-testid="button-ok"
         >
-          Save
+          Ok
         </Button>
       </DialogFooter>
     </form>
   );
 }
 
-export default function MainApplicantEmploymentPage() {
+const familySponsorCircumstancesSchema = z.object({
+  is_in_paid_employment: z.enum(["Yes", "No"]).optional(),
+  is_financially_dependent: z.enum(["Yes", "No"]).optional(),
+  employment_history: z.array(z.object({
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    status: z.string().optional(),
+    position: z.string().optional(),
+    business_name: z.string().optional(),
+    business_address_street: z.string().optional(),
+    business_address_street_line2: z.string().optional(),
+    business_address_suburb: z.string().optional(),
+    business_address_state: z.string().optional(),
+    business_address_postcode: z.string().optional(),
+    country: z.string().optional(),
+    financial_support: z.string().optional(),
+  })).optional(),
+}).superRefine((data, ctx) => {
+  // If in paid employment, require at least one employment history entry
+  if (data.is_in_paid_employment === "Yes" && (!data.employment_history || data.employment_history.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one employment history entry is required when sponsor is in paid employment",
+      path: ["employment_history"],
+    });
+  }
+});
+
+export default function FamilySponsorCircumstancesPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
-  const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
+
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
@@ -325,44 +364,51 @@ export default function MainApplicantEmploymentPage() {
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
-  // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.employment');
+  // Load section data from familySponsor.details
+  const sectionData = draftStore.getSectionData('familySponsor.details');
+  
+  // Get sponsor name for display
+  const sponsorName = sectionData?.given_names && sectionData?.family_name
+    ? `${sectionData.given_names} ${sectionData.family_name}`
+    : sectionData?.given_names || sectionData?.family_name || "the sponsor";
 
   const form = useForm({
-    resolver: zodResolver(employmentSchema),
+    resolver: zodResolver(familySponsorCircumstancesSchema),
     mode: "onChange",
     defaultValues: {
-      currently_employed: sectionData?.currently_employed || "",
+      is_in_paid_employment: sectionData?.is_in_paid_employment || "No",
+      is_financially_dependent: sectionData?.is_financially_dependent || "No",
       employment_history: sectionData?.employment_history || [],
     },
   });
-  const { reset } = form;
+  const { reset, getValues } = form;
+  const isDirty = form.formState.isDirty;
 
   // Watch form values for conditional rendering
-  const currentlyEmployed = form.watch("currently_employed");
+  const isInPaidEmployment = form.watch("is_in_paid_employment");
   const employmentHistory = form.watch("employment_history") || [];
 
   // Watch all form values for auto-save
   const watchedValues = useWatch({ control: form.control });
-  const [isSaving, setIsSaving] = useState(false);
 
   // Sync form with store data once it's loaded from the database
   useEffect(() => {
-    // Only reset if we have an ID and aren't loading
-    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
-      // Use 'keepDefaultValues: true' to prevent flickering
+    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0 && !isDirty) {
       reset({
-        currently_employed: sectionData.currently_employed || "",
+        is_in_paid_employment: sectionData.is_in_paid_employment || "No",
+        is_financially_dependent: sectionData.is_financially_dependent || "No",
         employment_history: sectionData.employment_history || [],
       }, { keepDefaultValues: true });
     }
-  }, [draftSnap.isLoading, sectionData, reset]);
+  }, [draftSnap.isLoading, sectionData, reset, isDirty]);
 
   // Auto-save form data with debounce
   useEffect(() => {
-    if (!draftSnap.currentApplicationId) return;
+    if (!draftSnap.currentApplicationId) {
+      console.warn('No application ID set for auto-save');
+      return;
+    }
     if (!watchedValues || Object.keys(watchedValues).length === 0) return;
-    // Don't auto-save immediately after form reset or while loading
     if (draftSnap.isLoading) return;
 
     if (saveTimeoutRef.current) {
@@ -370,12 +416,11 @@ export default function MainApplicantEmploymentPage() {
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      // Use form.getValues() to get the actual current state of all fields
-      const currentFormValues = form.getValues();
-      const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
+      const currentFormValues = getValues();
+      const existingData = draftStore.getSectionData('familySponsor.details') || {};
       const mergedData = { ...existingData, ...currentFormValues };
       
-      draftStore.saveSectionData('mainApplicant.employment', mergedData);
+      draftStore.saveSectionData('familySponsor.details', mergedData);
     }, 2000);
 
     return () => {
@@ -383,7 +428,7 @@ export default function MainApplicantEmploymentPage() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, form]);
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, getValues]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -395,16 +440,24 @@ export default function MainApplicantEmploymentPage() {
       return;
     }
 
+    // Clear auto-save timeout to prevent race condition
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     setIsSaving(true);
     try {
-      // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
-      const mergedData = { ...existingData, ...data };
+      const existingData = draftStore.getSectionData('familySponsor.details') || {};
+      const finalData = {
+        ...existingData,
+        ...data,
+      };
       
-      const result = await draftStore.saveSectionData('mainApplicant.employment', mergedData);
+      const result = await draftStore.saveSectionData('familySponsor.details', finalData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/employment');
+        await draftStore.markPageComplete('partner/family-sponsor/circumstances', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         if (next) router.push(next);
       } else {
@@ -431,6 +484,12 @@ export default function MainApplicantEmploymentPage() {
   };
 
   const handleSave = async () => {
+    // Clear auto-save timeout to prevent race condition
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -442,13 +501,10 @@ export default function MainApplicantEmploymentPage() {
 
     setIsSaving(true);
     try {
-      // Trigger validation and check for errors
       const isValid = await form.trigger();
       
       if (!isValid) {
-        // DEBUG: This will show you exactly what is stopping the save in the browser console
         console.log("Validation Errors:", form.formState.errors);
-        
         toast({
           title: "Validation error",
           description: "Please check the console for specific field errors.",
@@ -458,15 +514,14 @@ export default function MainApplicantEmploymentPage() {
         return;
       }
 
-      // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
-      const currentData = form.getValues();
+      const existingData = draftStore.getSectionData('familySponsor.details') || {};
+      const currentData = getValues();
       const mergedData = { ...existingData, ...currentData };
       
-      const result = await draftStore.saveSectionData('mainApplicant.employment', mergedData);
+      const result = await draftStore.saveSectionData('familySponsor.details', mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/employment');
+        await draftStore.markPageComplete('partner/family-sponsor/circumstances', null, 'familySponsor.details');
         toast({
           title: "Draft saved",
           description: "Progress saved successfully.",
@@ -491,11 +546,21 @@ export default function MainApplicantEmploymentPage() {
   };
 
   const updateEmploymentHistory = (newHistory) => {
-    form.setValue("employment_history", newHistory, { shouldValidate: true });
-    const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
-    const currentData = form.getValues();
-    const mergedData = { ...existingData, ...currentData, employment_history: newHistory };
-    draftStore.saveSectionData('mainApplicant.employment', mergedData);
+    // Clear auto-save timeout to prevent race condition
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    form.setValue("employment_history", newHistory, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    const existingData = draftStore.getSectionData('familySponsor.details') || {};
+    const currentData = getValues();
+    draftStore.saveSectionData('familySponsor.details', { 
+      ...existingData,
+      ...currentData,
+      employment_history: newHistory 
+    });
   };
 
   const employmentColumns = [
@@ -526,9 +591,9 @@ export default function MainApplicantEmploymentPage() {
     <>
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Employment</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Circumstances</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            In this section, provide details about the main applicant's employment.
+            In this section, provide details about your sponsor's circumstances.
           </p>
         </CardHeader>
         <CardContent>
@@ -541,59 +606,67 @@ export default function MainApplicantEmploymentPage() {
             }}
             className="space-y-8"
           >
-            {Object.keys(form.formState.errors).length > 0 && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-red-800 mb-2">
-                  Please correct the following errors:
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(form.formState.errors).map(([field, error]) => (
-                    <li key={field}>{error.message}</li>
-                  ))}
-                </ul>
+            <div>
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Financial Details for {sponsorName}
+              </h3>
+
+              {/* Question 1: Is your Sponsor currently in paid employment? */}
+              <div className="mb-6">
+                <Field
+                  type="radio"
+                  name="is_in_paid_employment"
+                  control={form.control}
+                  label="Is your Sponsor currently in paid employment?"
+                  options={[
+                    { value: "Yes", label: "Yes" },
+                    { value: "No", label: "No" },
+                  ]}
+                />
+
+                {isInPaidEmployment === "Yes" && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Enter details of your Family Sponsor's current employment status
+                    </p>
+                    <RepeaterTable
+                      data={employmentHistory}
+                      columns={employmentColumns}
+                      onAdd={(row) => updateEmploymentHistory([...employmentHistory, row])}
+                      onEdit={(index, row) => {
+                        const updated = [...employmentHistory];
+                        updated[index] = row;
+                        updateEmploymentHistory(updated);
+                      }}
+                      onDelete={(index) => {
+                        const updated = employmentHistory.filter((_, i) => i !== index);
+                        updateEmploymentHistory(updated);
+                      }}
+                      DialogComponent={EmploymentHistoryDialog}
+                      addButtonText="Add"
+                      testIdPrefix="employment-history"
+                      dialogTitle="Employment History"
+                    />
+                    {form.formState.errors.employment_history && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.employment_history.message}</p>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* Question 1: Are you currently Employed in a paid position? */}
-            <div>
-              <Field
-                type="radio"
-                name="currently_employed"
-                control={form.control}
-                label="Are you currently Employed in a paid position?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-              />
-            </div>
-
-            {/* Question 2: Employment History */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Enter details of all of your employment and unemployment since birth
-              </p>
-              <RepeaterTable
-                data={employmentHistory}
-                columns={employmentColumns}
-                onAdd={(row) => updateEmploymentHistory([...employmentHistory, row])}
-                onEdit={(index, row) => {
-                  const updated = [...employmentHistory];
-                  updated[index] = row;
-                  updateEmploymentHistory(updated);
-                }}
-                onDelete={(index) => {
-                  const updated = employmentHistory.filter((_, i) => i !== index);
-                  updateEmploymentHistory(updated);
-                }}
-                DialogComponent={EmploymentHistoryDialog}
-                addButtonText="Add"
-                testIdPrefix="employment"
-                dialogTitle="Employment History"
-                dialogSubtitle="Enter details of all of your employment and unemployment since birth"
-                dialogClassName="max-w-4xl w-[90vw] max-h-[98vh] bg-white overflow-y-auto"
-              />
+              {/* Question 2: Is your Sponsor normally financially dependent on their partner's income? */}
+              <div>
+                <Field
+                  type="radio"
+                  name="is_financially_dependent"
+                  control={form.control}
+                  label="Is your Sponsor normally financially dependent on their partner's income?"
+                  options={[
+                    { value: "Yes", label: "Yes" },
+                    { value: "No", label: "No" },
+                  ]}
+                />
+              </div>
             </div>
 
             <FormNavigation
@@ -609,3 +682,4 @@ export default function MainApplicantEmploymentPage() {
     </>
   );
 }
+

@@ -18,30 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
-];
+import { COUNTRIES } from "@/reuseable/countries";
 
 const CHARACTER_QUESTIONS = [
   {
@@ -1786,6 +1763,12 @@ const formSchema = z.object({
   false_misleading_info_details: z.array(z.any()).optional(),
   sponsorship_payment_details: z.array(z.any()).optional(),
   people_smuggling_details: z.array(z.any()).optional(),
+  // Additional detail arrays
+  police_check_last_12_months_details: z.array(z.any()).optional(),
+  immigration_detention_details: z.array(z.any()).optional(),
+  psychiatric_institution_details: z.array(z.any()).optional(),
+  military_training_details: z.array(z.any()).optional(),
+  military_service_details: z.array(z.any()).optional(),
 });
 
 const GENERIC_DIALOG_CONFIG = {
@@ -1874,12 +1857,8 @@ export default function Page() {
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
-    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      // If we have applicationId in store but not in URL, update URL to include it
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
-      router.replace(newUrl);
     }
-  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
+  }, [searchParams, draftSnap.currentApplicationId]);
 
   // Build applicant name options from main applicant, spouse/partner, and children draft data
   const applicantOptions = (() => {
@@ -1965,26 +1944,57 @@ export default function Page() {
       false_misleading_info_details: [],
       sponsorship_payment_details: [],
       people_smuggling_details: [],
+      police_check_last_12_months_details: [],
+      immigration_detention_details: [],
+      psychiatric_institution_details: [],
+      military_training_details: [],
+      military_service_details: [],
     },
   });
 
   useEffect(() => {
-    const savedData = draftSnap.draft?.partner_character || {};
-    if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
-      Object.keys(savedData).forEach((key) => {
-        // Only value if regular "yes"/"no", otherwise keep default "no"
-        if (savedData[key] === "yes" || savedData[key] === "no") {
-          form.setValue(key, savedData[key]);
-        } else if (Array.isArray(savedData[key])) {
-          form.setValue(key, savedData[key]);
+    const savedData = draftStore.getSectionData('familySponsor.details') || {};
+    // Only get character-related fields
+    const characterData = {};
+    CHARACTER_QUESTIONS.forEach((q) => {
+      if (savedData[q.key] === "yes" || savedData[q.key] === "no") {
+        characterData[q.key] = savedData[q.key];
+      }
+    });
+    // Get detail arrays
+    const detailFields = [
+      'criminal_conduct_details', 'violent_org_details', 'national_security_details',
+      'outstanding_debts_details', 'domestic_violence_details', 'arrest_warrant_details',
+      'child_sex_offence_details', 'sex_offender_register_details', 'insanity_acquittal_details',
+      'unfit_to_plead_details', 'visa_refused_details', 'overstayed_visa_details',
+      'deported_removed_details', 'avoid_removal_details', 'excluded_from_country_details',
+      'citizenship_refusal_details', 'war_crimes_details', 'convicted_offence_details',
+      'awaiting_legal_action_details', 'false_misleading_info_details', 'sponsorship_payment_details',
+      'people_smuggling_details', 'police_check_last_12_months_details', 'immigration_detention_details',
+      'psychiatric_institution_details', 'military_training_details', 'military_service_details'
+    ];
+    detailFields.forEach((field) => {
+      if (Array.isArray(savedData[field])) {
+        characterData[field] = savedData[field];
+      }
+    });
+    
+    if (Object.keys(characterData).length > 0) {
+      Object.keys(characterData).forEach((key) => {
+        if (characterData[key] === "yes" || characterData[key] === "no") {
+          form.setValue(key, characterData[key]);
+        } else if (Array.isArray(characterData[key])) {
+          form.setValue(key, characterData[key]);
         }
       });
     }
-  }, [draftSnap.draft?.partner_character, form]);
+  }, [draftSnap.draft, form]);
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("partner_character", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "partner_character");
+    const existingData = draftStore.getSectionData('familySponsor.details') || {};
+    const mergedData = { ...existingData, ...data };
+    await draftStore.saveSectionData("familySponsor.details", mergedData);
+    await draftStore.markPageComplete('partner/family-sponsor/character', null, 'familySponsor.details');
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
@@ -1996,7 +2006,9 @@ export default function Page() {
 
   const handleSave = async () => {
     const values = form.getValues();
-      const result = await draftStore.saveSectionData("partner_character", values);
+    const existingData = draftStore.getSectionData('familySponsor.details') || {};
+    const mergedData = { ...existingData, ...values };
+    const result = await draftStore.saveSectionData("familySponsor.details", mergedData);
     if (result.success) {
       toast({
         title: "Draft saved",

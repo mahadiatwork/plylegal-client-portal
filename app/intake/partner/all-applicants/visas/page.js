@@ -1,253 +1,636 @@
 "use client";
 
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter, usePathname } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { DialogFooter } from "@/components/ui/dialog";
-import { Field } from "@/components/Field";
-import { RepeaterTable } from "@/components/RepeaterTable";
-import { visasSchema } from "@/lib/validation";
-import { draftStore } from "@/stores/draftStore";
-import { useSnapshot } from "valtio";
+import { z } from "zod";
 import { useState, useEffect } from "react";
+import { useSnapshot } from "valtio";
+import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { FormNavigation } from "@/components/FormNavigation";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { DialogFooter } from "@/components/ui/dialog";
 
-function VisaDialog({ row, onSubmit, onCancel }) {
-  const { control, handleSubmit } = useForm({
-    defaultValues: row || {
-      country: "",
-      type: "",
-      linked_passport: "",
-      decision_date: "",
-      outcome: "Granted",
-    },
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+const YEARS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
+
+const COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
+  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
+  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
+  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
+  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
+  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
+  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
+  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
+  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
+  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
+  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
+  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
+  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
+  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
+  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
+  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
+  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+];
+
+const OUTCOMES = ["Granted", "Pending", "Refused", "Withdrawn"];
+
+function VisaDialog({ editingRow, onSave, onCancel }) {
+  const dialogFormSchema = z.object({
+    visa_country: z.string().min(1, "Visa Country is required"),
+    visa_type: z.string().min(1, "Visa Type is required"),
+    linked_passport: z.string().optional(),
+    visa_conditions: z.string().optional(),
+
+    application_date_day: z.string().min(1, "Day is required"),
+    application_date_month: z.string().min(1, "Month is required"),
+    application_date_year: z.string().min(1, "Year is required"),
+
+    application_reference_number: z.string().optional(),
+
+    outcome: z.string().min(1, "Outcome is required"),
+
+    // Granted-specific
+    date_granted_day: z.string().optional(),
+    date_granted_month: z.string().optional(),
+    date_granted_year: z.string().optional(),
+    expiry_date_day: z.string().optional(),
+    expiry_date_month: z.string().optional(),
+    expiry_date_year: z.string().optional(),
+    place_of_issue: z.string().optional(),
+    visa_number: z.string().optional(),
+    cancelled: z.string().optional(), // "yes" | "no"
+
+    // Decision date / details (used for refused / withdrawn, and when cancelled = yes)
+    decision_date_day: z.string().optional(),
+    decision_date_month: z.string().optional(),
+    decision_date_year: z.string().optional(),
+    decision_details: z.string().optional(),
   });
 
-  const handleFormSubmit = (data) => {
-    onSubmit(data);
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogFormSchema),
+    defaultValues: editingRow || {
+      visa_country: "",
+      visa_type: "",
+      linked_passport: "",
+      visa_conditions: "",
+      application_date_day: "",
+      application_date_month: "",
+      application_date_year: "",
+      application_reference_number: "",
+      outcome: "",
+      date_granted_day: "",
+      date_granted_month: "",
+      date_granted_year: "",
+      expiry_date_day: "",
+      expiry_date_month: "",
+      expiry_date_year: "",
+      place_of_issue: "",
+      visa_number: "",
+      cancelled: "",
+      decision_date_day: "",
+      decision_date_month: "",
+      decision_date_year: "",
+      decision_details: "",
+    }
+  });
+
+  const handleSubmit = (data) => {
+    onSave(data);
+    dialogForm.reset();
   };
 
+  const outcome = dialogForm.watch("outcome");
+  const cancelled = dialogForm.watch("cancelled");
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.stopPropagation();
-        handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
-      <Field type="text" name="country" control={control} label="Country" />
-      <Field type="text" name="type" control={control} label="Visa Type" />
-      <Field type="text" name="linked_passport" control={control} label="Linked Passport" />
-      <Field type="date" name="decision_date" control={control} label="Decision Date" />
-      <Field
-        type="select"
-        name="outcome"
-        control={control}
-        label="Outcome"
-        options={[
-          { value: "Granted", label: "Granted" },
-          { value: "Refused", label: "Refused" },
-          { value: "Cancelled", label: "Cancelled" },
-          { value: "Pending", label: "Pending" },
-        ]}
-      />
-      <DialogFooter className="gap-2 sm:gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Visa Application</h3>
+      <p className="text-sm text-gray-500 mb-4">Enter details of the Visa applied for or held by you</p>
+
+      {/* Visa Country */}
+      <div>
+        <Label className="mb-2 block">Visa Country</Label>
+        <Select
+          value={dialogForm.watch("visa_country")}
+          onValueChange={(value) => dialogForm.setValue("visa_country", value)}
+        >
+          <SelectTrigger data-testid="select-visa-country">
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>{country}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.visa_country && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_country.message}</p>
+        )}
+      </div>
+
+      {/* Visa Type */}
+      <div>
+        <Label htmlFor="visa_type" className="mb-2 block">Visa Type</Label>
+        <Input
+          id="visa_type"
+          {...dialogForm.register("visa_type")}
+          data-testid="input-visa-type"
+        />
+        {dialogForm.formState.errors.visa_type && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_type.message}</p>
+        )}
+      </div>
+
+      {/* Linked Passport */}
+      <div>
+        <Label htmlFor="linked_passport" className="mb-2 block">Linked Passport</Label>
+        <Input
+          id="linked_passport"
+          {...dialogForm.register("linked_passport")}
+          data-testid="input-linked-passport"
+        />
+      </div>
+
+
+      {/* Visa Conditions */}
+      <div>
+        <Label htmlFor="visa_conditions" className="mb-2 block">Visa Conditions</Label>
+        <Textarea
+          id="visa_conditions"
+          {...dialogForm.register("visa_conditions")}
+          rows={3}
+          data-testid="textarea-visa-conditions"
+        />
+      </div>
+
+      {/* Application Date */}
+      <div>
+        <Label className="mb-2 block">Application Date</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("application_date_day")}
+            onValueChange={(value) => dialogForm.setValue("application_date_day", value)}
+          >
+            <SelectTrigger data-testid="select-app-date-day">
+              <SelectValue placeholder="Choose Day" />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS.map((day) => (
+                <SelectItem key={day} value={day}>{day}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("application_date_month")}
+            onValueChange={(value) => dialogForm.setValue("application_date_month", value)}
+          >
+            <SelectTrigger data-testid="select-app-date-month">
+              <SelectValue placeholder="Choose Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((month) => (
+                <SelectItem key={month} value={month}>{month}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("application_date_year")}
+            onValueChange={(value) => dialogForm.setValue("application_date_year", value)}
+          >
+            <SelectTrigger data-testid="select-app-date-year">
+              <SelectValue placeholder="Choose Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {dialogForm.formState.errors.application_date_day && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.application_date_day.message}</p>
+        )}
+      </div>
+
+      {/* TRN */}
+      <div>
+        <Label htmlFor="application_reference_number" className="mb-2 block">Application Reference Number (TRN)</Label>
+        <Input
+          id="application_reference_number"
+          {...dialogForm.register("application_reference_number")}
+          data-testid="input-trn"
+        />
+      </div>
+
+      <div className="pt-4 pb-2">
+        <h3 className="text-base font-bold text-gray-900 mb-2">Application Outcome</h3>
+        <p className="text-sm text-gray-500 mb-4">Enter details on the outcome of the Visa application</p>
+
+        <Label className="mb-2 block">Outcome</Label>
+        <Select
+          value={dialogForm.watch("outcome")}
+          onValueChange={(value) => dialogForm.setValue("outcome", value)}
+        >
+          <SelectTrigger data-testid="select-outcome">
+            <SelectValue placeholder="Choose Outcome" />
+          </SelectTrigger>
+          <SelectContent>
+            {OUTCOMES.map((status) => (
+              <SelectItem key={status} value={status}>{status}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.outcome && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.outcome.message}</p>
+        )}
+      </div>
+
+      {/* Outcome details - Granted */}
+      {outcome === "Granted" && (
+        <div className="space-y-4">
+          <div>
+            <Label className="mb-2 block">Date Granted</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Select
+                value={dialogForm.watch("date_granted_day")}
+                onValueChange={(value) => dialogForm.setValue("date_granted_day", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Day" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((day) => (
+                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogForm.watch("date_granted_month")}
+                onValueChange={(value) => dialogForm.setValue("date_granted_month", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((month) => (
+                    <SelectItem key={month} value={month}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogForm.watch("date_granted_year")}
+                onValueChange={(value) => dialogForm.setValue("date_granted_year", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {YEARS.map((year) => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Expiry Date</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Select
+                value={dialogForm.watch("expiry_date_day")}
+                onValueChange={(value) => dialogForm.setValue("expiry_date_day", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Day" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((day) => (
+                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogForm.watch("expiry_date_month")}
+                onValueChange={(value) => dialogForm.setValue("expiry_date_month", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((month) => (
+                    <SelectItem key={month} value={month}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogForm.watch("expiry_date_year")}
+                onValueChange={(value) => dialogForm.setValue("expiry_date_year", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {YEARS.map((year) => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="place_of_issue" className="mb-2 block">Place of Issue</Label>
+            <Input
+              id="place_of_issue"
+              {...dialogForm.register("place_of_issue")}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="visa_number" className="mb-2 block">Visa Number</Label>
+            <Input
+              id="visa_number"
+              {...dialogForm.register("visa_number")}
+            />
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Has this Visa ever been cancelled?</Label>
+            <RadioGroup
+              value={cancelled}
+              onValueChange={(value) => dialogForm.setValue("cancelled", value)}
+            >
+              <div className="flex gap-4">
+                {["yes", "no"].map((option) => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option} id={`cancelled-${option}`} />
+                    <Label htmlFor={`cancelled-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
+                  </div>
+                ))}
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
+      )}
+
+      {/* Decision date and details for Refused / Withdrawn, and when cancelled = yes */}
+      {(outcome === "Refused" || outcome === "Withdrawn" || cancelled === "yes") && (
+        <div className="space-y-4 pt-4">
+          <div>
+            <Label className="mb-2 block">Decision Date</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Select
+                value={dialogForm.watch("decision_date_day")}
+                onValueChange={(value) => dialogForm.setValue("decision_date_day", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Day" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((day) => (
+                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogForm.watch("decision_date_month")}
+                onValueChange={(value) => dialogForm.setValue("decision_date_month", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((month) => (
+                    <SelectItem key={month} value={month}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dialogForm.watch("decision_date_year")}
+                onValueChange={(value) => dialogForm.setValue("decision_date_year", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {YEARS.map((year) => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="decision_details" className="mb-2 block">Enter details</Label>
+            <Textarea
+              id="decision_details"
+              {...dialogForm.register("decision_details")}
+              rows={3}
+            />
+          </div>
+        </div>
+      )}
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit">{row ? "Update" : "Add"}</Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4136] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
-export default function VisasPage() {
+export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
-  const draft = useSnapshot(draftStore.draft);
-  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
+  const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
+      // If we have applicationId in store but not in URL, update URL to include it
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
-  const {
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    getValues,
-    formState: { errors, isValid },
-  } = useForm({
-    resolver: zodResolver(visasSchema),
+  const form = useForm({
     defaultValues: {
-      has_previous_visa: draft.has_previous_visa || undefined,
-      visa_history: draft.visa_history || [],
+      has_aus_visa_history: "",
+      visa_history: [],
     },
   });
 
-  const hasPreviousVisa = watch("has_previous_visa");
-  const visaHistory = watch("visa_history") || [];
-  const watchedValues = watch();
+  const hasAusVisaHistory = form.watch("has_aus_visa_history");
+  const visaHistory = form.watch("visa_history") || [];
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      draftStore.saveDraft(watchedValues);
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [watchedValues]);
+    const savedData = draftSnap.draft?.partner_visas || {};
+    if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
+      const formData = {
+        has_aus_visa_history: savedData.has_aus_visa_history || "",
+        visa_history: savedData.visa_history || [],
+      };
 
-  const updateVisaHistory = (newHistory) => {
-    setValue("visa_history", newHistory, { shouldValidate: true });
-    draftStore.saveDraft({ visa_history: newHistory });
+      form.reset(formData);
+
+      setTimeout(() => {
+        form.setValue("has_aus_visa_history", savedData.has_aus_visa_history || "");
+      }, 0);
+    }
+  }, [draftSnap.draft?.partner_visas, form]);
+
+  const onSubmit = async (data) => {
+    setIsSaving(true);
+    try {
+      await draftStore.saveSectionData("partner_visas", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/visas`, null, "partner_visas");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
 
   const handleSave = async () => {
-    const currentData = getValues();
-    const result = await draftStore.saveDraft(currentData);
-    
-    if (result.success) {
-      // Mark this page as complete
-      await draftStore.markPageComplete('partner/all-applicants/visas');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
-      toast({
-        title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
-        variant: "destructive",
-      });
+    setIsSaving(true);
+    try {
+      const values = form.getValues();
+      const result = await draftStore.saveSectionData("partner_visas", values);
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const onSubmit = (data) => {
-    draftStore.saveDraft(data);
-    draftStore.markPageComplete('partner/all-applicants/visas');
-    const next = getNextRoute(pathname, visaType);
-    if (next) router.push(next);
-  };
-
-  const visaColumns = [
-    { key: "country", label: "Country" },
-    { key: "type", label: "Type" },
-    { key: "decision_date", label: "Date" },
-    { key: "outcome", label: "Outcome" },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <Card className="border border-gray-200 shadow-sm rounded-lg">
-          <CardHeader className="px-6 py-8 border-b border-gray-200">
-            <CardTitle className="text-2xl font-semibold text-gray-900">
-              Visa History
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 py-8">
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
-                  e.preventDefault();
-                }
-              }}
-              className="space-y-8"
-            >
-              {Object.keys(errors).length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-red-800 mb-2">
-                    Please fix the following errors:
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                    {Object.entries(errors).map(([field, error]) => (
-                      <li key={field}>{error.message}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground">Visas</h1>
+          <p className="text-muted-foreground mt-2">
+            In this section you are to provide the visa history of the following included Applicants.
+          </p>
+        </div>
 
-              <Field
-                type="radio"
-                name="has_previous_visa"
-                control={control}
-                label="Have you previously applied for a visa to any country?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-              />
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
 
-              {mounted && hasPreviousVisa === "Yes" && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Visa History</h3>
-                  <p className="text-sm text-gray-600">
-                    Please provide details of all previous visa applications
-                  </p>
-                  <RepeaterTable
-                    rows={visaHistory}
-                    columns={visaColumns}
-                    onAdd={(row) => updateVisaHistory([...visaHistory, row])}
-                    onEdit={(index, row) => {
-                      const updated = [...visaHistory];
-                      updated[index] = row;
-                      updateVisaHistory(updated);
-                    }}
-                    onDelete={(index) => {
-                      const updated = visaHistory.filter((_, i) => i !== index);
-                      updateVisaHistory(updated);
-                    }}
-                    dialogForm={(row, onSubmit, onCancel) => (
-                      <VisaDialog row={row} onSubmit={onSubmit} onCancel={onCancel} />
-                    )}
-                    addButtonText="Add Visa"
-                    emptyMessage="No visas added"
-                  />
+            {/* Main question */}
+            <div className="space-y-2">
+              <Label>Has the main applicant ever previously applied for or held a Visa for Australia?</Label>
+              <RadioGroup
+                value={hasAusVisaHistory}
+                onValueChange={(value) => form.setValue("has_aus_visa_history", value)}
+              >
+                <div className="flex gap-4">
+                  {["yes", "no"].map((option) => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option} id={`aus-visa-${option}`} data-testid={`radio-aus-visa-${option}`} />
+                      <Label htmlFor={`aus-visa-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </RadioGroup>
+            </div>
 
-              <div className="hidden lg:flex justify-between items-center pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="text-gray-600 hover:text-gray-900 transition-colors"
-                  data-testid="button-previous"
-                >
-                  ← Previous
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                    data-testid="button-save-draft"
-                  >
-                    Save Draft
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!isValid}
-                    className="bg-[#285646] text-white px-6 py-2 rounded-lg hover:bg-[#1f4236] disabled:opacity-50 transition-colors"
-                    data-testid="button-continue"
-                  >
-                    Continue →
-                  </button>
-                </div>
+            {/* Visa history table (shown if Yes) */}
+            {hasAusVisaHistory === "yes" && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Visa for main applicant</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Enter details of all Australian Visas applied for or held by this person
+                </p>
+                <RepeaterTable
+                  data={visaHistory}
+                  columns={[
+                    { key: "visa_country", label: "Country" },
+                    { key: "visa_type", label: "Type" },
+                    { key: "linked_passport", label: "Linked Passport" },
+                    { key: "decision_date_year", label: "Decision Date" },
+                    { key: "outcome", label: "Outcome" },
+                    { key: "cancelled", label: "Cancelled" },
+                  ]}
+                  onAdd={(newRow) => {
+                    const updated = [...visaHistory, newRow];
+                    form.setValue("visa_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...visaHistory];
+                    updated[index] = updatedRow;
+                    form.setValue("visa_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onDelete={(index) => {
+                    const updated = visaHistory.filter((_, i) => i !== index);
+                    form.setValue("visa_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  DialogComponent={VisaDialog}
+                  addButtonText="Add Visa"
+                  testIdPrefix="visa"
+                />
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            )}
+
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              nextLabel="Continue"
+              loading={isSaving}
+            />
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ export function RepeaterTable({
   dialogTitle,
   dialogSubtitle,
   dialogClassName,
+  dialogProps = {},
 }) {
   const rows = data || [];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -174,6 +175,7 @@ export function RepeaterTable({
                 editingRow={editingIndex !== null ? rows[editingIndex] : null}
                 onSave={handleSubmit}
                 onCancel={handleCancel}
+                {...dialogProps}
               />
             )}
           </div>

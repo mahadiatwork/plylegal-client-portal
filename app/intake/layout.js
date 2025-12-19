@@ -6,7 +6,8 @@ import { draftStore } from "@/stores/draftStore";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Menu, X, ArrowLeft } from "lucide-react";
+import { Check, Menu, X, ArrowLeft, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { getIntakeRoutes, calculateProgress } from "@/lib/routes";
 import { useState, useEffect } from "react";
@@ -19,6 +20,7 @@ export default function IntakeLayout({ children }) {
   const draftSnap = useSnapshot(draftStore);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [expandedSections, setExpandedSections] = useState(new Set());
 
   // Prevent hydration mismatch by only rendering interactive elements after mount
   useEffect(() => {
@@ -79,6 +81,42 @@ export default function IntakeLayout({ children }) {
     }
     return false;
   });
+
+  // Auto-expand sections that contain the current active route
+  useEffect(() => {
+    if (mounted) {
+      // Find the section containing the current route
+      const activeSection = INTAKE_ROUTES.find((route) => {
+        if (route.href === pathname) return true;
+        if (route.subpages) {
+          return route.subpages.some((sub) => sub.href === pathname);
+        }
+        return false;
+      });
+      
+      if (activeSection && activeSection.subpages) {
+        setExpandedSections((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(activeSection.href);
+          return newSet;
+        });
+      }
+    }
+  }, [mounted, pathname]);
+
+  const toggleSection = (href) => {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(href)) {
+        newSet.delete(href);
+      } else {
+        newSet.add(href);
+      }
+      return newSet;
+    });
+  };
+
+  const isSectionExpanded = (href) => expandedSections.has(href);
 
   return (
     <div className="min-h-screen bg-background">
@@ -169,24 +207,6 @@ export default function IntakeLayout({ children }) {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Application
               </Button>
-
-              {/* Debug: Reset Progress Button */}
-              {process.env.NODE_ENV === 'development' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    if (confirm('DEBUG: Reset completion status? This will uncheck all boxes.')) {
-                      await draftStore.clearCompletionStatus();
-                      // Force reload to reflect changes
-                      window.location.reload();
-                    }
-                  }}
-                  className="mt-2 w-full justify-start text-xs text-red-500 hover:text-red-700"
-                >
-                  [Debug] Reset Progress
-                </Button>
-              )}
             </div>
 
             {/* Progress */}
@@ -206,59 +226,104 @@ export default function IntakeLayout({ children }) {
             {/* Navigation */}
             <ScrollArea className="flex-1">
               <nav className="p-4 space-y-2">
-                {INTAKE_ROUTES.map((route) => (
-                  <div key={route.href}>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        const appId = draftSnap.currentApplicationId;
-                        const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
-                        router.push(href);
-                        setSidebarOpen(false);
-                      }}
-                      className={cn(
-                        "w-full justify-start min-h-10 text-sidebar-foreground",
-                        isRouteActive(route.href) && "bg-primary/20 font-semibold",
-                        !route.subpages && isRouteCompleted(route.href) && "text-sidebar-foreground/70"
-                      )}
-                      data-testid={`nav-${route.href}`}
-                    >
-                      {isRouteCompleted(route.href) && (
-                        <Check className="w-4 h-4 mr-2" />
-                      )}
-                      {route.title}
-                    </Button>
-
-                    {route.subpages && (
-                      <div className="ml-4 mt-1 space-y-1">
-                        {route.subpages.map((subpage) => (
-                          <Button
-                            key={subpage.href}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const appId = draftSnap.currentApplicationId;
-                              const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
-                              router.push(href);
-                              setSidebarOpen(false);
-                            }}
-                            className={cn(
-                              "w-full justify-start min-h-8 text-xs text-sidebar-foreground",
-                              isRouteActive(subpage.href) && "bg-primary/20 font-semibold",
-                              isRouteCompleted(subpage.href) && "text-sidebar-foreground/70"
-                            )}
-                            data-testid={`nav-sub-${subpage.href}`}
-                          >
-                            {isRouteCompleted(subpage.href) && (
-                              <Check className="w-3 h-3 mr-2" />
-                            )}
-                            {subpage.title}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {INTAKE_ROUTES.map((route) => {
+                  const hasSubpages = route.subpages && route.subpages.length > 0;
+                  const isExpanded = isSectionExpanded(route.href);
+                  
+                  if (hasSubpages) {
+                    return (
+                      <Collapsible
+                        key={route.href}
+                        open={isExpanded}
+                        onOpenChange={() => toggleSection(route.href)}
+                      >
+                        <div className="space-y-1">
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className={cn(
+                                "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
+                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "bg-primary/20"
+                              )}
+                              data-testid={`nav-${route.href}`}
+                            >
+                              <span className="flex items-center">
+                                {isRouteCompleted(route.href) && (
+                                  <Check className="w-4 h-4 mr-2" />
+                                )}
+                                {route.title}
+                              </span>
+                              <ChevronDown
+                                className={cn(
+                                  "w-4 h-4 transition-transform duration-200",
+                                  isExpanded && "transform rotate-180"
+                                )}
+                              />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="overflow-hidden">
+                            <ul className="ml-6 mt-1 mb-1 space-y-1">
+                              {route.subpages.map((subpage) => {
+                                const isActive = isRouteActive(subpage.href);
+                                return (
+                                  <li key={subpage.href} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const appId = draftSnap.currentApplicationId;
+                                        const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
+                                        router.push(href);
+                                        setSidebarOpen(false);
+                                      }}
+                                      className={cn(
+                                        "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                        isActive 
+                                          ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20" 
+                                          : "text-sidebar-foreground",
+                                        isRouteCompleted(subpage.href) && !isActive && "text-sidebar-foreground/70"
+                                      )}
+                                      data-testid={`nav-sub-${subpage.href}`}
+                                    >
+                                      {isRouteCompleted(subpage.href) && (
+                                        <Check className="w-3 h-3 mr-2" />
+                                      )}
+                                      {subpage.title}
+                                    </Button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    );
+                  } else {
+                    return (
+                      <Button
+                        key={route.href}
+                        variant="ghost"
+                        onClick={() => {
+                          const appId = draftSnap.currentApplicationId;
+                          const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
+                          router.push(href);
+                          setSidebarOpen(false);
+                        }}
+                        className={cn(
+                          "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
+                          isRouteActive(route.href) && "bg-primary/20 font-semibold",
+                          isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                        )}
+                        data-testid={`nav-${route.href}`}
+                      >
+                        {isRouteCompleted(route.href) && (
+                          <Check className="w-4 h-4 mr-2" />
+                        )}
+                        {route.title}
+                      </Button>
+                    );
+                  }
+                })}
               </nav>
             </ScrollArea>
           </div>

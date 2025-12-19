@@ -21,31 +21,9 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-
-// Constants
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+import { COUNTRIES } from "@/reuseable/countries";
+import { monthNames } from "@/reuseable/months";
+import { DateSelector } from "@/components/DateSelecters";
 
 const QUALIFICATION_TYPES = [
   "Secondary",
@@ -68,14 +46,6 @@ const COURSE_STATUS_OPTIONS = [
   "Withdrawn",
   "Deferred"
 ];
-
-const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
 const educationHistoryDialogSchema = z.object({
   date_from_day: z.string().min(1, "Day is required"),
@@ -125,6 +95,12 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
     onSave(data);
   };
 
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dialogForm.handleSubmit(handleFormSubmit)(e);
+  };
+
   return (
     <form
       onSubmit={(e) => {
@@ -134,98 +110,36 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
       }}
       className="space-y-4"
     >
-      <div>
-        <Label>Date From</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Select
-            value={dialogForm.watch("date_from_day")}
-            onValueChange={(value) => dialogForm.setValue("date_from_day", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-date-from-day">
-              <SelectValue placeholder="Choose Day" />
-            </SelectTrigger>
-            <SelectContent>
-              {days.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_from_month")}
-            onValueChange={(value) => dialogForm.setValue("date_from_month", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-date-from-month">
-              <SelectValue placeholder="Choose Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month, idx) => (
-                <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_from_year")}
-            onValueChange={(value) => dialogForm.setValue("date_from_year", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-date-from-year">
-              <SelectValue placeholder="Choose Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {(dialogForm.formState.errors.date_from_day || dialogForm.formState.errors.date_from_month || dialogForm.formState.errors.date_from_year) && (
-          <p className="text-sm text-red-600 mt-1">Date From is required</p>
-        )}
-      </div>
+      <DateSelector
+        label="Date From"
+        values={{
+          day: dialogForm.watch("date_from_day") || "",
+          month: dialogForm.watch("date_from_month") || "",
+          year: dialogForm.watch("date_from_year") || "",
+        }}
+        onValueChange={(type, value) => {
+          const fieldName = `date_from_${type}`;
+          dialogForm.setValue(fieldName, value, { shouldValidate: true });
+        }}
+        testIdPrefix="select-date-from"
+      />
+      {(dialogForm.formState.errors.date_from_day || dialogForm.formState.errors.date_from_month || dialogForm.formState.errors.date_from_year) && (
+        <p className="text-sm text-red-600 mt-1">Date From is required</p>
+      )}
 
-      <div>
-        <Label>Date To (leave blank if ongoing)</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Select
-            value={dialogForm.watch("date_to_day")}
-            onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
-          >
-            <SelectTrigger data-testid="select-date-to-day">
-              <SelectValue placeholder="Choose Day" />
-            </SelectTrigger>
-            <SelectContent>
-              {days.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_to_month")}
-            onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
-          >
-            <SelectTrigger data-testid="select-date-to-month">
-              <SelectValue placeholder="Choose Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month, idx) => (
-                <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={dialogForm.watch("date_to_year")}
-            onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
-          >
-            <SelectTrigger data-testid="select-date-to-year">
-              <SelectValue placeholder="Choose Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <DateSelector
+        label="Date To (leave blank if ongoing)"
+        values={{
+          day: dialogForm.watch("date_to_day") || "",
+          month: dialogForm.watch("date_to_month") || "",
+          year: dialogForm.watch("date_to_year") || "",
+        }}
+        onValueChange={(type, value) => {
+          const fieldName = `date_to_${type}`;
+          dialogForm.setValue(fieldName, value);
+        }}
+        testIdPrefix="select-date-to"
+      />
 
       <div>
         <Label htmlFor="qualification_type">Qualification Type/Course Type <span className="text-red-500">*</span></Label>
@@ -395,8 +309,13 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-primary text-primary-foreground" data-testid="button-ok">
-          Ok
+        <Button
+          type="button"
+          onClick={handleSaveClick}
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          data-testid="button-ok"
+        >
+          Save
         </Button>
       </DialogFooter>
     </form>
@@ -432,34 +351,53 @@ export default function MainApplicantEducationPage() {
   // Load section data
   const sectionData = draftStore.getSectionData('mainApplicant.education');
 
-  const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
+  const form = useForm({
     resolver: zodResolver(educationSchema),
     mode: "onChange",
     defaultValues: {
-      has_education: sectionData.has_education || "No",
-      education_history: sectionData.education_history || [],
+      has_education: sectionData?.has_education || "No",
+      education_history: sectionData?.education_history || [],
     },
   });
+  const { reset } = form;
 
   // Watch form values for conditional rendering
-  const hasEducation = watch("has_education");
-  const educationHistory = watch("education_history") || [];
+  const hasEducation = form.watch("has_education");
+  const educationHistory = form.watch("education_history") || [];
 
   // Watch all form values for auto-save
-  const watchedValues = useWatch({ control });
+  const watchedValues = useWatch({ control: form.control });
+
+  // Sync form with store data once it's loaded from the database
+  useEffect(() => {
+    // Only reset if we have an ID and aren't loading
+    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
+      // Use 'keepDefaultValues: true' to prevent flickering
+      reset({
+        has_education: sectionData.has_education || "No",
+        education_history: sectionData.education_history || [],
+      }, { keepDefaultValues: true });
+    }
+  }, [draftSnap.isLoading, sectionData, reset]);
 
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
+    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
+    // Don't auto-save immediately after form reset or while loading
+    if (draftSnap.isLoading) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveSectionData('mainApplicant.education', watchedValues);
-      }
+      // Use form.getValues() to get the actual current state of all fields
+      const currentFormValues = form.getValues();
+      const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+      const mergedData = { ...existingData, ...currentFormValues };
+      
+      draftStore.saveSectionData('mainApplicant.education', mergedData);
     }, 2000);
 
     return () => {
@@ -467,7 +405,7 @@ export default function MainApplicantEducationPage() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [watchedValues, draftSnap.currentApplicationId]);
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, form]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -481,7 +419,11 @@ export default function MainApplicantEducationPage() {
 
     setIsSaving(true);
     try {
-      const result = await draftStore.saveSectionData('mainApplicant.education', data);
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+      const mergedData = { ...existingData, ...data };
+      
+      const result = await draftStore.saveSectionData('mainApplicant.education', mergedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/education');
@@ -522,14 +464,34 @@ export default function MainApplicantEducationPage() {
 
     setIsSaving(true);
     try {
-      const currentData = getValues();
-      const result = await draftStore.saveSectionData('mainApplicant.education', currentData);
+      // Trigger validation and check for errors
+      const isValid = await form.trigger();
+      
+      if (!isValid) {
+        // DEBUG: This will show you exactly what is stopping the save in the browser console
+        console.log("Validation Errors:", form.formState.errors);
+        
+        toast({
+          title: "Validation error",
+          description: "Please check the console for specific field errors.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+      const currentData = form.getValues();
+      const mergedData = { ...existingData, ...currentData };
+      
+      const result = await draftStore.saveSectionData('mainApplicant.education', mergedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/education');
         toast({
           title: "Draft saved",
-          description: "Your changes have been saved successfully.",
+          description: "Progress saved successfully.",
         });
       } else {
         toast({
@@ -539,6 +501,7 @@ export default function MainApplicantEducationPage() {
         });
       }
     } catch (error) {
+      console.error("Save Error:", error);
       toast({
         title: "Error saving draft",
         description: "An unexpected error occurred. Please try again.",
@@ -550,16 +513,23 @@ export default function MainApplicantEducationPage() {
   };
 
   const updateEducationHistory = (newHistory) => {
-    setValue("education_history", newHistory, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.education', { ...currentData, education_history: newHistory });
+    form.setValue("education_history", newHistory, { shouldValidate: true });
+    const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+    const currentData = form.getValues();
+    const mergedData = { ...existingData, ...currentData, education_history: newHistory };
+    draftStore.saveSectionData('mainApplicant.education', mergedData);
   };
+
+  // Get main applicant name for display
+  const mainApplicantDetails = draftStore.getSectionData('mainApplicant.details') || {};
+  const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
+    ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
+    : null;
 
   const educationColumns = [
     {
       key: "date_from", label: "Date From", format: (row) => {
         if (row.date_from_day && row.date_from_month && row.date_from_year) {
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIdx = parseInt(row.date_from_month) - 1;
           return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
         }
@@ -569,17 +539,16 @@ export default function MainApplicantEducationPage() {
     {
       key: "date_to", label: "Date To", format: (row) => {
         if (row.date_to_day && row.date_to_month && row.date_to_year) {
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIdx = parseInt(row.date_to_month) - 1;
           return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
         }
         return "Ongoing";
       }
     },
-    { key: "qualification_type", label: "Qualification" },
     { key: "course_name", label: "Course Name" },
-    { key: "institution_name", label: "Institution" },
+    { key: "institution_name", label: "Institution Name" },
     { key: "country", label: "Country" },
+    { key: "course_status", label: "Status" },
   ];
 
   return (
@@ -588,12 +557,12 @@ export default function MainApplicantEducationPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-semibold">Education</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            In this section, provide details about the main applicant's education.
+            In this section, provide details about the main applicant's education history.
           </p>
         </CardHeader>
         <CardContent>
           <form
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(onSubmit)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
                 e.preventDefault();
@@ -601,42 +570,41 @@ export default function MainApplicantEducationPage() {
             }}
             className="space-y-8"
           >
-            {Object.keys(errors).length > 0 && (
+            {Object.keys(form.formState.errors).length > 0 && (
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
                   Please correct the following errors:
                 </h3>
                 <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(errors).map(([field, error]) => (
+                  {Object.entries(form.formState.errors).map(([field, error]) => (
                     <li key={field}>{error.message}</li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Question 1: Have you ever undertaken or enrolled in any studies or training at secondary level or above? */}
+            {/* Question 1: Have you ever undertaken or enrolled in any education or course above secondary level? */}
             <div>
               <Field
                 type="radio"
                 name="has_education"
-                control={control}
-                label="Have you ever undertaken or enrolled in any studies or training at secondary level or above?"
+                control={form.control}
+                label="Have you ever undertaken or enrolled in any education or course above secondary level? (Including: college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)?"
                 options={[
                   { value: "Yes", label: "Yes" },
                   { value: "No", label: "No" },
                 ]}
               />
-              <p className="text-sm text-gray-600 mt-2">
-                (Includes: high school, college/vocational, university, research/thesis, specialised training, skill/trade qualifications.)
-              </p>
             </div>
 
             {/* Education History Section */}
             {hasEducation === "Yes" && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Education History for the Main Applicant{mainApplicantName ? ` (${mainApplicantName})` : ""}
+                </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all education and qualifications you have undertaken or are enrolled in above secondary level
+                  Enter details of all education and qualifications you have undertaken or are enrolled in above secondary level: (Includes: college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)
                 </p>
                 <RepeaterTable
                   data={educationHistory}
@@ -664,8 +632,8 @@ export default function MainApplicantEducationPage() {
             <FormNavigation
               onPrev={handlePrevious}
               onSave={handleSave}
-              onNext={handleSubmit(onSubmit)}
-              disabledNext={!isValid}
+              onNext={form.handleSubmit(onSubmit)}
+              disabledNext={!form.formState.isValid}
               loading={isSaving}
             />
           </form>

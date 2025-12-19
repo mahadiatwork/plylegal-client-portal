@@ -1,0 +1,657 @@
+"use client";
+
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState, useEffect, useRef } from "react";
+import { useSnapshot } from "valtio";
+import { draftStore } from "@/stores/draftStore";
+import { useToast } from "@/hooks/use-toast";
+import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormNavigation } from "@/components/FormNavigation";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/Field";
+import { COUNTRIES } from "@/reuseable/countries";
+
+const formSchema = z.object({
+  // Question: Other Names
+  has_other_names: z.enum(["yes", "no"]),
+  other_names: z.array(z.object({
+    family_name: z.string(),
+    given_names: z.string(),
+    reason_for_change: z.string(),
+    has_evidence: z.string().optional(),
+    evidence_type: z.string().optional(),
+    document_issue_day: z.string().optional(),
+    document_issue_month: z.string().optional(),
+    document_issue_year: z.string().optional(),
+    document_reference_number: z.string().optional(),
+    issuing_country: z.string().optional(),
+    issuing_state: z.string().optional(),
+    place_of_issue: z.string().optional(),
+  })).optional(),
+});
+
+const REASON_OPTIONS = [
+  "Adoption",
+  "Alternative spelling",
+  "Anglicisation of name",
+  "Birth",
+  "Cultural origins",
+  "Divorce",
+  "Gender change",
+  "Maiden name",
+  "Marriage",
+  "Name in full",
+  "Nickname",
+  "Preferred name",
+  "Prefix and/or suffix",
+  "Religious name",
+  "Reordering of name",
+  "Split or joining name",
+  "Transliteration",
+  "Truncation",
+  "Other"
+];
+
+const EVIDENCE_TYPE_OPTIONS = [
+  "Adoption papers",
+  "Deed Poll/Change of Name Certificate",
+  "Divorce Certificate",
+  "Marriage Certificate",
+  "Other Document"
+];
+
+const dialogSchema = z.object({
+  family_name: z.string().min(1, "Family name is required"),
+  given_names: z.string().min(1, "Given names are required"),
+  reason_for_change: z.string().min(1, "Reason for change is required"),
+  has_evidence: z.string(),
+  evidence_type: z.string().optional(),
+  document_issue_day: z.string().optional(),
+  document_issue_month: z.string().optional(),
+  document_issue_year: z.string().optional(),
+  document_reference_number: z.string().optional(),
+  issuing_country: z.string().optional(),
+  issuing_state: z.string().optional(),
+  place_of_issue: z.string().optional(),
+});
+
+// Other Name Dialog Component
+function OtherNameDialog({ editingRow, onSave, onCancel }) {
+  const row = editingRow;
+  const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
+  const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
+
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: row || {
+      family_name: "",
+      given_names: "",
+      reason_for_change: "",
+      has_evidence: "no",
+      evidence_type: "",
+      document_issue_day: "",
+      document_issue_month: "",
+      document_issue_year: "",
+      document_reference_number: "",
+      issuing_country: "",
+      issuing_state: "",
+      place_of_issue: "",
+    },
+  });
+
+  useEffect(() => {
+    if (row?.has_evidence !== undefined) {
+      setHasEvidence(row.has_evidence);
+      dialogForm.setValue("has_evidence", row.has_evidence);
+    }
+  }, [row, dialogForm]);
+
+  const handleFormSubmit = (data) => {
+    onSave(data);
+  };
+
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dialogForm.handleSubmit(handleFormSubmit)(e);
+  };
+
+  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
+        <Input
+          id="family_name"
+          {...dialogForm.register("family_name")}
+          data-testid="input-family-name"
+        />
+        {dialogForm.formState.errors.family_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.family_name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="given_names">Given Names <span className="text-red-500">*</span></Label>
+        <Input
+          id="given_names"
+          {...dialogForm.register("given_names")}
+          data-testid="input-given-names"
+        />
+        {dialogForm.formState.errors.given_names && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.given_names.message}</p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="reason_for_change">Reason for Change <span className="text-red-500">*</span></Label>
+        <Select
+          value={dialogForm.watch("reason_for_change")}
+          onValueChange={(value) => dialogForm.setValue("reason_for_change", value, { shouldValidate: true })}
+        >
+          <SelectTrigger data-testid="select-reason-for-change">
+            <SelectValue placeholder="Choose Reason for Change" />
+          </SelectTrigger>
+          <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+            {REASON_OPTIONS.map((reason) => (
+              <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.reason_for_change && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_change.message}</p>
+        )}
+      </div>
+
+      <div className="pt-4 border-t border-gray-200">
+        <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
+
+        <div className="mb-4">
+          <Label className="text-sm font-normal mb-2 block">
+            Do you have evidence of this Other Name?
+          </Label>
+          <RadioGroup
+            value={hasEvidence}
+            onValueChange={(value) => {
+              setHasEvidence(value);
+              dialogForm.setValue("has_evidence", value);
+            }}
+            className="flex gap-4"
+            data-testid="radio-has-evidence"
+          >
+            <div className="flex items-center" data-testid="radio-evidence-yes">
+              <RadioGroupItem value="yes" id="evidence-yes" />
+              <Label htmlFor="evidence-yes" className="ml-2 cursor-pointer font-normal">
+                Yes
+              </Label>
+            </div>
+            <div className="flex items-center" data-testid="radio-evidence-no">
+              <RadioGroupItem value="no" id="evidence-no" />
+              <Label htmlFor="evidence-no" className="ml-2 cursor-pointer font-normal">
+                No
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {hasEvidence === "yes" && (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="evidence_type">Evidence Type</Label>
+              <Select
+                value={dialogForm.watch("evidence_type")}
+                onValueChange={(value) => dialogForm.setValue("evidence_type", value)}
+              >
+                <SelectTrigger data-testid="select-evidence-type">
+                  <SelectValue placeholder="Choose Evidence Type" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {EVIDENCE_TYPE_OPTIONS.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Date of Document Issue</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Select
+                  value={dialogForm.watch("document_issue_day")}
+                  onValueChange={(value) => dialogForm.setValue("document_issue_day", value)}
+                >
+                  <SelectTrigger data-testid="select-document-day">
+                    <SelectValue placeholder="Choose Day" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                    {days.map((day) => (
+                      <SelectItem key={day} value={day}>{day}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={dialogForm.watch("document_issue_month")}
+                  onValueChange={(value) => dialogForm.setValue("document_issue_month", value)}
+                >
+                  <SelectTrigger data-testid="select-document-month">
+                    <SelectValue placeholder="Choose Month" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                    {months.map((month, idx) => (
+                      <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={dialogForm.watch("document_issue_year")}
+                  onValueChange={(value) => dialogForm.setValue("document_issue_year", value)}
+                >
+                  <SelectTrigger data-testid="select-document-year">
+                    <SelectValue placeholder="Choose Year" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="document_reference_number">Document Reference Number</Label>
+              <Input
+                id="document_reference_number"
+                {...dialogForm.register("document_reference_number")}
+                data-testid="input-document-reference"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="issuing_country">Issuing Country</Label>
+              <Select
+                value={dialogForm.watch("issuing_country")}
+                onValueChange={(value) => dialogForm.setValue("issuing_country", value)}
+              >
+                <SelectTrigger data-testid="select-issuing-country">
+                  <SelectValue placeholder="Choose country" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="issuing_state">Issuing State / Province</Label>
+              <Input
+                id="issuing_state"
+                {...dialogForm.register("issuing_state")}
+                data-testid="input-issuing-state"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="place_of_issue">Place of Issue / Issuing Authority</Label>
+              <Input
+                id="place_of_issue"
+                {...dialogForm.register("place_of_issue")}
+                data-testid="input-place-of-issue"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          data-testid="button-cancel"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSaveClick}
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          data-testid="button-ok"
+        >
+          Ok
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+export default function FamilySponsorOtherPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const visaType = getVisaTypeFromPath(pathname);
+  const { toast } = useToast();
+  const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef(null);
+
+  // Set application ID from URL params if available
+  useEffect(() => {
+    const appIdFromUrl = searchParams.get('applicationId');
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdFromUrl);
+      draftStore.loadDraft(appIdFromUrl);
+    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      router.replace(newUrl);
+    }
+  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      has_other_names: "no",
+      other_names: [],
+    },
+  });
+
+  // Watch form values
+  const hasOtherNames = form.watch("has_other_names");
+  const otherNames = form.watch("other_names") || [];
+  
+  // Watch all form values for auto-save
+  const watchedValues = useWatch({ control: form.control });
+
+  // Load section data from familySponsor.details
+  const sectionData = draftStore.getSectionData('familySponsor.details');
+
+  // Populate Form
+  useEffect(() => {
+    const savedData = sectionData;
+
+    // Only reset if we actually have data, and form is not dirty
+    if (!draftSnap.isLoading && savedData && Object.keys(savedData).length > 0 && !form.formState.isDirty) {
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+      const formData = {
+        has_other_names: safeStr(savedData.has_other_names) || "no",
+        other_names: savedData.other_names || [],
+      };
+
+      form.reset(formData, { keepDefaultValues: true });
+    }
+  }, [draftSnap.isLoading, sectionData, form]);
+
+  const onSubmit = async (data) => {
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Error",
+        description: "Application ID required. Please return to the applications page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('familySponsor.details') || {};
+      const mergedData = { ...existingData, ...data };
+      
+      const result = await draftStore.saveSectionData("familySponsor.details", mergedData);
+      
+      if (result.success) {
+        await draftStore.markPageComplete('partner/family-sponsor/other', null, 'familySponsor.details');
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving draft",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
+  };
+
+  const handlePrevious = () => {
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    if (prev) router.push(prev);
+  };
+
+  const handleSave = async () => {
+    // Clear auto-save timeout to prevent race condition with manual save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        console.error('[FamilySponsorOtherPage] Validation failed:', form.formState.errors);
+        toast({
+          title: "Validation error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('familySponsor.details') || {};
+      const values = form.getValues();
+      const mergedData = { ...existingData, ...values };
+      
+      const result = await draftStore.saveSectionData("familySponsor.details", mergedData);
+      if (result.success) {
+        await draftStore.markPageComplete('partner/family-sponsor/other', null, 'familySponsor.details');
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to save draft",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Auto-save form data when it changes (with debounce)
+  useEffect(() => {
+    if (!draftSnap.currentApplicationId) {
+      console.warn('[FamilySponsorOtherPage] Auto-save skipped: currentApplicationId is missing');
+      return;
+    }
+    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
+    // Don't auto-save immediately after form reset or while loading
+    if (draftSnap.isLoading) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      // Merge with existing section data
+      const existingData = draftStore.getSectionData('familySponsor.details') || {};
+      const currentFormValues = form.getValues();
+      const mergedData = { ...existingData, ...currentFormValues };
+      draftStore.saveSectionData("familySponsor.details", mergedData);
+    }, 2000); // Debounce: save 2 seconds after last change
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, form]);
+
+  // Update the synchronization logic for other_names
+  const updateOtherNames = (newNames) => {
+    form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    
+    // Clear auto-save timeout to prevent race condition
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    
+    // Merge with existing section data
+    const existingData = draftStore.getSectionData('familySponsor.details') || {};
+    const currentValues = form.getValues();
+    draftStore.saveSectionData("familySponsor.details", { 
+      ...existingData,
+      ...currentValues,
+      other_names: newNames // Pass the new array explicitly
+    });
+  };
+
+  const otherNameColumns = [
+    { key: "family_name", label: "Family Name" },
+    { key: "given_names", label: "Given Names" },
+    { key: "reason_for_change", label: "Reason for Change" },
+  ];
+
+  return (
+    <>
+      <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Other Personal Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-red-800 mb-2">
+                  Please correct the following errors:
+                </h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                  {Object.entries(form.formState.errors).map(([field, error]) => (
+                    <li key={field}>{error.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div>
+              <p className="text-sm text-gray-700 mb-4">
+                In this section, provide additional details about your Family Sponsor.
+              </p>
+            </div>
+
+            {/* Question: Other Names */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Has your sponsor ever had or been known by any other Name or Alias, or had a different name spelling?
+                </Label>
+                <RadioGroup
+                  value={form.watch("has_other_names")}
+                  onValueChange={(value) => form.setValue("has_other_names", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-has-other-names"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
+                    <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
+                    <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.has_other_names?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
+                )}
+              </div>
+
+              {hasOtherNames === "yes" && (
+                <div className="pl-0 mt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Enter details of the other names your Sponsor has been known by, including names before marriage
+                  </p>
+                  <RepeaterTable
+                    data={otherNames}
+                    columns={otherNameColumns}
+                    onAdd={(row) => updateOtherNames([...otherNames, row])}
+                    onEdit={(index, row) => {
+                      const updated = [...otherNames];
+                      updated[index] = row;
+                      updateOtherNames(updated);
+                    }}
+                    onDelete={(index) => {
+                      const updated = otherNames.filter((_, i) => i !== index);
+                      updateOtherNames(updated);
+                    }}
+                    DialogComponent={OtherNameDialog}
+                    addButtonText="Add"
+                    emptyMessage="No other names added"
+                    dialogTitle="Other Name"
+                    testIdPrefix="other-name"
+                  />
+                </div>
+              )}
+            </div>
+
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              nextLabel="Continue"
+              disabledNext={!form.formState.isValid}
+              loading={isSaving}
+            />
+          </form>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+

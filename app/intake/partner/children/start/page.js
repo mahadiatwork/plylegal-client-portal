@@ -13,12 +13,10 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { DateSelector } from "@/components/DateSelecters";
 import { childrenSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -27,14 +25,6 @@ const RELATIONSHIP_OPTIONS = [
   "Step Child",
   "Adopted Child"
 ];
-
-const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
 const childDialogSchema = z.object({
   family_name: z.string().min(1, "Family Name is required"),
@@ -88,7 +78,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
         relationship_to_spouse: "",
       });
     }
-  }, [editingRow]);
+  }, [editingRow, dialogForm]);
 
   const handleFormSubmit = (data) => {
     onSave(data);
@@ -105,146 +95,85 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
     >
       <div>
         <Label className="mb-2 block font-semibold">Personal Details</Label>
-            <div className="space-y-4 mt-4">
-              <div>
-                <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
-                <Input
-                  id="family_name"
-                  {...dialogForm.register("family_name")}
-                  data-testid="input-family-name"
-                />
-                {dialogForm.formState.errors.family_name && (
-                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.family_name.message}</p>
-                )}
-              </div>
+        <div className="space-y-4 mt-4">
+          <Field
+            type="text"
+            name="family_name"
+            control={dialogForm.control}
+            label="Family Name"
+            required
+            data-testid="input-family-name"
+          />
 
-              <div>
-                <Label htmlFor="given_names">Given Names <span className="text-red-500">*</span></Label>
-                <Input
-                  id="given_names"
-                  {...dialogForm.register("given_names")}
-                  data-testid="input-given-names"
-                />
-                {dialogForm.formState.errors.given_names && (
-                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.given_names.message}</p>
-                )}
-              </div>
+          <Field
+            type="text"
+            name="given_names"
+            control={dialogForm.control}
+            label="Given Names"
+            required
+            data-testid="input-given-names"
+          />
 
-              <div>
-                <Label>Gender <span className="text-red-500">*</span></Label>
-                <RadioGroup
-                  value={dialogForm.watch("gender")}
-                  onValueChange={(value) => dialogForm.setValue("gender", value, { shouldValidate: true })}
-                  className="flex gap-4 mt-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Male" id="gender-male" />
-                    <Label htmlFor="gender-male" className="cursor-pointer">Male</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Female" id="gender-female" />
-                    <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
-                  </div>
-                </RadioGroup>
-                {dialogForm.formState.errors.gender && (
-                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
-                )}
-              </div>
+          <Field
+            type="radio"
+            name="gender"
+            control={dialogForm.control}
+            label="Gender"
+            required
+            options={[
+              { value: "Male", label: "Male" },
+              { value: "Female", label: "Female" },
+            ]}
+          />
 
-              <div>
-                <Label>Date of Birth <span className="text-red-500">*</span></Label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  <Select
-                    value={dialogForm.watch("birth_day")}
-                    onValueChange={(value) => dialogForm.setValue("birth_day", value, { shouldValidate: true })}
-                  >
-                    <SelectTrigger data-testid="select-birth-day">
-                      <SelectValue placeholder="Choose Day" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[100]">
-                      {days.map((day) => (
-                        <SelectItem key={day} value={day}>{day}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={dialogForm.watch("birth_month")}
-                    onValueChange={(value) => dialogForm.setValue("birth_month", value, { shouldValidate: true })}
-                  >
-                    <SelectTrigger data-testid="select-birth-month">
-                      <SelectValue placeholder="Choose Month" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[100]">
-                      {months.map((month, idx) => (
-                        <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={dialogForm.watch("birth_year")}
-                    onValueChange={(value) => dialogForm.setValue("birth_year", value, { shouldValidate: true })}
-                  >
-                    <SelectTrigger data-testid="select-birth-year">
-                      <SelectValue placeholder="Choose Year" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[100]">
-                      {years.map((year) => (
-                        <SelectItem key={year} value={year}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {(dialogForm.formState.errors.birth_day || dialogForm.formState.errors.birth_month || dialogForm.formState.errors.birth_year) && (
-                  <p className="text-sm text-red-600 mt-1">Date of Birth is required</p>
-                )}
-              </div>
-            </div>
-          </div>
+          <DateSelector
+            label="Date of Birth"
+            required
+            values={{
+              day: dialogForm.watch("birth_day") || "",
+              month: dialogForm.watch("birth_month") || "",
+              year: dialogForm.watch("birth_year") || "",
+            }}
+            onValueChange={(type, value) => {
+              const fieldName = `birth_${type}`;
+              dialogForm.setValue(fieldName, value, { shouldValidate: true });
+            }}
+            errors={{
+              day: dialogForm.formState.errors.birth_day,
+              month: dialogForm.formState.errors.birth_month,
+              year: dialogForm.formState.errors.birth_year,
+            }}
+            testIdPrefix="select-birth"
+          />
+        </div>
+      </div>
 
-          <div>
-            <Label className="mb-2 block font-semibold">Relationship Details</Label>
-            <div className="mt-4 space-y-4">
-              <div>
-                <Label htmlFor="relationship">This person is the Main Applicant ({mainApplicantName})'s: <span className="text-red-500">*</span></Label>
-                <Select
-                  value={dialogForm.watch("relationship")}
-                  onValueChange={(value) => dialogForm.setValue("relationship", value, { shouldValidate: true })}
-                >
-                  <SelectTrigger data-testid="select-relationship">
-                    <SelectValue placeholder="Choose Relationship" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="z-[100]">
-                    {RELATIONSHIP_OPTIONS.map((rel) => (
-                      <SelectItem key={rel} value={rel}>{rel}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {dialogForm.formState.errors.relationship && (
-                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship.message}</p>
-                )}
-              </div>
-              
-              <div>
-                <Label htmlFor="relationship_to_spouse">This person is {spouseName}'s: <span className="text-red-500">*</span></Label>
-                <Select
-                  value={dialogForm.watch("relationship_to_spouse")}
-                  onValueChange={(value) => dialogForm.setValue("relationship_to_spouse", value, { shouldValidate: true })}
-                >
-                  <SelectTrigger data-testid="select-relationship-to-spouse">
-                    <SelectValue placeholder="Choose Relationship" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="z-[100]">
-                    {RELATIONSHIP_OPTIONS.map((rel) => (
-                      <SelectItem key={rel} value={rel}>{rel}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {dialogForm.formState.errors.relationship_to_spouse && (
-                  <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship_to_spouse.message}</p>
-                )}
-              </div>
-            </div>
-          </div>
+      <div>
+        <Label className="mb-2 block font-semibold">Relationship Details</Label>
+        <div className="mt-4 space-y-4">
+          <Field
+            type="select"
+            name="relationship"
+            control={dialogForm.control}
+            label={`This person is the Main Applicant (${mainApplicantName})'s:`}
+            required
+            options={RELATIONSHIP_OPTIONS.map(rel => ({ value: rel, label: rel }))}
+            placeholder="Choose Relationship"
+            data-testid="select-relationship"
+          />
+          
+          <Field
+            type="select"
+            name="relationship_to_spouse"
+            control={dialogForm.control}
+            label={`This person is ${spouseName}'s:`}
+            required
+            options={RELATIONSHIP_OPTIONS.map(rel => ({ value: rel, label: rel }))}
+            placeholder="Choose Relationship"
+            data-testid="select-relationship-to-spouse"
+          />
+        </div>
+      </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
@@ -286,17 +215,24 @@ export default function ChildrenStartPage() {
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
-  // Load section data
-  const sectionData = draftStore.getSectionData('children.details');
+  // Load section data from mainApplicant.family (the correct database path)
+  const familyData = draftStore.getSectionData('mainApplicant.family');
+  
+  // Map database field (has_children) to form field (has_children_joint)
+  const effectiveChildren = familyData?.children || [];
+  const effectiveHasChildren = familyData?.has_children || "";
 
-  const { control, handleSubmit, watch, setValue, getValues, reset, formState: { errors, isValid } } = useForm({
+  const form = useForm({
     resolver: zodResolver(childrenSchema),
     mode: "onChange",
     defaultValues: {
-      has_children_joint: sectionData.has_children_joint || "",
-      children: sectionData.children || [],
+      has_children_joint: effectiveHasChildren,
+      children: effectiveChildren,
     },
   });
+
+  const { control, handleSubmit, watch, setValue, getValues, reset, formState: { errors, isValid, isDirty } } = form;
+  const saveTimeoutRef = useRef(null);
 
   const hasChildrenJoint = watch("has_children_joint");
   const children = watch("children") || [];
@@ -304,36 +240,57 @@ export default function ChildrenStartPage() {
   // Watch all form values for auto-save
   const watchedValues = useWatch({ control });
 
-  // Reset form when section data loads
+  // Sync form with store data once it's loaded from the database
   useEffect(() => {
-    if (sectionData && draftSnap.currentApplicationId) {
-      reset({
-        has_children_joint: sectionData.has_children_joint || "",
-        children: sectionData.children || [],
-      });
+    // Only reset if we have an ID, aren't loading, and form is not dirty
+    // This prevents overwriting user input immediately after a save
+    const hasData = familyData && (familyData.children?.length > 0 || familyData.has_children);
+    
+    if (!draftSnap.isLoading && hasData && !isDirty) {
+      // Map database field (has_children) to form field (has_children_joint)
+      const resetData = {
+        has_children_joint: familyData.has_children || "",
+        children: familyData.children || [],
+      };
+      
+      reset(resetData, { keepDefaultValues: true });
     }
-  }, [draftSnap.currentApplicationId, JSON.stringify(sectionData?.children), sectionData?.has_children_joint, reset]);
+  }, [draftSnap.isLoading, familyData, reset, isDirty]);
 
   // Auto-save form data with debounce
   useEffect(() => {
-    if (!draftSnap.currentApplicationId) return;
+    if (!draftSnap.currentApplicationId) {
+      console.warn('[ChildrenStartPage] Auto-save skipped: currentApplicationId is missing');
+      return;
+    }
 
-    const timeoutId = setTimeout(() => {
-      if (watchedValues && Object.keys(watchedValues).length > 0) {
-        // Get existing section data to preserve any other fields
-        const existingData = draftStore.getSectionData('children.details') || {};
-        
-        // Merge existing data with watched values to preserve all fields
-        const finalData = {
-          ...existingData, // Preserve any existing fields
-          ...watchedValues, // Override with current form values
-        };
-        
-        draftStore.saveSectionData('children.details', finalData);
-      }
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      // Use form.getValues() to get the actual current state of all fields
+      const currentFormValues = form.getValues();
+      const existingData = draftStore.getSectionData('mainApplicant.family') || {};
+      
+      // Map form field (has_children_joint) to database field (has_children)
+      // Remove has_children_joint to keep database clean
+      const { has_children_joint, ...formDataWithoutJoint } = currentFormValues;
+      const mappedData = {
+        ...existingData,
+        has_children: has_children_joint || "", // Map to correct database field
+        children: formDataWithoutJoint.children || [],
+      };
+      
+      draftStore.saveSectionData('mainApplicant.family', mappedData);
     }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [watchedValues, draftSnap.currentApplicationId]);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [watchedValues, draftSnap.currentApplicationId, form]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -348,15 +305,18 @@ export default function ChildrenStartPage() {
     setIsSaving(true);
     try {
       // Get existing section data to preserve any other fields
-      const existingData = draftStore.getSectionData('children.details') || {};
+      const existingData = draftStore.getSectionData('mainApplicant.family') || {};
       
-      // Merge existing data with form submission data to preserve all fields
-      const finalData = {
+      // Map form field (has_children_joint) to database field (has_children)
+      // Remove has_children_joint to keep database clean
+      const { has_children_joint, ...formDataWithoutJoint } = data;
+      const mappedData = {
         ...existingData, // Preserve any existing fields
-        ...data, // Override with form data
+        has_children: has_children_joint || "", // Map to correct database field
+        children: formDataWithoutJoint.children || [],
       };
       
-      const result = await draftStore.saveSectionData('children.details', finalData);
+      const result = await draftStore.saveSectionData('mainApplicant.family', mappedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/children/start');
@@ -397,26 +357,36 @@ export default function ChildrenStartPage() {
 
     setIsSaving(true);
     try {
-      // Get existing section data to preserve any other fields
-      const existingData = draftStore.getSectionData('children.details') || {};
+      // Trigger validation and check for errors
+      const isValid = await form.trigger();
       
-      // Use watched values which are always current, or fallback to getValues()
-      const dataToSave = watchedValues && Object.keys(watchedValues).length > 0 
-        ? watchedValues 
-        : getValues();
+      if (!isValid) {
+        // DEBUG: Log validation errors to console for debugging
+        console.error('[ChildrenStartPage] Validation failed:', form.formState.errors);
+        console.log('[ChildrenStartPage] Form values:', form.getValues());
+        
+        toast({
+          title: "Validation error",
+          description: "Please check the console for specific field errors.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const currentData = form.getValues();
+      const existingData = draftStore.getSectionData('mainApplicant.family') || {};
       
-      // Merge existing data with current form values to preserve all fields
-      const finalData = {
+      // Map form field (has_children_joint) to database field (has_children)
+      // Remove has_children_joint to keep database clean
+      const { has_children_joint, ...formDataWithoutJoint } = currentData;
+      const mappedData = {
         ...existingData, // Preserve any existing fields
-        has_children_joint: dataToSave.has_children_joint !== undefined 
-          ? dataToSave.has_children_joint 
-          : watch("has_children_joint") || existingData.has_children_joint || "",
-        children: dataToSave.children !== undefined 
-          ? dataToSave.children 
-          : watch("children") || existingData.children || [],
+        has_children: has_children_joint || "", // Map to correct database field
+        children: formDataWithoutJoint.children || [],
       };
       
-      const result = await draftStore.saveSectionData('children.details', finalData);
+      const result = await draftStore.saveSectionData('mainApplicant.family', mappedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/children/start');
@@ -432,6 +402,7 @@ export default function ChildrenStartPage() {
         });
       }
     } catch (error) {
+      console.error("Save Error:", error);
       toast({
         title: "Error saving draft",
         description: "An unexpected error occurred. Please try again.",
@@ -443,6 +414,12 @@ export default function ChildrenStartPage() {
   };
 
   const handleAddChild = async (child) => {
+    // Clear auto-save timeout to prevent race condition with manual save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -458,16 +435,18 @@ export default function ChildrenStartPage() {
     
     try {
       // Get existing section data to preserve any other fields
-      const existingData = draftStore.getSectionData('children.details') || {};
+      const existingData = draftStore.getSectionData('mainApplicant.family') || {};
       
-      // Merge existing data with current form data and updated children
-      const finalData = {
+      // Map form field (has_children_joint) to database field (has_children)
+      // Remove has_children_joint to keep database clean
+      const { has_children_joint, ...formDataWithoutJoint } = currentData;
+      const mappedData = {
         ...existingData, // Preserve any existing fields
-        ...currentData, // Include current form values
+        has_children: has_children_joint || "", // Map to correct database field
         children: updatedChildren, // Override with updated children array
       };
       
-      const result = await draftStore.saveSectionData('children.details', finalData);
+      const result = await draftStore.saveSectionData('mainApplicant.family', mappedData);
       if (!result.success) {
         toast({
           title: "Error saving",
@@ -485,6 +464,12 @@ export default function ChildrenStartPage() {
   };
 
   const handleEditChild = async (index, child) => {
+    // Clear auto-save timeout to prevent race condition with manual save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -501,16 +486,18 @@ export default function ChildrenStartPage() {
     
     try {
       // Get existing section data to preserve any other fields
-      const existingData = draftStore.getSectionData('children.details') || {};
+      const existingData = draftStore.getSectionData('mainApplicant.family') || {};
       
-      // Merge existing data with current form data and updated children
-      const finalData = {
+      // Map form field (has_children_joint) to database field (has_children)
+      // Remove has_children_joint to keep database clean
+      const { has_children_joint, ...formDataWithoutJoint } = currentData;
+      const mappedData = {
         ...existingData, // Preserve any existing fields
-        ...currentData, // Include current form values
+        has_children: has_children_joint || "", // Map to correct database field
         children: updatedChildren, // Override with updated children array
       };
       
-      const result = await draftStore.saveSectionData('children.details', finalData);
+      const result = await draftStore.saveSectionData('mainApplicant.family', mappedData);
       if (!result.success) {
         toast({
           title: "Error saving",
@@ -528,6 +515,12 @@ export default function ChildrenStartPage() {
   };
 
   const handleDeleteChild = async (index) => {
+    // Clear auto-save timeout to prevent race condition with manual save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     if (!draftSnap.currentApplicationId) {
       toast({
         title: "Error",
@@ -543,16 +536,18 @@ export default function ChildrenStartPage() {
     
     try {
       // Get existing section data to preserve any other fields
-      const existingData = draftStore.getSectionData('children.details') || {};
+      const existingData = draftStore.getSectionData('mainApplicant.family') || {};
       
-      // Merge existing data with current form data and updated children
-      const finalData = {
+      // Map form field (has_children_joint) to database field (has_children)
+      // Remove has_children_joint to keep database clean
+      const { has_children_joint, ...formDataWithoutJoint } = currentData;
+      const mappedData = {
         ...existingData, // Preserve any existing fields
-        ...currentData, // Include current form values
+        has_children: has_children_joint || "", // Map to correct database field
         children: updatedChildren, // Override with updated children array
       };
       
-      const result = await draftStore.saveSectionData('children.details', finalData);
+      const result = await draftStore.saveSectionData('mainApplicant.family', mappedData);
       if (!result.success) {
         toast({
           title: "Error saving",

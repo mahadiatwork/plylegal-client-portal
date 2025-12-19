@@ -52,6 +52,12 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
     onSave(data);
   };
 
+  const handleSaveClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dialogForm.handleSubmit(handleFormSubmit)(e);
+  };
+
   return (
     <form
       onSubmit={(e) => {
@@ -115,8 +121,13 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-primary text-primary-foreground" data-testid="button-ok">
-          Ok
+        <Button
+          type="button"
+          onClick={handleSaveClick}
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          data-testid="button-ok"
+        >
+          Save
         </Button>
       </DialogFooter>
     </form>
@@ -151,33 +162,52 @@ export default function MainApplicantLanguagePage() {
   // Load section data
   const sectionData = draftStore.getSectionData('mainApplicant.language');
 
-  const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
+  const form = useForm({
     resolver: zodResolver(languageSchema),
     mode: "onChange",
     defaultValues: {
-      is_english_main: sectionData.is_english_main || "",
-      languages: sectionData.languages || [],
+      is_english_main: sectionData?.is_english_main || "",
+      languages: sectionData?.languages || [],
     },
   });
+  const { reset } = form;
 
   // Watch form values
-  const languages = watch("languages") || [];
+  const languages = form.watch("languages") || [];
 
   // Watch all form values for auto-save
-  const watchedValues = useWatch({ control });
+  const watchedValues = useWatch({ control: form.control });
+
+  // Sync form with store data once it's loaded from the database
+  useEffect(() => {
+    // Only reset if we have an ID and aren't loading
+    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
+      // Use 'keepDefaultValues: true' to prevent flickering
+      reset({
+        is_english_main: sectionData.is_english_main || "",
+        languages: sectionData.languages || [],
+      }, { keepDefaultValues: true });
+    }
+  }, [draftSnap.isLoading, sectionData, reset]);
 
   // Auto-save form data with debounce
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
+    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
+    // Don't auto-save immediately after form reset or while loading
+    if (draftSnap.isLoading) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
     saveTimeoutRef.current = setTimeout(() => {
-      if (watchedValues && Object.keys(watchedValues).length > 0) {
-        draftStore.saveSectionData('mainApplicant.language', watchedValues);
-      }
+      // Use form.getValues() to get the actual current state of all fields
+      const currentFormValues = form.getValues();
+      const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+      const mergedData = { ...existingData, ...currentFormValues };
+      
+      draftStore.saveSectionData('mainApplicant.language', mergedData);
     }, 2000);
 
     return () => {
@@ -185,7 +215,7 @@ export default function MainApplicantLanguagePage() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [watchedValues, draftSnap.currentApplicationId]);
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, form]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -199,7 +229,11 @@ export default function MainApplicantLanguagePage() {
 
     setIsSaving(true);
     try {
-      const result = await draftStore.saveSectionData('mainApplicant.language', data);
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+      const mergedData = { ...existingData, ...data };
+      
+      const result = await draftStore.saveSectionData('mainApplicant.language', mergedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/language');
@@ -240,14 +274,34 @@ export default function MainApplicantLanguagePage() {
 
     setIsSaving(true);
     try {
-      const currentData = getValues();
-      const result = await draftStore.saveSectionData('mainApplicant.language', currentData);
+      // Trigger validation and check for errors
+      const isValid = await form.trigger();
+      
+      if (!isValid) {
+        // DEBUG: This will show you exactly what is stopping the save in the browser console
+        console.log("Validation Errors:", form.formState.errors);
+        
+        toast({
+          title: "Validation error",
+          description: "Please check the console for specific field errors.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Merge with existing section data to preserve other fields
+      const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+      const currentData = form.getValues();
+      const mergedData = { ...existingData, ...currentData };
+      
+      const result = await draftStore.saveSectionData('mainApplicant.language', mergedData);
 
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/language');
         toast({
           title: "Draft saved",
-          description: "Your changes have been saved successfully.",
+          description: "Progress saved successfully.",
         });
       } else {
         toast({
@@ -257,6 +311,7 @@ export default function MainApplicantLanguagePage() {
         });
       }
     } catch (error) {
+      console.error("Save Error:", error);
       toast({
         title: "Error saving draft",
         description: "An unexpected error occurred. Please try again.",
@@ -268,9 +323,11 @@ export default function MainApplicantLanguagePage() {
   };
 
   const updateLanguages = (newLanguages) => {
-    setValue("languages", newLanguages, { shouldValidate: true });
-    const currentData = getValues();
-    draftStore.saveSectionData('mainApplicant.language', { ...currentData, languages: newLanguages });
+    form.setValue("languages", newLanguages, { shouldValidate: true });
+    const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+    const currentData = form.getValues();
+    const mergedData = { ...existingData, ...currentData, languages: newLanguages };
+    draftStore.saveSectionData('mainApplicant.language', mergedData);
   };
 
   const languageColumns = [
@@ -294,7 +351,7 @@ export default function MainApplicantLanguagePage() {
         </CardHeader>
         <CardContent>
           <form
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(onSubmit)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
                 e.preventDefault();
@@ -302,13 +359,13 @@ export default function MainApplicantLanguagePage() {
             }}
             className="space-y-8"
           >
-            {Object.keys(errors).length > 0 && (
+            {Object.keys(form.formState.errors).length > 0 && (
               <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-red-800 mb-2">
                   Please correct the following errors:
                 </h3>
                 <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(errors).map(([field, error]) => (
+                  {Object.entries(form.formState.errors).map(([field, error]) => (
                     <li key={field}>{error.message}</li>
                   ))}
                 </ul>
@@ -320,7 +377,7 @@ export default function MainApplicantLanguagePage() {
               <Field
                 type="radio"
                 name="is_english_main"
-                control={control}
+                control={form.control}
                 label="Is the English language your main language?"
                 options={[
                   { value: "Yes", label: "Yes" },
@@ -360,8 +417,8 @@ export default function MainApplicantLanguagePage() {
             <FormNavigation
               onPrev={handlePrevious}
               onSave={handleSave}
-              onNext={handleSubmit(onSubmit)}
-              disabledNext={!isValid}
+              onNext={form.handleSubmit(onSubmit)}
+              disabledNext={!form.formState.isValid}
               loading={isSaving}
             />
           </form>
