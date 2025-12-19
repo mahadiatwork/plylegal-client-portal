@@ -217,8 +217,8 @@ importers:
         version: 3.5.4(zod@3.25.76)
     devDependencies:
       '@netlify/plugin-nextjs':
-        specifier: ^5.14.7
-        version: 5.14.7
+        specifier: ^5.15.3
+        version: 5.15.3
       '@replit/vite-plugin-cartographer':
         specifier: ^0.3.1
         version: 0.3.2
@@ -1249,8 +1249,8 @@ packages:
   '@neondatabase/serverless@0.10.4':
     resolution: {integrity: sha512-2nZuh3VUO9voBauuh+IGYRhGU/MskWHt1IuZvHcJw6GLjDgtqj/KViKo7SIrLdGLdot7vFbiRRw+BgEy3wT9HA==}
 
-  '@netlify/plugin-nextjs@5.14.7':
-    resolution: {integrity: sha512-RJRPGIlaY3M4KA6GxpOlynCPUKCVbtkHwg4ccHhoSVrHgysW3nqw1pX+FBvlBexrUl1JO2zuDFh4enRal9BpAw==}
+  '@netlify/plugin-nextjs@5.15.3':
+    resolution: {integrity: sha512-l3SicRpOy+27VTZbIhEgI89+uY+1Y3CsMZW3mfKBFC4A/sP7u33ftDZ45m6634dUcc6BnLNxPIxL6TiBdvqxOQ==}
     engines: {node: '>=18.0.0'}
 
   '@next/env@16.1.0':
@@ -5145,7 +5145,7 @@ snapshots:
     dependencies:
       '@types/pg': 8.11.6
 
-  '@netlify/plugin-nextjs@5.14.7': {}
+  '@netlify/plugin-nextjs@5.15.3': {}
 
   '@next/env@16.1.0': {}
 

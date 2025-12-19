@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev -p 5000",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start -p 5000",
     "check": "tsc",
     "db:push": "drizzle-kit push"
@@ -82,7 +82,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.14.7",
+    "@netlify/plugin-nextjs": "^5.15.3",
     "@replit/vite-plugin-cartographer": "^0.3.1",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
