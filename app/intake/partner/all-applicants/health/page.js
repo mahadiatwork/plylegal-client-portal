@@ -1793,7 +1793,7 @@ export default function Page() {
               </div>
             )}
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label>
                 Does any applicant intend to work at, or be a trainee at a Childcare Centre (including preschools and
                 creches) while in Australia?
@@ -1859,9 +1859,9 @@ export default function Page() {
                   testIdPrefix="childcare-work"
                 />
               </div>
-            )}
+            )} */}
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label>
                 Does any applicant intend to be in a Classroom situation for more than 3 months in their usual country
                 of passport in the last 5 years?
@@ -1927,7 +1927,7 @@ export default function Page() {
                   testIdPrefix="classroom-work"
                 />
               </div>
-            )}
+            )} */}
 
             {/* Tuberculosis questions */}
             <div className="space-y-2 pt-4">
@@ -2205,7 +2205,7 @@ export default function Page() {
             </div>
 
             {/* Private health insurance */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label>
                 Does any applicant hold Private Health Insurance that will cover them during their stay in Australia?
               </Label>
@@ -2270,7 +2270,7 @@ export default function Page() {
                   />
                 </div>
               )}
-            </div>
+            </div> */}
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}

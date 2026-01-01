@@ -14,38 +14,151 @@ import { useSnapshot } from "valtio";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { DateSelector } from "@/components/DateSelecters";
+import { COUNTRIES } from "@/reuseable/countries";
 
-function FutureTravelDialog({ row, onSubmit, onCancel }) {
-  const { control, handleSubmit } = useForm({
-    defaultValues: row || {
-      from_to: "",
-      start_date: "",
+const countryOptions = COUNTRIES.map((c) => ({ value: c, label: c }));
+const reasonOptions = [
+  { value: "Holiday", label: "Holiday" },
+  { value: "Business", label: "Business" },
+  { value: "Visit Family", label: "Visit Family" },
+  { value: "Work", label: "Work" },
+  { value: "Study", label: "Study" },
+  { value: "Other", label: "Other" },
+];
+
+function FutureTravelDialog({ editingRow, onSave, onCancel, applicantName }) {
+  const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+    defaultValues: editingRow || {
+      departure_date_day: "",
+      departure_date_month: "",
+      departure_date_year: "",
+      departure_country: "",
+      departure_city: "",
+      flight_number: "",
+      arrival_date_day: "",
+      arrival_date_month: "",
+      arrival_date_year: "",
+      arrival_country: "",
+      arrival_city: "",
       reason: "",
     },
   });
 
   const handleFormSubmit = (data) => {
-    onSubmit(data);
+    onSave(data);
+  };
+
+  const departureDateValues = {
+    day: watch("departure_date_day"),
+    month: watch("departure_date_month"),
+    year: watch("departure_date_year"),
+  };
+
+  const arrivalDateValues = {
+    day: watch("arrival_date_day"),
+    month: watch("arrival_date_month"),
+    year: watch("arrival_date_year"),
   };
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.stopPropagation();
-        handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
-      <Field type="text" name="from_to" control={control} label="From → To" />
-      <Field type="date" name="start_date" control={control} label="Start Date" />
-      <Field type="text" name="reason" control={control} label="Reason" />
-      <DialogFooter className="gap-2 sm:gap-2">
+    <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Departure Details</h3>
+
+        <DateSelector
+          label="Travel Start Date"
+          values={departureDateValues}
+          onValueChange={(part, value) => setValue(`departure_date_${part}`, value, { shouldValidate: true })}
+          errors={{
+            day: errors.departure_date_day,
+            month: errors.departure_date_month,
+            year: errors.departure_date_year,
+          }}
+          testIdPrefix="departure-date"
+          required
+          future
+        />
+
+        <Field
+          type="select"
+          name="departure_country"
+          control={control}
+          label={`Country the Main Applicant ${applicantName ? `(${applicantName})` : ""} will Depart From`}
+          placeholder="Choose Country"
+          options={countryOptions}
+          required
+        />
+
+        <Field
+          type="text"
+          name="departure_city"
+          control={control}
+          label="Departure City"
+          required
+        />
+
+        <Field
+          type="text"
+          name="flight_number"
+          control={control}
+          label="Flight Number/Vessel Number (if known)"
+        />
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Arrival Details</h3>
+
+        <DateSelector
+          label="Intended Arrival Date"
+          values={arrivalDateValues}
+          onValueChange={(part, value) => setValue(`arrival_date_${part}`, value, { shouldValidate: true })}
+          errors={{
+            day: errors.arrival_date_day,
+            month: errors.arrival_date_month,
+            year: errors.arrival_date_year,
+          }}
+          testIdPrefix="arrival-date"
+          required
+          future
+        />
+
+        <Field
+          type="select"
+          name="arrival_country"
+          control={control}
+          label={`Country the Main Applicant ${applicantName ? `(${applicantName})` : ""} will Arrive In`}
+          placeholder="Choose Country"
+          options={countryOptions}
+          required
+        />
+
+        <Field
+          type="text"
+          name="arrival_city"
+          control={control}
+          label="Arrival City"
+          required
+        />
+
+        <Field
+          type="select"
+          name="reason"
+          control={control}
+          label="Reason for Travel"
+          placeholder="Choose Reason"
+          options={reasonOptions}
+          required
+        />
+      </div>
+
+      <DialogFooter className="gap-2 sm:gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">{row ? "Update" : "Add"}</Button>
+        <Button type="button" onClick={handleSubmit(handleFormSubmit)}>Ok</Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -115,7 +228,7 @@ export default function FutureTravelPage() {
   const handleSave = async () => {
     const currentData = getValues();
     const result = await draftStore.saveDraft(currentData);
-    
+
     if (result.success) {
       // Mark this page as complete
       await draftStore.markPageComplete('partner/all-applicants/future-travel');
@@ -140,10 +253,20 @@ export default function FutureTravelPage() {
   };
 
   const futureTravelColumns = [
-    { key: "from_to", label: "Route" },
-    { key: "start_date", label: "Start Date" },
+    {
+      key: "route",
+      label: "Route",
+      format: (row) => `${row.departure_city || ''}, ${row.departure_country || ''} → ${row.arrival_city || ''}, ${row.arrival_country || ''}`
+    },
+    {
+      key: "departure_date",
+      label: "Departure Date",
+      format: (row) => `${row.departure_date_day}/${row.departure_date_month}/${row.departure_date_year}`
+    },
     { key: "reason", label: "Reason" },
   ];
+
+  const applicantName = (draft.details?.given_names || "") + " " + (draft.details?.family_name || "");
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -181,7 +304,7 @@ export default function FutureTravelPage() {
                 type="radio"
                 name="has_future_travel"
                 control={control}
-                label="Do you have any planned travel in the next 12 months?"
+                label="Do you have any proposed or booked travel to any Country?"
                 options={[
                   { value: "Yes", label: "Yes" },
                   { value: "No", label: "No" },
@@ -191,13 +314,13 @@ export default function FutureTravelPage() {
               {mounted && hasFutureTravel === "Yes" && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Planned Travel Details
+                    Proposed or Booked Travel
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Please provide details of any planned international travel
+                    Enter details of any proposed or booked travel to any Country
                   </p>
                   <RepeaterTable
-                    rows={futureTravel}
+                    data={futureTravel}
                     columns={futureTravelColumns}
                     onAdd={(row) => updateFutureTravel([...futureTravel, row])}
                     onEdit={(index, row) => {
@@ -209,15 +332,12 @@ export default function FutureTravelPage() {
                       const updated = futureTravel.filter((_, i) => i !== index);
                       updateFutureTravel(updated);
                     }}
-                    dialogForm={(row, onSubmit, onCancel) => (
-                      <FutureTravelDialog
-                        row={row}
-                        onSubmit={onSubmit}
-                        onCancel={onCancel}
-                      />
-                    )}
-                    addButtonText="Add Future Travel"
+                    DialogComponent={FutureTravelDialog}
+                    dialogProps={{ applicantName }}
+                    addButtonText="Add Travel"
                     emptyMessage="No future travel added"
+                    dialogTitle="Future Travel"
+                    dialogSubtitle="Enter details of any proposed or booked travel to any Country"
                   />
                 </div>
               )}

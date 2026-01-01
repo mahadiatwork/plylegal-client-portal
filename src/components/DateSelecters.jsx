@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { monthNames } from "@/reuseable/months";
 import { useState, useEffect } from "react";
 
-export function DateSelector({ label, values, onValueChange, errors, testIdPrefix, required }) {
+export function DateSelector({ label, values, onValueChange, errors, testIdPrefix, required, future = false }) {
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 
   // Use a stable date for initial render (hydration) to match server
@@ -16,9 +16,15 @@ export function DateSelector({ label, values, onValueChange, errors, testIdPrefi
     setCurrentYear(new Date().getFullYear());
   }, []);
 
-  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+  const years = future
+    ? Array.from({ length: 10 }, (_, i) => (currentYear + i).toString())
+    : Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   const hasError = errors?.day || errors?.month || errors?.year;
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div className="space-y-2">
@@ -35,7 +41,7 @@ export function DateSelector({ label, values, onValueChange, errors, testIdPrefi
             data-testid={`${testIdPrefix}-day`}
             className={hasError ? "border-red-600" : ""}
           >
-            <SelectValue placeholder="Day" />
+            <SelectValue placeholder="Choose Day" />
           </SelectTrigger>
           <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
         </Select>
@@ -46,7 +52,7 @@ export function DateSelector({ label, values, onValueChange, errors, testIdPrefi
             data-testid={`${testIdPrefix}-month`}
             className={hasError ? "border-red-600" : ""}
           >
-            <SelectValue placeholder="Month" />
+            <SelectValue placeholder="Choose Month" />
           </SelectTrigger>
           <SelectContent>
             {monthNames.map((m, i) => <SelectItem key={m} value={(i + 1).toString()}>{m}</SelectItem>)}
@@ -59,7 +65,7 @@ export function DateSelector({ label, values, onValueChange, errors, testIdPrefi
             data-testid={`${testIdPrefix}-year`}
             className={hasError ? "border-red-600" : ""}
           >
-            <SelectValue placeholder="Year" />
+            <SelectValue placeholder="Choose Year" />
           </SelectTrigger>
           <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
         </Select>

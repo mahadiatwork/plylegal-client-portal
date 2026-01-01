@@ -166,23 +166,23 @@ export const identitySchema = z.object({
   }
   return true;
 }, { message: "Statelessness explanation is required when you are not currently a citizen", path: ["stateless_explanation"] })
-.refine((data) => {
-  // If not currently a citizen, the "ever been citizen" question is required
-  if (data.citizen_of_country === "No") {
-    return data.ever_been_citizen === "Yes" || data.ever_been_citizen === "No";
-  }
-  return true;
-}, { message: "Please answer whether you have ever been a citizen", path: ["ever_been_citizen"] })
-.refine((data) => {
-  // Citizenships required if: currently a citizen OR (not currently a citizen AND ever been a citizen)
-  if (data.citizen_of_country === "Yes") {
-    return data.citizenships && data.citizenships.length > 0;
-  }
-  if (data.citizen_of_country === "No" && data.ever_been_citizen === "Yes") {
-    return data.citizenships && data.citizenships.length > 0;
-  }
-  return true;
-}, { message: "At least one citizenship is required", path: ["citizenships"] })
+  .refine((data) => {
+    // If not currently a citizen, the "ever been citizen" question is required
+    if (data.citizen_of_country === "No") {
+      return data.ever_been_citizen === "Yes" || data.ever_been_citizen === "No";
+    }
+    return true;
+  }, { message: "Please answer whether you have ever been a citizen", path: ["ever_been_citizen"] })
+  .refine((data) => {
+    // Citizenships required if: currently a citizen OR (not currently a citizen AND ever been a citizen)
+    if (data.citizen_of_country === "Yes") {
+      return data.citizenships && data.citizenships.length > 0;
+    }
+    if (data.citizen_of_country === "No" && data.ever_been_citizen === "Yes") {
+      return data.citizenships && data.citizenships.length > 0;
+    }
+    return true;
+  }, { message: "At least one citizenship is required", path: ["citizenships"] })
   .refine((data) => {
     if (data.has_passport === "Yes") {
       return data.passports && data.passports.length > 0;
@@ -379,9 +379,20 @@ export const travelHistorySchema = z.object({
 export const futureTravelSchema = z.object({
   has_future_travel: yesNoSchema.optional(),
   future_travel: z.array(z.object({
-    from_to: z.string().optional(),
-    start_date: z.string().optional(),
-    reason: z.string().optional(),
+    departure_date_day: z.string().min(1, "Day is required"),
+    departure_date_month: z.string().min(1, "Month is required"),
+    departure_date_year: z.string().min(1, "Year is required"),
+    departure_country: z.string().min(1, "Departure country is required"),
+    departure_city: z.string().min(1, "Departure city is required"),
+    flight_number: z.string().optional(),
+
+    arrival_date_day: z.string().min(1, "Day is required"),
+    arrival_date_month: z.string().min(1, "Month is required"),
+    arrival_date_year: z.string().min(1, "Year is required"),
+    arrival_country: z.string().min(1, "Arrival country is required"),
+    arrival_city: z.string().min(1, "Arrival city is required"),
+
+    reason: z.string().min(1, "Reason is required"),
   })).optional(),
 }).refine((data) => {
   if (data.has_future_travel === "Yes") {
@@ -475,6 +486,43 @@ export const characterSchema = z.object({
 // Contacts
 export const contactsSchema = z.object({
   contacts_note: z.string().optional(),
+  has_family_in_australia: yesNoSchema.optional(),
+  family_in_australia: z.array(z.object({
+    family_name: z.string().min(1, "Family name is required"),
+    given_names: z.string().min(1, "Given names are required"),
+    gender: z.enum(["Male", "Female", "Other"]).optional(),
+    relationship: z.string().min(1, "Relationship is required"),
+    nationality: z.string().min(1, "Nationality is required"),
+
+    birth_day: z.string().min(1, "Day is required"),
+    birth_month: z.string().min(1, "Month is required"),
+    birth_year: z.string().min(1, "Year is required"),
+
+    country_of_birth: z.string().min(1, "Country of birth is required"),
+    suburb_of_birth: z.string().optional(),
+    city_of_birth: z.string().optional(),
+    state_of_birth: z.string().optional(),
+
+    phone_country_code_hours: z.string().optional(),
+    phone_area_code_hours: z.string().optional(),
+    phone_number_hours: z.string().optional(),
+
+    phone_country_code_office: z.string().optional(),
+    phone_area_code_office: z.string().optional(),
+    phone_number_office: z.string().optional(),
+
+    phone_country_code_mobile: z.string().optional(),
+    phone_number_mobile: z.string().optional(),
+
+    email: z.string().email("Invalid email").optional().or(z.literal("")),
+
+    residential_address: z.string().min(1, "Address is required"),
+    residential_address_line2: z.string().optional(),
+    residential_suburb: z.string().min(1, "Suburb is required"),
+    residential_state: z.string().min(1, "State is required"),
+    residential_postcode: z.string().min(1, "Postcode is required"),
+    residential_country: z.string().min(1, "Country is required"),
+  })).optional(),
 });
 
 // Start
