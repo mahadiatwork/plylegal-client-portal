@@ -175,7 +175,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
               "Cousin",
               "Friend",
               "Other",
-            ]}
+            ].map(opt => ({ label: opt, value: opt }))}
           />
 
           <div className="space-y-2">
