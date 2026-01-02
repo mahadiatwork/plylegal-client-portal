@@ -12,6 +12,7 @@ import { useSnapshot } from "valtio";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
 import {
   Dialog,
@@ -40,7 +41,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
   const dialogSchema = z.object({
     family_name: z.string().min(1, "Family name is required"),
     given_names: z.string().min(1, "Given names are required"),
-    gender: z.enum(["Male", "Female", "Other"]).optional(),
+    gender: z.enum(["Male", "Female"]).optional(),
     relationship: z.string().min(1, "Relationship is required"),
     nationality: z.string().min(1, "Nationality is required"),
 
@@ -118,6 +119,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
     onSave(data);
   };
 
+  // inside FamilyContactDialog
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
       <div>
@@ -129,14 +131,13 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
 
       <div>
         <h4 className="font-semibold text-gray-900 mb-4">This Person's Personal Details</h4>
-
+        {/* ... (fields omitted for brevity, keeping existing) ... */}
         <div className="space-y-4">
           <Field
             control={dialogForm.control}
             name="family_name"
             label="This Person's Family Name"
           />
-
           <Field
             control={dialogForm.control}
             name="given_names"
@@ -144,48 +145,54 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
           />
 
           <div className="space-y-2">
-            <Label>This Person's Gender</Label>
+            <Label>Gender</Label>
             <RadioGroup
               value={dialogForm.watch("gender")}
               onValueChange={(val) => dialogForm.setValue("gender", val)}
               className="flex gap-4"
             >
-              {["Male", "Female", "Other"].map((option) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`gender-${option}`} />
-                  <Label htmlFor={`gender-${option}`}>{option}</Label>
-                </div>
-              ))}
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Male" id="male" />
+                <Label htmlFor="male">Male</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Female" id="female" />
+                <Label htmlFor="female">Female</Label>
+              </div>
             </RadioGroup>
           </div>
 
-          <Field
-            control={dialogForm.control}
-            name="relationship"
-            label={`This person is the Main Applicant (${mainApplicantName})'s:`}
-            type="select"
-            placeholder="Choose Relationship"
-            options={[
-              "Parent",
-              "Child",
-              "Sibling",
-              "Aunt/Uncle",
-              "Niece/Nephew",
-              "Grandparent",
-              "Cousin",
-              "Friend",
-              "Other",
-            ].map(opt => ({ label: opt, value: opt }))}
-          />
-
           <div className="space-y-2">
-            <Label>This Person's Nationality</Label>
+            <Label>Relationship to You</Label>
+            <Select
+              value={dialogForm.watch("relationship")}
+              onValueChange={(val) => dialogForm.setValue("relationship", val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Relationship" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {[
+                  "Acquaintance", "Adopted Child", "Adopted Parent", "Associate", "Child", "Child-in-Law",
+                  "Cousin", "Former Spouse/Partner", "Friend", "Grand-Child", "Grand-Parent", "Guardian",
+                  "Half-Sibling", "Niece or Nephew", "Other", "Parent", "Parent-in-Law", "Sibling",
+                  "Sister/Brother-in-Law", "Spouse/Partner", "Step-Child", "Step-Grandchild",
+                  "Step-Grandparent", "Step-Niece or Step-Nephew", "Step-Parent", "Step-Sibling",
+                  "Step-Uncle or Step-Aunt", "Uncle or Aunt", "Ward"
+                ].map((rel) => (
+                  <SelectItem key={rel} value={rel}>{rel}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Nationality</Label>
             <Select
               value={dialogForm.watch("nationality")}
               onValueChange={(val) => dialogForm.setValue("nationality", val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Choose Nationality" />
+                <SelectValue placeholder="Select Nationality" />
               </SelectTrigger>
               <SelectContent>
                 {COUNTRIES.map((c) => (
@@ -195,24 +202,36 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
             </Select>
           </div>
 
-          <DateSelector
-            label="This Person's Date of Birth"
-            values={{
-              day: dialogForm.watch("birth_day"),
-              month: dialogForm.watch("birth_month"),
-              year: dialogForm.watch("birth_year"),
-            }}
-            onValueChange={(field, val) => dialogForm.setValue(field === "day" ? "birth_day" : field === "month" ? "birth_month" : "birth_year", val)}
-          />
+          <div className="space-y-2">
+            <Label>Date of Birth</Label>
+            <DateSelector
+              values={{
+                day: dialogForm.watch("birth_day"),
+                month: dialogForm.watch("birth_month"),
+                year: dialogForm.watch("birth_year"),
+              }}
+              onValueChange={(field, value) => {
+                if (field === 'day') dialogForm.setValue("birth_day", value);
+                if (field === 'month') dialogForm.setValue("birth_month", value);
+                if (field === 'year') dialogForm.setValue("birth_year", value);
+              }}
+              errors={{
+                day: dialogForm.formState.errors.birth_day,
+                month: dialogForm.formState.errors.birth_month,
+                year: dialogForm.formState.errors.birth_year,
+              }}
+              testIdPrefix="birth-date"
+            />
+          </div>
 
           <div className="space-y-2">
-            <Label>This Person's Country of Birth</Label>
+            <Label>Country of Birth</Label>
             <Select
               value={dialogForm.watch("country_of_birth")}
               onValueChange={(val) => dialogForm.setValue("country_of_birth", val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Choose Country" />
+                <SelectValue placeholder="Select Country" />
               </SelectTrigger>
               <SelectContent>
                 {COUNTRIES.map((c) => (
@@ -225,19 +244,12 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
           <Field
             control={dialogForm.control}
             name="suburb_of_birth"
-            label="This Person's Suburb of Birth"
+            label="Town/City of Birth"
           />
-
-          <Field
-            control={dialogForm.control}
-            name="city_of_birth"
-            label="This Person's City or Town of Birth"
-          />
-
           <Field
             control={dialogForm.control}
             name="state_of_birth"
-            label="This Person's State or Province of Birth"
+            label="State/Province of Birth"
           />
         </div>
       </div>
@@ -245,40 +257,50 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
       <div>
         <h4 className="font-semibold text-gray-900 mb-4">This Person's Telephone and Email Contact</h4>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>This Person's After Hours Phone Number</Label>
-            <div className="flex gap-2">
-              <Input placeholder="Country Code" {...dialogForm.register("phone_country_code_hours")} className="w-1/3" />
-              <Input placeholder="Area Code" {...dialogForm.register("phone_area_code_hours")} className="w-1/3" />
-              <Input placeholder="Number" {...dialogForm.register("phone_number_hours")} className="w-1/3" />
-            </div>
+        <div className="space-y-2">
+          <Label>This Person's After Hours Phone Number</Label>
+          <div className="flex gap-2">
+            <CountryCodeSelect
+              value={dialogForm.watch("phone_country_code_hours")}
+              onChange={(val) => dialogForm.setValue("phone_country_code_hours", val)}
+              className="w-1/3"
+            />
+            <Input placeholder="Area Code" {...dialogForm.register("phone_area_code_hours")} className="w-1/3" />
+            <Input placeholder="Number" {...dialogForm.register("phone_number_hours")} className="w-1/3" />
           </div>
-
-          <div className="space-y-2">
-            <Label>This Person's Office Hours Phone Number</Label>
-            <div className="flex gap-2">
-              <Input placeholder="Country Code" {...dialogForm.register("phone_country_code_office")} className="w-1/3" />
-              <Input placeholder="Area Code" {...dialogForm.register("phone_area_code_office")} className="w-1/3" />
-              <Input placeholder="Number" {...dialogForm.register("phone_number_office")} className="w-1/3" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>This Person's Mobile Phone Number</Label>
-            <div className="flex gap-2">
-              <Input placeholder="Country Code" {...dialogForm.register("phone_country_code_mobile")} className="w-1/2" />
-              <Input placeholder="Number" {...dialogForm.register("phone_number_mobile")} className="w-1/2" />
-            </div>
-          </div>
-
-          <Field
-            control={dialogForm.control}
-            name="email"
-            label="This Person's Email Address"
-          />
         </div>
+
+        <div className="space-y-2">
+          <Label>This Person's Office Hours Phone Number</Label>
+          <div className="flex gap-2">
+            <CountryCodeSelect
+              value={dialogForm.watch("phone_country_code_office")}
+              onChange={(val) => dialogForm.setValue("phone_country_code_office", val)}
+              className="w-1/3"
+            />
+            <Input placeholder="Area Code" {...dialogForm.register("phone_area_code_office")} className="w-1/3" />
+            <Input placeholder="Number" {...dialogForm.register("phone_number_office")} className="w-1/3" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>This Person's Mobile Phone Number</Label>
+          <div className="flex gap-2">
+            <CountryCodeSelect
+              value={dialogForm.watch("phone_country_code_mobile")}
+              onChange={(val) => dialogForm.setValue("phone_country_code_mobile", val)}
+              className="w-1/2"
+            />
+            <Input placeholder="Number" {...dialogForm.register("phone_number_mobile")} className="w-1/2" />
+          </div>
+        </div>
+        <Field
+          control={dialogForm.control}
+          name="email"
+          label="This Person's Email Address"
+        />
       </div>
+
 
       <div>
         <h4 className="font-semibold text-gray-900 mb-4">This Person's Residential Address</h4>
@@ -330,7 +352,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">Ok</Button>
       </DialogFooter>
-    </div>
+    </div >
   );
 }
 
@@ -347,7 +369,7 @@ export default function ContactsPage() {
   const mainApplicantName = (() => {
     const main = draftStore.getSectionData('mainApplicant.details');
     if (main && main.given_names && main.family_name) {
-      return `${main.given_names} ${main.family_name}`;
+      return `${main.given_names} ${main.family_name} `;
     }
     return "Main Applicant";
   })();
@@ -360,7 +382,7 @@ export default function ContactsPage() {
       draftStore.loadDraft(appIdFromUrl);
     } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
       // If we have applicationId in store but not in URL, update URL to include it
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      const newUrl = `${pathname}?applicationId = ${draftSnap.currentApplicationId} `;
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);

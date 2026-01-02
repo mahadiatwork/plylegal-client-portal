@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -103,12 +104,12 @@ const futureAddressDialogSchema = z.object({
       });
     }
   }
-  
+
   // If any part of Date To is filled, all parts must be filled
   const hasDateToDay = data.date_to_day && data.date_to_day.trim() !== "";
   const hasDateToMonth = data.date_to_month && data.date_to_month.trim() !== "";
   const hasDateToYear = data.date_to_year && data.date_to_year.trim() !== "";
-  
+
   if (hasDateToDay || hasDateToMonth || hasDateToYear) {
     if (!hasDateToDay || !hasDateToMonth || !hasDateToYear) {
       ctx.addIssue({
@@ -128,7 +129,7 @@ const futureAddressDialogSchema = z.object({
         parseInt(data.date_to_month) - 1,
         parseInt(data.date_to_day)
       );
-      
+
       if (toDate < fromDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -143,16 +144,16 @@ const futureAddressDialogSchema = z.object({
 function FutureAddressDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const draftSnap = useSnapshot(draftStore);
-  
+
   // Get existing addresses from addresses section
   const existingAddresses = draftSnap.draft?.protection_addresses?.main_applicant_addresses || [];
-  
+
   // Format addresses for dropdown
   const addressOptions = existingAddresses.map((addr, idx) => {
     const addressStr = `${addr.address_line1 || ""}${addr.address_line2 ? `, ${addr.address_line2}` : ""}, ${addr.suburb || ""}, ${addr.state || ""} ${addr.postcode || ""}, ${addr.country || ""}`.trim();
     return { value: `address_${idx}`, label: addressStr, address: addr };
   });
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(futureAddressDialogSchema),
     defaultValues: row || {
@@ -208,7 +209,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
     } else if (data.address_line1) {
       addressDisplay = `${data.address_line1 || ""}${data.address_line2 ? `, ${data.address_line2}` : ""}, ${data.city || ""}, ${data.state || ""} ${data.postcode || ""}`.trim();
     }
-    
+
     onSave({
       ...data,
       address_display: addressDisplay,
@@ -433,9 +434,9 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
         <div>
           <Label className="mb-2 block">Office Hours Phone Number</Label>
           <div className="grid grid-cols-3 gap-2">
-            <Input
-              placeholder="Country Code"
-              {...dialogForm.register("office_hours_phone_country_code")}
+            <CountryCodeSelect
+              value={dialogForm.watch("office_hours_phone_country_code")}
+              onChange={(val) => dialogForm.setValue("office_hours_phone_country_code", val)}
               data-testid="input-office-country-code"
             />
             <Input
@@ -454,9 +455,9 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
         <div>
           <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder="Country Code"
-              {...dialogForm.register("mobile_phone_country_code")}
+            <CountryCodeSelect
+              value={dialogForm.watch("mobile_phone_country_code")}
+              onChange={(val) => dialogForm.setValue("mobile_phone_country_code", val)}
               data-testid="input-mobile-country-code"
             />
             <Input
@@ -467,7 +468,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
       </div>
-    
+
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -596,7 +597,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_future_addresses data:", formData);
       const result = await draftStore.saveSectionData("protection_future_addresses", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",

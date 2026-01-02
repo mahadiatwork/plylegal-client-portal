@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -119,7 +120,7 @@ const personalContactDialogSchema = z.object({
 function PersonalContactDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const draftSnap = useSnapshot(draftStore);
-  
+
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
@@ -179,7 +180,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       {/* Personal Details Section */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">This Person's Personal Details</h3>
-        
+
         <div>
           <Label htmlFor="family_name" className="mb-2 block">
             This Person's Family Name <span className="text-red-500">*</span>
@@ -384,13 +385,13 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       {/* Telephone and Email Contact Section */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">This Person's Telephone and Email Contact</h3>
-        
+
         <div>
           <Label className="mb-2 block">This Person's After Hours Phone Number</Label>
           <div className="grid grid-cols-3 gap-2">
-            <Input
-              placeholder="Country Code"
-              {...dialogForm.register("after_hours_phone_country_code")}
+            <CountryCodeSelect
+              value={dialogForm.watch("after_hours_phone_country_code")}
+              onChange={(val) => dialogForm.setValue("after_hours_phone_country_code", val)}
               data-testid="input-after-hours-country-code"
             />
             <Input
@@ -409,9 +410,9 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         <div>
           <Label className="mb-2 block">This Person's Office Hours Phone Number</Label>
           <div className="grid grid-cols-3 gap-2">
-            <Input
-              placeholder="Country Code"
-              {...dialogForm.register("office_hours_phone_country_code")}
+            <CountryCodeSelect
+              value={dialogForm.watch("office_hours_phone_country_code")}
+              onChange={(val) => dialogForm.setValue("office_hours_phone_country_code", val)}
               data-testid="input-office-hours-country-code"
             />
             <Input
@@ -430,9 +431,9 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         <div>
           <Label className="mb-2 block">This Person's Mobile Phone Number</Label>
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder="Country Code"
-              {...dialogForm.register("mobile_phone_country_code")}
+            <CountryCodeSelect
+              value={dialogForm.watch("mobile_phone_country_code")}
+              onChange={(val) => dialogForm.setValue("mobile_phone_country_code", val)}
               data-testid="input-mobile-country-code"
             />
             <Input
@@ -465,7 +466,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         <p className="text-sm text-gray-600">
           This must be a physical address, not a PO Box Number
         </p>
-        
+
         <div>
           <Label htmlFor="address_line1" className="mb-2 block">
             Address (including Street Number and Name) <span className="text-red-500">*</span>
@@ -690,7 +691,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_contacts data:", formData);
       const result = await draftStore.saveSectionData("protection_contacts", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -755,7 +756,7 @@ export default function Page() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-5">
                   Personal Contacts for {mainApplicantName}
                 </h2>
-                
+
                 <div>
                   <Label className="text-base font-medium mb-3 block">
                     Does {mainApplicantName} have any family (parents, siblings, children) in Australia who have not already been listed previously in this questionnaire?

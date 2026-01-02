@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -58,11 +59,11 @@ const formSchema = z.object({
   office_hours_phone_number: z.string().optional(),
   mobile_phone_country_code: z.string().optional(),
   mobile_phone_number: z.string().optional(),
-  
+
   // Question 2: Shared Email Address
   share_same_email: z.enum(["yes", "no"]).optional(),
   shared_email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  
+
   // Question 3: Shared Postal Address
   share_same_postal_address: z.enum(["yes", "no"]).optional(),
   postal_address: z.string().optional(),
@@ -73,7 +74,7 @@ const formSchema = z.object({
     const hasAfterHours = data.after_hours_phone_country_code || data.after_hours_phone_area_code || data.after_hours_phone_number;
     const hasOfficeHours = data.office_hours_phone_country_code || data.office_hours_phone_area_code || data.office_hours_phone_number;
     const hasMobile = data.mobile_phone_country_code || data.mobile_phone_number;
-    
+
     if (!hasAfterHours && !hasOfficeHours && !hasMobile) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -203,7 +204,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_contact_details data:", formData);
       const result = await draftStore.saveSectionData("protection_contact_details", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -272,9 +273,9 @@ export default function Page() {
                     <div>
                       <Label className="mb-2 block">After Hours Phone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("after_hours_phone_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("after_hours_phone_country_code")}
+                          onChange={(val) => form.setValue("after_hours_phone_country_code", val)}
                           data-testid="input-after-hours-country"
                         />
                         <Input
@@ -293,9 +294,9 @@ export default function Page() {
                     <div>
                       <Label className="mb-2 block">Office Hours Phone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("office_hours_phone_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("office_hours_phone_country_code")}
+                          onChange={(val) => form.setValue("office_hours_phone_country_code", val)}
                           data-testid="input-office-hours-country"
                         />
                         <Input
@@ -314,9 +315,9 @@ export default function Page() {
                     <div>
                       <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("mobile_phone_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("mobile_phone_country_code")}
+                          onChange={(val) => form.setValue("mobile_phone_country_code", val)}
                           data-testid="input-mobile-country"
                         />
                         <Input
@@ -410,7 +411,7 @@ export default function Page() {
                     <p className="text-sm text-gray-600">
                       Enter the current Postal Address for the Main Applicant
                     </p>
-                    
+
                     <div>
                       <Label htmlFor="postal_address" className="mb-2 block">
                         Postal Address
