@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -11,7 +12,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { futureTravelSchema } from "@/lib/validation";
 import { draftStore } from "@/stores/draftStore";
 import { useSnapshot } from "valtio";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { DateSelector } from "@/components/DateSelecters";
@@ -172,6 +173,9 @@ export default function FutureTravelPage() {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
+  const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -195,29 +199,39 @@ export default function FutureTravelPage() {
     watch,
     setValue,
     getValues,
-    formState: { errors, isValid },
+    reset,
+    formState: { errors, isValid, isDirty },
   } = useForm({
     resolver: zodResolver(futureTravelSchema),
     defaultValues: {
-      has_future_travel: draft.has_future_travel || undefined,
-      future_travel: draft.future_travel || [],
+      has_future_travel: "",
+      future_travel: [],
     },
   });
 
   const hasFutureTravel = watch("has_future_travel");
   const futureTravel = watch("future_travel") || [];
-  const watchedValues = watch();
 
+  // Load data from section when draft loads
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      draftStore.saveDraft(watchedValues);
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [watchedValues]);
+    const savedData = draftSnap.draft?.partner_future_travel || {};
+    if (Object.keys(savedData).length > 0 && !isDirty) {
+      const formData = {
+        has_future_travel: savedData.has_future_travel || "",
+        future_travel: savedData.future_travel || [],
+      };
+
+      reset(formData);
+
+      // Ensure radio value is set after reset
+      setTimeout(() => {
+        setValue("has_future_travel", savedData.has_future_travel || "");
+      }, 0);
+    }
+  }, [draftSnap.draft?.partner_future_travel, isDirty, reset, setValue]);
 
   const updateFutureTravel = (newTravel) => {
-    setValue("future_travel", newTravel, { shouldValidate: true });
-    draftStore.saveDraft({ future_travel: newTravel });
+    setValue("future_travel", newTravel, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   const handlePrevious = () => {
@@ -226,42 +240,57 @@ export default function FutureTravelPage() {
   };
 
   const handleSave = async () => {
-    const currentData = getValues();
-    const result = await draftStore.saveDraft(currentData);
-
-    if (result.success) {
-      // Mark this page as complete
-      await draftStore.markPageComplete('partner/all-applicants/future-travel');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
-      toast({
-        title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
-        variant: "destructive",
-      });
+    setIsSaving(true);
+    try {
+      const values = getValues();
+      const result = await draftStore.saveSectionData("partner_future_travel", values);
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const onSubmit = (data) => {
-    draftStore.saveDraft(data);
-    draftStore.markPageComplete('partner/all-applicants/future-travel');
-    const next = getNextRoute(pathname, visaType);
-    if (next) router.push(next);
+  const onSubmit = async (data) => {
+    setIsSaving(true);
+    try {
+      await draftStore.saveSectionData("partner_future_travel", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/future-travel`, null, "partner_future_travel");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const futureTravelColumns = [
+
     {
       key: "route",
       label: "Route",
-      format: (row) => `${row.departure_city || ''}, ${row.departure_country || ''} → ${row.arrival_city || ''}, ${row.arrival_country || ''}`
+      format: (row) => {
+        const from = [row.departure_city, row.departure_country].filter(Boolean).join(", ");
+        const to = [row.arrival_city, row.arrival_country].filter(Boolean).join(", ");
+        return from && to ? `${from} → ${to}` : (from || to || "-");
+      }
     },
     {
       key: "departure_date",
       label: "Departure Date",
-      format: (row) => `${row.departure_date_day}/${row.departure_date_month}/${row.departure_date_year}`
+      format: (row) => {
+        if (!row.departure_date_day && !row.departure_date_month && !row.departure_date_year) return "-";
+        return `${row.departure_date_day || '?'}/${row.departure_date_month || '?'}/${row.departure_date_year || '?'}`;
+      }
     },
     { key: "reason", label: "Reason" },
   ];
@@ -342,34 +371,14 @@ export default function FutureTravelPage() {
                 </div>
               )}
 
-              <div className="hidden lg:flex justify-between items-center pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="text-gray-600 hover:text-gray-900 transition-colors"
-                  data-testid="button-previous"
-                >
-                  ← Previous
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                    data-testid="button-save-draft"
-                  >
-                    Save Draft
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!isValid}
-                    className="bg-[#285646] text-white px-6 py-2 rounded-lg hover:bg-[#1f4236] disabled:opacity-50 transition-colors"
-                    data-testid="button-continue"
-                  >
-                    Continue →
-                  </button>
-                </div>
-              </div>
+              <FormNavigation
+                onPrev={handlePrevious}
+                onNext={handleSubmit(onSubmit)}
+                onSave={handleSave}
+                loading={isSaving}
+                saveLabel="Save Draft"
+                nextLabel="Continue"
+              />
             </form>
           </CardContent>
         </Card>

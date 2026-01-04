@@ -41,6 +41,7 @@ const formSchema = z.object({
   mobile_number: z.string().optional(),
 
   share_email_address: z.enum(["Yes", "No"]),
+  shared_email: z.string().optional(),
   share_postal_address: z.enum(["Yes", "No"]),
   // Postal address fields
   postal_address: z.string().optional(),
@@ -85,6 +86,7 @@ export default function Page() {
       mobile_country_code: "",
       mobile_number: "",
       share_email_address: "No",
+      shared_email: "",
       share_postal_address: "No",
       postal_address: "",
       postal_address_line2: "",
@@ -113,6 +115,7 @@ export default function Page() {
       if (savedData.mobile_number) form.setValue("mobile_number", savedData.mobile_number);
 
       if (savedData.share_email_address) form.setValue("share_email_address", savedData.share_email_address);
+      if (savedData.shared_email) form.setValue("shared_email", savedData.shared_email);
       if (savedData.share_postal_address) form.setValue("share_postal_address", savedData.share_postal_address);
       if (savedData.postal_address) form.setValue("postal_address", savedData.postal_address);
       if (savedData.postal_address_line2) form.setValue("postal_address_line2", savedData.postal_address_line2);

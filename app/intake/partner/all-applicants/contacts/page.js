@@ -9,10 +9,12 @@ import { Field } from "@/components/Field";
 import { contactsSchema } from "@/lib/validation";
 import { draftStore } from "@/stores/draftStore";
 import { useSnapshot } from "valtio";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import { FormNavigation } from "@/components/FormNavigation";
 
 import {
   Dialog,
@@ -114,6 +116,43 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
       residential_country: "",
     },
   });
+
+  // Reset form when editingRow changes (for proper prefilling when editing)
+  useEffect(() => {
+    if (editingRow) {
+      dialogForm.reset(editingRow);
+    } else {
+      dialogForm.reset({
+        family_name: "",
+        given_names: "",
+        gender: undefined,
+        relationship: "",
+        nationality: "",
+        birth_day: "",
+        birth_month: "",
+        birth_year: "",
+        country_of_birth: "",
+        suburb_of_birth: "",
+        city_of_birth: "",
+        state_of_birth: "",
+        phone_country_code_hours: "",
+        phone_area_code_hours: "",
+        phone_number_hours: "",
+        phone_country_code_office: "",
+        phone_area_code_office: "",
+        phone_number_office: "",
+        phone_country_code_mobile: "",
+        phone_number_mobile: "",
+        email: "",
+        residential_address: "",
+        residential_address_line2: "",
+        residential_suburb: "",
+        residential_state: "",
+        residential_postcode: "",
+        residential_country: "",
+      });
+    }
+  }, [editingRow, dialogForm]);
 
   const handleSubmit = (data) => {
     onSave(data);
@@ -364,6 +403,7 @@ export default function ContactsPage() {
   const draft = useSnapshot(draftStore.draft);
   const draftSnap = useSnapshot(draftStore);
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get Main Applicant Name
   const mainApplicantName = (() => {
@@ -393,29 +433,44 @@ export default function ContactsPage() {
     watch,
     setValue,
     getValues,
-    formState: { errors, isValid },
+    reset,
+    formState: { errors, isValid, isDirty },
   } = useForm({
     resolver: zodResolver(contactsSchema),
     defaultValues: {
-      contacts_note: draft.contacts_note || "",
-      has_family_in_australia: draft.has_family_in_australia || "Yes",
-      family_in_australia: draft.family_in_australia || [],
+      contacts_note: "",
+      has_family_in_australia: "Yes",
+      family_in_australia: [],
     },
   });
 
-  const watchedValues = watch();
-
+  // Load data from section when draft loads
   useEffect(() => {
-    // Should probably update draft store on change, but with delay
-    const timeoutId = setTimeout(() => {
-      // Only save simpler fields automatically or carefully sync arrays
-      // For array fields handled by RepeaterTable we might rely on the store update there?
-      // But RepeaterTable updates local form state, which triggers this watchlist.
-      // So this saves everything including arrays.
-      draftStore.saveDraft(watchedValues);
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [watchedValues]);
+    const savedData = draftSnap.draft?.partner_contacts || {};
+    if (Object.keys(savedData).length > 0 && !isDirty) {
+      const formData = {
+        contacts_note: savedData.contacts_note || "",
+        has_family_in_australia: savedData.has_family_in_australia || "Yes",
+        family_in_australia: savedData.family_in_australia || [],
+      };
+
+      reset(formData);
+
+      // Ensure radio value is set after reset
+      setTimeout(() => {
+        setValue("has_family_in_australia", savedData.has_family_in_australia || "Yes");
+      }, 0);
+    }
+  }, [draftSnap.draft?.partner_contacts, isDirty, reset, setValue]);
+
+  // Removed dangerous auto-save effect that was causing issues
+  // const watchedValues = watch();
+  // useEffect(() => {
+  //   const timeoutId = setTimeout(() => {
+  //     draftStore.saveDraft(watchedValues);
+  //   }, 2000);
+  //   return () => clearTimeout(timeoutId);
+  // }, [watchedValues]);
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
@@ -423,30 +478,37 @@ export default function ContactsPage() {
   };
 
   const handleSave = async () => {
-    const currentData = getValues();
-    const result = await draftStore.saveDraft(currentData);
-
-    if (result.success) {
-      // Mark this page as complete
-      await draftStore.markPageComplete('partner/all-applicants/contacts', null, 'contacts');
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully.",
-      });
-    } else {
-      toast({
-        title: "Error saving draft",
-        description: result.error || "Failed to save draft. Please try again.",
-        variant: "destructive",
-      });
+    setIsSaving(true);
+    try {
+      const values = getValues();
+      const result = await draftStore.saveSectionData("partner_contacts", values);
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveDraft(data);
-    await draftStore.markPageComplete('partner/all-applicants/contacts', null, 'contacts');
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSaving(true);
+    try {
+      await draftStore.saveSectionData("partner_contacts", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`, null, "partner_contacts");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -538,34 +600,14 @@ export default function ContactsPage() {
                 rows={6}
               />
 
-              <div className="hidden lg:flex justify-between items-center pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="text-gray-600 hover:text-gray-900 transition-colors"
-                  data-testid="button-previous"
-                >
-                  ← Previous
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                    data-testid="button-save-draft"
-                  >
-                    Save Draft
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!isValid}
-                    className="bg-[#285646] text-white px-6 py-2 rounded-lg hover:bg-[#1f4236] disabled:opacity-50 transition-colors"
-                    data-testid="button-continue"
-                  >
-                    Continue →
-                  </button>
-                </div>
-              </div>
+              <FormNavigation
+                onPrev={handlePrevious}
+                onNext={handleSubmit(onSubmit)}
+                onSave={handleSave}
+                loading={isSaving}
+                saveLabel="Save Draft"
+                nextLabel="Continue"
+              />
             </form>
           </CardContent>
         </Card>

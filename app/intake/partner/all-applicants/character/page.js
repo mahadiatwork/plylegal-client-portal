@@ -1786,6 +1786,12 @@ const formSchema = z.object({
   false_misleading_info_details: z.array(z.any()).optional(),
   sponsorship_payment_details: z.array(z.any()).optional(),
   people_smuggling_details: z.array(z.any()).optional(),
+  // Missing arrays for the 5 problematic questions
+  police_check_details: z.array(z.any()).optional(),
+  immigration_detention_details: z.array(z.any()).optional(),
+  psychiatric_institution_details: z.array(z.any()).optional(),
+  military_training_details: z.array(z.any()).optional(),
+  military_service_details: z.array(z.any()).optional(),
 });
 
 const GENERIC_DIALOG_CONFIG = {
@@ -1965,6 +1971,12 @@ export default function Page() {
       false_misleading_info_details: [],
       sponsorship_payment_details: [],
       people_smuggling_details: [],
+      // Missing arrays for the 5 problematic questions
+      police_check_details: [],
+      immigration_detention_details: [],
+      psychiatric_institution_details: [],
+      military_training_details: [],
+      military_service_details: [],
     },
   });
 
@@ -1996,7 +2008,7 @@ export default function Page() {
 
   const handleSave = async () => {
     const values = form.getValues();
-      const result = await draftStore.saveSectionData("partner_character", values);
+    const result = await draftStore.saveSectionData("partner_character", values);
     if (result.success) {
       toast({
         title: "Draft saved",
