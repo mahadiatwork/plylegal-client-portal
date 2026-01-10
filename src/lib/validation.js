@@ -234,7 +234,7 @@ export const otherSchema = z.object({
       });
     }
   }
-  
+
   // If use_chinese_code is Yes, require chinese_code
   if (data.use_chinese_code === "Yes") {
     if (!data.chinese_code || data.chinese_code.trim().length === 0) {
@@ -245,7 +245,7 @@ export const otherSchema = z.object({
       });
     }
   }
-  
+
   // If russian_descent is Yes, require patronymic_name fields
   if (data.russian_descent === "Yes") {
     if (!data.patronymic_name || !data.patronymic_name.family_name || !data.patronymic_name.given_names) {
@@ -256,7 +256,7 @@ export const otherSchema = z.object({
       });
     }
   }
-  
+
   // If has_prev_dob is Yes, require at least one previous DOB
   if (data.has_prev_dob === "Yes") {
     if (!data.prev_dobs || data.prev_dobs.length === 0) {
@@ -332,7 +332,7 @@ export const identitySchema = z.object({
       path: ["stateless_explanation"],
     });
   }
-  
+
   // If is current citizen, require at least one citizenship entry
   if (data.citizen_of_country === "Yes" && (!data.citizenships || data.citizenships.length === 0)) {
     ctx.addIssue({
@@ -341,7 +341,7 @@ export const identitySchema = z.object({
       path: ["citizenships"],
     });
   }
-  
+
   // If has passport, require at least one passport entry
   if (data.has_passport === "Yes" && (!data.passports || data.passports.length === 0)) {
     ctx.addIssue({
@@ -350,7 +350,7 @@ export const identitySchema = z.object({
       path: ["passports"],
     });
   }
-  
+
   // If has identity doc, require at least one identity document entry
   if (data.has_identity_doc === "Yes" && (!data.identity_docs || data.identity_docs.length === 0)) {
     ctx.addIssue({
@@ -359,7 +359,7 @@ export const identitySchema = z.object({
       path: ["identity_docs"],
     });
   }
-  
+
   // If has permanent residency rights, require at least one PR country entry
   if (data.permanent_residency_rights === "Yes") {
     if (!data.pr_countries || data.pr_countries.length === 0) {
@@ -582,15 +582,46 @@ export const travelHistorySchema = z.object({
 export const futureTravelSchema = z.object({
   has_future_travel: yesNoEnum.optional(),
   future_travel: z.array(z.object({
+    departure_date_day: z.string().optional(),
+    departure_date_month: z.string().optional(),
+    departure_date_year: z.string().optional(),
+    departure_country: z.string().optional(),
+    departure_city: z.string().optional(),
+    flight_number: z.string().optional(),
+    arrival_date_day: z.string().optional(),
+    arrival_date_month: z.string().optional(),
+    arrival_date_year: z.string().optional(),
+    arrival_country: z.string().optional(),
+    arrival_city: z.string().optional(),
+    reason: z.string().optional(),
+    // Legacy fields for backward compatibility
     from_to: z.string().optional(),
     start_date: z.string().optional(),
-    reason: z.string().optional(),
   })).optional(),
 });
 
 export const futureAddressesSchema = z.object({
   knows_future_address: yesNoEnum.optional(),
   future_addresses: z.array(z.object({
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+    selected_address: z.string().optional(),
+    address_line1: z.string().optional(),
+    address_line2: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postcode: z.string().optional(),
+    office_hours_phone_country_code: z.string().optional(),
+    office_hours_phone_area_code: z.string().optional(),
+    office_hours_phone_number: z.string().optional(),
+    mobile_phone_country_code: z.string().optional(),
+    mobile_phone_number: z.string().optional(),
+    address_display: z.string().optional(),
+    // Legacy fields for backward compatibility
     date_from: z.string().optional(),
     date_to: z.string().optional(),
     address: z.string().optional(),
@@ -653,4 +684,34 @@ export const characterSchema = z.object({
 
 export const contactsSchema = z.object({
   contacts_note: z.string().optional(),
+  has_family_in_australia: yesNoEnum.optional(),
+  family_in_australia: z.array(z.object({
+    family_name: z.string().optional(),
+    given_names: z.string().optional(),
+    gender: z.string().optional(),
+    relationship: z.string().optional(),
+    nationality: z.string().optional(),
+    birth_day: z.string().optional(),
+    birth_month: z.string().optional(),
+    birth_year: z.string().optional(),
+    country_of_birth: z.string().optional(),
+    suburb_of_birth: z.string().optional(),
+    city_of_birth: z.string().optional(),
+    state_of_birth: z.string().optional(),
+    phone_country_code_hours: z.string().optional(),
+    phone_area_code_hours: z.string().optional(),
+    phone_number_hours: z.string().optional(),
+    phone_country_code_office: z.string().optional(),
+    phone_area_code_office: z.string().optional(),
+    phone_number_office: z.string().optional(),
+    phone_country_code_mobile: z.string().optional(),
+    phone_number_mobile: z.string().optional(),
+    email: z.string().optional(),
+    residential_address: z.string().optional(),
+    residential_address_line2: z.string().optional(),
+    residential_suburb: z.string().optional(),
+    residential_state: z.string().optional(),
+    residential_postcode: z.string().optional(),
+    residential_country: z.string().optional(),
+  })).optional(),
 });

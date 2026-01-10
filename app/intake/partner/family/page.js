@@ -113,14 +113,14 @@ export default function FamilyMembersPage() {
 
   const familyMembers = watch("family_members") || [];
 
-  // Auto-save
-  const watchedValues = watch();
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      draftStore.saveDraft(watchedValues);
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [watchedValues]);
+  // Removed dangerous auto-save effect that was causing issues
+  // const watchedValues = watch();
+  // useEffect(() => {
+  //   const timeoutId = setTimeout(() => {
+  //     draftStore.saveDraft(watchedValues);
+  //   }, 2000);
+  //   return () => clearTimeout(timeoutId);
+  // }, [watchedValues]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);
@@ -128,7 +128,7 @@ export default function FamilyMembersPage() {
       const result = await draftStore.saveDraft(data);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/family');
+        await draftStore.markPageComplete('partner/family', null, false);
         const next = getNextRoute(pathname, visaType);
         if (next) router.push(next);
       } else {
@@ -162,7 +162,7 @@ export default function FamilyMembersPage() {
 
       if (result.success) {
         // Mark this page as complete
-        await draftStore.markPageComplete('partner/family');
+        await draftStore.markPageComplete('partner/family', null, false);
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully.",

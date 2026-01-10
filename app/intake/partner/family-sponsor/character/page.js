@@ -22,112 +22,60 @@ import { COUNTRIES } from "@/reuseable/countries";
 
 const CHARACTER_QUESTIONS = [
   {
-    key: "police_check_last_12_months",
-    label: "Has anyone who is to be included in this application applied for a Police Clearance Certificate in the last 12 months?",
+    key: "convicted_child_offence",
+    label: "Has your Sponsor specifically been convicted of a crime or offence in any country (including any conviction which is removed from official records), relating to persons under the age of 18, including but not limited to: child abuse, child sex, endangering a child, indecent dealings with a child, or possession of child pornography?",
   },
   {
-    key: "immigration_detention",
-    label: "Has anyone who is to be included in this application previously been in Immigration Detention, a Refugee Camp or Centre for Refugees?",
+    key: "charged_child_offence",
+    label: "Has your Sponsor specifically been charged with any offence that is currently awaiting legal action in any country relating to persons under the age of 18, including but not limited to: child abuse, child sex, endangering a child, indecent dealings with a child, or possession of child pornography?",
   },
   {
-    key: "convicted_offence",
-    label: "Has any applicant ever been convicted of an offence in any country (including any conviction which is now removed from official records? If in doubt, click Yes.",
+    key: "convicted_general_offence",
+    label: "In addition to any offence disclosed above, has your Sponsor been convicted of a crime or offence* in any country (including any conviction removed from official records)? *This may include traffic and other non criminal offences. If in doubt, click yes.",
   },
   {
-    key: "awaiting_legal_action",
-    label: "Has any applicant ever been charged with any offence in any country that is currently awaiting legal action? If in doubt, click Yes.",
+    key: "charged_general_offence",
+    label: "In addition to any offence disclosed above, has your Sponsor been charged with any offence* in any country that is currently awaiting legal action? *This may include traffic and other non criminal offences. If in doubt, click yes.",
   },
   {
-    key: "domestic_violence_order",
-    label: "Has any applicant who is included in this application ever been the subject of a domestic violence or family violence order, or any other order, of a tribunal or court or other similar authority, for the personal protection of another person?",
+    key: "acquitted_mental_illness",
+    label: "Has your Sponsor been acquitted of any offence* on the grounds of mental illness, insanity or unsoundness of mind? *This may include traffic and other non criminal offences? If in doubt, click yes.",
   },
   {
-    key: "arrest_warrant",
-    label: "Has any applicant who is to be included in this application been the subject of an arrest warrant or Interpol Notice?",
+    key: "removed_deported",
+    label: "Has your Sponsor been removed or deported from any country?",
   },
   {
-    key: "child_sex_offence",
-    label: "Has any applicant been found guilty of a sexually based offence involving a child (including where no conviction was recorded)?",
-  },
-  {
-    key: "sex_offender_register",
-    label: "Has any applicant who is to be included in this application ever been named on a sex offender register?",
-  },
-  {
-    key: "psychiatric_institution",
-    label: "Has any applicant been confined in a prison or psychiatric institution by order of a court in relation to criminal proceedings?",
-  },
-  {
-    key: "insanity_acquittal",
-    label: "Has any applicant ever been acquitted of any offence on the grounds of unsoundness of mind or insanity? If in doubt, click yes.",
-  },
-  {
-    key: "unfit_to_plead",
-    label: "Has any applicant who is to be included in this application ever been found by a court not fit to plead?",
-  },
-  {
-    key: "false_misleading_info",
-    label: "Has any applicant ever provided any information or a document to the Australian Immigration or Customs Authorities which was wrong, incorrect, false or misleading?",
-  },
-  {
-    key: "visa_refused",
-    label: "Has any applicant ever had a visa or entry permit for any country (including Australia) refused?",
-  },
-  {
-    key: "overstayed_visa",
-    label: "Has any applicant overstayed a visa or entry permit in any country (including Australia)?",
-  },
-  {
-    key: "deported_removed",
-    label: "Has any applicant been removed or deported from any country (including Australia)?",
-  },
-  {
-    key: "avoid_removal",
-    label: "Has any applicant left any country to avoid being removed or deported from that Country (including Australia)?",
+    key: "left_to_avoid_removal",
+    label: "Has your Sponsor left any country to avoid being removed or deported from that country?",
   },
   {
     key: "excluded_from_country",
-    label: "Has any applicant been excluded from or asked to leave any country (including Australia)?",
-  },
-  {
-    key: "citizenship_refusal",
-    label: "Has any applicant ever been refused, renounced or rescinded citizenship of any country?",
+    label: "Has your Sponsor been excluded from or asked to leave any country?",
   },
   {
     key: "war_crimes",
-    label: "Has any applicant been charged with, or indicted for: genocide, war crimes, crimes against humanity, torture, slavery, or any other crime that is otherwise of a serious international concern?",
+    label: "Has your Sponsor committed or been involved in the commission of war crimes against humanity or human rights?",
   },
   {
     key: "national_security_risk",
-    label: "Has any applicant been directly or indirectly involved in, or associated with, any activities that would represent a risk to Australian national security or any other country?",
+    label: "Has your Sponsor been involved in any activities that would represent a risk to Australian national security or any other country?",
   },
   {
     key: "outstanding_debts",
-    label: "Has any applicant ever had any outstanding debts to the Australian Government or any public authority in Australia?",
+    label: "Has your Sponsor had an outstanding debt to the Australian Government or any public authority in Australia?",
   },
   {
     key: "people_smuggling",
-    label: "Has any applicant ever been involved in people smuggling or people trafficking offences? If in doubt, click Yes.",
-  },
-  {
-    key: "associated_criminal_conduct",
-    label: "Has any applicant been associated with a person, group or organisation that has been/is involved in criminal conduct?",
-  },
-  {
-    key: "associated_violent_org",
-    label: "Has any applicant ever been associated with an organisation engaged in violence or engaged in acts of violence (including war, insurgency, freedom fighting, terrorism, protest) either overseas or in Australia?",
+    label: "Has your Sponsor been involved in any activity or been convicted of any offence relating to the illegal movement of people to any country?",
   },
   {
     key: "military_training",
-    label: "Has any applicant undergone any military/paramilitary training, been trained in weapons/explosives or in the manufacture of chemical/biological products?",
+    label: "Has your Sponsor undergone any military/paramilitary training, been trained in weapons/explosives or in the manufacture of chemical/biological products?",
   },
   {
     key: "military_service",
-    label: "Has any applicant ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency?",
-  },
-  {
-    key: "sponsorship_payment",
-    label: "Has any person included in this application made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa?",
+    label: "Has your Sponsor ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency?",
   },
 ];
 
@@ -198,50 +146,55 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
   );
 }
 
-function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+function OtherCharacterDialog({ editingRow, onSave, onCancel, title = "Other Character Detail", description }) {
   const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
+    date_day: z.string().optional(),
+    date_month: z.string().optional(),
+    date_year: z.string().optional(),
     details: z.string().optional(),
   });
 
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
-    defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
+    defaultValues: editingRow || { country: "", date_day: "", date_month: "", date_year: "", details: "" },
   });
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Association with Violent Organisation</h3>
-      <p className="text-sm text-gray-500 mb-4">
-        Enter details of association with an organisation engaged in violence
-      </p>
+      <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
+      <p className="text-sm text-gray-500 mb-4">{description}</p>
 
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
-        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
-          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Label className="mb-2 block">Date</Label>
+        <div className="grid grid-cols-3 gap-4">
+          <Select value={dialogForm.watch("date_day")} onValueChange={(value) => dialogForm.setValue("date_day", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>
+              {DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_month")} onValueChange={(value) => dialogForm.setValue("date_month", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_year")} onValueChange={(value) => dialogForm.setValue("date_year", value)}>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
+            <SelectContent>
+              {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div>
         <Label className="mb-2 block">Country</Label>
-        <Select
-          value={dialogForm.watch("country")}
-          onValueChange={(value) => dialogForm.setValue("country", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Country" />
-          </SelectTrigger>
+        <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
           <SelectContent>
-            {COUNTRIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
+            {COUNTRIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -259,127 +212,7 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
   );
 }
 
-function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
-  const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
-    country: z.string().optional(),
-    details: z.string().optional(),
-  });
 
-  const dialogForm = useForm({
-    resolver: zodResolver(dialogSchema),
-    defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
-  });
-
-  return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">National Security Risk</h3>
-      <p className="text-sm text-gray-500 mb-4">
-        Enter details of involvement in activities representing a risk to national security
-      </p>
-
-      <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
-        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
-          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Country</Label>
-        <Select
-          value={dialogForm.watch("country")}
-          onValueChange={(value) => dialogForm.setValue("country", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Country" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
-      </div>
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
-      </DialogFooter>
-    </div>
-  );
-}
-
-function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
-  const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
-    country: z.string().optional(),
-    details: z.string().optional(),
-  });
-
-  const dialogForm = useForm({
-    resolver: zodResolver(dialogSchema),
-    defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
-  });
-
-  return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Outstanding Debts</h3>
-      <p className="text-sm text-gray-500 mb-4">
-        Enter details of outstanding debts to the Australian Government
-      </p>
-
-      <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
-        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
-          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Country</Label>
-        <Select
-          value={dialogForm.watch("country")}
-          onValueChange={(value) => dialogForm.setValue("country", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Country" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
-      </div>
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
-      </DialogFooter>
-    </div>
-  );
-}
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -1009,10 +842,9 @@ const SERVICE_TYPES = [
   "Secret Police",
 ];
 
-function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
   const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
-    country_of_service: z.string().min(1, "Country of Service is required"),
+    country_of_service: z.string().optional(),
     country_of_deployment: z.string().optional(),
     date_from_day: z.string().optional(),
     date_from_month: z.string().optional(),
@@ -1029,7 +861,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
-      applicant_name: "",
       country_of_service: "",
       country_of_deployment: "",
       date_from_day: "",
@@ -1046,16 +877,8 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
   });
 
   const handleSubmit = (data) => {
-    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
-    let dateOfBirthDisplay = "";
-    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
-    if (dobMatch) {
-      dateOfBirthDisplay = dobMatch[1];
-    }
-
     onSave({
       ...data,
-      date_of_birth_display: dateOfBirthDisplay,
       date_from_display:
         data.date_from_day && data.date_from_month && data.date_from_year
           ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
@@ -1072,33 +895,9 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Service History</h3>
       <p className="text-sm text-gray-500 mb-4">
-        Enter details of any applicant who is included in this application who has ever served in a military force,
-        police force, state sponsored militia, private militia, secret police or intelligence agency
+        Enter details relating to serving in a military force, police force, state sponsored militia, private militia,
+        secret police or intelligence agency
       </p>
-
-      <div>
-        <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
-        </Label>
-        <Select
-          value={dialogForm.watch("applicant_name")}
-          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Applicant" />
-          </SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.applicant_name && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
-        )}
-      </div>
 
       <div>
         <Label className="mb-2 block">Country of Service</Label>
@@ -1289,10 +1088,9 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
   );
 }
 
-function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
   const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
-    country_of_training: z.string().min(1, "Country of Training is required"),
+    country_of_training: z.string().optional(),
     date_from_day: z.string().optional(),
     date_from_month: z.string().optional(),
     date_from_year: z.string().optional(),
@@ -1306,7 +1104,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
-      applicant_name: "",
       country_of_training: "",
       date_from_day: "",
       date_from_month: "",
@@ -1320,16 +1117,8 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
   });
 
   const handleSubmit = (data) => {
-    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
-    let dateOfBirthDisplay = "";
-    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
-    if (dobMatch) {
-      dateOfBirthDisplay = dobMatch[1];
-    }
-
     onSave({
       ...data,
-      date_of_birth_display: dateOfBirthDisplay,
       date_from_display:
         data.date_from_day && data.date_from_month && data.date_from_year
           ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
@@ -1346,33 +1135,9 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Training History</h3>
       <p className="text-sm text-gray-500 mb-4">
-        Enter details of any applicant who is included in this application who has undergone any military/paramilitary
-        training, been trained in weapons/explosives or in the manufacture of chemical/biological products
+        Enter details relating to undergoing any military/paramilitary training, been trained in weapons/explosives or in
+        the manufacture of chemical/biological products
       </p>
-
-      <div>
-        <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
-        </Label>
-        <Select
-          value={dialogForm.watch("applicant_name")}
-          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Applicant" />
-          </SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.applicant_name && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
-        )}
-      </div>
 
       <div>
         <Label className="mb-2 block">Country of Training</Label>
@@ -1613,7 +1378,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
 
 function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
     date_day: z.string().optional(),
     date_month: z.string().optional(),
@@ -1624,7 +1388,7 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
 
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
-    defaultValues: editingRow || { applicant_name: "", country: "", date_day: "", date_month: "", date_year: "", offence_type: "", details: "" },
+    defaultValues: editingRow || { country: "", date_day: "", date_month: "", date_year: "", offence_type: "", details: "" },
   });
 
   return (
@@ -1632,15 +1396,7 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
 
-      <div>
-        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
-        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
-          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+
 
       <div>
         <Label className="mb-2 block">Country</Label>
@@ -1653,7 +1409,7 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
       </div>
 
       <div>
-        <Label className="mb-2 block">Date of Conviction/Charge</Label>
+        <Label className="mb-2 block">Date of Offence</Label>
         <div className="grid grid-cols-3 gap-4">
           <Select value={dialogForm.watch("date_day")} onValueChange={(value) => dialogForm.setValue("date_day", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
@@ -1694,152 +1450,61 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
   );
 }
 
-function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
-  const dialogSchema = z.object({
-    applicant_name: z.string().min(1, "Name of applicant is required"),
-    details: z.string().optional(),
-  });
 
-  const dialogForm = useForm({
-    resolver: zodResolver(dialogSchema),
-    defaultValues: editingRow || { applicant_name: "", details: "" },
-  });
-
-  return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 mb-4">{description}</p>
-
-      <div>
-        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
-        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
-          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
-          <SelectContent>
-            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
-      </div>
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
-      </DialogFooter>
-    </div>
-  );
-}
 
 const formSchema = z.object({
   ...CHARACTER_QUESTIONS.reduce((acc, q) => {
     acc[q.key] = z.enum(["yes", "no"]).optional();
     return acc;
   }, {}),
-  criminal_conduct_details: z.array(z.any()).optional(),
-  violent_org_details: z.array(z.any()).optional(),
-  national_security_details: z.array(z.any()).optional(),
-  outstanding_debts_details: z.array(z.any()).optional(),
-  // New arrays for remaining questions
-  domestic_violence_details: z.array(z.any()).optional(),
-  arrest_warrant_details: z.array(z.any()).optional(),
-  child_sex_offence_details: z.array(z.any()).optional(),
-  sex_offender_register_details: z.array(z.any()).optional(),
-  insanity_acquittal_details: z.array(z.any()).optional(),
-  unfit_to_plead_details: z.array(z.any()).optional(),
-  visa_refused_details: z.array(z.any()).optional(),
-  overstayed_visa_details: z.array(z.any()).optional(),
-  deported_removed_details: z.array(z.any()).optional(),
-  avoid_removal_details: z.array(z.any()).optional(),
+  // Details arrays for new questions
+  convicted_child_offence_details: z.array(z.any()).optional(),
+  charged_child_offence_details: z.array(z.any()).optional(),
+  convicted_general_offence_details: z.array(z.any()).optional(),
+  charged_general_offence_details: z.array(z.any()).optional(),
+  acquitted_mental_illness_details: z.array(z.any()).optional(),
+  removed_deported_details: z.array(z.any()).optional(),
+  left_to_avoid_removal_details: z.array(z.any()).optional(),
   excluded_from_country_details: z.array(z.any()).optional(),
-  citizenship_refusal_details: z.array(z.any()).optional(),
   war_crimes_details: z.array(z.any()).optional(),
-  // Conviction and Charged arrays
-  convicted_offence_details: z.array(z.any()).optional(),
-  awaiting_legal_action_details: z.array(z.any()).optional(),
-  // Simple arrays
-  false_misleading_info_details: z.array(z.any()).optional(),
-  sponsorship_payment_details: z.array(z.any()).optional(),
+  national_security_risk_details: z.array(z.any()).optional(),
+  outstanding_debts_details: z.array(z.any()).optional(),
   people_smuggling_details: z.array(z.any()).optional(),
-  // Additional detail arrays
-  police_check_last_12_months_details: z.array(z.any()).optional(),
-  immigration_detention_details: z.array(z.any()).optional(),
-  psychiatric_institution_details: z.array(z.any()).optional(),
   military_training_details: z.array(z.any()).optional(),
   military_service_details: z.array(z.any()).optional(),
 });
 
 const GENERIC_DIALOG_CONFIG = {
-  domestic_violence_order: {
-    title: "Domestic Violence Order",
-    description: "Enter details of any applicant who is included in this application who has ever been the subject of an order for the personal protection of another person:",
-    field: "domestic_violence_details"
+  acquitted_mental_illness: {
+    description: "Enter details relating to any crime or offence on the grounds of mental illness, insanity or unsoundness of mind",
+    field: "acquitted_mental_illness_details"
   },
-  arrest_warrant: {
-    title: "Arrest Warrant",
-    description: "Enter details of any applicant who is included in this application who has been the subject of an arrest warrant or Interpol Notice:",
-    field: "arrest_warrant_details"
+  removed_deported: {
+    description: "Enter details relating to being removed or deported from any country",
+    field: "removed_deported_details"
   },
-  child_sex_offence: {
-    title: "Child Sex Offence",
-    description: "Enter details of any applicant who has been found guilty of a sexually based offence involving a child:",
-    field: "child_sex_offence_details"
-  },
-  sex_offender_register: {
-    title: "Sex Offender Register",
-    description: "Enter details of any applicant who is included in this application who has ever been named on a sex offender register:",
-    field: "sex_offender_register_details"
-  },
-  insanity_acquittal: {
-    title: "Acquitted due to Insanity",
-    description: "Enter details of any applicant who has ever been acquitted of any offence on the grounds of unsoundness of mind or insanity:",
-    field: "insanity_acquittal_details"
-  },
-  unfit_to_plead: {
-    title: "Unfit to Plead",
-    description: "Enter details of any applicant who is included in this application who has ever been found by a court not fit to plead:",
-    field: "unfit_to_plead_details"
-  },
-  visa_refused: {
-    title: "Visa Refusal",
-    description: "Enter details of any applicant who has ever had a visa or entry permit for any country (including Australia) refused:",
-    field: "visa_refused_details"
-  },
-  overstayed_visa: {
-    title: "Overstayed Visa",
-    description: "Enter details of any applicant who has overstayed a visa or entry permit in any country (including Australia):",
-    field: "overstayed_visa_details"
-  },
-  deported_removed: {
-    title: "Deported or Removed",
-    description: "Enter details of any applicant who has been removed or deported from any country (including Australia):",
-    field: "deported_removed_details"
-  },
-  avoid_removal: {
-    title: "Left to Avoid Removal",
-    description: "Enter details of any applicant who has left any country to avoid being removed or deported from that Country (including Australia):",
-    field: "avoid_removal_details"
+  left_to_avoid_removal: {
+    description: "Enter details relating to leaving any country to avoid being removed or deported from that country",
+    field: "left_to_avoid_removal_details"
   },
   excluded_from_country: {
-    title: "Excluded from Country",
-    description: "Enter details of any applicant who has been excluded from or asked to leave any country (including Australia):",
+    description: "Enter details relating to being excluded from or asked to leave any country",
     field: "excluded_from_country_details"
   },
-  citizenship_refusal: {
-    title: "Citizenship Refusal",
-    description: "Enter details of any applicant who has ever been refused, renounced or rescinded citizenship of any country:",
-    field: "citizenship_refusal_details"
-  },
   war_crimes: {
-    title: "War Crimes",
-    description: "Enter details of any applicant who has been charged with, or indicted for: genocide, war crimes, crimes against humanity, torture, slavery, or any other crime that is otherwise of a serious international concern:",
+    description: "Enter details relating to involvement in war crimes against humanity or human rights",
     field: "war_crimes_details"
   },
+  national_security_risk: {
+    description: "Enter details relating to involvement in any activities that would represent a risk to Australian national security or any other country",
+    field: "national_security_risk_details"
+  },
+  outstanding_debts: {
+    description: "Enter details relating to any outstanding debt to the Australian Government or any public authority in Australia",
+    field: "outstanding_debts_details"
+  },
   people_smuggling: {
-    title: "People Smuggling",
-    description: "Enter details of any applicant who has ever been involved in people smuggling or people trafficking offences:",
+    description: "Enter details relating to any activity or conviction of any offence relating to the illegal movement of people to any country",
     field: "people_smuggling_details"
   },
 };
@@ -1922,31 +1587,18 @@ export default function Page() {
         acc[q.key] = "no";
         return acc;
       }, {}),
-      criminal_conduct_details: [],
-      violent_org_details: [],
-      national_security_details: [],
-      outstanding_debts_details: [],
-      domestic_violence_details: [],
-      arrest_warrant_details: [],
-      child_sex_offence_details: [],
-      sex_offender_register_details: [],
-      insanity_acquittal_details: [],
-      unfit_to_plead_details: [],
-      visa_refused_details: [],
-      overstayed_visa_details: [],
-      deported_removed_details: [],
-      avoid_removal_details: [],
+      convicted_child_offence_details: [],
+      charged_child_offence_details: [],
+      convicted_general_offence_details: [],
+      charged_general_offence_details: [],
+      acquitted_mental_illness_details: [],
+      removed_deported_details: [],
+      left_to_avoid_removal_details: [],
       excluded_from_country_details: [],
-      citizenship_refusal_details: [],
       war_crimes_details: [],
-      convicted_offence_details: [],
-      awaiting_legal_action_details: [],
-      false_misleading_info_details: [],
-      sponsorship_payment_details: [],
+      national_security_risk_details: [],
+      outstanding_debts_details: [],
       people_smuggling_details: [],
-      police_check_last_12_months_details: [],
-      immigration_detention_details: [],
-      psychiatric_institution_details: [],
       military_training_details: [],
       military_service_details: [],
     },
@@ -1963,22 +1615,20 @@ export default function Page() {
     });
     // Get detail arrays
     const detailFields = [
-      'criminal_conduct_details', 'violent_org_details', 'national_security_details',
-      'outstanding_debts_details', 'domestic_violence_details', 'arrest_warrant_details',
-      'child_sex_offence_details', 'sex_offender_register_details', 'insanity_acquittal_details',
-      'unfit_to_plead_details', 'visa_refused_details', 'overstayed_visa_details',
-      'deported_removed_details', 'avoid_removal_details', 'excluded_from_country_details',
-      'citizenship_refusal_details', 'war_crimes_details', 'convicted_offence_details',
-      'awaiting_legal_action_details', 'false_misleading_info_details', 'sponsorship_payment_details',
-      'people_smuggling_details', 'police_check_last_12_months_details', 'immigration_detention_details',
-      'psychiatric_institution_details', 'military_training_details', 'military_service_details'
+      'convicted_child_offence_details', 'charged_child_offence_details',
+      'convicted_general_offence_details', 'charged_general_offence_details',
+      'acquitted_mental_illness_details', 'removed_deported_details',
+      'left_to_avoid_removal_details', 'excluded_from_country_details',
+      'war_crimes_details', 'national_security_risk_details',
+      'outstanding_debts_details', 'people_smuggling_details',
+      'military_training_details', 'military_service_details'
     ];
     detailFields.forEach((field) => {
       if (Array.isArray(savedData[field])) {
         characterData[field] = savedData[field];
       }
     });
-    
+
     if (Object.keys(characterData).length > 0) {
       Object.keys(characterData).forEach((key) => {
         if (characterData[key] === "yes" || characterData[key] === "no") {
@@ -2060,253 +1710,161 @@ export default function Page() {
 
                 {form.watch(q.key) === "yes" && (
                   <div className="mt-4">
-                    {q.key === "police_check_last_12_months" && (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Enter details of any applicant who is included in this application who has applied for a Police Clearance Certificate in the last 12 months
-                        </p>
-                        <RepeaterTable
-                          data={form.watch("police_check_details") || []}
-                          columns={[
-                            { key: "applicant_name", label: "Name" },
-                            { key: "date_of_birth_display", label: "Date of Birth" },
-                            { key: "application_date_display", label: "Date of Application" },
-                            { key: "issuing_country", label: "Country" },
-                          ]}
-                          onAdd={(row) => {
-                            const current = form.watch("police_check_details") || [];
-                            form.setValue("police_check_details", [...current, row], {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onEdit={(index, updatedRow) => {
-                            const current = [...(form.watch("police_check_details") || [])];
-                            current[index] = updatedRow;
-                            form.setValue("police_check_details", current, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onDelete={(index) => {
-                            const current = form.watch("police_check_details") || [];
-                            const updated = current.filter((_, i) => i !== index);
-                            form.setValue("police_check_details", updated, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          DialogComponent={(props) => (
-                            <PoliceClearanceDialog {...props} applicantOptions={applicantOptions} />
-                          )}
-                          addButtonText="Add Details"
-                          testIdPrefix="police-clearance"
-                        />
-                      </div>
+                    {q.key === "convicted_child_offence" && (
+                      <RepeaterTable
+                        data={form.watch("convicted_child_offence_details") || []}
+                        columns={[
+                          { key: "country", label: "Country" },
+                          { key: "offence_type", label: "Offence" },
+                          { key: "details", label: "Details" }
+                        ]}
+                        onAdd={(row) => form.setValue("convicted_child_offence_details", [...(form.watch("convicted_child_offence_details") || []), row])}
+                        onEdit={(i, row) => {
+                          const current = [...(form.watch("convicted_child_offence_details") || [])];
+                          current[i] = row;
+                          form.setValue("convicted_child_offence_details", current);
+                        }}
+                        onDelete={(i) => form.setValue("convicted_child_offence_details", (form.watch("convicted_child_offence_details") || []).filter((_, idx) => idx !== i))}
+                        DialogComponent={(props) => (
+                          <ConvictionDialog
+                            {...props}
+                            applicantOptions={applicantOptions}
+                            title="Offence Character Detail"
+                            description="Enter details relating to any crime or offence in any country (including any conviction which is removed from official records), relating to persons under the age of 18, including but not limited to: child abuse, child sex, endangering a child, indecent dealings with a child, or possession of child pornography"
+                          />
+                        )}
+                        addButtonText="Add Details"
+                      />
                     )}
 
-                    {q.key === "immigration_detention" && (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Enter details of any applicant who is included in this application who has previously been in Immigration Detention,
-                          a Refugee Camp or Centre for Refugees
-                        </p>
-                        <RepeaterTable
-                          data={form.watch("immigration_detention_details") || []}
-                          columns={[
-                            { key: "applicant_name", label: "Name" },
-                            { key: "centre_name", label: "Name of Centre / Camp" },
-                            { key: "country", label: "Country" },
-                            { key: "date_from_display", label: "Date From" },
-                            { key: "date_to_display", label: "Date To" },
-                          ]}
-                          onAdd={(row) => {
-                            const current = form.watch("immigration_detention_details") || [];
-                            form.setValue("immigration_detention_details", [...current, row], {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onEdit={(index, updatedRow) => {
-                            const current = [...(form.watch("immigration_detention_details") || [])];
-                            current[index] = updatedRow;
-                            form.setValue("immigration_detention_details", current, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onDelete={(index) => {
-                            const current = form.watch("immigration_detention_details") || [];
-                            const updated = current.filter((_, i) => i !== index);
-                            form.setValue("immigration_detention_details", updated, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          DialogComponent={(props) => (
-                            <ImmigrationDetentionDialog {...props} applicantOptions={applicantOptions} />
-                          )}
-                          addButtonText="Add Details"
-                          testIdPrefix="immigration-detention"
-                        />
-                      </div>
+                    {q.key === "charged_child_offence" && (
+                      <RepeaterTable
+                        data={form.watch("charged_child_offence_details") || []}
+                        columns={[
+                          { key: "country", label: "Country" },
+                          { key: "offence_type", label: "Offence" },
+                          { key: "details", label: "Details" }
+                        ]}
+                        onAdd={(row) => form.setValue("charged_child_offence_details", [...(form.watch("charged_child_offence_details") || []), row])}
+                        onEdit={(i, row) => {
+                          const current = [...(form.watch("charged_child_offence_details") || [])];
+                          current[i] = row;
+                          form.setValue("charged_child_offence_details", current);
+                        }}
+                        onDelete={(i) => form.setValue("charged_child_offence_details", (form.watch("charged_child_offence_details") || []).filter((_, idx) => idx !== i))}
+                        DialogComponent={(props) => (
+                          <ConvictionDialog
+                            {...props}
+                            applicantOptions={applicantOptions}
+                            title="Offence Character Detail"
+                            description="Enter details of any offence that is currently awaiting legal action in any country relating to persons under the age of 18, including but not limited to: child abuse, child sex, endangering a child, indecent dealings with a child, or possession of child pornography"
+                          />
+                        )}
+                        addButtonText="Add Details"
+                      />
                     )}
 
-                    {q.key === "psychiatric_institution" && (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Enter details of any applicant who is included in this application who has been confined in a
-                          prison or psychiatric institution by order of a court in relation to criminal proceedings
-                        </p>
-                        <RepeaterTable
-                          data={form.watch("psychiatric_institution_details") || []}
-                          columns={[
-                            { key: "applicant_name", label: "Name" },
-                            { key: "date_from_display", label: "Date From" },
-                            { key: "date_to_display", label: "Date To" },
-                            { key: "country", label: "Country" },
-                          ]}
-                          onAdd={(row) => {
-                            const current = form.watch("psychiatric_institution_details") || [];
-                            form.setValue("psychiatric_institution_details", [...current, row], {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onEdit={(index, updatedRow) => {
-                            const current = [...(form.watch("psychiatric_institution_details") || [])];
-                            current[index] = updatedRow;
-                            form.setValue("psychiatric_institution_details", current, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onDelete={(index) => {
-                            const current = form.watch("psychiatric_institution_details") || [];
-                            const updated = current.filter((_, i) => i !== index);
-                            form.setValue("psychiatric_institution_details", updated, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          DialogComponent={(props) => (
-                            <PrisonInstitutionDialog {...props} applicantOptions={applicantOptions} />
-                          )}
-                          addButtonText="Add Details"
-                          testIdPrefix="prison-institution"
-                        />
-                      </div>
+                    {q.key === "convicted_general_offence" && (
+                      <RepeaterTable
+                        data={form.watch("convicted_general_offence_details") || []}
+                        columns={[
+                          { key: "country", label: "Country" },
+                          { key: "offence_type", label: "Offence" },
+                          { key: "details", label: "Details" }
+                        ]}
+                        onAdd={(row) => form.setValue("convicted_general_offence_details", [...(form.watch("convicted_general_offence_details") || []), row])}
+                        onEdit={(i, row) => {
+                          const current = [...(form.watch("convicted_general_offence_details") || [])];
+                          current[i] = row;
+                          form.setValue("convicted_general_offence_details", current);
+                        }}
+                        onDelete={(i) => form.setValue("convicted_general_offence_details", (form.watch("convicted_general_offence_details") || []).filter((_, idx) => idx !== i))}
+                        DialogComponent={(props) => (
+                          <ConvictionDialog
+                            {...props}
+                            applicantOptions={applicantOptions}
+                            title="Offence Character Detail"
+                            description="Enter details relating to any crime or offence in any country (including any conviction which is removed from official records)"
+                          />
+                        )}
+                        addButtonText="Add Details"
+                      />
                     )}
+
+                    {q.key === "charged_general_offence" && (
+                      <RepeaterTable
+                        data={form.watch("charged_general_offence_details") || []}
+                        columns={[
+                          { key: "country", label: "Country" },
+                          { key: "offence_type", label: "Offence" },
+                          { key: "details", label: "Details" }
+                        ]}
+                        onAdd={(row) => form.setValue("charged_general_offence_details", [...(form.watch("charged_general_offence_details") || []), row])}
+                        onEdit={(i, row) => {
+                          const current = [...(form.watch("charged_general_offence_details") || [])];
+                          current[i] = row;
+                          form.setValue("charged_general_offence_details", current);
+                        }}
+                        onDelete={(i) => form.setValue("charged_general_offence_details", (form.watch("charged_general_offence_details") || []).filter((_, idx) => idx !== i))}
+                        DialogComponent={(props) => (
+                          <ConvictionDialog
+                            {...props}
+                            applicantOptions={applicantOptions}
+                            title="Offence Character Detail"
+                            description="Enter details of any offence in any country that is currently awaiting legal action"
+                          />
+                        )}
+                        addButtonText="Add Details"
+                      />
+                    )}
+
+
 
                     {q.key === "military_training" && (
                       <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Enter details of any applicant who is included in this application who has undergone any
-                          military/paramilitary training, been trained in weapons/explosives or in the manufacture of
-                          chemical/biological products
-                        </p>
                         <RepeaterTable
                           data={form.watch("military_training_details") || []}
                           columns={[
-                            { key: "applicant_name", label: "Name" },
-                            { key: "date_of_birth_display", label: "Date of Birth" },
+                            { key: "country_of_training", label: "Country" },
                             { key: "date_from_display", label: "Date From" },
                             { key: "date_to_display", label: "Date To" },
-                            { key: "country_of_training", label: "Country" },
                           ]}
-                          onAdd={(row) => {
-                            const current = form.watch("military_training_details") || [];
-                            form.setValue("military_training_details", [...current, row], {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onEdit={(index, updatedRow) => {
+                          onAdd={(row) => form.setValue("military_training_details", [...(form.watch("military_training_details") || []), row])}
+                          onEdit={(i, row) => {
                             const current = [...(form.watch("military_training_details") || [])];
-                            current[index] = updatedRow;
-                            form.setValue("military_training_details", current, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
+                            current[i] = row;
+                            form.setValue("military_training_details", current);
                           }}
-                          onDelete={(index) => {
-                            const current = form.watch("military_training_details") || [];
-                            const updated = current.filter((_, i) => i !== index);
-                            form.setValue("military_training_details", updated, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
+                          onDelete={(i) => form.setValue("military_training_details", (form.watch("military_training_details") || []).filter((_, idx) => idx !== i))}
                           DialogComponent={(props) => (
-                            <MilitaryTrainingDialog {...props} applicantOptions={applicantOptions} />
+                            <MilitaryTrainingDialog {...props} />
                           )}
                           addButtonText="Add Details"
-                          testIdPrefix="military-training"
                         />
                       </div>
                     )}
 
                     {q.key === "military_service" && (
                       <div className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          Enter details of any applicant who is included in this application who has ever served in a
-                          military force, police force, state sponsored militia, private militia, secret police or
-                          intelligence agency
-                        </p>
                         <RepeaterTable
                           data={form.watch("military_service_details") || []}
                           columns={[
-                            { key: "applicant_name", label: "Name" },
-                            { key: "date_of_birth_display", label: "Date of Birth" },
+                            { key: "country_of_service", label: "Country of Service" },
                             { key: "date_from_display", label: "Date From" },
                             { key: "date_to_display", label: "Date To" },
-                            { key: "country_of_service", label: "Country of Service" },
-                            { key: "country_of_deployment", label: "Country of Deployment" },
                             { key: "position_rank", label: "Position" },
                           ]}
-                          onAdd={(row) => {
-                            const current = form.watch("military_service_details") || [];
-                            form.setValue("military_service_details", [...current, row], {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
-                          onEdit={(index, updatedRow) => {
+                          onAdd={(row) => form.setValue("military_service_details", [...(form.watch("military_service_details") || []), row])}
+                          onEdit={(i, row) => {
                             const current = [...(form.watch("military_service_details") || [])];
-                            current[index] = updatedRow;
-                            form.setValue("military_service_details", current, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
+                            current[i] = row;
+                            form.setValue("military_service_details", current);
                           }}
-                          onDelete={(index) => {
-                            const current = form.watch("military_service_details") || [];
-                            const updated = current.filter((_, i) => i !== index);
-                            form.setValue("military_service_details", updated, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                              shouldTouch: true,
-                            });
-                          }}
+                          onDelete={(i) => form.setValue("military_service_details", (form.watch("military_service_details") || []).filter((_, idx) => idx !== i))}
                           DialogComponent={(props) => (
-                            <MilitaryServiceDialog {...props} applicantOptions={applicantOptions} />
+                            <MilitaryServiceDialog {...props} />
                           )}
                           addButtonText="Add Details"
-                          testIdPrefix="military-service"
                         />
                       </div>
                     )}
@@ -2315,7 +1873,6 @@ export default function Page() {
                       <RepeaterTable
                         data={form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []}
                         columns={[
-                          { key: "applicant_name", label: "Name" },
                           { key: "country", label: "Country" },
                           { key: "date_year", label: "Year" },
                           { key: "details", label: "Details" }
@@ -2328,182 +1885,12 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, (form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []).filter((_, idx) => idx !== i))}
                         DialogComponent={(props) => (
-                          <GenericCharacterDialog
+                          <OtherCharacterDialog
                             {...props}
-                            applicantOptions={applicantOptions}
-                            title={GENERIC_DIALOG_CONFIG[q.key].title}
+                            title="Other Character Detail"
                             description={GENERIC_DIALOG_CONFIG[q.key].description}
                           />
                         )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "convicted_offence" && (
-                      <RepeaterTable
-                        data={form.watch("convicted_offence_details") || []}
-                        columns={[
-                          { key: "applicant_name", label: "Name" },
-                          { key: "country", label: "Country" },
-                          { key: "offence_type", label: "Offence" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("convicted_offence_details", [...(form.watch("convicted_offence_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("convicted_offence_details") || [])];
-                          current[i] = row;
-                          form.setValue("convicted_offence_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("convicted_offence_details", (form.watch("convicted_offence_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <ConvictionDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Convictions for Crimes/Offences"
-                            description="Enter details of any applicant who is included in this application who has ever been convicted of an offence in any country (including any conviction which is now removed from official records). Please list each offence separately:"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "awaiting_legal_action" && (
-                      <RepeaterTable
-                        data={form.watch("awaiting_legal_action_details") || []}
-                        columns={[
-                          { key: "applicant_name", label: "Name" },
-                          { key: "country", label: "Country" },
-                          { key: "offence_type", label: "Offence" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("awaiting_legal_action_details", [...(form.watch("awaiting_legal_action_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("awaiting_legal_action_details") || [])];
-                          current[i] = row;
-                          form.setValue("awaiting_legal_action_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("awaiting_legal_action_details", (form.watch("awaiting_legal_action_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <ConvictionDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Awaiting Legal Action"
-                            description="Enter details of any applicant who has ever been charged with any offence in any country that is currently awaiting legal action:"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "false_misleading_info" && (
-                      <RepeaterTable
-                        data={form.watch("false_misleading_info_details") || []}
-                        columns={[
-                          { key: "applicant_name", label: "Name" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("false_misleading_info_details", [...(form.watch("false_misleading_info_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("false_misleading_info_details") || [])];
-                          current[i] = row;
-                          form.setValue("false_misleading_info_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("false_misleading_info_details", (form.watch("false_misleading_info_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <SimpleCharacterDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Invalid Australian Immigration"
-                            description="Enter details of any applicant who is included in this application who has ever provided any information or a document to the Australian Immigration or Customs Authorities which was wrong, incorrect, false or misleading"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "sponsorship_payment" && (
-                      <RepeaterTable
-                        data={form.watch("sponsorship_payment_details") || []}
-                        columns={[
-                          { key: "applicant_name", label: "Name" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("sponsorship_payment_details", [...(form.watch("sponsorship_payment_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("sponsorship_payment_details") || [])];
-                          current[i] = row;
-                          form.setValue("sponsorship_payment_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("sponsorship_payment_details", (form.watch("sponsorship_payment_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <SimpleCharacterDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Benefit for Sponsorship/Nomination"
-                            description="Enter details of any person included in this application who made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "associated_criminal_conduct" && (
-                      <RepeaterTable
-                        data={form.watch("criminal_conduct_details") || []}
-                        columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
-                        onAdd={(row) => form.setValue("criminal_conduct_details", [...(form.watch("criminal_conduct_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("criminal_conduct_details") || [])];
-                          current[i] = row;
-                          form.setValue("criminal_conduct_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("criminal_conduct_details", (form.watch("criminal_conduct_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => <CriminalConductDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
-                      />
-                    )}
-                    {q.key === "associated_violent_org" && (
-                      <RepeaterTable
-                        data={form.watch("violent_org_details") || []}
-                        columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
-                        onAdd={(row) => form.setValue("violent_org_details", [...(form.watch("violent_org_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("violent_org_details") || [])];
-                          current[i] = row;
-                          form.setValue("violent_org_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("violent_org_details", (form.watch("violent_org_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => <ViolentOrganizationDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
-                      />
-                    )}
-                    {q.key === "national_security_risk" && (
-                      <RepeaterTable
-                        data={form.watch("national_security_details") || []}
-                        columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
-                        onAdd={(row) => form.setValue("national_security_details", [...(form.watch("national_security_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("national_security_details") || [])];
-                          current[i] = row;
-                          form.setValue("national_security_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("national_security_details", (form.watch("national_security_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => <NationalSecurityDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
-                      />
-                    )}
-                    {q.key === "outstanding_debts" && (
-                      <RepeaterTable
-                        data={form.watch("outstanding_debts_details") || []}
-                        columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
-                        onAdd={(row) => form.setValue("outstanding_debts_details", [...(form.watch("outstanding_debts_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("outstanding_debts_details") || [])];
-                          current[i] = row;
-                          form.setValue("outstanding_debts_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("outstanding_debts_details", (form.watch("outstanding_debts_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => <OutstandingDebtsDialog {...props} applicantOptions={applicantOptions} />}
                         addButtonText="Add Details"
                       />
                     )}

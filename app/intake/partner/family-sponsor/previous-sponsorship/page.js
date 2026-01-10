@@ -93,10 +93,13 @@ const previousSponsorshipDialogSchema = z.object({
   decision_date_day: z.string().optional(),
   decision_date_month: z.string().optional(),
   decision_date_year: z.string().optional(),
-  // Person details (when Add is selected)
+
+  // Person details
+  person_mode: z.string().optional(),
+  selected_person: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
-  gender: z.enum(["Male", "Female"]).optional(),
+  gender: z.string().optional(),
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
@@ -106,7 +109,7 @@ const previousSponsorshipDialogSchema = z.object({
   const hasDecisionDay = data.decision_date_day && data.decision_date_day.trim() !== "";
   const hasDecisionMonth = data.decision_date_month && data.decision_date_month.trim() !== "";
   const hasDecisionYear = data.decision_date_year && data.decision_date_year.trim() !== "";
-  
+
   if (hasDecisionDay || hasDecisionMonth || hasDecisionYear) {
     if (!hasDecisionDay || !hasDecisionMonth || !hasDecisionYear) {
       ctx.addIssue({
@@ -126,7 +129,7 @@ const previousSponsorshipDialogSchema = z.object({
         parseInt(data.decision_date_month) - 1,
         parseInt(data.decision_date_day)
       );
-      
+
       if (decisionDate < appDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -136,12 +139,20 @@ const previousSponsorshipDialogSchema = z.object({
       }
     }
   }
-  
-  // If person details are provided (Add was selected), validate required fields
-  const hasPersonDetails = data.family_name || data.given_names || data.gender || 
-    (data.birth_day && data.birth_month && data.birth_year) || data.relationship;
-  
-  if (hasPersonDetails) {
+
+  // Validate based on mode
+  const mode = data.person_mode || "select";
+
+  if (mode === "select") {
+    if (!data.selected_person || data.selected_person.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select a person",
+        path: ["selected_person"],
+      });
+    }
+  } else {
+    // Add mode - validate required fields
     if (!data.family_name || data.family_name.trim() === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -156,10 +167,16 @@ const previousSponsorshipDialogSchema = z.object({
         path: ["given_names"],
       });
     }
-    if (!data.gender) {
+    if (!data.gender || data.gender === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Gender is required",
+        path: ["gender"],
+      });
+    } else if (data.gender !== "Male" && data.gender !== "Female") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Gender must be Male or Female",
         path: ["gender"],
       });
     }
@@ -174,7 +191,14 @@ const previousSponsorshipDialogSchema = z.object({
 });
 
 function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
-  const sponsorDetails = draftStore.getSectionData('familySponsor.details') || {};
+  // Use isMounted to prevent hydration mismatch when reading from store
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => { setIsMounted(true); }, []);
+
+  // Safe access to store data
+  const rawSponsorDetails = draftStore.getSectionData('familySponsor.details') || {};
+  const sponsorDetails = isMounted ? rawSponsorDetails : {};
+
   const sponsorName = sponsorDetails.given_names && sponsorDetails.family_name
     ? `${sponsorDetails.given_names} ${sponsorDetails.family_name}`
     : sponsorDetails.given_names || sponsorDetails.family_name || "the sponsor";
@@ -184,35 +208,39 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
 
   const dialogForm = useForm({
     resolver: zodResolver(previousSponsorshipDialogSchema),
-    defaultValues: editingRow || {
-      visa_subclass: "",
-      application_date_day: "",
-      application_date_month: "",
-      application_date_year: "",
-      office_applied_at: "",
-      outcome: "",
-      decision_date_day: "",
-      decision_date_month: "",
-      decision_date_year: "",
-      family_name: "",
-      given_names: "",
-      gender: "",
-      birth_day: "",
-      birth_month: "",
-      birth_year: "",
-      relationship: "",
-      selected_person: "",
+    defaultValues: {
+      ...editingRow,
+      visa_subclass: editingRow?.visa_subclass || "",
+      application_date_day: editingRow?.application_date_day || "",
+      application_date_month: editingRow?.application_date_month || "",
+      application_date_year: editingRow?.application_date_year || "",
+      office_applied_at: editingRow?.office_applied_at || "",
+      outcome: editingRow?.outcome || "",
+      decision_date_day: editingRow?.decision_date_day || "",
+      decision_date_month: editingRow?.decision_date_month || "",
+      decision_date_year: editingRow?.decision_date_year || "",
+      family_name: editingRow?.family_name || "",
+      given_names: editingRow?.given_names || "",
+      gender: editingRow?.gender || "",
+      birth_day: editingRow?.birth_day || "",
+      birth_month: editingRow?.birth_month || "",
+      birth_year: editingRow?.birth_year || "",
+      relationship: editingRow?.relationship || "",
+      selected_person: editingRow?.selected_person || "",
+      person_mode: (editingRow?.family_name || editingRow?.given_names) ? "add" : "select",
     },
   });
 
   useEffect(() => {
     if (editingRow?.family_name || editingRow?.given_names) {
       setPersonMode("add");
+      dialogForm.setValue("person_mode", "add");
     } else if (editingRow?.selected_person) {
       setPersonMode("select");
       setSelectedPerson(editingRow.selected_person);
+      dialogForm.setValue("person_mode", "select");
     }
-  }, [editingRow]);
+  }, [editingRow, dialogForm]);
 
   const handleFormSubmit = (data) => {
     // If select mode, include selected_person; if add mode, include person details
@@ -225,8 +253,10 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
 
   // Get available people from the application (main applicant, spouse, children, family members)
   const getAvailablePeople = () => {
+    if (!isMounted) return []; // Return empty during SSR/Hydration
+
     const people = [];
-    
+
     // Main applicant
     const mainApplicant = draftStore.getSectionData('mainApplicant.details');
     if (mainApplicant?.given_names && mainApplicant?.family_name) {
@@ -236,7 +266,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
         type: 'Main Applicant'
       });
     }
-    
+
     // Spouse/Partner
     const spouse = draftStore.getSectionData('spousePartner.details');
     if (spouse?.given_names && spouse?.family_name) {
@@ -246,7 +276,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
         type: 'Spouse/Partner'
       });
     }
-    
+
     // Children
     const children = draftStore.getSectionData('mainApplicant.family')?.children || [];
     children.forEach((child, index) => {
@@ -258,7 +288,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
         });
       }
     });
-    
+
     // Family members
     const familyMembers = draftStore.getSectionData('familySponsor.details')?.family_members || [];
     familyMembers.forEach((member, index) => {
@@ -270,7 +300,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
         });
       }
     });
-    
+
     return people;
   };
 
@@ -397,6 +427,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
             variant={personMode === "select" ? "default" : "outline"}
             onClick={() => {
               setPersonMode("select");
+              dialogForm.setValue("person_mode", "select");
               dialogForm.setValue("family_name", "");
               dialogForm.setValue("given_names", "");
               dialogForm.setValue("gender", "");
@@ -404,6 +435,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
               dialogForm.setValue("birth_month", "");
               dialogForm.setValue("birth_year", "");
               dialogForm.setValue("relationship", "");
+              dialogForm.clearErrors(); // Clear errors from previous mode
             }}
             data-testid="button-select-person"
           >
@@ -414,8 +446,10 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
             variant={personMode === "add" ? "default" : "outline"}
             onClick={() => {
               setPersonMode("add");
+              dialogForm.setValue("person_mode", "add");
               setSelectedPerson("");
               dialogForm.setValue("selected_person", "");
+              dialogForm.clearErrors(); // Clear errors from previous mode
             }}
             data-testid="button-add-person"
           >
@@ -432,7 +466,7 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
               value={selectedPerson}
               onValueChange={(value) => {
                 setSelectedPerson(value);
-                dialogForm.setValue("selected_person", value);
+                dialogForm.setValue("selected_person", value, { shouldValidate: true });
               }}
             >
               <SelectTrigger data-testid="select-person">
@@ -444,6 +478,9 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
                 ))}
               </SelectContent>
             </Select>
+            {dialogForm.formState.errors.selected_person && (
+              <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.selected_person.message}</p>
+            )}
           </div>
         )}
 
@@ -613,8 +650,16 @@ export default function FamilySponsorPreviousSponsorshipPage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data from familySponsor.details
-  const sectionData = draftStore.getSectionData('familySponsor.details');
-  
+  const rawSectionData = draftStore.getSectionData('familySponsor.details');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Only use data after mount to prevent hydration mismatch
+  const sectionData = isMounted ? rawSectionData : {};
+
   // Get sponsor name for display
   const sponsorName = sectionData?.given_names && sectionData?.family_name
     ? `${sectionData.given_names} ${sectionData.family_name}`
@@ -665,7 +710,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
       const currentFormValues = getValues();
       const existingData = draftStore.getSectionData('familySponsor.details') || {};
       const mergedData = { ...existingData, ...currentFormValues };
-      
+
       draftStore.saveSectionData('familySponsor.details', mergedData);
     }, 2000);
 
@@ -699,7 +744,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
         ...existingData,
         ...data,
       };
-      
+
       const result = await draftStore.saveSectionData('familySponsor.details', finalData);
 
       if (result.success) {
@@ -748,7 +793,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
     setIsSaving(true);
     try {
       const isValid = await form.trigger();
-      
+
       if (!isValid) {
         console.log("Validation Errors:", form.formState.errors);
         toast({
@@ -763,7 +808,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
       const existingData = draftStore.getSectionData('familySponsor.details') || {};
       const currentData = getValues();
       const mergedData = { ...existingData, ...currentData };
-      
+
       const result = await draftStore.saveSectionData('familySponsor.details', mergedData);
 
       if (result.success) {
@@ -799,13 +844,13 @@ export default function FamilySponsorPreviousSponsorshipPage() {
     }
 
     form.setValue("previous_sponsorships", newSponsorships, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
+
     const existingData = draftStore.getSectionData('familySponsor.details') || {};
     const currentData = getValues();
-    draftStore.saveSectionData('familySponsor.details', { 
+    draftStore.saveSectionData('familySponsor.details', {
       ...existingData,
       ...currentData,
-      previous_sponsorships: newSponsorships 
+      previous_sponsorships: newSponsorships
     });
   };
 

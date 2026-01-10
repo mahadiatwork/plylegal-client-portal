@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -93,14 +94,14 @@ const AUSTRALIAN_STATES = [
 // Form schema
 const formSchema = z.object({
   is_sponsored: z.enum(["yes", "no"]),
-  
+
   // Business/Organisation Details
   business_name: z.string().optional(),
   trading_name: z.string().optional(),
   abn: z.string().optional(),
   industry_sector: z.string().optional(),
   business_description: z.string().optional(),
-  
+
   // Contact Person
   contact_prefix: z.string().optional(),
   contact_first_name: z.string().optional(),
@@ -112,7 +113,7 @@ const formSchema = z.object({
   contact_mobile_country_code: z.string().optional(),
   contact_mobile_number: z.string().optional(),
   contact_email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  
+
   // Business/Organisation Telephone and Email Contact
   after_hours_phone_country_code: z.string().optional(),
   after_hours_phone_area_code: z.string().optional(),
@@ -121,7 +122,7 @@ const formSchema = z.object({
   office_hours_phone_area_code: z.string().optional(),
   office_hours_phone_number: z.string().optional(),
   business_email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  
+
   // Commercial Address
   commercial_address_line1: z.string().optional(),
   commercial_address_line2: z.string().optional(),
@@ -130,7 +131,7 @@ const formSchema = z.object({
   commercial_postcode: z.string().optional(),
   commercial_country: z.string().optional(),
   commercial_address_type: z.string().optional(),
-  
+
   // Postal Address (if different)
   postal_address_line1: z.string().optional(),
   postal_address_line2: z.string().optional(),
@@ -284,7 +285,7 @@ export default function EmploymentPage() {
       const formData = form.getValues();
       console.log("Saving protection_employment_offer data:", formData);
       const result = await draftStore.saveSectionData("protection_employment_offer", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -313,7 +314,7 @@ export default function EmploymentPage() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_employment_offer", data);
     draftStore.markPageComplete(`${visaType}/employment`);
-    
+
     const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
     if (nextRoute) {
       router.push(nextRoute);
@@ -415,7 +416,7 @@ export default function EmploymentPage() {
                   {/* Business/Organisation Details */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Business/Organisation Details</h2>
-                    
+
                     <div>
                       <Label htmlFor="business_name" className="mb-2 block">
                         Business Name <span className="text-red-500">*</span>
@@ -480,7 +481,7 @@ export default function EmploymentPage() {
                   {/* Contact Person */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Contact Person</h2>
-{/*                     
+                    {/*                     
                     <div>
                       <Label className="mb-2 block">Prefix/Title</Label>
                       <RadioGroup
@@ -541,9 +542,9 @@ export default function EmploymentPage() {
                     <div>
                       <Label className="mb-2 block">Telephone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("contact_phone_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("contact_phone_country_code")}
+                          onChange={(val) => form.setValue("contact_phone_country_code", val)}
                           data-testid="input-contact-phone-country"
                         />
                         <Input
@@ -562,9 +563,9 @@ export default function EmploymentPage() {
                     <div>
                       <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("contact_mobile_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("contact_mobile_country_code")}
+                          onChange={(val) => form.setValue("contact_mobile_country_code", val)}
                           data-testid="input-contact-mobile-country"
                         />
                         <Input
@@ -592,13 +593,13 @@ export default function EmploymentPage() {
                   {/* Business/Organisation Telephone and Email Contact */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Business/Organisation Telephone and Email Contact</h2>
-                    
+
                     <div>
                       <Label className="mb-2 block">After Hours Phone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("after_hours_phone_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("after_hours_phone_country_code")}
+                          onChange={(val) => form.setValue("after_hours_phone_country_code", val)}
                           data-testid="input-after-hours-country"
                         />
                         <Input
@@ -617,9 +618,9 @@ export default function EmploymentPage() {
                     <div>
                       <Label className="mb-2 block">Office Hours Phone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Country Code"
-                          {...form.register("office_hours_phone_country_code")}
+                        <CountryCodeSelect
+                          value={form.watch("office_hours_phone_country_code")}
+                          onChange={(val) => form.setValue("office_hours_phone_country_code", val)}
                           data-testid="input-office-hours-country"
                         />
                         <Input
@@ -655,7 +656,7 @@ export default function EmploymentPage() {
                     <p className="text-sm text-gray-600">
                       This must be a physical address, not a PO Box number.
                     </p>
-                    
+
                     <div>
                       <Label htmlFor="commercial_address_line1" className="mb-2 block">
                         Address Line 1 (including Street Number and Name)
@@ -745,7 +746,7 @@ export default function EmploymentPage() {
                   {/* Business/Organisation Postal Address (if different) */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Business/Organisation Postal Address (if different)</h2>
-                    
+
                     <div>
                       <Label htmlFor="postal_address_line1" className="mb-2 block">
                         Address Line 1 (including Street Number and Name)
