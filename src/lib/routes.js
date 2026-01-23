@@ -77,9 +77,9 @@ export const PROTECTION_VISA_ROUTES = [
       { href: "/intake/protection/main-applicant/details", title: "Details" },
       { href: "/intake/protection/main-applicant/other", title: "Other" },
       { href: "/intake/protection/main-applicant/identity", title: "Identity" },
+      { href: "/intake/protection/main-applicant/employment", title: "Employment" },
       { href: "/intake/protection/main-applicant/education", title: "Education" },
-      { href: "/intake/protection/main-applicant/skills", title: "Skills" },
-      { href: "/intake/protection/main-applicant/language", title: "Language" },
+      { href: "/intake/protection/main-applicant/family", title: "Family" },
     ],
   },
   {
@@ -88,6 +88,7 @@ export const PROTECTION_VISA_ROUTES = [
     subpages: [
       { href: "/intake/protection/spouse-partner/details", title: "Details" },
       { href: "/intake/protection/spouse-partner/other-details", title: "Other Details" },
+      { href: "/intake/protection/spouse-partner/identity", title: "Identity" },
     ],
   },
   { href: "/intake/protection/children", title: "Children" },
@@ -195,7 +196,7 @@ export function getNextRoute(currentHref, visaType, applicationId = null) {
     return null;
   }
   const nextRoute = allRoutes[currentIndex + 1];
-  
+
   // Append applicationId as query parameter if provided
   if (applicationId) {
     return `${nextRoute}?applicationId=${applicationId}`;
@@ -210,7 +211,7 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null) {
     return null;
   }
   const previousRoute = allRoutes[currentIndex - 1];
-  
+
   // Append applicationId as query parameter if provided
   if (applicationId) {
     return `${previousRoute}?applicationId=${applicationId}`;

@@ -227,7 +227,7 @@ export default function EmploymentPage() {
   const isSponsored = form.watch("is_sponsored");
 
   useEffect(() => {
-    const savedData = draftSnap.draft?.protection_employment_offer || {};
+    const savedData = draftSnap.draft?.protection_employment_offer ? JSON.parse(JSON.stringify(draftSnap.draft.protection_employment_offer)) : {};
     if (Object.keys(savedData).length > 0) {
       form.reset({
         is_sponsored: savedData.is_sponsored || "no",
@@ -329,45 +329,7 @@ export default function EmploymentPage() {
   };
 
   // Clear form fields when "No" is selected
-  useEffect(() => {
-    if (isSponsored === "no") {
-      form.setValue("business_name", "");
-      form.setValue("trading_name", "");
-      form.setValue("abn", "");
-      form.setValue("industry_sector", "");
-      form.setValue("business_description", "");
-      form.setValue("contact_prefix", "");
-      form.setValue("contact_first_name", "");
-      form.setValue("contact_family_name", "");
-      form.setValue("contact_position", "");
-      form.setValue("contact_phone_country_code", "");
-      form.setValue("contact_phone_area_code", "");
-      form.setValue("contact_phone_number", "");
-      form.setValue("contact_mobile_country_code", "");
-      form.setValue("contact_mobile_number", "");
-      form.setValue("contact_email", "");
-      form.setValue("after_hours_phone_country_code", "");
-      form.setValue("after_hours_phone_area_code", "");
-      form.setValue("after_hours_phone_number", "");
-      form.setValue("office_hours_phone_country_code", "");
-      form.setValue("office_hours_phone_area_code", "");
-      form.setValue("office_hours_phone_number", "");
-      form.setValue("business_email", "");
-      form.setValue("commercial_address_line1", "");
-      form.setValue("commercial_address_line2", "");
-      form.setValue("commercial_suburb", "");
-      form.setValue("commercial_state", "");
-      form.setValue("commercial_postcode", "");
-      form.setValue("commercial_country", "");
-      form.setValue("commercial_address_type", "");
-      form.setValue("postal_address_line1", "");
-      form.setValue("postal_address_line2", "");
-      form.setValue("postal_suburb", "");
-      form.setValue("postal_state", "");
-      form.setValue("postal_postcode", "");
-      form.setValue("postal_country", "");
-    }
-  }, [isSponsored]);
+
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
@@ -388,7 +350,46 @@ export default function EmploymentPage() {
                 </Label>
                 <RadioGroup
                   value={isSponsored}
-                  onValueChange={(value) => form.setValue("is_sponsored", value)}
+                  onValueChange={(value) => {
+                    form.setValue("is_sponsored", value);
+                    if (value === "no") {
+                      form.setValue("business_name", "");
+                      form.setValue("trading_name", "");
+                      form.setValue("abn", "");
+                      form.setValue("industry_sector", "");
+                      form.setValue("business_description", "");
+                      form.setValue("contact_prefix", "");
+                      form.setValue("contact_first_name", "");
+                      form.setValue("contact_family_name", "");
+                      form.setValue("contact_position", "");
+                      form.setValue("contact_phone_country_code", "");
+                      form.setValue("contact_phone_area_code", "");
+                      form.setValue("contact_phone_number", "");
+                      form.setValue("contact_mobile_country_code", "");
+                      form.setValue("contact_mobile_number", "");
+                      form.setValue("contact_email", "");
+                      form.setValue("after_hours_phone_country_code", "");
+                      form.setValue("after_hours_phone_area_code", "");
+                      form.setValue("after_hours_phone_number", "");
+                      form.setValue("office_hours_phone_country_code", "");
+                      form.setValue("office_hours_phone_area_code", "");
+                      form.setValue("office_hours_phone_number", "");
+                      form.setValue("business_email", "");
+                      form.setValue("commercial_address_line1", "");
+                      form.setValue("commercial_address_line2", "");
+                      form.setValue("commercial_suburb", "");
+                      form.setValue("commercial_state", "");
+                      form.setValue("commercial_postcode", "");
+                      form.setValue("commercial_country", "");
+                      form.setValue("commercial_address_type", "");
+                      form.setValue("postal_address_line1", "");
+                      form.setValue("postal_address_line2", "");
+                      form.setValue("postal_suburb", "");
+                      form.setValue("postal_state", "");
+                      form.setValue("postal_postcode", "");
+                      form.setValue("postal_country", "");
+                    }
+                  }}
                   className="flex gap-4 mb-5"
                   data-testid="radio-is-sponsored"
                 >

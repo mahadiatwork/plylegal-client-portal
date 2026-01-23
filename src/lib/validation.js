@@ -386,7 +386,7 @@ export const identitySchema = z.object({
 });
 
 export const employmentSchema = z.object({
-  currently_employed: yesNoEnum.optional(),
+  is_currently_employed: yesNoEnum.optional(),
   employment_history: z.array(z.object({
     date_from_day: z.string().optional(),
     date_from_month: z.string().optional(),
@@ -396,15 +396,7 @@ export const employmentSchema = z.object({
     date_to_year: z.string().optional(),
     status: z.string().optional(),
     position: z.string().optional(),
-    business_name: z.string().optional(),
-    business_address_street: z.string().optional(),
-    business_address_street_line2: z.string().optional(),
-    business_address_suburb: z.string().optional(),
-    business_address_state: z.string().optional(),
-    business_address_postcode: z.string().optional(),
-    main_duties: z.string().optional(),
-    occupied_time: z.string().optional(),
-    financial_support: z.string().optional(),
+    employer: z.string().optional(),
     country: z.string().optional(),
   })).optional(),
 });
@@ -497,6 +489,105 @@ export const childrenSchema = z.object({
       message: "At least one child entry is required",
       path: ["children"],
     });
+  }
+});
+
+export const familyProtectionSchema = z.object({
+  has_children: yesNoEnum.optional(),
+  family_members: z.array(z.object({
+    family_name: z.string().min(1, "Family Name is required"),
+    given_names: z.string().min(1, "Given Names is required"),
+    gender: z.enum(["Male", "Female", "Other"]).optional(),
+    birth_day: z.string().min(1, "Day is required"),
+    birth_month: z.string().min(1, "Month is required"),
+    birth_year: z.string().min(1, "Year is required"),
+    relationship: z.string().min(1, "Relationship is required"),
+  })).optional(),
+}).superRefine((data, ctx) => {
+  if (data.has_children === "Yes") {
+    if (!data.family_members || data.family_members.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one family member is required",
+        path: ["family_members"],
+      });
+    }
+  }
+});
+
+export const spouseIdentitySchema = z.object({
+  is_current_citizen: yesNoEnum.optional(),
+  stateless_reason: z.string().optional(),
+  citizenships: z.array(z.object({
+    country: z.string().min(1, "Country is required"),
+    how_obtained: z.string().min(1, "Method obtained is required"),
+    date_obtained_day: z.string().min(1, "Day is required"),
+    date_obtained_month: z.string().min(1, "Month is required"),
+    date_obtained_year: z.string().min(1, "Year is required"),
+    still_citizen: z.string().optional(),
+    date_ceased_day: z.string().optional(),
+    date_ceased_month: z.string().optional(),
+    date_ceased_year: z.string().optional(),
+    ceased_reason: z.string().optional(),
+  })).optional(),
+  has_ever_been_citizen: yesNoEnum.optional(),
+  previous_citizenships: z.array(z.object({
+    country: z.string().min(1, "Country is required"),
+    how_obtained: z.string().min(1, "Method obtained is required"),
+    date_obtained_day: z.string().min(1, "Day is required"),
+    date_obtained_month: z.string().min(1, "Month is required"),
+    date_obtained_year: z.string().min(1, "Year is required"),
+    still_citizen: z.string().optional(),
+    date_ceased_day: z.string().optional(),
+    date_ceased_month: z.string().optional(),
+    date_ceased_year: z.string().optional(),
+    ceased_reason: z.string().optional(),
+  })).optional(),
+  has_permanent_residency_rights: yesNoEnum.optional(),
+  permanent_residencies: z.array(z.object({
+    country: z.string().min(1, "Country is required"),
+  })).optional(),
+}).superRefine((data, ctx) => {
+  if (data.is_current_citizen === "no") {
+    if (!data.stateless_reason || data.stateless_reason.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Details of statelessness are required",
+        path: ["stateless_reason"],
+      });
+    }
+    if (!data.has_ever_been_citizen) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["has_ever_been_citizen"],
+      });
+    }
+    if (data.has_ever_been_citizen === "yes" && (!data.previous_citizenships || data.previous_citizenships.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one previous citizenship is required",
+        path: ["previous_citizenships"],
+      });
+    }
+  }
+  if (data.is_current_citizen === "yes") {
+    if (!data.citizenships || data.citizenships.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one citizenship is required",
+        path: ["citizenships"],
+      });
+    }
+  }
+  if (data.has_permanent_residency_rights === "yes") {
+    if (!data.permanent_residencies || data.permanent_residencies.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one country is required",
+        path: ["permanent_residencies"],
+      });
+    }
   }
 });
 

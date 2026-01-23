@@ -19,7 +19,7 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
-  
+
   // Person completing questionnaire (shown only if is_main_applicant === "yes")
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
@@ -28,9 +28,8 @@ const formSchema = z.object({
   completing_birth_day: z.string().optional(),
   completing_birth_month: z.string().optional(),
   completing_birth_year: z.string().optional(),
-  
+
   // Main applicant details
-  prefix: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
   preferred_names: z.string().optional(),
@@ -39,6 +38,7 @@ const formSchema = z.object({
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
   country_of_birth: z.string().optional(),
+  suburb_of_birth: z.string().optional(),
   city_of_birth: z.string().optional(),
   state_of_birth: z.string().optional(),
   marital_status: z.string().optional(),
@@ -54,7 +54,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  
+
   const [isMainApplicant, setIsMainApplicant] = useState("yes");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -66,7 +66,7 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-  
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -78,7 +78,6 @@ export default function Page() {
       completing_birth_day: "",
       completing_birth_month: "",
       completing_birth_year: "",
-      prefix: "",
       family_name: "",
       given_names: "",
       preferred_names: "",
@@ -87,6 +86,7 @@ export default function Page() {
       birth_month: "",
       birth_year: "",
       country_of_birth: "",
+      suburb_of_birth: "",
       city_of_birth: "",
       state_of_birth: "",
       marital_status: "",
@@ -109,7 +109,6 @@ export default function Page() {
         completing_birth_day: savedData.completing_birth_day || "",
         completing_birth_month: savedData.completing_birth_month || "",
         completing_birth_year: savedData.completing_birth_year || "",
-        prefix: savedData.prefix || "",
         family_name: savedData.family_name || "",
         given_names: savedData.given_names || "",
         preferred_names: savedData.preferred_names || "",
@@ -118,6 +117,7 @@ export default function Page() {
         birth_month: savedData.birth_month || "",
         birth_year: savedData.birth_year || "",
         country_of_birth: savedData.country_of_birth || "",
+        suburb_of_birth: savedData.suburb_of_birth || "",
         city_of_birth: savedData.city_of_birth || "",
         state_of_birth: savedData.state_of_birth || "",
         marital_status: savedData.marital_status || "",
@@ -125,10 +125,10 @@ export default function Page() {
         marital_status_date_month: savedData.marital_status_date_month || "",
         marital_status_date_year: savedData.marital_status_date_year || "",
       };
-      
+
       // Use reset to properly update all form fields including Select components
       form.reset(formData);
-      
+
       if (savedData.is_main_applicant) {
         setIsMainApplicant(savedData.is_main_applicant);
       }
@@ -199,7 +199,7 @@ export default function Page() {
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
             {/* Main Applicant Question */}
-            <div className="hidden">
+            <div>
               <Label className="text-base font-medium text-gray-900">
                 Are you or will you be the Main Applicant in any application?
               </Label>
@@ -230,28 +230,127 @@ export default function Page() {
               )}
             </div>
 
+            {/* Completing Person Details (only if not main applicant) */}
+            {form.watch("is_main_applicant") === "no" && (
+              <div className="space-y-6 border-b border-gray-200 pb-8">
+                <div className="space-y-1">
+                  <p className="font-bold text-lg text-gray-900">Insert the details of the person who is completing this Questionnaire</p>
+                </div>
+
+                <div>
+                  <Label>Family Name</Label>
+                  <Input {...form.register("completing_family_name")} data-testid="input-completing-family-name" />
+                  {form.formState.errors.completing_family_name?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_family_name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Given Names</Label>
+                  <Input {...form.register("completing_given_names")} data-testid="input-completing-given-names" />
+                  {form.formState.errors.completing_given_names?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_given_names.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Preferred Names</Label>
+                  <Input {...form.register("completing_preferred_names")} data-testid="input-completing-preferred-names" />
+                  {form.formState.errors.completing_preferred_names?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_preferred_names.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Gender</Label>
+                  <RadioGroup
+                    value={form.watch("completing_gender")}
+                    onValueChange={(value) => form.setValue("completing_gender", value)}
+                    className="flex gap-4 mt-2"
+                    data-testid="radio-completing-gender"
+                  >
+                    {["Male", "Female", "Other"].map((gender) => (
+                      <div key={gender} className="flex items-center">
+                        <RadioGroupItem value={gender} id={`completing-gender-${gender.toLowerCase()}`} />
+                        <Label htmlFor={`completing-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                          {gender}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  {form.formState.errors.completing_gender?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_gender.message}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Date of Birth - Day</Label>
+                    <Select
+                      onValueChange={(value) => form.setValue("completing_birth_day", value)}
+                      value={form.watch("completing_birth_day")}
+                    >
+                      <SelectTrigger data-testid="select-completing-birth-day">
+                        <SelectValue placeholder="Choose Day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {days.map((day) => (
+                          <SelectItem key={day} value={day}>{day}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.completing_birth_day?.message && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_day.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label>Month</Label>
+                    <Select
+                      onValueChange={(value) => form.setValue("completing_birth_month", value)}
+                      value={form.watch("completing_birth_month")}
+                    >
+                      <SelectTrigger data-testid="select-completing-birth-month">
+                        <SelectValue placeholder="Choose Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((month, idx) => (
+                          <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.completing_birth_month?.message && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_month.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label>Year</Label>
+                    <Select
+                      onValueChange={(value) => form.setValue("completing_birth_year", value)}
+                      value={form.watch("completing_birth_year")}
+                    >
+                      <SelectTrigger data-testid="select-completing-birth-year">
+                        <SelectValue placeholder="Choose Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year}>{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.completing_birth_year?.message && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_year.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Main Applicant's Personal Details Section */}
             <div className="space-y-6 border-gray-200">
-              <div className="hidden">
-                <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
-                <RadioGroup
-                  value={form.watch("prefix")}
-                  onValueChange={(value) => form.setValue("prefix", value)}
-                  className="flex flex-wrap gap-4"
-                  data-testid="radio-prefix"
-                >
-                  {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                    <div key={prefix} className="flex items-center">
-                      <RadioGroupItem value={prefix} id={`main-${prefix.toLowerCase()}`} />
-                      <Label htmlFor={`main-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {prefix}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {form.formState.errors.prefix?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.prefix.message}</p>
-                )}
+              <div className="space-y-1">
+                <p className="font-bold text-lg text-gray-900">Main Applicant's Personal Details</p>
               </div>
 
               <div>
@@ -286,7 +385,7 @@ export default function Page() {
                   className="flex gap-4 mt-2"
                   data-testid="radio-gender"
                 >
-                  {["Male", "Female"].map((gender) => (
+                  {["Male", "Female", "Other"].map((gender) => (
                     <div key={gender} className="flex items-center">
                       <RadioGroupItem value={gender} id={`main-gender-${gender.toLowerCase()}`} />
                       <Label htmlFor={`main-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
@@ -303,8 +402,8 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label>Date of Birth - Day</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_day", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_day", value)}
                     value={form.watch("birth_day")}
                   >
                     <SelectTrigger data-testid="select-birth-day">
@@ -323,8 +422,8 @@ export default function Page() {
 
                 <div>
                   <Label>Month</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_month", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_month", value)}
                     value={form.watch("birth_month")}
                   >
                     <SelectTrigger data-testid="select-birth-month">
@@ -343,8 +442,8 @@ export default function Page() {
 
                 <div>
                   <Label>Year</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_year", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("birth_year", value)}
                     value={form.watch("birth_year")}
                   >
                     <SelectTrigger data-testid="select-birth-year">
@@ -371,6 +470,14 @@ export default function Page() {
               </div>
 
               <div>
+                <Label>Suburb of Birth</Label>
+                <Input {...form.register("suburb_of_birth")} data-testid="input-suburb-of-birth" />
+                {form.formState.errors.suburb_of_birth?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.suburb_of_birth.message}</p>
+                )}
+              </div>
+
+              <div>
                 <Label>City or Town of Birth</Label>
                 <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
                 {form.formState.errors.city_of_birth?.message && (
@@ -388,8 +495,8 @@ export default function Page() {
 
               <div>
                 <Label>What is your marital status?</Label>
-                <Select 
-                  onValueChange={(value) => form.setValue("marital_status", value)} 
+                <Select
+                  onValueChange={(value) => form.setValue("marital_status", value)}
                   value={form.watch("marital_status")}
                 >
                   <SelectTrigger data-testid="select-marital-status">
