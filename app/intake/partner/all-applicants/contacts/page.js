@@ -404,6 +404,7 @@ export default function ContactsPage() {
   const draftSnap = useSnapshot(draftStore);
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get Main Applicant Name
   const mainApplicantName = (() => {
@@ -500,14 +501,14 @@ export default function ContactsPage() {
   };
 
   const onSubmit = async (data) => {
-    setIsSaving(true);
+    setIsSubmitting(true);
     try {
       await draftStore.saveSectionData("partner_contacts", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`, null, "partner_contacts");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       if (next) router.push(next);
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -605,6 +606,7 @@ export default function ContactsPage() {
                 onNext={handleSubmit(onSubmit)}
                 onSave={handleSave}
                 loading={isSaving}
+                submitting={isSubmitting}
                 saveLabel="Save Draft"
                 nextLabel="Continue"
               />

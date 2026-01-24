@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 const QUALIFICATION_LEVELS = [
   "Secondary",
@@ -336,6 +337,7 @@ export default function EducationPage() {
   const draftSnap = useSnapshot(draftStore);
   const draft = draftSnap.draft;
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -363,7 +365,7 @@ export default function EducationPage() {
         has_secondary_education: savedData.has_secondary_education || "no",
         education_history: savedData.education_history || [],
       };
-      
+
       // Use reset to properly update all form fields
       form.reset(formData);
     }
@@ -382,11 +384,11 @@ export default function EducationPage() {
         });
         return;
       }
-      
+
       const formData = form.getValues();
       console.log("Saving protection_education data:", formData); // Debug log
       const result = await draftStore.saveSectionData("protection_education", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -413,13 +415,20 @@ export default function EducationPage() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_education", data);
-    const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/education`);
-    
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
-    if (nextRoute) {
-      router.push(nextRoute);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_education", data);
+      const visaType = getVisaTypeFromPath(pathname);
+      await draftStore.markPageComplete(`${visaType}/main-applicant/education`);
+      const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+      if (nextRoute) {
+        router.push(nextRoute);
+      }
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -433,13 +442,8 @@ export default function EducationPage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={form.handleSubmit(onSubmit)}
-        loading={isSaving}
-      />
-      
+
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -505,41 +509,14 @@ export default function EducationPage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>

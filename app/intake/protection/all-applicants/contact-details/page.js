@@ -12,6 +12,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
@@ -93,6 +94,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -105,7 +107,7 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      share_same_contact_phones: "",
+      share_same_contact_phones: "no",
       after_hours_phone_country_code: "",
       after_hours_phone_area_code: "",
       after_hours_phone_number: "",
@@ -114,9 +116,9 @@ export default function Page() {
       office_hours_phone_number: "",
       mobile_phone_country_code: "",
       mobile_phone_number: "",
-      share_same_email: "",
+      share_same_email: "no",
       shared_email: "",
-      share_same_postal_address: "",
+      share_same_postal_address: "no",
       postal_address: "",
       postal_country: "",
     },
@@ -130,7 +132,7 @@ export default function Page() {
     const savedData = draftSnap.draft?.protection_contact_details || {};
     if (Object.keys(savedData).length > 0) {
       form.reset({
-        share_same_contact_phones: savedData.share_same_contact_phones || "",
+        share_same_contact_phones: savedData.share_same_contact_phones || "no",
         after_hours_phone_country_code: savedData.after_hours_phone_country_code || "",
         after_hours_phone_area_code: savedData.after_hours_phone_area_code || "",
         after_hours_phone_number: savedData.after_hours_phone_number || "",
@@ -139,49 +141,30 @@ export default function Page() {
         office_hours_phone_number: savedData.office_hours_phone_number || "",
         mobile_phone_country_code: savedData.mobile_phone_country_code || "",
         mobile_phone_number: savedData.mobile_phone_number || "",
-        share_same_email: savedData.share_same_email || "",
+        share_same_email: savedData.share_same_email || "no",
         shared_email: savedData.shared_email || "",
-        share_same_postal_address: savedData.share_same_postal_address || "",
+        share_same_postal_address: savedData.share_same_postal_address || "no",
         postal_address: savedData.postal_address || "",
         postal_country: savedData.postal_country || "",
       });
     }
   }, [draftSnap.draft?.protection_contact_details]);
 
-  // Clear phone fields when "No" is selected
-  useEffect(() => {
-    if (shareSamePhones === "no") {
-      form.setValue("after_hours_phone_country_code", "");
-      form.setValue("after_hours_phone_area_code", "");
-      form.setValue("after_hours_phone_number", "");
-      form.setValue("office_hours_phone_country_code", "");
-      form.setValue("office_hours_phone_area_code", "");
-      form.setValue("office_hours_phone_number", "");
-      form.setValue("mobile_phone_country_code", "");
-      form.setValue("mobile_phone_number", "");
-    }
-  }, [shareSamePhones]);
 
-  // Clear email field when "No" is selected
-  useEffect(() => {
-    if (shareSameEmail === "no") {
-      form.setValue("shared_email", "");
-    }
-  }, [shareSameEmail]);
-
-  // Clear postal address fields when "No" is selected
-  useEffect(() => {
-    if (shareSamePostal === "no") {
-      form.setValue("postal_address", "");
-      form.setValue("postal_country", "");
-    }
-  }, [shareSamePostal]);
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_contact_details", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/contact-details`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_contact_details", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/contact-details`, undefined, "protection_contact_details");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -249,7 +232,19 @@ export default function Page() {
                 </Label>
                 <RadioGroup
                   value={shareSamePhones}
-                  onValueChange={(value) => form.setValue("share_same_contact_phones", value)}
+                  onValueChange={(value) => {
+                    form.setValue("share_same_contact_phones", value);
+                    if (value === "no") {
+                      form.setValue("after_hours_phone_country_code", "");
+                      form.setValue("after_hours_phone_area_code", "");
+                      form.setValue("after_hours_phone_number", "");
+                      form.setValue("office_hours_phone_country_code", "");
+                      form.setValue("office_hours_phone_area_code", "");
+                      form.setValue("office_hours_phone_number", "");
+                      form.setValue("mobile_phone_country_code", "");
+                      form.setValue("mobile_phone_number", "");
+                    }
+                  }}
                   className="flex gap-4"
                   data-testid="radio-share-phones"
                 >
@@ -343,7 +338,12 @@ export default function Page() {
                 </Label>
                 <RadioGroup
                   value={shareSameEmail}
-                  onValueChange={(value) => form.setValue("share_same_email", value)}
+                  onValueChange={(value) => {
+                    form.setValue("share_same_email", value);
+                    if (value === "no") {
+                      form.setValue("shared_email", "");
+                    }
+                  }}
                   className="flex gap-4"
                   data-testid="radio-share-email"
                 >
@@ -387,7 +387,13 @@ export default function Page() {
                 </Label>
                 <RadioGroup
                   value={shareSamePostal}
-                  onValueChange={(value) => form.setValue("share_same_postal_address", value)}
+                  onValueChange={(value) => {
+                    form.setValue("share_same_postal_address", value);
+                    if (value === "no") {
+                      form.setValue("postal_address", "");
+                      form.setValue("postal_country", "");
+                    }
+                  }}
                   className="flex gap-4 mb-5"
                   data-testid="radio-share-postal"
                 >
@@ -445,58 +451,17 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              disabledNext={!form.formState.isValid}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }

@@ -17,7 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils"; // Assuming utils exists for class merging if needed, or just standard classes
+import { cn } from "@/lib/utils";
+import { FormNavigation } from "@/components/FormNavigation";
+import { Loader2 } from "lucide-react";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -217,6 +219,8 @@ export default function FamilyPage() {
     const { toast } = useToast();
     const draftSnap = useSnapshot(draftStore);
     const draft = draftSnap.draft;
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         const appIdFromUrl = searchParams.get('applicationId');
@@ -268,13 +272,20 @@ export default function FamilyPage() {
     };
 
     const onSubmit = async (data) => {
-        await draftStore.saveSectionData("protection_family", data);
-        const visaType = getVisaTypeFromPath(pathname);
-        draftStore.markPageComplete(`${visaType}/main-applicant/family`);
-
-        const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
-        if (nextRoute) {
-            router.push(nextRoute);
+        setIsSubmitting(true);
+        try {
+            await draftStore.saveSectionData("protection_family", data);
+            const visaType = getVisaTypeFromPath(pathname);
+            await draftStore.markPageComplete(`${visaType}/main-applicant/family`);
+            const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+            if (nextRoute) {
+                router.push(nextRoute);
+            }
+        } catch (error) {
+            console.error("Error submitting:", error);
+            toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -288,9 +299,7 @@ export default function FamilyPage() {
 
     return (
         <div className="min-h-screen bg-[#E0E7FF]">
-            <StickyNav
-                title="Family"
-            />
+
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
@@ -364,32 +373,15 @@ export default function FamilyPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-between mt-8 pt-6 border-t">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handlePrevious}
-                                data-testid="button-previous"
-                            >
-                                Previous
-                            </Button>
-                            <div className="flex gap-3">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleSave}
-                                    data-testid="button-save"
-                                >
-                                    Save Draft
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                                    data-testid="button-continue"
-                                >
-                                    Continue
-                                </Button>
-                            </div>
+                        <div className="mt-8 pt-6 border-t">
+                            <FormNavigation
+                                onPrev={handlePrevious}
+                                onNext={form.handleSubmit(onSubmit)}
+                                onSave={handleSave}
+                                loading={isSaving}
+                                submitting={isSubmitting}
+                                disabledNext={!form.formState.isValid}
+                            />
                         </div>
                     </form>
                 </div>

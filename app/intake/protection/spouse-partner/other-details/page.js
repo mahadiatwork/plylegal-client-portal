@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -67,7 +68,7 @@ const otherNameDialogSchema = z.object({
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [hasEvidence, setHasEvidence] = useState(row?.has_evidence || "no");
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(otherNameDialogSchema),
     defaultValues: row || {
@@ -106,12 +107,12 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -160,7 +161,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
-        
+
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
             Do you have evidence of this Other Name? <span className="text-red-500">*</span>
@@ -299,16 +300,16 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           data-testid="button-cancel"
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-ok"
         >
@@ -347,6 +348,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -384,10 +386,18 @@ export default function Page() {
   }, [draftSnap.draft?.protection_spouse_other]);
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_spouse_other", data);
-    await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_spouse_other", data);
+      await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -410,7 +420,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_spouse_other data:", formData);
       const result = await draftStore.saveSectionData("protection_spouse_other", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -562,57 +572,20 @@ export default function Page() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>
 
       {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-continue-mobile"
-        saveTestId="button-save-mobile"
-      />
+
     </div>
   );
 }

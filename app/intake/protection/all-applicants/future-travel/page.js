@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -102,7 +103,7 @@ const futureTravelDialogSchema = z.object({
     parseInt(data.intended_arrival_date_month) - 1,
     parseInt(data.intended_arrival_date_day)
   );
-  
+
   if (arrivalDate < startDate) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -114,7 +115,7 @@ const futureTravelDialogSchema = z.object({
 
 function FutureTravelDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(futureTravelDialogSchema),
     defaultValues: row || {
@@ -160,7 +161,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
       {/* Departure Details */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Departure Details</h3>
-        
+
         <div>
           <Label className="mb-2 block">
             Travel Start Date <span className="text-red-500">*</span>
@@ -262,7 +263,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
       {/* Arrival Details */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Arrival Details</h3>
-        
+
         <div>
           <Label className="mb-2 block">
             Intended Arrival Date <span className="text-red-500">*</span>
@@ -420,6 +421,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -432,7 +434,7 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_future_travel: "",
+      has_future_travel: "no",
       main_applicant_future_travel: [],
     },
   });
@@ -468,10 +470,18 @@ export default function Page() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_future_travel", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/future-travel`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_future_travel", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/future-travel`, null, "protection_future_travel");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -494,7 +504,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_future_travel data:", formData);
       const result = await draftStore.saveSectionData("protection_future_travel", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -609,58 +619,19 @@ export default function Page() {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
+
     </div>
   );
 }

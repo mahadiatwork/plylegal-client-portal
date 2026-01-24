@@ -7,6 +7,7 @@ export function FormNavigation({
     onNext,
     onSave,
     loading = false,
+    submitting = false,
     showPrev = true,
     disabledNext = false,
     nextLabel = "Next",
@@ -23,7 +24,7 @@ export function FormNavigation({
                         onClick={onPrev}
                         className="min-h-9"
                         data-testid="button-previous"
-                        disabled={loading}
+                        disabled={loading || submitting}
                     >
                         ← Previous
                     </Button>
@@ -37,7 +38,7 @@ export function FormNavigation({
                             type="button"
                             variant="outline"
                             onClick={onSave}
-                            disabled={loading}
+                            disabled={loading || submitting}
                             className="min-h-9"
                             data-testid="button-save"
                         >
@@ -50,10 +51,13 @@ export function FormNavigation({
                     <Button
                         type="button"
                         onClick={onNext}
-                        disabled={loading || disabledNext}
+                        disabled={loading || submitting || disabledNext}
                         className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
                         data-testid="button-next"
                     >
+                        {submitting && (
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        )}
                         {nextLabel} →
                     </Button>
                 </div>
@@ -65,6 +69,7 @@ export function FormNavigation({
                 onNext={onNext}
                 onSave={onSave}
                 loading={loading}
+                submitting={submitting}
                 showPrev={showPrev}
                 disabledNext={disabledNext}
                 nextLabel={nextLabel}

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormNavigation } from "@/components/FormNavigation";
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -617,6 +618,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -629,7 +631,7 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_family_in_australia: "",
+      has_family_in_australia: "no",
       main_applicant_contacts: [],
     },
   });
@@ -665,10 +667,18 @@ export default function Page() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_contacts", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_contacts", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`, null, "protection_contacts");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -809,58 +819,16 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              disabledNext={!form.formState.isValid}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StickyNav } from "@/components/StickyNav";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 const formSchema = z.object({
   medical_condition: z.enum(["yes", "no"]).optional(),
@@ -29,6 +30,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -41,9 +43,9 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      medical_condition: "",
-      requires_assistance: "",
-      health_insurance: "",
+      medical_condition: "no",
+      requires_assistance: "no",
+      health_insurance: "no",
     },
   });
 
@@ -59,10 +61,18 @@ export default function Page() {
   }, [draftSnap.draft?.protection_health]);
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_health", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/health`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_health", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/health`, null, "protection_health");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -85,7 +95,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_health data:", formData);
       const result = await draftStore.saveSectionData("protection_health", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -175,57 +185,18 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrevious}
-              className="min-h-9"
-              data-testid="button-previous"
-            >
-              ← Previous
-            </Button>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="min-h-9"
-                data-testid="button-save"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Draft"
-                )}
-              </Button>
-              <Button
-                type="submit"
-                className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                data-testid="button-next"
-              >
-                Next →
-              </Button>
-            </div>
-          </div>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            loading={isSaving}
+            submitting={isSubmitting}
+            disabledNext={!form.formState.isValid}
+          />
         </form>
       </div>
 
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
+
     </div>
   );
 }

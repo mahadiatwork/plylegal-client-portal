@@ -19,6 +19,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -137,7 +138,7 @@ const visaDialogSchema = z.object({
       }
     }
   }
-  
+
   // If outcome is Refused or Withdrawn, require decision date and details
   if (data.outcome === "Refused" || data.outcome === "Withdrawn") {
     if (!data.decision_date_day || !data.decision_date_month || !data.decision_date_year) {
@@ -161,7 +162,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [outcome, setOutcome] = useState(row?.outcome || "");
   const [visaCancelled, setVisaCancelled] = useState(row?.visa_cancelled || "no");
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(visaDialogSchema),
     defaultValues: row || {
@@ -341,7 +342,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Application Outcome</h3>
         <p className="text-sm text-gray-600">Enter details on the outcome of the Visa application</p>
-        
+
         <div>
           <Label className="mb-2 block">
             Outcome <span className="text-red-500">*</span>
@@ -675,7 +676,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
             <SelectItem value="none">None</SelectItem>
             {passports.map((passport, idx) => {
-              const passportLabel = passport.document_number 
+              const passportLabel = passport.document_number
                 ? `${passport.document_number} - ${passport.name || 'Unnamed'}`
                 : `Passport ${idx + 1}`;
               return (
@@ -748,6 +749,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -760,7 +762,7 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_previous_visa: "",
+      has_previous_visa: "no",
       main_applicant_visas: [],
     },
   });
@@ -796,10 +798,18 @@ export default function Page() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_visas", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/visas`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_visas", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/visas`, null, "protection_visas");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -822,7 +832,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_visas data:", formData);
       const result = await draftStore.saveSectionData("protection_visas", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -955,58 +965,19 @@ export default function Page() {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
+
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -90,7 +91,7 @@ const addressDialogSchema = z.object({
   const hasDateToDay = data.date_to_day && data.date_to_day.trim() !== "";
   const hasDateToMonth = data.date_to_month && data.date_to_month.trim() !== "";
   const hasDateToYear = data.date_to_year && data.date_to_year.trim() !== "";
-  
+
   if (hasDateToDay || hasDateToMonth || hasDateToYear) {
     if (!hasDateToDay || !hasDateToMonth || !hasDateToYear) {
       ctx.addIssue({
@@ -110,7 +111,7 @@ const addressDialogSchema = z.object({
         parseInt(data.date_to_month) - 1,
         parseInt(data.date_to_day)
       );
-      
+
       if (toDate < fromDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -124,7 +125,7 @@ const addressDialogSchema = z.object({
 
 function AddressDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(addressDialogSchema),
     defaultValues: row || {
@@ -250,7 +251,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">When</h3>
         <p className="text-sm text-gray-600">Enter when you lived at this address</p>
-        
+
         <div>
           <Label className="mb-2 block">
             Date From <span className="text-red-500">*</span>
@@ -354,7 +355,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Legal Status</h3>
         <p className="text-sm text-gray-600">Enter your current legal status in this country</p>
-        
+
         <div>
           <Label className="mb-2 block">
             Legal Status <span className="text-red-500">*</span>
@@ -427,6 +428,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -439,7 +441,7 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      all_same_address: "",
+      all_same_address: "no",
       main_applicant_addresses: [],
     },
   });
@@ -457,7 +459,7 @@ export default function Page() {
     const savedData = draftSnap.draft?.protection_addresses || {};
     if (Object.keys(savedData).length > 0) {
       form.reset({
-        all_same_address: savedData.all_same_address || "",
+        all_same_address: savedData.all_same_address || "no",
         main_applicant_addresses: savedData.main_applicant_addresses || [],
       });
     }
@@ -468,10 +470,18 @@ export default function Page() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_addresses", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/addresses`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_addresses", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/addresses`, null, "protection_addresses");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -494,7 +504,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_addresses data:", formData);
       const result = await draftStore.saveSectionData("protection_addresses", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -628,58 +638,17 @@ export default function Page() {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }

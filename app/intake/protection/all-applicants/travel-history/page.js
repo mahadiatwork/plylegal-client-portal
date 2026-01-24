@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -119,7 +120,7 @@ const travelDialogSchema = z.object({
         parseInt(data.intended_departure_date_month) - 1,
         parseInt(data.intended_departure_date_day)
       );
-      
+
       if (departureDate < arrivalDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -141,7 +142,7 @@ const travelDialogSchema = z.object({
         parseInt(data.intended_departure_date_month) - 1,
         parseInt(data.intended_departure_date_day)
       );
-      
+
       if (departureDate < arrivalDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -156,7 +157,7 @@ const travelDialogSchema = z.object({
 function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [isCurrentLocation, setIsCurrentLocation] = useState(row?.is_current_location || "no");
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(travelDialogSchema),
     defaultValues: row || {
@@ -355,20 +356,22 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
-      {/* Arrival City */}
-      <div>
-        <Label htmlFor="arrival_city" className="mb-2 block">Arrival City</Label>
-        <Input
-          id="arrival_city"
-          {...dialogForm.register("arrival_city")}
-          data-testid="input-arrival-city"
-        />
-      </div>
+      {/* Arrival City - Only show if current location is Yes */}
+      {isCurrentLocation === "yes" && (
+        <div>
+          <Label htmlFor="arrival_city" className="mb-2 block">Arrival City</Label>
+          <Input
+            id="arrival_city"
+            {...dialogForm.register("arrival_city")}
+            data-testid="input-arrival-city"
+          />
+        </div>
+      )}
 
       {/* Intended Departure Date */}
       <div>
         <Label className="mb-2 block">
-          {isCurrentLocation === "yes" ? "Intended Departure Date" : "Departure Date"} 
+          {isCurrentLocation === "yes" ? "Intended Departure Date" : "Departure Date"}
           {isCurrentLocation === "no" && <span className="text-red-500"> *</span>}
         </Label>
         <div className="grid grid-cols-3 gap-2">
@@ -464,6 +467,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -476,7 +480,7 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_travel_history: "",
+      has_travel_history: "no",
       main_applicant_travel_history: [],
     },
   });
@@ -494,7 +498,7 @@ export default function Page() {
     const savedData = draftSnap.draft?.protection_travel || {};
     if (Object.keys(savedData).length > 0) {
       form.reset({
-        has_travel_history: savedData.has_travel_history || "",
+        has_travel_history: savedData.has_travel_history || "no",
         main_applicant_travel_history: savedData.main_applicant_travel_history || [],
       });
     }
@@ -512,10 +516,18 @@ export default function Page() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_travel", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_travel", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`, null, "protection_travel");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrevious = () => {
@@ -538,7 +550,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_travel data:", formData);
       const result = await draftStore.saveSectionData("protection_travel", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -673,58 +685,19 @@ export default function Page() {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
+
     </div>
   );
 }

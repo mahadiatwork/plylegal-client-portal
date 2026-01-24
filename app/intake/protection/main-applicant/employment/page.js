@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   "Employed",
@@ -244,6 +246,8 @@ export default function EmploymentPage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const draft = draftSnap.draft;
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -280,31 +284,46 @@ export default function EmploymentPage() {
   }, []);
 
   const handleSave = async () => {
-    const formData = form.getValues();
-    const result = await draftStore.saveSectionData("protection_employment", formData);
+    setIsSaving(true);
+    try {
+      const formData = form.getValues();
+      const result = await draftStore.saveSectionData("protection_employment", formData);
 
-    if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save changes",
-        variant: "destructive",
-      });
+      if (result.success) {
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error saving:", error);
+      toast({ title: "Error", description: "Failed to save", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_employment", data);
-    const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/employment`);
-
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
-    if (nextRoute) {
-      router.push(nextRoute);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_employment", data);
+      const visaType = getVisaTypeFromPath(pathname);
+      await draftStore.markPageComplete(`${visaType}/main-applicant/employment`);
+      const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+      if (nextRoute) {
+        router.push(nextRoute);
+      }
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -318,10 +337,7 @@ export default function EmploymentPage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav
-        title="Employment"
-        description="In this section, provide details about the main applicant's employment history."
-      />
+
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
@@ -390,32 +406,15 @@ export default function EmploymentPage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  data-testid="button-save"
-                >
-                  Save Draft
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
+            <div className="mt-8 pt-6 border-t">
+              <FormNavigation
+                onPrev={handlePrevious}
+                onNext={form.handleSubmit(onSubmit)}
+                onSave={handleSave}
+                loading={isSaving}
+                submitting={isSubmitting}
+                disabledNext={!form.formState.isValid}
+              />
             </div>
           </form>
         </div>
