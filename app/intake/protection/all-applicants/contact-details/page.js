@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -45,7 +44,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 // Form schema
 const formSchema = z.object({
   // Question 1: Shared Contact Phone Numbers
@@ -83,7 +81,6 @@ const formSchema = z.object({
     }
   }
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -92,7 +89,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -100,7 +96,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -120,11 +115,9 @@ export default function Page() {
       postal_country: "",
     },
   });
-
   const shareSamePhones = form.watch("share_same_contact_phones");
   const shareSameEmail = form.watch("share_same_email");
   const shareSamePostal = form.watch("share_same_postal_address");
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_contact_details || {};
     if (Object.keys(savedData).length > 0) {
@@ -146,7 +139,6 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_contact_details]);
-
   // Clear phone fields when "No" is selected
   useEffect(() => {
     if (shareSamePhones === "no") {
@@ -160,14 +152,12 @@ export default function Page() {
       form.setValue("mobile_phone_number", "");
     }
   }, [shareSamePhones]);
-
   // Clear email field when "No" is selected
   useEffect(() => {
     if (shareSameEmail === "no") {
       form.setValue("shared_email", "");
     }
   }, [shareSameEmail]);
-
   // Clear postal address fields when "No" is selected
   useEffect(() => {
     if (shareSamePostal === "no") {
@@ -175,19 +165,16 @@ export default function Page() {
       form.setValue("postal_country", "");
     }
   }, [shareSamePostal]);
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_contact_details", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/contact-details`);
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -228,14 +215,13 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Contact Details</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Contact Details</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               For everyone who is to be included in this application, provide the following details about their contact details:
             </p>
           </div>
@@ -265,7 +251,6 @@ export default function Page() {
                     </Label>
                   </div>
                 </RadioGroup>
-
                 {/* Shared Phone Fields - Show when Yes */}
                 {shareSamePhones === "yes" && (
                   <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
@@ -289,7 +274,6 @@ export default function Page() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Office Hours Phone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
@@ -310,7 +294,6 @@ export default function Page() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
                       <div className="grid grid-cols-2 gap-2">
@@ -334,7 +317,6 @@ export default function Page() {
                   </div>
                 )}
               </div>
-
               {/* Question 2: Shared Email Address */}
               <div className="space-y-4 pt-6 border-t border-gray-200">
                 <Label className="text-base font-medium mb-3 block">
@@ -359,7 +341,6 @@ export default function Page() {
                     </Label>
                   </div>
                 </RadioGroup>
-
                 {/* Shared Email Field - Show when Yes */}
                 {shareSameEmail === "yes" && (
                   <div className="mt-6">
@@ -378,7 +359,6 @@ export default function Page() {
                   </div>
                 )}
               </div>
-
               {/* Question 3: Shared Postal Address */}
               <div className="space-y-4 pt-6 border-t border-gray-200 mb-4">
                 <Label className="text-base font-medium mb-3 block">
@@ -422,7 +402,6 @@ export default function Page() {
                         data-testid="input-postal-address"
                       />
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Choose Country</Label>
                       <Select
@@ -443,7 +422,6 @@ export default function Page() {
                 )}
               </div>
             </div>
-
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
@@ -485,7 +463,6 @@ export default function Page() {
           </form>
         </div>
       </div>
-
       {/* Mobile Navigation */}
       <StickyNav
         onPrev={handlePrevious}

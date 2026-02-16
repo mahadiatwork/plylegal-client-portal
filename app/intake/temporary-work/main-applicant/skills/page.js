@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Unexpected", "Pending", "Other"];
 const ASSESSMENT_TYPES = ["Full Skills Assessment", "Provisional Skills Assessment", "Job Ready Program", "Points Test Advice", "Other"];
@@ -648,141 +649,143 @@ export default function SkillsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Skills</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s professional registrations and skills assessments.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-8">
+            {/* Q1: Do you hold any Occupational Registrations */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Do you hold any Occupational Registrations, Licences or Professional Memberships?
+              </Label>
+              <RadioGroup
+                value={hasOccupationalRegistration}
+                onValueChange={(value) => form.setValue("has_occupational_registration", value)}
+                className="flex gap-4"
+                data-testid="radio-occupational-registration"
+              >
+                <div className="flex items-center" data-testid="radio-occupational-registration-yes">
+                  <RadioGroupItem value="yes" id="registration-yes" />
+                  <Label htmlFor="registration-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-occupational-registration-no">
+                  <RadioGroupItem value="no" id="registration-no" />
+                  <Label htmlFor="registration-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
 
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-8">
-              {/* Q1: Do you hold any Occupational Registrations */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Do you hold any Occupational Registrations, Licences or Professional Memberships?
-                </Label>
-                <RadioGroup
-                  value={hasOccupationalRegistration}
-                  onValueChange={(value) => form.setValue("has_occupational_registration", value)}
-                  className="flex gap-4"
-                  data-testid="radio-occupational-registration"
-                >
-                  <div className="flex items-center" data-testid="radio-occupational-registration-yes">
-                    <RadioGroupItem value="yes" id="registration-yes" />
-                    <Label htmlFor="registration-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-occupational-registration-no">
-                    <RadioGroupItem value="no" id="registration-no" />
-                    <Label htmlFor="registration-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* Registrations Repeater (shown if Yes) */}
-                {hasOccupationalRegistration === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Registrations/Licences</h3>
-                    <RepeaterTable
-                      data={registrations}
-                      columns={[
-                        { key: "authority", label: "Authority" },
-                        { key: "title", label: "Title" },
-                        { key: "licence_number", label: "Licence Number" },
-                        { key: "issue_date_year", label: "Year" },
-                        { key: "country", label: "Country" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...registrations, newRow];
-                        form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...registrations];
-                        updated[index] = updatedRow;
-                        form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = registrations.filter((_, i) => i !== index);
-                        form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={RegistrationDialog}
-                      addButtonText="Add"
-                      testIdPrefix="registration"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Q2: Have you applied for a Skills Assessment */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Have you applied for a Skills Assessment from an Australian Skills Assessing body?
-                </Label>
-                <RadioGroup
-                  value={hasSkillsAssessment}
-                  onValueChange={(value) => form.setValue("has_skills_assessment", value)}
-                  className="flex gap-4"
-                  data-testid="radio-skills-assessment"
-                >
-                  <div className="flex items-center" data-testid="radio-skills-assessment-yes">
-                    <RadioGroupItem value="yes" id="assessment-yes" />
-                    <Label htmlFor="assessment-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-skills-assessment-no">
-                    <RadioGroupItem value="no" id="assessment-no" />
-                    <Label htmlFor="assessment-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* Skills Assessments Repeater (shown if Yes) */}
-                {hasSkillsAssessment === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Skills Assessments</h3>
-                    <RepeaterTable
-                      data={assessments}
-                      columns={[
-                        { key: "assessing_authority", label: "Authority" },
-                        { key: "assessment_type", label: "Type" },
-                        { key: "anzsco_code", label: "ANZSCO" },
-                        { key: "outcome", label: "Outcome" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...assessments, newRow];
-                        form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...assessments];
-                        updated[index] = updatedRow;
-                        form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = assessments.filter((_, i) => i !== index);
-                        form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={AssessmentDialog}
-                      addButtonText="Add"
-                      testIdPrefix="assessment"
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Registrations Repeater (shown if Yes) */}
+              {hasOccupationalRegistration === "yes" && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Registrations/Licences</h3>
+                  <RepeaterTable
+                    data={registrations}
+                    columns={[
+                      { key: "authority", label: "Authority" },
+                      { key: "title", label: "Title" },
+                      { key: "licence_number", label: "Licence Number" },
+                      { key: "issue_date_year", label: "Year" },
+                      { key: "country", label: "Country" },
+                    ]}
+                    onAdd={(newRow) => {
+                      const updated = [...registrations, newRow];
+                      form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const updated = [...registrations];
+                      updated[index] = updatedRow;
+                      form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onDelete={(index) => {
+                      const updated = registrations.filter((_, i) => i !== index);
+                      form.setValue("registrations", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    DialogComponent={RegistrationDialog}
+                    addButtonText="Add"
+                    testIdPrefix="registration"
+                  />
+                </div>
+              )}
             </div>
 
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              nextLabel="Continue"
-              loading={draftSnap.isSaving}
-            />
-          </form>
-        </div>
-      </div>
-    </div>
+            {/* Q2: Have you applied for a Skills Assessment */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Have you applied for a Skills Assessment from an Australian Skills Assessing body?
+              </Label>
+              <RadioGroup
+                value={hasSkillsAssessment}
+                onValueChange={(value) => form.setValue("has_skills_assessment", value)}
+                className="flex gap-4"
+                data-testid="radio-skills-assessment"
+              >
+                <div className="flex items-center" data-testid="radio-skills-assessment-yes">
+                  <RadioGroupItem value="yes" id="assessment-yes" />
+                  <Label htmlFor="assessment-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-skills-assessment-no">
+                  <RadioGroupItem value="no" id="assessment-no" />
+                  <Label htmlFor="assessment-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {/* Skills Assessments Repeater (shown if Yes) */}
+              {hasSkillsAssessment === "yes" && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Skills Assessments</h3>
+                  <RepeaterTable
+                    data={assessments}
+                    columns={[
+                      { key: "assessing_authority", label: "Authority" },
+                      { key: "assessment_type", label: "Type" },
+                      { key: "anzsco_code", label: "ANZSCO" },
+                      { key: "outcome", label: "Outcome" },
+                    ]}
+                    onAdd={(newRow) => {
+                      const updated = [...assessments, newRow];
+                      form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const updated = [...assessments];
+                      updated[index] = updatedRow;
+                      form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onDelete={(index) => {
+                      const updated = assessments.filter((_, i) => i !== index);
+                      form.setValue("assessments", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    DialogComponent={AssessmentDialog}
+                    addButtonText="Add"
+                    testIdPrefix="assessment"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -48,7 +47,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -56,14 +54,12 @@ const months = [
 ];
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-
 // Helper function to format dates
 const formatDate = (day, month, year) => {
   if (!day || !month || !year) return "-";
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${day} ${months[parseInt(month) - 1]} ${year}`;
 };
-
 // Dialog Schemas
 const basicEntrySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -72,7 +68,6 @@ const basicEntrySchema = z.object({
   date_year: z.string().min(1, "Year is required"),
   country: z.string().min(1, "Country is required"),
 });
-
 const basicEntryWithOffenceSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_day: z.string().min(1, "Day is required"),
@@ -81,12 +76,10 @@ const basicEntryWithOffenceSchema = z.object({
   country: z.string().min(1, "Country is required"),
   offence_type: z.string().min(1, "Offence Type is required"),
 });
-
 const nameCountryOnlySchema = z.object({
   name: z.string().min(1, "Name is required"),
   country: z.string().min(1, "Country is required"),
 });
-
 const dateRangeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_from_day: z.string().min(1, "Day is required"),
@@ -100,7 +93,7 @@ const dateRangeSchema = z.object({
   const hasDateToDay = data.date_to_day && data.date_to_day.trim() !== "";
   const hasDateToMonth = data.date_to_month && data.date_to_month.trim() !== "";
   const hasDateToYear = data.date_to_year && data.date_to_year.trim() !== "";
-  
+
   if (hasDateToDay || hasDateToMonth || hasDateToYear) {
     if (!hasDateToDay || !hasDateToMonth || !hasDateToYear) {
       ctx.addIssue({
@@ -119,7 +112,7 @@ const dateRangeSchema = z.object({
         parseInt(data.date_to_month) - 1,
         parseInt(data.date_to_day)
       );
-      
+
       if (toDate < fromDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -130,7 +123,6 @@ const dateRangeSchema = z.object({
     }
   }
 });
-
 const policeClearanceSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_of_birth_day: z.string().min(1, "Day is required"),
@@ -141,7 +133,6 @@ const policeClearanceSchema = z.object({
   date_of_application_year: z.string().min(1, "Year is required"),
   country: z.string().min(1, "Country is required"),
 });
-
 const immigrationDetentionSchema = z.object({
   name: z.string().min(1, "Name is required"),
   centre_camp_name: z.string().min(1, "Name of Centre/Camp is required"),
@@ -156,7 +147,7 @@ const immigrationDetentionSchema = z.object({
   const hasDateToDay = data.date_to_day && data.date_to_day.trim() !== "";
   const hasDateToMonth = data.date_to_month && data.date_to_month.trim() !== "";
   const hasDateToYear = data.date_to_year && data.date_to_year.trim() !== "";
-  
+
   if (hasDateToDay || hasDateToMonth || hasDateToYear) {
     if (!hasDateToDay || !hasDateToMonth || !hasDateToYear) {
       ctx.addIssue({
@@ -175,7 +166,7 @@ const immigrationDetentionSchema = z.object({
         parseInt(data.date_to_month) - 1,
         parseInt(data.date_to_day)
       );
-      
+
       if (toDate < fromDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -186,7 +177,6 @@ const immigrationDetentionSchema = z.object({
     }
   }
 });
-
 const militaryTrainingSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_of_birth_day: z.string().min(1, "Day is required"),
@@ -203,7 +193,7 @@ const militaryTrainingSchema = z.object({
   const hasDateToDay = data.date_to_day && data.date_to_day.trim() !== "";
   const hasDateToMonth = data.date_to_month && data.date_to_month.trim() !== "";
   const hasDateToYear = data.date_to_year && data.date_to_year.trim() !== "";
-  
+
   if (hasDateToDay || hasDateToMonth || hasDateToYear) {
     if (!hasDateToDay || !hasDateToMonth || !hasDateToYear) {
       ctx.addIssue({
@@ -222,7 +212,7 @@ const militaryTrainingSchema = z.object({
         parseInt(data.date_to_month) - 1,
         parseInt(data.date_to_day)
       );
-      
+
       if (toDate < fromDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -233,7 +223,6 @@ const militaryTrainingSchema = z.object({
     }
   }
 });
-
 const militaryServiceSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_of_birth_day: z.string().min(1, "Day is required"),
@@ -252,7 +241,7 @@ const militaryServiceSchema = z.object({
   const hasDateToDay = data.date_to_day && data.date_to_day.trim() !== "";
   const hasDateToMonth = data.date_to_month && data.date_to_month.trim() !== "";
   const hasDateToYear = data.date_to_year && data.date_to_year.trim() !== "";
-  
+
   if (hasDateToDay || hasDateToMonth || hasDateToYear) {
     if (!hasDateToDay || !hasDateToMonth || !hasDateToYear) {
       ctx.addIssue({
@@ -271,7 +260,7 @@ const militaryServiceSchema = z.object({
         parseInt(data.date_to_month) - 1,
         parseInt(data.date_to_day)
       );
-      
+
       if (toDate < fromDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -282,7 +271,6 @@ const militaryServiceSchema = z.object({
     }
   }
 });
-
 const paymentBenefitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_of_birth_day: z.string().min(1, "Day is required"),
@@ -290,7 +278,6 @@ const paymentBenefitSchema = z.object({
   date_of_birth_year: z.string().min(1, "Year is required"),
   details: z.string().min(1, "Details is required"),
 });
-
 // Dialog Components
 function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
   const row = editingRow;
@@ -304,11 +291,9 @@ function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
       country: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -319,7 +304,7 @@ function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
       className="space-y-4 pr-2"
     >
       {subtitle && <p className="text-sm text-gray-600 mb-4">{subtitle}</p>}
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -333,7 +318,6 @@ function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date <span className="text-red-500">*</span>
@@ -383,7 +367,6 @@ function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -405,7 +388,6 @@ function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -413,7 +395,6 @@ function BasicEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
     </form>
   );
 }
-
 function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -427,11 +408,9 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
       offence_type: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -442,7 +421,7 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
       className="space-y-4 pr-2"
     >
       {subtitle && <p className="text-sm text-gray-600 mb-4">{subtitle}</p>}
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -456,7 +435,6 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date <span className="text-red-500">*</span>
@@ -506,7 +484,6 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -528,7 +505,6 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <div>
         <Label htmlFor="offence_type" className="mb-2 block">
           Offence Type <span className="text-red-500">*</span>
@@ -542,7 +518,6 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.offence_type.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -550,7 +525,6 @@ function BasicEntryWithOffenceDialog({ editingRow, onSave, onCancel, subtitle })
     </form>
   );
 }
-
 function NameCountryOnlyDialog({ editingRow, onSave, onCancel, subtitle }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -560,11 +534,9 @@ function NameCountryOnlyDialog({ editingRow, onSave, onCancel, subtitle }) {
       country: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -575,7 +547,7 @@ function NameCountryOnlyDialog({ editingRow, onSave, onCancel, subtitle }) {
       className="space-y-4 pr-2"
     >
       {subtitle && <p className="text-sm text-gray-600 mb-4">{subtitle}</p>}
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -589,7 +561,6 @@ function NameCountryOnlyDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -611,7 +582,6 @@ function NameCountryOnlyDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -619,7 +589,6 @@ function NameCountryOnlyDialog({ editingRow, onSave, onCancel, subtitle }) {
     </form>
   );
 }
-
 function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -635,11 +604,9 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
       country: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -650,7 +617,7 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
       className="space-y-4 pr-2"
     >
       {subtitle && <p className="text-sm text-gray-600 mb-4">{subtitle}</p>}
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -664,7 +631,6 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date From <span className="text-red-500">*</span>
@@ -714,7 +680,6 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_from_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date To (leave blank if ongoing)
@@ -767,7 +732,6 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -789,7 +753,6 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -797,7 +760,6 @@ function DateRangeEntryDialog({ editingRow, onSave, onCancel, subtitle }) {
     </form>
   );
 }
-
 function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -813,11 +775,9 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
       country: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -830,7 +790,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of any applicant who is included in this application who has applied for a Police Clearance Certificate in the last 12 months
       </p>
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -844,7 +804,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date of Birth <span className="text-red-500">*</span>
@@ -894,7 +853,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date of Application <span className="text-red-500">*</span>
@@ -944,7 +902,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_application_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -966,7 +923,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -974,7 +930,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -991,11 +946,9 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
       date_to_year: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -1008,7 +961,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of any applicant who is included in this application who has previously been in Immigration Detention, a Refugee Camp or Centre for Refugees
       </p>
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -1022,7 +975,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label htmlFor="centre_camp_name" className="mb-2 block">
           Name of Centre / Camp <span className="text-red-500">*</span>
@@ -1036,7 +988,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.centre_camp_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -1058,7 +1009,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date From <span className="text-red-500">*</span>
@@ -1108,7 +1058,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_from_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date To (leave blank if ongoing)
@@ -1161,7 +1110,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -1169,7 +1117,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -1188,11 +1135,9 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
       country: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -1205,7 +1150,7 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of any applicant who is included in this application who has undergone any military/paramilitary training, been trained in weapons/explosives or in the manufacture of chemical/biological products
       </p>
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -1219,7 +1164,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date of Birth <span className="text-red-500">*</span>
@@ -1269,7 +1213,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date From <span className="text-red-500">*</span>
@@ -1319,7 +1262,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_from_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date To (leave blank if ongoing)
@@ -1372,7 +1314,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country <span className="text-red-500">*</span>
@@ -1394,7 +1335,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -1402,7 +1342,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -1423,11 +1362,9 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
       position: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -1440,7 +1377,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of any applicant who is included in this application who has ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency
       </p>
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -1454,7 +1391,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date of Birth <span className="text-red-500">*</span>
@@ -1504,7 +1440,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date From <span className="text-red-500">*</span>
@@ -1554,7 +1489,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_from_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date To (leave blank if ongoing)
@@ -1607,7 +1541,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country of Service <span className="text-red-500">*</span>
@@ -1629,7 +1562,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_service.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Country of Deployment <span className="text-red-500">*</span>
@@ -1651,7 +1583,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_deployment.message}</p>
         )}
       </div>
-
       <div>
         <Label htmlFor="position" className="mb-2 block">
           Position <span className="text-red-500">*</span>
@@ -1665,7 +1596,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.position.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -1673,7 +1603,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const dialogForm = useForm({
@@ -1686,11 +1615,9 @@ function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
       details: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -1703,7 +1630,7 @@ function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of the payment or benefit made or offered
       </p>
-      
+
       <div>
         <Label htmlFor="name" className="mb-2 block">
           Name <span className="text-red-500">*</span>
@@ -1717,7 +1644,6 @@ function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">
           Date of Birth <span className="text-red-500">*</span>
@@ -1767,7 +1693,6 @@ function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth_day.message}</p>
         )}
       </div>
-
       <div>
         <Label htmlFor="details" className="mb-2 block">
           Details <span className="text-red-500">*</span>
@@ -1782,7 +1707,6 @@ function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.details.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
         <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">Ok</Button>
@@ -1790,117 +1714,116 @@ function PaymentBenefitDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Main Form Schema with all 28 questions
 const formSchema = z.object({
   // Question 1
   police_clearance: z.enum(["yes", "no"]).optional(),
   police_clearance_entries: z.array(policeClearanceSchema).optional(),
-  
+
   // Question 2
   immigration_detention: z.enum(["yes", "no"]).optional(),
   immigration_detention_entries: z.array(immigrationDetentionSchema).optional(),
-  
+
   // Question 3
   criminal_conviction: z.enum(["yes", "no"]).optional(),
   criminal_conviction_entries: z.array(basicEntryWithOffenceSchema).optional(),
-  
+
   // Question 4
   charges_awaiting_action: z.enum(["yes", "no"]).optional(),
   charges_awaiting_action_entries: z.array(basicEntryWithOffenceSchema).optional(),
-  
+
   // Question 5
   domestic_violence_order: z.enum(["yes", "no"]).optional(),
   domestic_violence_order_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 6
   outstanding_warrants: z.enum(["yes", "no"]).optional(),
   outstanding_warrants_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 7
   visa_refusal_australia: z.enum(["yes", "no"]).optional(),
   visa_refusal_australia_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 8
   visa_cancellation_australia: z.enum(["yes", "no"]).optional(),
   visa_cancellation_australia_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 9
   visa_refusal_other_country: z.enum(["yes", "no"]).optional(),
   visa_refusal_other_country_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 10
   deportation: z.enum(["yes", "no"]).optional(),
   deportation_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 11
   exclusion_removal: z.enum(["yes", "no"]).optional(),
   exclusion_removal_entries: z.array(basicEntrySchema).optional(),
-  
+
   // Question 12
   military_training: z.enum(["yes", "no"]).optional(),
   military_training_entries: z.array(militaryTrainingSchema).optional(),
-  
+
   // Question 13
   military_service: z.enum(["yes", "no"]).optional(),
   military_service_entries: z.array(militaryServiceSchema).optional(),
-  
+
   // Question 14
   war_crimes: z.enum(["yes", "no"]).optional(),
   war_crimes_entries: z.array(nameCountryOnlySchema).optional(),
-  
+
   // Question 15
   association_terrorist: z.enum(["yes", "no"]).optional(),
   association_terrorist_entries: z.array(nameCountryOnlySchema).optional(),
-  
+
   // Question 16
   association_criminal: z.enum(["yes", "no"]).optional(),
   association_criminal_entries: z.array(nameCountryOnlySchema).optional(),
-  
+
   // Question 17
   association_illegal_activity: z.enum(["yes", "no"]).optional(),
   association_illegal_activity_entries: z.array(nameCountryOnlySchema).optional(),
-  
+
   // Question 18
   human_trafficking: z.enum(["yes", "no"]).optional(),
   human_trafficking_entries: z.array(nameCountryOnlySchema).optional(),
-  
+
   // Question 19
   payment_benefit: z.enum(["yes", "no"]).optional(),
   payment_benefit_entries: z.array(paymentBenefitSchema).optional(),
-  
+
   // Question 20
   false_documents: z.enum(["yes", "no"]).optional(),
   false_documents_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 21
   false_information: z.enum(["yes", "no"]).optional(),
   false_information_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 22
   identity_concealment: z.enum(["yes", "no"]).optional(),
   identity_concealment_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 23
   previous_application: z.enum(["yes", "no"]).optional(),
   previous_application_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 24
   removal_departure: z.enum(["yes", "no"]).optional(),
   removal_departure_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 25
   overstay: z.enum(["yes", "no"]).optional(),
   overstay_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 26
   breach_visa_conditions: z.enum(["yes", "no"]).optional(),
   breach_visa_conditions_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 27
   illegal_entry: z.enum(["yes", "no"]).optional(),
   illegal_entry_entries: z.array(dateRangeSchema).optional(),
-  
+
   // Question 28
   other_character_issues: z.enum(["yes", "no"]).optional(),
   other_character_issues_entries: z.array(dateRangeSchema).optional(),
@@ -1936,7 +1859,7 @@ const formSchema = z.object({
     { key: "illegal_entry", entries: "illegal_entry_entries" },
     { key: "other_character_issues", entries: "other_character_issues_entries" },
   ];
-  
+
   questions.forEach(({ key, entries }) => {
     if (data[key] === "yes" && (!data[entries] || data[entries].length === 0)) {
       ctx.addIssue({
@@ -1947,7 +1870,6 @@ const formSchema = z.object({
     }
   });
 });
-
 // Helper component to render a question with conditional table
 function CharacterQuestion({
   questionText,
@@ -1961,7 +1883,7 @@ function CharacterQuestion({
 }) {
   const value = form.watch(fieldName);
   const entries = form.watch(`${fieldName}_entries`) || [];
-  
+
   const handlers = {
     onAdd: (newRow) => {
       form.setValue(`${fieldName}_entries`, [...entries, newRow]);
@@ -1975,7 +1897,6 @@ function CharacterQuestion({
       form.setValue(`${fieldName}_entries`, entries.filter((_, i) => i !== index));
     },
   };
-
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -2014,7 +1935,6 @@ function CharacterQuestion({
     </div>
   );
 }
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -2023,7 +1943,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -2031,7 +1950,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -2093,7 +2011,6 @@ export default function Page() {
       other_character_issues_entries: [],
     },
   });
-
   // Load saved data
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_character || {};
@@ -2157,12 +2074,11 @@ export default function Page() {
         other_character_issues: savedData.other_character_issues || "",
         other_character_issues_entries: savedData.other_character_issues_entries || [],
       };
-      
+
       // Use reset to properly update all form fields (including Select components)
       form.reset(formData);
     }
   }, [draftSnap.draft?.protection_character]);
-
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
@@ -2174,12 +2090,10 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -2193,11 +2107,11 @@ export default function Page() {
         });
         return;
       }
-      
+
       const formData = form.getValues();
       console.log("Saving protection_character data:", formData); // Debug log
       const result = await draftStore.saveSectionData("protection_character", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -2222,24 +2136,21 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
+    <Card className="rounded-2xl shadow-md bg-white">
       <StickyNav
         onPrev={handlePrevious}
         onSave={handleSave}
         onNext={form.handleSubmit(onSubmit)}
         loading={isSaving}
       />
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Character</h1>
-          <p className="text-muted-foreground mt-2">
-            In this section you are to provide character information for the following included Applicants:
-          </p>
-        </div>
-
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Character</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section you are to provide character information for the following included Applicants:
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-8">
             {/* Question 1: Police Clearance Certificate */}
@@ -2257,7 +2168,6 @@ export default function Page() {
               ]}
               DialogComponent={PoliceClearanceDialog}
             />
-
             {/* Question 2: Immigration Detention */}
             <CharacterQuestion
               questionText="Has anyone who is to be included in this application previously been in Immigration Detention, a Refugee Camp or Centre for Refugees?"
@@ -2274,7 +2184,6 @@ export default function Page() {
               ]}
               DialogComponent={ImmigrationDetentionDialog}
             />
-
             {/* Question 3: Criminal Conviction */}
             <CharacterQuestion
               questionText="Has any applicant ever been convicted of an offence in any country (including any conviction which is now removed from official records)? If in doubt, click Yes."
@@ -2291,10 +2200,9 @@ export default function Page() {
               DialogComponent={BasicEntryWithOffenceDialog}
               dialogSubtitle="Enter details of the criminal conviction"
             />
-
             {/* Continue with remaining 25 questions... */}
             {/* For brevity, I'll add a few more key questions and note that the pattern continues */}
-            
+
             {/* Question 4: Charges Awaiting Action */}
             <CharacterQuestion
               questionText="Has any applicant ever been charged with any offence in any country that is currently awaiting legal action? If in doubt, click Yes."
@@ -2311,7 +2219,6 @@ export default function Page() {
               DialogComponent={BasicEntryWithOffenceDialog}
               dialogSubtitle="Enter details of the charge awaiting legal action"
             />
-
             {/* Question 5: Domestic Violence Order */}
             <CharacterQuestion
               questionText="Has any applicant who is included in this application ever been the subject of a domestic violence or family violence order, or any other order, of a tribunal or court or other similar authority, for the personal protection of another person?"
@@ -2327,7 +2234,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the domestic/family violence order"
             />
-
             {/* Question 6: Outstanding Warrants */}
             <CharacterQuestion
               questionText="Has any applicant ever had any outstanding warrants for their arrest in any country?"
@@ -2343,7 +2249,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the outstanding warrant"
             />
-
             {/* Question 7: Visa Refusal Australia */}
             <CharacterQuestion
               questionText="Has any applicant ever been refused a visa or entry permit to Australia?"
@@ -2359,7 +2264,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the visa refusal"
             />
-
             {/* Question 8: Visa Cancellation Australia */}
             <CharacterQuestion
               questionText="Has any applicant ever had a visa or entry permit cancelled in Australia?"
@@ -2375,7 +2279,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the visa cancellation"
             />
-
             {/* Question 9: Visa Refusal Other Country */}
             <CharacterQuestion
               questionText="Has any applicant ever been refused a visa or entry permit to any country other than Australia?"
@@ -2391,7 +2294,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the visa refusal"
             />
-
             {/* Question 10: Deportation */}
             <CharacterQuestion
               questionText="Has any applicant ever been deported or removed from any country?"
@@ -2407,7 +2309,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the deportation or removal"
             />
-
             {/* Question 11: Exclusion/Removal */}
             <CharacterQuestion
               questionText="Has any applicant ever been excluded from or asked to leave any country?"
@@ -2423,7 +2324,6 @@ export default function Page() {
               DialogComponent={BasicEntryDialog}
               dialogSubtitle="Enter details of the exclusion or request to leave"
             />
-
             {/* Question 12: Military Training */}
             <CharacterQuestion
               questionText="Has any applicant undergone any military/paramilitary training, been trained in weapons/explosives or in the manufacture of chemical/biological products?"
@@ -2440,7 +2340,6 @@ export default function Page() {
               ]}
               DialogComponent={MilitaryTrainingDialog}
             />
-
             {/* Question 13: Military Service */}
             <CharacterQuestion
               questionText="Has any applicant ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency?"
@@ -2459,7 +2358,6 @@ export default function Page() {
               ]}
               DialogComponent={MilitaryServiceDialog}
             />
-
             {/* Question 14: War Crimes */}
             <CharacterQuestion
               questionText="Has any applicant been involved in war crimes, crimes against humanity, or genocide?"
@@ -2474,7 +2372,6 @@ export default function Page() {
               DialogComponent={NameCountryOnlyDialog}
               dialogSubtitle="Enter details of the war crimes, crimes against humanity, or genocide"
             />
-
             {/* Question 15: Association Terrorist */}
             <CharacterQuestion
               questionText="Has any applicant ever been associated with an organisation engaged in violence or engaged in acts of violence (including war, insurgency, freedom fighting, terrorism, protest) either overseas or in Australia?"
@@ -2489,7 +2386,6 @@ export default function Page() {
               DialogComponent={NameCountryOnlyDialog}
               dialogSubtitle="Enter details of the association with violent organizations"
             />
-
             {/* Question 16: Association Criminal */}
             <CharacterQuestion
               questionText="Has any applicant been associated with a person, group or organisation that has been/is involved in criminal conduct?"
@@ -2504,7 +2400,6 @@ export default function Page() {
               DialogComponent={NameCountryOnlyDialog}
               dialogSubtitle="Enter details of the association with criminal conduct"
             />
-
             {/* Question 17: Association Illegal Activity */}
             <CharacterQuestion
               questionText="Has any applicant been associated with a person, group or organisation that has been/is involved in illegal activity?"
@@ -2519,7 +2414,6 @@ export default function Page() {
               DialogComponent={NameCountryOnlyDialog}
               dialogSubtitle="Enter details of the association with illegal activity"
             />
-
             {/* Question 18: Human Trafficking */}
             <CharacterQuestion
               questionText="Has any applicant ever been involved in people smuggling or people trafficking offences? If in doubt, click Yes."
@@ -2534,7 +2428,6 @@ export default function Page() {
               DialogComponent={NameCountryOnlyDialog}
               dialogSubtitle="Enter details of the people smuggling or people trafficking involvement"
             />
-
             {/* Question 19: Payment/Benefit */}
             <CharacterQuestion
               questionText="Has any person included in this application made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa?"
@@ -2549,7 +2442,6 @@ export default function Page() {
               ]}
               DialogComponent={PaymentBenefitDialog}
             />
-
             {/* Question 20: False Documents */}
             <CharacterQuestion
               questionText="Has any applicant ever provided false or misleading documents in relation to a visa application or entry to any country?"
@@ -2566,7 +2458,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the false or misleading documents"
             />
-
             {/* Question 21: False Information */}
             <CharacterQuestion
               questionText="Has any applicant ever provided false or misleading information in relation to a visa application or entry to any country?"
@@ -2583,7 +2474,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the false or misleading information"
             />
-
             {/* Question 22: Identity Concealment */}
             <CharacterQuestion
               questionText="Has any applicant ever concealed their identity or used a false identity in relation to a visa application or entry to any country?"
@@ -2600,7 +2490,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the identity concealment or false identity"
             />
-
             {/* Question 23: Previous Application */}
             <CharacterQuestion
               questionText="Has any applicant ever made a previous application for a visa or entry permit to any country that was not disclosed?"
@@ -2617,7 +2506,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the undisclosed previous application"
             />
-
             {/* Question 24: Removal/Departure */}
             <CharacterQuestion
               questionText="Has any applicant ever left any country to avoid being removed or deported from that country?"
@@ -2634,7 +2522,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the departure to avoid removal or deportation"
             />
-
             {/* Question 25: Overstay */}
             <CharacterQuestion
               questionText="Has any applicant ever overstayed a visa or entry permit in any country?"
@@ -2651,7 +2538,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the visa or entry permit overstay"
             />
-
             {/* Question 26: Breach Visa Conditions */}
             <CharacterQuestion
               questionText="Has any applicant ever breached the conditions of a visa or entry permit in any country?"
@@ -2668,7 +2554,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the breach of visa or entry permit conditions"
             />
-
             {/* Question 27: Illegal Entry */}
             <CharacterQuestion
               questionText="Has any applicant ever entered any country illegally or without proper authorisation?"
@@ -2685,7 +2570,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the illegal entry or entry without authorisation"
             />
-
             {/* Question 28: Other Character Issues */}
             <CharacterQuestion
               questionText="Is there any other information about the character of any applicant that should be disclosed?"
@@ -2702,7 +2586,6 @@ export default function Page() {
               DialogComponent={DateRangeEntryDialog}
               dialogSubtitle="Enter details of the other character issue"
             />
-
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
@@ -2743,7 +2626,7 @@ export default function Page() {
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -214,7 +215,7 @@ function CitizenshipDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   });
 
   const handleFormSubmit = (data) => {
-    onSave(data);
+    onSubmit(data);
   };
 
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
@@ -226,14 +227,7 @@ function CitizenshipDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
         <Label htmlFor="country">Country of Citizenship</Label>
         <Input
@@ -391,11 +385,11 @@ function CitizenshipDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" data-testid="button-ok">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} data-testid="button-ok">
           OK
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -468,7 +462,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   }, [row]);
 
   const handleFormSubmit = (data) => {
-    onSave(data);
+    onSubmit(data);
   };
 
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
@@ -480,14 +474,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4 max-h-[600px] overflow-y-auto pr-2"
-    >
+    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
       <div>
         <Label htmlFor="document_type">Type of Document</Label>
         <Select
@@ -797,11 +784,11 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" data-testid="button-ok">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} data-testid="button-ok">
           OK
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -840,7 +827,7 @@ function IdentityDocumentDialog({ editingRow: row, onSave: onSubmit, onCancel })
   });
 
   const handleFormSubmit = (data) => {
-    onSave(data);
+    onSubmit(data);
   };
 
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
@@ -852,14 +839,7 @@ function IdentityDocumentDialog({ editingRow: row, onSave: onSubmit, onCancel })
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4 max-h-[600px] overflow-y-auto pr-2"
-    >
+    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
       <div>
         <Label htmlFor="document_type">Document Type</Label>
         <Select
@@ -1040,11 +1020,11 @@ function IdentityDocumentDialog({ editingRow: row, onSave: onSubmit, onCancel })
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" data-testid="button-ok">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} data-testid="button-ok">
           OK
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -1087,7 +1067,7 @@ export default function IdentityPage() {
     const savedData = draftSnap.draft?.temporary_work_identity;
 
     if (savedData && Object.keys(savedData).length > 0) {
-      
+
       // ✅ FIX: Helper to prevent "Empty Select" bugs
       const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
 
@@ -1101,7 +1081,7 @@ export default function IdentityPage() {
         has_identity_document: safeStr(savedData.has_identity_document) || "no",
         identity_documents: savedData.identity_documents || [],
       };
-      
+
       form.reset(formData);
     }
   }, [draftSnap.draft?.temporary_work_identity, form]);
@@ -1151,7 +1131,7 @@ export default function IdentityPage() {
       if (result.success) {
         // Mark complete on navigation
         await draftStore.markPageComplete(`${visaType}/main-applicant/identity`, null, "temporary_work_identity");
-        
+
         const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         if (nextRoute) {
           router.push(nextRoute);
@@ -1176,267 +1156,261 @@ export default function IdentityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="max-w-4xl mx-auto p-6">
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Identity</h1>
-              <p className="text-gray-600">
-                In this section, provide details about the main applicant's identity.
-              </p>
-            </div>
-
-            <div className="space-y-8">
-              {/* Question 1: Are you currently a Citizen of any Country? */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Are you currently a Citizen of any Country?
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Identity</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s identity.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          {/* Question 1: Are you currently a Citizen of any Country? */}
+          <div>
+            <Label className="text-base font-medium mb-3 block">
+              Are you currently a Citizen of any Country?
+            </Label>
+            <RadioGroup
+              value={isCurrentCitizen}
+              onValueChange={(value) => form.setValue("is_current_citizen", value)}
+              className="flex gap-4"
+              data-testid="radio-current-citizen"
+            >
+              <div className="flex items-center">
+                <RadioGroupItem value="yes" id="current-citizen-yes" data-testid="radio-current-citizen-yes" />
+                <Label htmlFor="current-citizen-yes" className="ml-2 cursor-pointer font-normal">
+                  Yes
                 </Label>
-                <RadioGroup
-                  value={isCurrentCitizen}
-                  onValueChange={(value) => form.setValue("is_current_citizen", value)}
-                  className="flex gap-4"
-                  data-testid="radio-current-citizen"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="current-citizen-yes" data-testid="radio-current-citizen-yes" />
-                    <Label htmlFor="current-citizen-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="current-citizen-no" data-testid="radio-current-citizen-no" />
-                    <Label htmlFor="current-citizen-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
+              </div>
+              <div className="flex items-center">
+                <RadioGroupItem value="no" id="current-citizen-no" data-testid="radio-current-citizen-no" />
+                <Label htmlFor="current-citizen-no" className="ml-2 cursor-pointer font-normal">
+                  No
+                </Label>
+              </div>
+            </RadioGroup>
 
-                {isCurrentCitizen === "no" && (
-                  <div className="mt-4">
-                    <Label htmlFor="stateless_explanation" className="text-sm font-normal mb-2 block">
-                      You have answered that you are not a Citizen of any country. You must provide details of how, when and why you are stateless
-                    </Label>
-                    <Textarea
-                      id="stateless_explanation"
-                      {...form.register("stateless_explanation")}
-                      rows={4}
-                      data-testid="textarea-stateless-explanation"
-                    />
-                    {form.formState.errors.stateless_explanation && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.stateless_explanation.message}</p>
-                    )}
-                  </div>
+            {isCurrentCitizen === "no" && (
+              <div className="mt-4">
+                <Label htmlFor="stateless_explanation" className="text-sm font-normal mb-2 block">
+                  You have answered that you are not a Citizen of any country. You must provide details of how, when and why you are stateless
+                </Label>
+                <Textarea
+                  id="stateless_explanation"
+                  {...form.register("stateless_explanation")}
+                  rows={4}
+                  data-testid="textarea-stateless-explanation"
+                />
+                {form.formState.errors.stateless_explanation && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.stateless_explanation.message}</p>
                 )}
               </div>
-
-              {/* Question 2: Have you ever been a Citizen of any Country? (shown only when not a current citizen) */}
-              {isCurrentCitizen === "no" && (
-                <div>
-                  <Label className="text-base font-medium mb-3 block">
-                    Have you ever been a Citizen of any Country?
-                  </Label>
-                  <RadioGroup
-                    value={hasBeenCitizen}
-                    onValueChange={(value) => form.setValue("has_been_citizen", value)}
-                    className="flex gap-4"
-                    data-testid="radio-been-citizen"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="been-citizen-yes" data-testid="radio-been-citizen-yes" />
-                      <Label htmlFor="been-citizen-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="been-citizen-no" data-testid="radio-been-citizen-no" />
-                      <Label htmlFor="been-citizen-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
-
-                {hasBeenCitizen === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Citizenships</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of all Citizenships that you hold or have previously held
-                    </p>
-                    <RepeaterTable
-                      data={citizenships}
-                      columns={[
-                        { key: "country", label: "Country" },
-                        { key: "how_obtained", label: "How was this Citizenship obtained?" },
-                        { key: "date_obtained_day", label: "Date Obtained", format: (row) => `${row.date_obtained_day} ${row.date_obtained_month} ${row.date_obtained_year}` },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...citizenships, newRow];
-                        form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...citizenships];
-                        updated[index] = updatedRow;
-                        form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = citizenships.filter((_, i) => i !== index);
-                        form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={CitizenshipDialog}
-                      addButtonText="Add"
-                      testIdPrefix="citizenship"
-                    />
-                    {form.formState.errors.citizenships && (
-                      <p className="text-sm text-red-600 mt-2">{form.formState.errors.citizenships.message}</p>
-                    )}
-                  </div>
-                )}
-
-              {/* Question 3: Do you currently hold or have you ever held a Passport or Travel Document? */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Do you currently hold or have you ever held a Passport or Travel Document?
-                </Label>
-                <RadioGroup
-                  value={hasPassport}
-                  onValueChange={(value) => form.setValue("has_passport", value)}
-                  className="flex gap-4"
-                  data-testid="radio-passport"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="passport-yes" data-testid="radio-passport-yes" />
-                    <Label htmlFor="passport-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="passport-no" data-testid="radio-passport-no" />
-                    <Label htmlFor="passport-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {hasPassport === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Passports/Travel Documents</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of all of your current passports and any passport that you have previously used to enter Australia
-                    </p>
-                    <RepeaterTable
-                      data={passports}
-                      columns={[
-                        { key: "document_number", label: "Passport/Document Number" },
-                        { key: "name", label: "Name" },
-                        { key: "nationality", label: "Nationality" },
-                        { key: "date_issued_day", label: "Date of Issue", format: (row) => `${row.date_issued_day} ${row.date_issued_month} ${row.date_issued_year}` },
-                        { key: "document_status", label: "Status" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...passports, newRow];
-                        form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...passports];
-                        updated[index] = updatedRow;
-                        form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = passports.filter((_, i) => i !== index);
-                        form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={PassportDialog}
-                      addButtonText="Add"
-                      testIdPrefix="passport"
-                    />
-                    {form.formState.errors.passports && (
-                      <p className="text-sm text-red-600 mt-2">{form.formState.errors.passports.message}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Question 4: Do you hold a government issued Identity Document or Identity Number? */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Do you hold a government issued Identity Document or Identity Number?
-                </Label>
-                <RadioGroup
-                  value={hasIdentityDocument}
-                  onValueChange={(value) => form.setValue("has_identity_document", value)}
-                  className="flex gap-4"
-                  data-testid="radio-identity-doc"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="identity-doc-yes" data-testid="radio-identity-doc-yes" />
-                    <Label htmlFor="identity-doc-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="identity-doc-no" data-testid="radio-identity-doc-no" />
-                    <Label htmlFor="identity-doc-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {hasIdentityDocument === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Other Identity Documents</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of all government issued Identity Documents or Identity Numbers currently held by you
-                    </p>
-                    <RepeaterTable
-                      data={identityDocuments}
-                      columns={[
-                        { key: "document_type", label: "Document Type" },
-                        { key: "identification_number", label: "Identification Number" },
-                        { key: "name", label: "Name" },
-                        { key: "country_of_issue", label: "Country of Issue" },
-                        { key: "date_issued_day", label: "Date of Issue", format: (row) => `${row.date_issued_day} ${row.date_issued_month} ${row.date_issued_year}` },
-                        { key: "date_expiry_day", label: "Date of Expiry", format: (row) => `${row.date_expiry_day || ""} ${row.date_expiry_month || ""} ${row.date_expiry_year || ""}` },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...identityDocuments, newRow];
-                        form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...identityDocuments];
-                        updated[index] = updatedRow;
-                        form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = identityDocuments.filter((_, i) => i !== index);
-                        form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={IdentityDocumentDialog}
-                      addButtonText="Add"
-                      testIdPrefix="identity-doc"
-                    />
-                    {form.formState.errors.identity_documents && (
-                      <p className="text-sm text-red-600 mt-2">{form.formState.errors.identity_documents.message}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Desktop Navigation */}
-            <FormNavigation
-              loading={isSaving}
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              saveLabel="Save Draft"
-              nextLabel="Continue"
-            />
+            )}
           </div>
-        </div>
-      </form>
-    </div>
+
+          {/* Question 2: Have you ever been a Citizen of any Country? (shown only when not a current citizen) */}
+          {isCurrentCitizen === "no" && (
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Have you ever been a Citizen of any Country?
+              </Label>
+              <RadioGroup
+                value={hasBeenCitizen}
+                onValueChange={(value) => form.setValue("has_been_citizen", value)}
+                className="flex gap-4"
+                data-testid="radio-been-citizen"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="been-citizen-yes" data-testid="radio-been-citizen-yes" />
+                  <Label htmlFor="been-citizen-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="been-citizen-no" data-testid="radio-been-citizen-no" />
+                  <Label htmlFor="been-citizen-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
+          {hasBeenCitizen === "yes" && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Citizenships</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Enter details of all Citizenships that you hold or have previously held
+              </p>
+              <RepeaterTable
+                data={citizenships}
+                columns={[
+                  { key: "country", label: "Country" },
+                  { key: "how_obtained", label: "How was this Citizenship obtained?" },
+                  { key: "date_obtained_day", label: "Date Obtained", format: (row) => `${row.date_obtained_day} ${row.date_obtained_month} ${row.date_obtained_year}` },
+                ]}
+                onAdd={(newRow) => {
+                  const updated = [...citizenships, newRow];
+                  form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }}
+                onEdit={(index, updatedRow) => {
+                  const updated = [...citizenships];
+                  updated[index] = updatedRow;
+                  form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }}
+                onDelete={(index) => {
+                  const updated = citizenships.filter((_, i) => i !== index);
+                  form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }}
+                DialogComponent={CitizenshipDialog}
+                addButtonText="Add"
+                testIdPrefix="citizenship"
+              />
+              {form.formState.errors.citizenships && (
+                <p className="text-sm text-red-600 mt-2">{form.formState.errors.citizenships.message}</p>
+              )}
+            </div>
+          )}
+
+          {/* Question 3: Do you currently hold or have you ever held a Passport or Travel Document? */}
+          <div>
+            <Label className="text-base font-medium mb-3 block">
+              Do you currently hold or have you ever held a Passport or Travel Document?
+            </Label>
+            <RadioGroup
+              value={hasPassport}
+              onValueChange={(value) => form.setValue("has_passport", value)}
+              className="flex gap-4"
+              data-testid="radio-passport"
+            >
+              <div className="flex items-center">
+                <RadioGroupItem value="yes" id="passport-yes" data-testid="radio-passport-yes" />
+                <Label htmlFor="passport-yes" className="ml-2 cursor-pointer font-normal">
+                  Yes
+                </Label>
+              </div>
+              <div className="flex items-center">
+                <RadioGroupItem value="no" id="passport-no" data-testid="radio-passport-no" />
+                <Label htmlFor="passport-no" className="ml-2 cursor-pointer font-normal">
+                  No
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {hasPassport === "yes" && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Passports/Travel Documents</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Enter details of all of your current passports and any passport that you have previously used to enter Australia
+                </p>
+                <RepeaterTable
+                  data={passports}
+                  columns={[
+                    { key: "document_number", label: "Passport/Document Number" },
+                    { key: "name", label: "Name" },
+                    { key: "nationality", label: "Nationality" },
+                    { key: "date_issued_day", label: "Date of Issue", format: (row) => `${row.date_issued_day} ${row.date_issued_month} ${row.date_issued_year}` },
+                    { key: "document_status", label: "Status" },
+                  ]}
+                  onAdd={(newRow) => {
+                    const updated = [...passports, newRow];
+                    form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...passports];
+                    updated[index] = updatedRow;
+                    form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onDelete={(index) => {
+                    const updated = passports.filter((_, i) => i !== index);
+                    form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  DialogComponent={PassportDialog}
+                  addButtonText="Add"
+                  testIdPrefix="passport"
+                />
+                {form.formState.errors.passports && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.passports.message}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Question 4: Do you hold a government issued Identity Document or Identity Number? */}
+          <div>
+            <Label className="text-base font-medium mb-3 block">
+              Do you hold a government issued Identity Document or Identity Number?
+            </Label>
+            <RadioGroup
+              value={hasIdentityDocument}
+              onValueChange={(value) => form.setValue("has_identity_document", value)}
+              className="flex gap-4"
+              data-testid="radio-identity-doc"
+            >
+              <div className="flex items-center">
+                <RadioGroupItem value="yes" id="identity-doc-yes" data-testid="radio-identity-doc-yes" />
+                <Label htmlFor="identity-doc-yes" className="ml-2 cursor-pointer font-normal">
+                  Yes
+                </Label>
+              </div>
+              <div className="flex items-center">
+                <RadioGroupItem value="no" id="identity-doc-no" data-testid="radio-identity-doc-no" />
+                <Label htmlFor="identity-doc-no" className="ml-2 cursor-pointer font-normal">
+                  No
+                </Label>
+              </div>
+            </RadioGroup>
+
+            {hasIdentityDocument === "yes" && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Other Identity Documents</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Enter details of all government issued Identity Documents or Identity Numbers currently held by you
+                </p>
+                <RepeaterTable
+                  data={identityDocuments}
+                  columns={[
+                    { key: "document_type", label: "Document Type" },
+                    { key: "identification_number", label: "Identification Number" },
+                    { key: "name", label: "Name" },
+                    { key: "country_of_issue", label: "Country of Issue" },
+                    { key: "date_issued_day", label: "Date of Issue", format: (row) => `${row.date_issued_day} ${row.date_issued_month} ${row.date_issued_year}` },
+                    { key: "date_expiry_day", label: "Date of Expiry", format: (row) => `${row.date_expiry_day || ""} ${row.date_expiry_month || ""} ${row.date_expiry_year || ""}` },
+                  ]}
+                  onAdd={(newRow) => {
+                    const updated = [...identityDocuments, newRow];
+                    form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...identityDocuments];
+                    updated[index] = updatedRow;
+                    form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onDelete={(index) => {
+                    const updated = identityDocuments.filter((_, i) => i !== index);
+                    form.setValue("identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  DialogComponent={IdentityDocumentDialog}
+                  addButtonText="Add"
+                  testIdPrefix="identity-doc"
+                />
+                {form.formState.errors.identity_documents && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.identity_documents.message}</p>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Desktop Navigation */}
+          <FormNavigation
+            loading={isSaving}
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            saveLabel="Save Draft"
+            nextLabel="Continue"
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

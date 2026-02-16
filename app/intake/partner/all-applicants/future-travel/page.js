@@ -115,7 +115,7 @@ export default function FutureTravelPage() {
   const handleSave = async () => {
     const currentData = getValues();
     const result = await draftStore.saveDraft(currentData);
-    
+
     if (result.success) {
       // Mark this page as complete
       await draftStore.markPageComplete('partner/all-applicants/future-travel');
@@ -146,114 +146,110 @@ export default function FutureTravelPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <Card className="border border-gray-200 shadow-sm rounded-lg">
-          <CardHeader className="px-6 py-8 border-b border-gray-200">
-            <CardTitle className="text-2xl font-semibold text-gray-900">
-              Future Travel Plans
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 py-8">
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
-                  e.preventDefault();
-                }
-              }}
-              className="space-y-8"
-            >
-              {Object.keys(errors).length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-red-800 mb-2">
-                    Please fix the following errors:
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                    {Object.entries(errors).map(([field, error]) => (
-                      <li key={field}>{error.message}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">
+          Future Travel Plans
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+              e.preventDefault();
+            }
+          }}
+          className="space-y-8"
+        >
+          {Object.keys(errors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-red-800 mb-2">
+                Please fix the following errors:
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{error.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-              <Field
-                type="radio"
-                name="has_future_travel"
-                control={control}
-                label="Do you have any planned travel in the next 12 months?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-              />
+          <Field
+            type="radio"
+            name="has_future_travel"
+            control={control}
+            label="Do you have any planned travel in the next 12 months?"
+            options={[
+              { value: "Yes", label: "Yes" },
+              { value: "No", label: "No" },
+            ]}
+          />
 
-              {mounted && hasFutureTravel === "Yes" && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Planned Travel Details
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Please provide details of any planned international travel
-                  </p>
-                  <RepeaterTable
-                    rows={futureTravel}
-                    columns={futureTravelColumns}
-                    onAdd={(row) => updateFutureTravel([...futureTravel, row])}
-                    onEdit={(index, row) => {
-                      const updated = [...futureTravel];
-                      updated[index] = row;
-                      updateFutureTravel(updated);
-                    }}
-                    onDelete={(index) => {
-                      const updated = futureTravel.filter((_, i) => i !== index);
-                      updateFutureTravel(updated);
-                    }}
-                    dialogForm={(row, onSubmit, onCancel) => (
-                      <FutureTravelDialog
-                        row={row}
-                        onSubmit={onSubmit}
-                        onCancel={onCancel}
-                      />
-                    )}
-                    addButtonText="Add Future Travel"
-                    emptyMessage="No future travel added"
+          {mounted && hasFutureTravel === "Yes" && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                Planned Travel Details
+              </h3>
+              <p className="text-sm text-gray-600">
+                Please provide details of any planned international travel
+              </p>
+              <RepeaterTable
+                rows={futureTravel}
+                columns={futureTravelColumns}
+                onAdd={(row) => updateFutureTravel([...futureTravel, row])}
+                onEdit={(index, row) => {
+                  const updated = [...futureTravel];
+                  updated[index] = row;
+                  updateFutureTravel(updated);
+                }}
+                onDelete={(index) => {
+                  const updated = futureTravel.filter((_, i) => i !== index);
+                  updateFutureTravel(updated);
+                }}
+                dialogForm={(row, onSubmit, onCancel) => (
+                  <FutureTravelDialog
+                    row={row}
+                    onSubmit={onSubmit}
+                    onCancel={onCancel}
                   />
-                </div>
-              )}
+                )}
+                addButtonText="Add Future Travel"
+                emptyMessage="No future travel added"
+              />
+            </div>
+          )}
 
-              <div className="hidden lg:flex justify-between items-center pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="text-gray-600 hover:text-gray-900 transition-colors"
-                  data-testid="button-previous"
-                >
-                  ← Previous
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                    data-testid="button-save-draft"
-                  >
-                    Save Draft
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!isValid}
-                    className="bg-[#285646] text-white px-6 py-2 rounded-lg hover:bg-[#1f4236] disabled:opacity-50 transition-colors"
-                    data-testid="button-continue"
-                  >
-                    Continue →
-                  </button>
-                </div>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          <div className="hidden lg:flex justify-between items-center pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handlePrevious}
+              className="text-gray-600 hover:text-gray-900 transition-colors"
+              data-testid="button-previous"
+            >
+              ← Previous
+            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleSave}
+                className="text-gray-600 hover:text-gray-900 transition-colors"
+                data-testid="button-save-draft"
+              >
+                Save Draft
+              </button>
+              <button
+                type="submit"
+                disabled={!isValid}
+                className="bg-[#285646] text-white px-6 py-2 rounded-lg hover:bg-[#1f4236] disabled:opacity-50 transition-colors"
+                data-testid="button-continue"
+              >
+                Continue →
+              </button>
+            </div>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

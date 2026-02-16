@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
@@ -471,7 +472,7 @@ export default function Page() {
 
     // FIX: Only reset if we actually have data, preventing overwrites with empty objects
     if (savedData && Object.keys(savedData).length > 0) {
-      
+
       // FIX: Helper to safely convert incoming DB data to Strings for Select components
       const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
 
@@ -479,7 +480,7 @@ export default function Page() {
         // FIX: Ensure all fields are explicitly loaded and default to something safe
         has_other_names: safeStr(savedData.has_other_names) || "no",
         other_names: savedData.other_names || [],
-        
+
         use_chinese_code: safeStr(savedData.use_chinese_code) || "no",
         chinese_code: safeStr(savedData.chinese_code) || "",
         russian_descent: safeStr(savedData.russian_descent) || "no",
@@ -548,10 +549,10 @@ export default function Page() {
   // FIX: Update the synchronization logic for other_names
   const updateOtherNames = (newNames) => {
     form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
+
     // FIX: Use the complete current state and override just the updated array
-    draftStore.saveSectionData("temporary_work_other", { 
-      ...form.getValues(), 
+    draftStore.saveSectionData("temporary_work_other", {
+      ...form.getValues(),
       other_names: newNames // Pass the new array explicitly
     });
   };
@@ -559,10 +560,10 @@ export default function Page() {
   // FIX: Update the synchronization logic for prev_dobs
   const updatePrevDobs = (newDobs) => {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
+
     // FIX: Use the complete current state and override just the updated array
-    draftStore.saveSectionData("temporary_work_other", { 
-      ...form.getValues(), 
+    draftStore.saveSectionData("temporary_work_other", {
+      ...form.getValues(),
       prev_dobs: newDobs // Pass the new array explicitly
     });
   };
@@ -590,94 +591,91 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-8 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">Main Applicant's Other Details</h1>
-            <p className="text-sm text-gray-600 mt-2">
-              In this section, provide additional details about the main applicant.
-            </p>
-          </div>
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Other Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide additional details about the main applicant.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="space-y-8">
+            <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
-            <div className="space-y-8">
-              <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
-
-              {/* Question 1: Other Names */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Have you ever had or been known by any other Name or Alias, or had a different name spelling?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("has_other_names")}
-                    onValueChange={(value) => form.setValue("has_other_names", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-has-other-names"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
-                      <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
-                      <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {form.formState.errors.has_other_names?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
-                  )}
-                </div>
-
-                {hasOtherNames === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of the other names you have been known by, including names before marriage
-                    </p>
-                    <RepeaterTable
-                      data={otherNames}
-                      columns={otherNameColumns}
-                      onAdd={(row) => updateOtherNames([...otherNames, row])}
-                      onEdit={(index, row) => {
-                        const updated = [...otherNames];
-                        updated[index] = row;
-                        updateOtherNames(updated);
-                      }}
-                      onDelete={(index) => {
-                        const updated = otherNames.filter((_, i) => i !== index);
-                        updateOtherNames(updated);
-                      }}
-                      DialogComponent={OtherNameDialog}
-                      addButtonText="Add"
-                      emptyMessage="No other names added"
-                      dialogTitle="Add other name"
-                      testIdPrefix="other-name"
-                    />
+            {/* Question 1: Other Names */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
+                </Label>
+                <RadioGroup
+                  value={form.watch("has_other_names")}
+                  onValueChange={(value) => form.setValue("has_other_names", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-has-other-names"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
+                    <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
                   </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
+                    <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.has_other_names?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
                 )}
               </div>
 
+              {hasOtherNames === "yes" && (
+                <div className="pl-0 mt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Enter details of the other names you have been known by, including names before marriage
+                  </p>
+                  <RepeaterTable
+                    data={otherNames}
+                    columns={otherNameColumns}
+                    onAdd={(row) => updateOtherNames([...otherNames, row])}
+                    onEdit={(index, row) => {
+                      const updated = [...otherNames];
+                      updated[index] = row;
+                      updateOtherNames(updated);
+                    }}
+                    onDelete={(index) => {
+                      const updated = otherNames.filter((_, i) => i !== index);
+                      updateOtherNames(updated);
+                    }}
+                    DialogComponent={OtherNameDialog}
+                    addButtonText="Add"
+                    emptyMessage="No other names added"
+                    dialogTitle="Add other name"
+                    testIdPrefix="other-name"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Desktop Navigation */}
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              nextLabel="Continue"
-              loading={draftSnap.isSaving}
-            />
-          </form>
-        </div>
-      </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
+          />
+        </form>
+      </CardContent>
 
       {/* Mobile Navigation */}
 
-    </div>
+    </Card>
   );
 }

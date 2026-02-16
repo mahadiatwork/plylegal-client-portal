@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +11,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormNavigation } from "@/components/FormNavigation";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const formSchema = z.object({
   phone: z.string().optional(),
   mobile: z.string().optional(),
@@ -20,7 +19,6 @@ const formSchema = z.object({
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -29,7 +27,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -41,7 +38,6 @@ export default function Page() {
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -52,7 +48,6 @@ export default function Page() {
       emergency_contact_phone: "",
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.partner_contact_details || {};
     if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
@@ -63,7 +58,6 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.partner_contact_details, form]);
-
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
@@ -104,12 +98,10 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -152,23 +144,18 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Contact Details</h1>
-          <p className="text-muted-foreground mt-2">
+    <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Contact Details</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
             Provide contact information for all applicants.
           </p>
-        </div>
-
+        </CardHeader>
+        <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Contact Information</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
@@ -179,7 +166,6 @@ export default function Page() {
                   data-testid="input-phone"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="mobile">Mobile Number</Label>
                 <Input
@@ -190,7 +176,6 @@ export default function Page() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -204,10 +189,8 @@ export default function Page() {
                 <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
               )}
             </div>
-
             <div className="border-t border-border pt-6 mt-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Emergency Contact</h3>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="emergency_contact_name">Name</Label>
@@ -218,7 +201,6 @@ export default function Page() {
                     data-testid="input-emergency-name"
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="emergency_contact_phone">Phone Number</Label>
                   <Input
@@ -239,7 +221,7 @@ export default function Page() {
             />
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

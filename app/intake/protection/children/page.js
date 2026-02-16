@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
@@ -30,7 +29,6 @@ const childSchema = z.object({
   country_of_birth: z.string().min(1, "Country is required"),
   city_of_birth: z.string().optional(),
 });
-
 function ChildDialog({ editingRow, onSave, onCancel }) {
   const form = useForm({
     resolver: zodResolver(childSchema),
@@ -47,7 +45,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
       city_of_birth: "",
     },
   });
-
   useEffect(() => {
     if (editingRow) {
       form.reset(editingRow);
@@ -66,7 +63,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
       });
     }
   }, [editingRow]);
-
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -74,31 +70,28 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
-
   const countries = [
-    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria", 
+    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
     "Bangladesh", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia",
-    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India", 
+    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India",
     "Indonesia", "Iran", "Iraq", "Ireland", "Italy", "Japan", "Kenya", "Malaysia",
     "Mexico", "Netherlands", "New Zealand", "Nigeria", "Norway", "Pakistan",
     "Philippines", "Poland", "Portugal", "Russia", "Saudi Arabia", "Singapore",
     "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", "Thailand",
-    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", 
+    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
     "Vietnam"
   ];
-
   const handleSubmit = (data) => {
     onSave(data);
     form.reset();
   };
-
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         form.handleSubmit(handleSubmit)(e);
-      }} 
+      }}
       className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
     >
       <div className="space-y-2">
@@ -113,7 +106,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.family_name.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="given_names">Given Names *</Label>
         <Input
@@ -126,7 +118,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.given_names.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label>Gender *</Label>
         <RadioGroup
@@ -146,7 +137,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.gender.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label>Date of Birth *</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -163,7 +153,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="birth_month">Month</Label>
             <Select value={form.watch("birth_month")} onValueChange={(value) => form.setValue("birth_month", value)}>
@@ -177,7 +166,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="birth_year">Year</Label>
             <Select value={form.watch("birth_year")} onValueChange={(value) => form.setValue("birth_year", value)}>
@@ -193,7 +181,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="relationship">This person is your: *</Label>
         <Select value={form.watch("relationship")} onValueChange={(value) => form.setValue("relationship", value)}>
@@ -210,7 +197,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.relationship.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label>Will this child be included in the application? *</Label>
         <RadioGroup
@@ -230,7 +216,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.included_in_application.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="country_of_birth">Country of Birth *</Label>
         <Select value={form.watch("country_of_birth")} onValueChange={(value) => form.setValue("country_of_birth", value)}>
@@ -247,7 +232,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.country_of_birth.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="city_of_birth">City/Town of Birth</Label>
         <Input
@@ -257,7 +241,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           data-testid="input-dialog-city-birth"
         />
       </div>
-
       <div className="flex justify-end gap-2 mt-6">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
@@ -269,12 +252,10 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 const formSchema = z.object({
   has_children: z.enum(["yes", "no"]).optional(),
   children: z.array(childSchema).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -285,7 +266,6 @@ export default function Page() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasChildren, setHasChildren] = useState("no");
   const [children, setChildren] = useState([]);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -293,7 +273,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -301,7 +280,6 @@ export default function Page() {
       children: [],
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_children || {};
     if (Object.keys(savedData).length > 0) {
@@ -315,7 +293,6 @@ export default function Page() {
       setChildren(childrenValue);
     }
   }, [draftSnap.draft?.protection_children]);
-
   const onSubmit = async (data) => {
     const submitData = {
       ...data,
@@ -326,12 +303,10 @@ export default function Page() {
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -351,7 +326,7 @@ export default function Page() {
       };
       console.log("Saving protection_children data:", submitData);
       const result = await draftStore.saveSectionData("protection_children", submitData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -376,42 +351,36 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handleAddChild = (data) => {
     setChildren([...children, data]);
   };
-
   const handleEditChild = (index, data) => {
     const updated = [...children];
     updated[index] = data;
     setChildren(updated);
   };
-
   const handleDeleteChild = (index) => {
     setChildren(children.filter((_, i) => i !== index));
   };
-
   const columns = [
     { key: "given_names", label: "Name" },
-    { 
-      key: "birth_day", 
+    {
+      key: "birth_day",
       label: "Date of Birth",
       render: (row) => `${row.birth_day} ${row.birth_month} ${row.birth_year}`
     },
     { key: "gender", label: "Gender" },
     { key: "included_in_application", label: "Included in Application" },
   ];
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Children</h1>
-          <p className="text-muted-foreground mt-2">
-            Provide details about any children to be included in this application.
-          </p>
-        </div>
-
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Children</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Provide details about any children to be included in this application.
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <div className="space-y-2">
@@ -433,7 +402,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {hasChildren === "yes" && (
               <div className="mt-6">
                 <RepeaterTable
@@ -450,7 +418,6 @@ export default function Page() {
               </div>
             )}
           </div>
-
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
             <Button
@@ -490,8 +457,7 @@ export default function Page() {
             </div>
           </div>
         </form>
-      </div>
-
+      </CardContent>
       {/* Mobile Navigation */}
       <StickyNav
         onPrev={handlePrevious}
@@ -502,6 +468,6 @@ export default function Page() {
         nextTestId="button-next-mobile"
         saveTestId="button-save-mobile"
       />
-    </div>
+    </Card>
   );
 }

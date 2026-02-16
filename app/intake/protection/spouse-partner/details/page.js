@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const formSchema = z.object({
   family_name: z.string().optional(),
   given_names: z.string().optional(),
@@ -30,7 +29,6 @@ const formSchema = z.object({
   city_of_birth: z.string().optional(),
   country_of_residence: z.string().optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +37,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -47,7 +44,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,7 +60,6 @@ export default function Page() {
       country_of_residence: "",
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_spouse_details || {};
     if (Object.keys(savedData).length > 0) {
@@ -83,19 +78,16 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_spouse_details]);
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_spouse_details", data);
     await draftStore.markPageComplete(`${visaType}/spouse-partner/details`);
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -135,7 +127,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -143,33 +134,29 @@ export default function Page() {
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
-
   const countries = [
-    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria", 
+    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
     "Bangladesh", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia",
-    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India", 
+    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India",
     "Indonesia", "Iran", "Iraq", "Ireland", "Italy", "Japan", "Kenya", "Malaysia",
     "Mexico", "Netherlands", "New Zealand", "Nigeria", "Norway", "Pakistan",
     "Philippines", "Poland", "Portugal", "Russia", "Saudi Arabia", "Singapore",
     "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", "Thailand",
-    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", 
+    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
     "Vietnam"
   ];
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Spouse/Partner Personal Details</h1>
-          <p className="text-muted-foreground mt-2">
-            Provide information about your spouse or partner.
-          </p>
-        </div>
-
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Spouse/Partner Personal Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Provide information about your spouse or partner.
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Personal Details</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="family_name">Family Name *</Label>
@@ -180,7 +167,6 @@ export default function Page() {
                   data-testid="input-family-name"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="given_names">Given Names *</Label>
                 <Input
@@ -191,7 +177,6 @@ export default function Page() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="preferred_names">Preferred Names</Label>
               <Input
@@ -201,7 +186,6 @@ export default function Page() {
                 data-testid="input-preferred-names"
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="gender">Gender *</Label>
               <RadioGroup
@@ -218,7 +202,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             <div className="space-y-2">
               <Label>Date of Birth *</Label>
               <div className="grid grid-cols-3 gap-4">
@@ -235,7 +218,6 @@ export default function Page() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="birth_month">Month</Label>
                   <Select value={form.watch("birth_month")} onValueChange={(value) => form.setValue("birth_month", value)}>
@@ -249,7 +231,6 @@ export default function Page() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="birth_year">Year</Label>
                   <Select value={form.watch("birth_year")} onValueChange={(value) => form.setValue("birth_year", value)}>
@@ -266,10 +247,8 @@ export default function Page() {
               </div>
             </div>
           </div>
-
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Residency & Migration Info</h2>
-
             <div className="space-y-2">
               <Label>Is your Spouse/Partner intending to migrate/travel to Australia as part of this application? *</Label>
               <RadioGroup
@@ -287,10 +266,8 @@ export default function Page() {
               </RadioGroup>
             </div>
           </div>
-
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Birth & Residence Details</h2>
-
             <div className="space-y-2">
               <Label htmlFor="country_of_birth">Country of Birth *</Label>
               <Select value={form.watch("country_of_birth")} onValueChange={(value) => form.setValue("country_of_birth", value)}>
@@ -304,7 +281,6 @@ export default function Page() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="city_of_birth">City or Town of Birth *</Label>
               <Input
@@ -314,7 +290,6 @@ export default function Page() {
                 data-testid="input-city-birth"
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="country_of_residence">Country of Current Residence *</Label>
               <Select value={form.watch("country_of_residence")} onValueChange={(value) => form.setValue("country_of_residence", value)}>
@@ -329,7 +304,6 @@ export default function Page() {
               </Select>
             </div>
           </div>
-
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
             <Button
@@ -369,8 +343,7 @@ export default function Page() {
             </div>
           </div>
         </form>
-      </div>
-
+      </CardContent>
       {/* Mobile Navigation */}
       <StickyNav
         onPrev={handlePrevious}
@@ -381,6 +354,6 @@ export default function Page() {
         nextTestId="button-next-mobile"
         saveTestId="button-save-mobile"
       />
-    </div>
+    </Card>
   );
 }

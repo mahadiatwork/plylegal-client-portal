@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,14 +17,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 const YEARS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
-
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
   "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
@@ -49,24 +47,18 @@ const COUNTRIES = [
   "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const OUTCOMES = ["Granted", "Pending", "Refused", "Withdrawn"];
-
 function VisaDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
     visa_country: z.string().min(1, "Visa Country is required"),
     visa_type: z.string().min(1, "Visa Type is required"),
     linked_passport: z.string().optional(),
     visa_conditions: z.string().optional(),
-
     application_date_day: z.string().min(1, "Day is required"),
     application_date_month: z.string().min(1, "Month is required"),
     application_date_year: z.string().min(1, "Year is required"),
-
     application_reference_number: z.string().optional(),
-
     outcome: z.string().min(1, "Outcome is required"),
-
     // Granted-specific
     date_granted_day: z.string().optional(),
     date_granted_month: z.string().optional(),
@@ -77,14 +69,12 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
     place_of_issue: z.string().optional(),
     visa_number: z.string().optional(),
     cancelled: z.string().optional(), // "yes" | "no"
-
     // Decision date / details (used for refused / withdrawn, and when cancelled = yes)
     decision_date_day: z.string().optional(),
     decision_date_month: z.string().optional(),
     decision_date_year: z.string().optional(),
     decision_details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
@@ -112,20 +102,16 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
       decision_details: "",
     }
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   const outcome = dialogForm.watch("outcome");
   const cancelled = dialogForm.watch("cancelled");
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Visa Application</h3>
       <p className="text-sm text-gray-500 mb-4">Enter details of the Visa applied for or held by you</p>
-
       {/* Visa Country */}
       <div>
         <Label className="mb-2 block">Visa Country</Label>
@@ -146,7 +132,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_country.message}</p>
         )}
       </div>
-
       {/* Visa Type */}
       <div>
         <Label htmlFor="visa_type" className="mb-2 block">Visa Type</Label>
@@ -159,7 +144,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_type.message}</p>
         )}
       </div>
-
       {/* Linked Passport */}
       <div>
         <Label htmlFor="linked_passport" className="mb-2 block">Linked Passport</Label>
@@ -169,8 +153,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           data-testid="input-linked-passport"
         />
       </div>
-
-
       {/* Visa Conditions */}
       <div>
         <Label htmlFor="visa_conditions" className="mb-2 block">Visa Conditions</Label>
@@ -181,7 +163,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           data-testid="textarea-visa-conditions"
         />
       </div>
-
       {/* Application Date */}
       <div>
         <Label className="mb-2 block">Application Date</Label>
@@ -230,7 +211,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.application_date_day.message}</p>
         )}
       </div>
-
       {/* TRN */}
       <div>
         <Label htmlFor="application_reference_number" className="mb-2 block">Application Reference Number (TRN)</Label>
@@ -240,11 +220,9 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           data-testid="input-trn"
         />
       </div>
-
       <div className="pt-4 pb-2">
         <h3 className="text-base font-bold text-gray-900 mb-2">Application Outcome</h3>
         <p className="text-sm text-gray-500 mb-4">Enter details on the outcome of the Visa application</p>
-
         <Label className="mb-2 block">Outcome</Label>
         <Select
           value={dialogForm.watch("outcome")}
@@ -263,7 +241,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.outcome.message}</p>
         )}
       </div>
-
       {/* Outcome details - Granted */}
       {outcome === "Granted" && (
         <div className="space-y-4">
@@ -311,7 +288,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
               </Select>
             </div>
           </div>
-
           <div>
             <Label className="mb-2 block">Expiry Date</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -356,7 +332,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
               </Select>
             </div>
           </div>
-
           <div>
             <Label htmlFor="place_of_issue" className="mb-2 block">Place of Issue</Label>
             <Input
@@ -364,7 +339,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
               {...dialogForm.register("place_of_issue")}
             />
           </div>
-
           <div>
             <Label htmlFor="visa_number" className="mb-2 block">Visa Number</Label>
             <Input
@@ -372,7 +346,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
               {...dialogForm.register("visa_number")}
             />
           </div>
-
           <div>
             <Label className="mb-2 block">Has this Visa ever been cancelled?</Label>
             <RadioGroup
@@ -391,7 +364,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
       )}
-
       {/* Decision date and details for Refused / Withdrawn, and when cancelled = yes */}
       {(outcome === "Refused" || outcome === "Withdrawn" || cancelled === "yes") && (
         <div className="space-y-4 pt-4">
@@ -439,7 +411,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
               </Select>
             </div>
           </div>
-
           <div>
             <Label htmlFor="decision_details" className="mb-2 block">Enter details</Label>
             <Textarea
@@ -450,7 +421,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
       )}
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
@@ -467,7 +437,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
     </div>
   );
 }
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -476,7 +445,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -488,17 +456,14 @@ export default function Page() {
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
-
   const form = useForm({
     defaultValues: {
       has_aus_visa_history: "",
       visa_history: [],
     },
   });
-
   const hasAusVisaHistory = form.watch("has_aus_visa_history");
   const visaHistory = form.watch("visa_history") || [];
-
   useEffect(() => {
     const savedData = draftSnap.draft?.partner_visas || {};
     if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
@@ -506,15 +471,12 @@ export default function Page() {
         has_aus_visa_history: savedData.has_aus_visa_history || "",
         visa_history: savedData.visa_history || [],
       };
-
       form.reset(formData);
-
       setTimeout(() => {
         form.setValue("has_aus_visa_history", savedData.has_aus_visa_history || "");
       }, 0);
     }
   }, [draftSnap.draft?.partner_visas, form]);
-
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
@@ -526,12 +488,10 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -553,20 +513,17 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Visas</h1>
-          <p className="text-muted-foreground mt-2">
+    <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Visas</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
             In this section you are to provide the visa history of the following included Applicants.
           </p>
-        </div>
-
+        </CardHeader>
+        <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-
             {/* Main question */}
             <div className="space-y-2">
               <Label>Has the main applicant ever previously applied for or held a Visa for Australia?</Label>
@@ -584,7 +541,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {/* Visa history table (shown if Yes) */}
             {hasAusVisaHistory === "yes" && (
               <div className="mt-8">
@@ -621,7 +577,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
@@ -631,7 +586,7 @@ export default function Page() {
             />
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -48,14 +47,12 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const OUTCOME_OPTIONS = [
   "Granted",
   "Refused",
   "Withdrawn",
   "Pending"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -63,7 +60,6 @@ const months = [
 ];
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-
 // Visa Dialog Schema
 const visaDialogSchema = z.object({
   visa_country: z.string().min(1, "Visa Country is required"),
@@ -156,7 +152,6 @@ const visaDialogSchema = z.object({
     }
   }
 });
-
 function VisaDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [outcome, setOutcome] = useState(row?.outcome || "");
@@ -193,7 +188,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
       linked_passport: "",
     },
   });
-
   useEffect(() => {
     if (row?.outcome) {
       setOutcome(row.outcome);
@@ -202,16 +196,13 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
       setVisaCancelled(row.visa_cancelled);
     }
   }, [row]);
-
   // Get available passports from draft store for linked passport dropdown
   const draftSnap = useSnapshot(draftStore);
   const identityData = draftSnap.draft?.protection_identity || {};
   const passports = identityData.passports || [];
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -224,7 +215,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of the Visa applied for or held by you
       </p>
-
       {/* Visa Country */}
       <div>
         <Label className="mb-2 block">
@@ -247,7 +237,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_country.message}</p>
         )}
       </div>
-
       {/* Visa Type */}
       <div>
         <Label htmlFor="visa_type" className="mb-2 block">
@@ -262,7 +251,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_type.message}</p>
         )}
       </div>
-
       {/* Visa Conditions */}
       <div>
         <Label htmlFor="visa_conditions" className="mb-2 block">Visa Conditions</Label>
@@ -273,7 +261,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           data-testid="textarea-visa-conditions"
         />
       </div>
-
       {/* Application Date */}
       <div>
         <Label className="mb-2 block">
@@ -324,7 +311,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.application_date_day.message}</p>
         )}
       </div>
-
       {/* Application Reference Number (TRN) */}
       <div>
         <Label htmlFor="application_reference_number" className="mb-2 block">
@@ -336,7 +322,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           data-testid="input-application-reference"
         />
       </div>
-
       {/* Application Outcome Section */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Application Outcome</h3>
@@ -366,7 +351,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.outcome.message}</p>
           )}
         </div>
-
         {/* Granted Fields */}
         {outcome === "Granted" && (
           <>
@@ -419,7 +403,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_granted_day.message}</p>
               )}
             </div>
-
             <div>
               <Label className="mb-2 block">Expiry Date (leave blank if visa has no expiry)</Label>
               <div className="grid grid-cols-3 gap-2">
@@ -464,7 +447,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                 </Select>
               </div>
             </div>
-
             <div>
               <Label htmlFor="place_of_issue" className="mb-2 block">
                 Place of Issue <span className="text-red-500">*</span>
@@ -478,7 +460,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.place_of_issue.message}</p>
               )}
             </div>
-
             <div>
               <Label htmlFor="visa_number" className="mb-2 block">
                 Visa Number <span className="text-red-500">*</span>
@@ -492,7 +473,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_number.message}</p>
               )}
             </div>
-
             <div className="pt-4 border-t">
               <Label className="text-base font-medium mb-3 block">
                 Has this Visa ever been cancelled?
@@ -518,7 +498,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                   </Label>
                 </div>
               </RadioGroup>
-
               {visaCancelled === "yes" && (
                 <div className="mt-4 space-y-4">
                   <div>
@@ -570,7 +549,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                       <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.cancellation_decision_date_day.message}</p>
                     )}
                   </div>
-
                   <div>
                     <Label htmlFor="cancellation_details" className="mb-2 block">
                       Enter details: <span className="text-red-500">*</span>
@@ -590,7 +568,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
             </div>
           </>
         )}
-
         {/* Refused or Withdrawn Fields */}
         {(outcome === "Refused" || outcome === "Withdrawn") && (
           <>
@@ -643,7 +620,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.decision_date_day.message}</p>
               )}
             </div>
-
             <div>
               <Label htmlFor="decision_details" className="mb-2 block">
                 Enter details: <span className="text-red-500">*</span>
@@ -661,7 +637,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           </>
         )}
       </div>
-
       {/* Linked Passport */}
       <div className="pt-4 border-t">
         <Label className="mb-2 block">Linked Passport</Label>
@@ -685,7 +660,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
           </SelectContent>
         </Select>
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -706,7 +680,6 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Form schema
 const formSchema = z.object({
   has_previous_visa: z.enum(["yes", "no"]).optional(),
@@ -739,7 +712,6 @@ const formSchema = z.object({
     linked_passport: z.string().optional(),
   })).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -748,7 +720,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -756,7 +727,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -764,16 +734,13 @@ export default function Page() {
       main_applicant_visas: [],
     },
   });
-
   const hasPreviousVisa = form.watch("has_previous_visa");
   const mainApplicantVisas = form.watch("main_applicant_visas") || [];
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_visas || {};
     if (Object.keys(savedData).length > 0) {
@@ -783,30 +750,25 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_visas]);
-
   // Clear visa data when "No" is selected
   useEffect(() => {
     if (hasPreviousVisa === "no") {
       form.setValue("main_applicant_visas", []);
     }
   }, [hasPreviousVisa]);
-
   const updateMainApplicantVisas = (newVisas) => {
     form.setValue("main_applicant_visas", newVisas);
   };
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_visas", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/visas`);
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -847,7 +809,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   // Table column definitions
   const visaColumns = [
     { key: "visa_country", label: "Country" },
@@ -884,14 +845,13 @@ export default function Page() {
       format: (row) => row.visa_cancelled === "yes" ? "Yes" : "No"
     },
   ];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Visas</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Visas</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               In this section you are to provide the visa history of the following included Applicants:
             </p>
           </div>
@@ -922,7 +882,6 @@ export default function Page() {
                   </div>
                 </RadioGroup>
               </div>
-
               {/* Visa Table - Only show when Yes */}
               {hasPreviousVisa === "yes" && (
                 <div className="space-y-4">
@@ -954,7 +913,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
@@ -996,7 +954,6 @@ export default function Page() {
           </form>
         </div>
       </div>
-
       {/* Mobile Navigation */}
       <StickyNav
         onPrev={handlePrevious}
@@ -1010,4 +967,3 @@ export default function Page() {
     </div>
   );
 }
-

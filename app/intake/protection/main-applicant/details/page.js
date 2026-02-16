@@ -13,13 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
-  
+
   // Person completing questionnaire (shown only if is_main_applicant === "yes")
   completing_family_name: z.string().optional(),
   completing_given_names: z.string().optional(),
@@ -28,7 +29,7 @@ const formSchema = z.object({
   completing_birth_day: z.string().optional(),
   completing_birth_month: z.string().optional(),
   completing_birth_year: z.string().optional(),
-  
+
   // Main applicant details
   prefix: z.string().optional(),
   family_name: z.string().optional(),
@@ -54,7 +55,7 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  
+
   const [isMainApplicant, setIsMainApplicant] = useState("yes");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -66,7 +67,7 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-  
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -125,10 +126,10 @@ export default function Page() {
         marital_status_date_month: savedData.marital_status_date_month || "",
         marital_status_date_year: savedData.marital_status_date_year || "",
       };
-      
+
       // Use reset to properly update all form fields including Select components
       form.reset(formData);
-      
+
       if (savedData.is_main_applicant) {
         setIsMainApplicant(savedData.is_main_applicant);
       }
@@ -187,331 +188,328 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-6 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">Main Applicant's Details</h1>
-            <p className="text-sm text-gray-600 mt-2">
-              In the Main Applicant section, please provide details about the person who is intending to be the primary applicant.
-            </p>
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In the Main Applicant section, please provide details about the person who is intending to be the primary applicant.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* Main Applicant Question */}
+          <div className="hidden">
+            <Label className="text-base font-medium text-gray-900">
+              Are you or will you be the Main Applicant in any application?
+            </Label>
+            <RadioGroup
+              value={form.watch("is_main_applicant")}
+              onValueChange={(value) => {
+                form.setValue("is_main_applicant", value);
+                setIsMainApplicant(value);
+              }}
+              className="flex gap-4 mt-2"
+              data-testid="radio-is-main-applicant"
+            >
+              <div className="flex items-center">
+                <RadioGroupItem value="yes" id="yes" data-testid="radio-yes" />
+                <Label htmlFor="yes" className="ml-2 cursor-pointer font-normal">
+                  Yes
+                </Label>
+              </div>
+              <div className="flex items-center">
+                <RadioGroupItem value="no" id="no" data-testid="radio-no" />
+                <Label htmlFor="no" className="ml-2 cursor-pointer font-normal">
+                  No
+                </Label>
+              </div>
+            </RadioGroup>
+            {form.formState.errors.is_main_applicant?.message && (
+              <p className="text-sm text-red-600 mt-1">{form.formState.errors.is_main_applicant.message}</p>
+            )}
           </div>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
-            {/* Main Applicant Question */}
+          {/* Main Applicant's Personal Details Section */}
+          <div className="space-y-6 border-gray-200">
             <div className="hidden">
-              <Label className="text-base font-medium text-gray-900">
-                Are you or will you be the Main Applicant in any application?
-              </Label>
+              <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
               <RadioGroup
-                value={form.watch("is_main_applicant")}
-                onValueChange={(value) => {
-                  form.setValue("is_main_applicant", value);
-                  setIsMainApplicant(value);
-                }}
-                className="flex gap-4 mt-2"
-                data-testid="radio-is-main-applicant"
+                value={form.watch("prefix")}
+                onValueChange={(value) => form.setValue("prefix", value)}
+                className="flex flex-wrap gap-4"
+                data-testid="radio-prefix"
               >
-                <div className="flex items-center">
-                  <RadioGroupItem value="yes" id="yes" data-testid="radio-yes" />
-                  <Label htmlFor="yes" className="ml-2 cursor-pointer font-normal">
-                    Yes
-                  </Label>
-                </div>
-                <div className="flex items-center">
-                  <RadioGroupItem value="no" id="no" data-testid="radio-no" />
-                  <Label htmlFor="no" className="ml-2 cursor-pointer font-normal">
-                    No
-                  </Label>
-                </div>
+                {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
+                  <div key={prefix} className="flex items-center">
+                    <RadioGroupItem value={prefix} id={`main-${prefix.toLowerCase()}`} />
+                    <Label htmlFor={`main-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                      {prefix}
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
-              {form.formState.errors.is_main_applicant?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.is_main_applicant.message}</p>
+              {form.formState.errors.prefix?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.prefix.message}</p>
               )}
             </div>
 
-            {/* Main Applicant's Personal Details Section */}
-            <div className="space-y-6 border-gray-200">
-              <div className="hidden">
-                <p className="text-sm text-gray-600 mb-3">Prefix/Title</p>
-                <RadioGroup
-                  value={form.watch("prefix")}
-                  onValueChange={(value) => form.setValue("prefix", value)}
-                  className="flex flex-wrap gap-4"
-                  data-testid="radio-prefix"
+            <div>
+              <Label>Family Name</Label>
+              <Input {...form.register("family_name")} data-testid="input-family-name" />
+              {form.formState.errors.family_name?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.family_name.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>Given Names</Label>
+              <Input {...form.register("given_names")} data-testid="input-given-names" />
+              {form.formState.errors.given_names?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.given_names.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>Preferred Names</Label>
+              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
+              {form.formState.errors.preferred_names?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>Gender</Label>
+              <RadioGroup
+                value={form.watch("gender")}
+                onValueChange={(value) => form.setValue("gender", value)}
+                className="flex gap-4 mt-2"
+                data-testid="radio-gender"
+              >
+                {["Male", "Female"].map((gender) => (
+                  <div key={gender} className="flex items-center">
+                    <RadioGroupItem value={gender} id={`main-gender-${gender.toLowerCase()}`} />
+                    <Label htmlFor={`main-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                      {gender}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+              {form.formState.errors.gender?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.gender.message}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Date of Birth - Day</Label>
+                <Select
+                  onValueChange={(value) => form.setValue("birth_day", value)}
+                  value={form.watch("birth_day")}
                 >
-                  {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
-                    <div key={prefix} className="flex items-center">
-                      <RadioGroupItem value={prefix} id={`main-${prefix.toLowerCase()}`} />
-                      <Label htmlFor={`main-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {prefix}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {form.formState.errors.prefix?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.prefix.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Family Name</Label>
-                <Input {...form.register("family_name")} data-testid="input-family-name" />
-                {form.formState.errors.family_name?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.family_name.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Given Names</Label>
-                <Input {...form.register("given_names")} data-testid="input-given-names" />
-                {form.formState.errors.given_names?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.given_names.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Preferred Names</Label>
-                <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
-                {form.formState.errors.preferred_names?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Gender</Label>
-                <RadioGroup
-                  value={form.watch("gender")}
-                  onValueChange={(value) => form.setValue("gender", value)}
-                  className="flex gap-4 mt-2"
-                  data-testid="radio-gender"
-                >
-                  {["Male", "Female"].map((gender) => (
-                    <div key={gender} className="flex items-center">
-                      <RadioGroupItem value={gender} id={`main-gender-${gender.toLowerCase()}`} />
-                      <Label htmlFor={`main-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
-                        {gender}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-                {form.formState.errors.gender?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.gender.message}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Date of Birth - Day</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_day", value)} 
-                    value={form.watch("birth_day")}
-                  >
-                    <SelectTrigger data-testid="select-birth-day">
-                      <SelectValue placeholder="Choose Day" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {days.map((day) => (
-                        <SelectItem key={day} value={day}>{day}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.birth_day?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_day.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Month</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_month", value)} 
-                    value={form.watch("birth_month")}
-                  >
-                    <SelectTrigger data-testid="select-birth-month">
-                      <SelectValue placeholder="Choose Month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {months.map((month, idx) => (
-                        <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.birth_month?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_month.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Year</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("birth_year", value)} 
-                    value={form.watch("birth_year")}
-                  >
-                    <SelectTrigger data-testid="select-birth-year">
-                      <SelectValue placeholder="Choose Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {years.map((year) => (
-                        <SelectItem key={year} value={year}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.birth_year?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_year.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label>Country of Birth</Label>
-                <Input {...form.register("country_of_birth")} placeholder="Choose Country" data-testid="input-country-of-birth" />
-                {form.formState.errors.country_of_birth?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.country_of_birth.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>City or Town of Birth</Label>
-                <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
-                {form.formState.errors.city_of_birth?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.city_of_birth.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>State or Province of Birth</Label>
-                <Input {...form.register("state_of_birth")} data-testid="input-state-of-birth" />
-                {form.formState.errors.state_of_birth?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>What is your marital status?</Label>
-                <Select 
-                  onValueChange={(value) => form.setValue("marital_status", value)} 
-                  value={form.watch("marital_status")}
-                >
-                  <SelectTrigger data-testid="select-marital-status">
-                    <SelectValue placeholder="Choose Marital Status" />
+                  <SelectTrigger data-testid="select-birth-day">
+                    <SelectValue placeholder="Choose Day" />
                   </SelectTrigger>
                   <SelectContent>
-                    {maritalStatuses.map((status) => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    {days.map((day) => (
+                      <SelectItem key={day} value={day}>{day}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {form.formState.errors.marital_status?.message && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.marital_status.message}</p>
+                {form.formState.errors.birth_day?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_day.message}</p>
                 )}
               </div>
 
-              {form.watch("marital_status") && form.watch("marital_status") !== "Never Married" && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    {form.watch("marital_status") === "Married" && "Date of Marriage"}
-                    {form.watch("marital_status") === "De Facto Relationship" && "Date De Facto Relationship Began"}
-                    {form.watch("marital_status") === "Divorced" && "Date of Divorce"}
-                    {form.watch("marital_status") === "Widowed" && "Date of Death of Spouse"}
-                    {form.watch("marital_status") === "Separated" && "Date of Separation"} <span className="text-red-600">*</span>
-                  </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">Day</Label>
-                      <Select
-                        value={form.watch("marital_status_date_day")}
-                        onValueChange={(value) => form.setValue("marital_status_date_day", value)}
-                      >
-                        <SelectTrigger id="marital_status_date_day">
-                          <SelectValue placeholder="Day" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {days.map((day) => (
-                            <SelectItem key={day} value={day}>{day}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+              <div>
+                <Label>Month</Label>
+                <Select
+                  onValueChange={(value) => form.setValue("birth_month", value)}
+                  value={form.watch("birth_month")}
+                >
+                  <SelectTrigger data-testid="select-birth-month">
+                    <SelectValue placeholder="Choose Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month, idx) => (
+                      <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.birth_month?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_month.message}</p>
+                )}
+              </div>
 
-                    <div>
-                      <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">Month</Label>
-                      <Select
-                        value={form.watch("marital_status_date_month")}
-                        onValueChange={(value) => form.setValue("marital_status_date_month", value)}
-                      >
-                        <SelectTrigger id="marital_status_date_month">
-                          <SelectValue placeholder="Month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {months.map((month, idx) => (
-                            <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+              <div>
+                <Label>Year</Label>
+                <Select
+                  onValueChange={(value) => form.setValue("birth_year", value)}
+                  value={form.watch("birth_year")}
+                >
+                  <SelectTrigger data-testid="select-birth-year">
+                    <SelectValue placeholder="Choose Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.birth_year?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_year.message}</p>
+                )}
+              </div>
+            </div>
 
-                    <div>
-                      <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">Year</Label>
-                      <Select
-                        value={form.watch("marital_status_date_year")}
-                        onValueChange={(value) => form.setValue("marital_status_date_year", value)}
-                      >
-                        <SelectTrigger id="marital_status_date_year">
-                          <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {years.map((year) => (
-                            <SelectItem key={year} value={year}>{year}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
+            <div>
+              <Label>Country of Birth</Label>
+              <Input {...form.register("country_of_birth")} placeholder="Choose Country" data-testid="input-country-of-birth" />
+              {form.formState.errors.country_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.country_of_birth.message}</p>
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
+            <div>
+              <Label>City or Town of Birth</Label>
+              <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
+              {form.formState.errors.city_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.city_of_birth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>State or Province of Birth</Label>
+              <Input {...form.register("state_of_birth")} data-testid="input-state-of-birth" />
+              {form.formState.errors.state_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>What is your marital status?</Label>
+              <Select
+                onValueChange={(value) => form.setValue("marital_status", value)}
+                value={form.watch("marital_status")}
+              >
+                <SelectTrigger data-testid="select-marital-status">
+                  <SelectValue placeholder="Choose Marital Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {maritalStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.marital_status?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.marital_status.message}</p>
+              )}
+            </div>
+
+            {form.watch("marital_status") && form.watch("marital_status") !== "Never Married" && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  {form.watch("marital_status") === "Married" && "Date of Marriage"}
+                  {form.watch("marital_status") === "De Facto Relationship" && "Date De Facto Relationship Began"}
+                  {form.watch("marital_status") === "Divorced" && "Date of Divorce"}
+                  {form.watch("marital_status") === "Widowed" && "Date of Death of Spouse"}
+                  {form.watch("marital_status") === "Separated" && "Date of Separation"} <span className="text-red-600">*</span>
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">Day</Label>
+                    <Select
+                      value={form.watch("marital_status_date_day")}
+                      onValueChange={(value) => form.setValue("marital_status_date_day", value)}
+                    >
+                      <SelectTrigger id="marital_status_date_day">
+                        <SelectValue placeholder="Day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {days.map((day) => (
+                          <SelectItem key={day} value={day}>{day}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">Month</Label>
+                    <Select
+                      value={form.watch("marital_status_date_month")}
+                      onValueChange={(value) => form.setValue("marital_status_date_month", value)}
+                    >
+                      <SelectTrigger id="marital_status_date_month">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((month, idx) => (
+                          <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">Year</Label>
+                    <Select
+                      value={form.watch("marital_status_date_year")}
+                      onValueChange={(value) => form.setValue("marital_status_date_year", value)}
+                    >
+                      <SelectTrigger id="marital_status_date_year">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year}>{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              className="min-h-9"
+              data-testid="button-previous"
+            >
+              ← Previous
+            </Button>
+            <div className="flex gap-3">
               <Button
                 type="button"
                 variant="outline"
-                onClick={handlePrevious}
+                onClick={handleSave}
+                disabled={isSaving}
                 className="min-h-9"
-                data-testid="button-previous"
+                data-testid="button-save"
               >
-                ← Previous
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Draft"
+                )}
               </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                data-testid="button-next"
+              >
+                Next →
+              </Button>
             </div>
-          </form>
-        </div>
-      </div>
+          </div>
+        </form>
+      </CardContent>
 
       {/* Mobile Navigation */}
       <StickyNav
@@ -523,6 +521,6 @@ export default function Page() {
         nextTestId="button-next-mobile"
         saveTestId="button-save-mobile"
       />
-    </div>
+    </Card>
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -46,9 +45,7 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const PREFIX_OPTIONS = ["Mr", "Mrs", "Ms", "Dr", "Other"];
-
 const INDUSTRY_SECTOR_OPTIONS = [
   "Agriculture, Forestry and Fishing",
   "Mining",
@@ -71,14 +68,12 @@ const INDUSTRY_SECTOR_OPTIONS = [
   "Other Services",
   "Other"
 ];
-
 const ADDRESS_TYPE_OPTIONS = [
   "Business",
   "Residential",
   "Postal",
   "Other"
 ];
-
 const AUSTRALIAN_STATES = [
   "Australian Capital Territory",
   "New South Wales",
@@ -89,7 +84,6 @@ const AUSTRALIAN_STATES = [
   "Victoria",
   "Western Australia"
 ];
-
 // Form schema
 const formSchema = z.object({
   is_sponsored: z.enum(["yes", "no"]),
@@ -163,7 +157,6 @@ const formSchema = z.object({
     }
   }
 });
-
 export default function EmploymentPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -172,7 +165,6 @@ export default function EmploymentPage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -180,7 +172,6 @@ export default function EmploymentPage() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -222,9 +213,7 @@ export default function EmploymentPage() {
       postal_country: "",
     },
   });
-
   const isSponsored = form.watch("is_sponsored");
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_employment_offer || {};
     if (Object.keys(savedData).length > 0) {
@@ -268,7 +257,6 @@ export default function EmploymentPage() {
       });
     }
   }, [draftSnap.draft?.protection_employment_offer]);
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -309,7 +297,6 @@ export default function EmploymentPage() {
       setIsSaving(false);
     }
   };
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_employment_offer", data);
     draftStore.markPageComplete(`${visaType}/employment`);
@@ -319,14 +306,12 @@ export default function EmploymentPage() {
       router.push(nextRoute);
     }
   };
-
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
     if (previousRoute) {
       router.push(previousRoute);
     }
   };
-
   // Clear form fields when "No" is selected
   useEffect(() => {
     if (isSponsored === "no") {
@@ -367,14 +352,13 @@ export default function EmploymentPage() {
       form.setValue("postal_country", "");
     }
   }, [isSponsored]);
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Employment</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Employment</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               For the main applicant, provide the following details about any offer of employment by a business/organisation in Australia.
             </p>
           </div>
@@ -408,7 +392,6 @@ export default function EmploymentPage() {
                   <p className="text-sm text-red-600 mt-1">{form.formState.errors.is_sponsored.message}</p>
                 )}
               </div>
-
               {/* Conditional Sections - Only show if Yes */}
               {isSponsored === "yes" && (
                 <>
@@ -429,7 +412,6 @@ export default function EmploymentPage() {
                         <p className="text-sm text-red-600 mt-1">{form.formState.errors.business_name.message}</p>
                       )}
                     </div>
-
                     <div>
                       <Label htmlFor="trading_name" className="mb-2 block">Trading Name</Label>
                       <Input
@@ -438,7 +420,6 @@ export default function EmploymentPage() {
                         data-testid="input-trading-name"
                       />
                     </div>
-
                     <div>
                       <Label htmlFor="abn" className="mb-2 block">Australian Business Number</Label>
                       <Input
@@ -448,7 +429,6 @@ export default function EmploymentPage() {
                         data-testid="input-abn"
                       />
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Industry Sector</Label>
                       <Select
@@ -465,7 +445,6 @@ export default function EmploymentPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div>
                       <Label htmlFor="business_description" className="mb-2 block">Business/Organisation Description</Label>
                       <Textarea
@@ -476,7 +455,6 @@ export default function EmploymentPage() {
                       />
                     </div>
                   </div>
-
                   {/* Contact Person */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Contact Person</h2>
@@ -498,7 +476,6 @@ export default function EmploymentPage() {
                         ))}
                       </RadioGroup>
                     </div> */}
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="contact_first_name" className="mb-2 block">
@@ -513,7 +490,6 @@ export default function EmploymentPage() {
                           <p className="text-sm text-red-600 mt-1">{form.formState.errors.contact_first_name.message}</p>
                         )}
                       </div>
-
                       <div>
                         <Label htmlFor="contact_family_name" className="mb-2 block">
                           Family Name <span className="text-red-500">*</span>
@@ -528,7 +504,6 @@ export default function EmploymentPage() {
                         )}
                       </div>
                     </div>
-
                     <div>
                       <Label htmlFor="contact_position" className="mb-2 block">Position</Label>
                       <Input
@@ -537,7 +512,6 @@ export default function EmploymentPage() {
                         data-testid="input-contact-position"
                       />
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Telephone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
@@ -558,7 +532,6 @@ export default function EmploymentPage() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
                       <div className="grid grid-cols-2 gap-2">
@@ -574,7 +547,6 @@ export default function EmploymentPage() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label htmlFor="contact_email" className="mb-2 block">Email Address</Label>
                       <Input
@@ -588,7 +560,6 @@ export default function EmploymentPage() {
                       )}
                     </div>
                   </div>
-
                   {/* Business/Organisation Telephone and Email Contact */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Business/Organisation Telephone and Email Contact</h2>
@@ -613,7 +584,6 @@ export default function EmploymentPage() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Office Hours Phone Number</Label>
                       <div className="grid grid-cols-3 gap-2">
@@ -634,7 +604,6 @@ export default function EmploymentPage() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label htmlFor="business_email" className="mb-2 block">Email Address</Label>
                       <Input
@@ -648,7 +617,6 @@ export default function EmploymentPage() {
                       )}
                     </div>
                   </div>
-
                   {/* Business/Organisation Commercial Address */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Business/Organisation Commercial Address</h2>
@@ -666,7 +634,6 @@ export default function EmploymentPage() {
                         data-testid="input-commercial-address-line1"
                       />
                     </div>
-
                     <div>
                       <Label htmlFor="commercial_address_line2" className="mb-2 block">Address Line 2</Label>
                       <Input
@@ -675,7 +642,6 @@ export default function EmploymentPage() {
                         data-testid="input-commercial-address-line2"
                       />
                     </div>
-
                     <div>
                       <Label htmlFor="commercial_suburb" className="mb-2 block">Suburb/Town/City</Label>
                       <Input
@@ -684,7 +650,6 @@ export default function EmploymentPage() {
                         data-testid="input-commercial-suburb"
                       />
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="commercial_state" className="mb-2 block">State</Label>
@@ -694,7 +659,6 @@ export default function EmploymentPage() {
                           data-testid="input-commercial-state"
                         />
                       </div>
-
                       <div>
                         <Label htmlFor="commercial_postcode" className="mb-2 block">Postcode</Label>
                         <Input
@@ -704,7 +668,6 @@ export default function EmploymentPage() {
                         />
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="mb-2 block">Country</Label>
@@ -722,7 +685,6 @@ export default function EmploymentPage() {
                           </SelectContent>
                         </Select>
                       </div>
-
                       <div>
                         <Label className="mb-2 block">Choose Type of Address</Label>
                         <Select
@@ -741,7 +703,6 @@ export default function EmploymentPage() {
                       </div>
                     </div>
                   </div>
-
                   {/* Business/Organisation Postal Address (if different) */}
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-gray-900">Business/Organisation Postal Address (if different)</h2>
@@ -756,7 +717,6 @@ export default function EmploymentPage() {
                         data-testid="input-postal-address-line1"
                       />
                     </div>
-
                     <div>
                       <Label htmlFor="postal_address_line2" className="mb-2 block">Address Line 2</Label>
                       <Input
@@ -765,7 +725,6 @@ export default function EmploymentPage() {
                         data-testid="input-postal-address-line2"
                       />
                     </div>
-
                     <div>
                       <Label htmlFor="postal_suburb" className="mb-2 block">Suburb/Town/City</Label>
                       <Input
@@ -774,7 +733,6 @@ export default function EmploymentPage() {
                         data-testid="input-postal-suburb"
                       />
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="postal_state" className="mb-2 block">State</Label>
@@ -784,7 +742,6 @@ export default function EmploymentPage() {
                           data-testid="input-postal-state"
                         />
                       </div>
-
                       <div>
                         <Label htmlFor="postal_postcode" className="mb-2 block">Postcode</Label>
                         <Input
@@ -794,7 +751,6 @@ export default function EmploymentPage() {
                         />
                       </div>
                     </div>
-
                     <div>
                       <Label className="mb-2 block">Country</Label>
                       <Select
@@ -815,7 +771,6 @@ export default function EmploymentPage() {
                 </>
               )}
             </div>
-
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
@@ -857,7 +812,6 @@ export default function EmploymentPage() {
           </form>
         </div>
       </div>
-
       {/* Mobile Navigation */}
       <StickyNav
         onPrev={handlePrevious}
@@ -871,4 +825,3 @@ export default function EmploymentPage() {
     </div>
   );
 }
-

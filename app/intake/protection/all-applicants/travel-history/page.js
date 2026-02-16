@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +17,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -47,7 +46,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const TRAVEL_REASON_OPTIONS = [
   "Work",
   "Study",
@@ -59,7 +57,6 @@ const TRAVEL_REASON_OPTIONS = [
   "Returning home",
   "Other"
 ];
-
 const LEGAL_STATUS_OPTIONS = [
   "Citizen",
   "Permanent Resident",
@@ -73,7 +70,6 @@ const LEGAL_STATUS_OPTIONS = [
   "No Legal Status",
   "Other"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -82,7 +78,6 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 const futureYears = Array.from({ length: 20 }, (_, i) => (currentYear + i).toString());
-
 // Travel History Dialog Schema
 const travelDialogSchema = z.object({
   country: z.string().min(1, "Country is required"),
@@ -152,7 +147,6 @@ const travelDialogSchema = z.object({
     }
   }
 });
-
 function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [isCurrentLocation, setIsCurrentLocation] = useState(row?.is_current_location || "no");
@@ -173,24 +167,20 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
       intended_departure_date_year: "",
     },
   });
-
   useEffect(() => {
     if (row?.is_current_location) {
       setIsCurrentLocation(row.is_current_location);
     }
   }, [row]);
-
   // Get main applicant name from draft store
   const draftSnap = useSnapshot(draftStore);
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -203,7 +193,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of their current location and of previous travel including travel for work, study, holiday, leisure, business, military deployments and visits back to their own country:
       </p>
-
       {/* Country */}
       <div>
         <Label className="mb-2 block">
@@ -226,7 +215,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       {/* Is this the Main Applicant's current location? */}
       <div>
         <Label className="text-base font-medium mb-3 block">
@@ -257,7 +245,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.is_current_location.message}</p>
         )}
       </div>
-
       {/* Reason for being in this Country */}
       <div>
         <Label className="mb-2 block">
@@ -280,7 +267,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_being.message}</p>
         )}
       </div>
-
       {/* Legal Status in this Country */}
       <div>
         <Label className="mb-2 block">
@@ -303,7 +289,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.legal_status.message}</p>
         )}
       </div>
-
       {/* Date Arrived */}
       <div>
         <Label className="mb-2 block">
@@ -354,7 +339,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.arrival_date_day.message}</p>
         )}
       </div>
-
       {/* Arrival City */}
       <div>
         <Label htmlFor="arrival_city" className="mb-2 block">Arrival City</Label>
@@ -364,7 +348,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           data-testid="input-arrival-city"
         />
       </div>
-
       {/* Intended Departure Date */}
       <div>
         <Label className="mb-2 block">
@@ -416,7 +399,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.intended_departure_date_day.message}</p>
         )}
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -437,7 +419,6 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Form schema
 const formSchema = z.object({
   has_travel_history: z.enum(["yes", "no"]).optional(),
@@ -455,7 +436,6 @@ const formSchema = z.object({
     intended_departure_date_year: z.string().optional(),
   })).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -464,7 +444,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -472,7 +451,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -480,16 +458,13 @@ export default function Page() {
       main_applicant_travel_history: [],
     },
   });
-
   const hasTravelHistory = form.watch("has_travel_history");
   const mainApplicantTravelHistory = form.watch("main_applicant_travel_history") || [];
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_travel || {};
     if (Object.keys(savedData).length > 0) {
@@ -499,30 +474,25 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_travel]);
-
   // Clear travel history data when "No" is selected
   useEffect(() => {
     if (hasTravelHistory === "no") {
       form.setValue("main_applicant_travel_history", []);
     }
   }, [hasTravelHistory]);
-
   const updateMainApplicantTravelHistory = (newHistory) => {
     form.setValue("main_applicant_travel_history", newHistory);
   };
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("protection_travel", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`);
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -563,7 +533,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   // Table column definitions
   const travelColumns = [
     { key: "country", label: "Country" },
@@ -597,14 +566,13 @@ export default function Page() {
     },
     { key: "reason_for_being", label: "Reason for Travel" },
   ];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Travel History</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Travel History</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               In this section you are to provide the travel history of the following included Applicants:
             </p>
           </div>
@@ -672,7 +640,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
               <Button
@@ -714,7 +681,6 @@ export default function Page() {
           </form>
         </div>
       </div>
-
       {/* Mobile Navigation */}
       <StickyNav
         onPrev={handlePrevious}
@@ -728,4 +694,3 @@ export default function Page() {
     </div>
   );
 }
-
