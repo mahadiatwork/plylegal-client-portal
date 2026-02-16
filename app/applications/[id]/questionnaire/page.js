@@ -161,7 +161,7 @@ export default function QuestionnairePage() {
                     {application.type} Questionnaire
                   </h2>
                   <p className="text-muted-foreground max-w-lg mx-auto">
-                    Complete the comprehensive questionnaire to gather all necessary information for your visa application.
+                    With This questionnaire helps us build your application properly from the beginning. If you’re unsure about any question, let us know and we’ll guide you through it.
                   </p>
                 </div>
                 
