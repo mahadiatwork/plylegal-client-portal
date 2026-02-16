@@ -80,7 +80,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     employer: z.string().optional(),
     country: z.string().min(1, "Country is required"),
     city: z.string().optional(),
-    duties: z.string().optional(),
+    duties: z.string().max(300, "Duties must be 300 characters or less").optional(),
   });
 
   const dialogForm = useForm({
@@ -273,13 +273,18 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="duties" className="mb-2 block">Duties/Notes</Label>
+        <Label htmlFor="duties" className="mb-2 block">Duties/Notes <span className="text-sm font-normal text-gray-500">(max 300 characters)</span></Label>
         <Textarea
           id="duties"
           {...dialogForm.register("duties")}
           rows={3}
+          maxLength={300}
           data-testid="textarea-duties"
         />
+        <p className="text-xs text-gray-500 mt-1 text-right">{(dialogForm.watch("duties") || "").length}/300</p>
+        {dialogForm.formState.errors.duties && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.duties.message}</p>
+        )}
       </div>
 
       <DialogFooter>
@@ -335,7 +340,6 @@ export default function EmploymentPage() {
   });
 
   const isCurrentlyEmployed = form.watch("is_currently_employed");
-  const stillWorking = form.watch("still_working");
   const employmentHistory = form.watch("employment_history") || [];
 
   useEffect(() => {
@@ -502,77 +506,6 @@ export default function EmploymentPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-base font-medium mb-3 block">
-                        Still working here? *
-                      </Label>
-                      <RadioGroup
-                        value={stillWorking}
-                        onValueChange={(value) => form.setValue("still_working", value)}
-                        className="flex gap-4"
-                        data-testid="radio-still-working"
-                      >
-                        <div className="flex items-center">
-                          <RadioGroupItem value="yes" id="still-working-yes" />
-                          <Label htmlFor="still-working-yes" className="ml-2 cursor-pointer font-normal">
-                            Yes
-                          </Label>
-                        </div>
-                        <div className="flex items-center">
-                          <RadioGroupItem value="no" id="still-working-no" />
-                          <Label htmlFor="still-working-no" className="ml-2 cursor-pointer font-normal">
-                            No
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    {stillWorking === "no" && (
-                      <div>
-                        <Label className="mb-2 block">End Date *</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          <Select
-                            value={form.watch("current_end_date_day")}
-                            onValueChange={(value) => form.setValue("current_end_date_day", value)}
-                          >
-                            <SelectTrigger data-testid="select-current-end-day">
-                              <SelectValue placeholder="Day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DAYS.map((day) => (
-                                <SelectItem key={day} value={day}>{day}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={form.watch("current_end_date_month")}
-                            onValueChange={(value) => form.setValue("current_end_date_month", value)}
-                          >
-                            <SelectTrigger data-testid="select-current-end-month">
-                              <SelectValue placeholder="Month" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {MONTHS.map((month) => (
-                                <SelectItem key={month} value={month}>{month}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={form.watch("current_end_date_year")}
-                            onValueChange={(value) => form.setValue("current_end_date_year", value)}
-                          >
-                            <SelectTrigger data-testid="select-current-end-year">
-                              <SelectValue placeholder="Year" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {YEARS.map((year) => (
-                                <SelectItem key={year} value={year}>{year}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
