@@ -36,6 +36,12 @@ const EMPLOYMENT_TYPE_OPTIONS = [
   "Self-Employed"
 ];
 
+const POSITION_TYPE_OPTIONS = [
+  "Full-time",
+  "Part-time",
+  "Casual"
+];
+
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -81,6 +87,9 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     country: z.string().min(1, "Country is required"),
     city: z.string().optional(),
     duties: z.string().max(300, "Duties must be 300 characters or less").optional(),
+    is_current_employment: z.string().optional(),
+    position_type: z.string().optional(),
+    is_related_to_nominated_position: z.string().optional(),
   });
 
   const dialogForm = useForm({
@@ -98,6 +107,9 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       country: "",
       city: "",
       duties: "",
+      is_current_employment: "",
+      position_type: "",
+      is_related_to_nominated_position: "",
     }
   });
 
@@ -110,6 +122,26 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
   return (
     <div className="space-y-4">
+      <div>
+        <Label className="text-base font-medium mb-3 block">
+          Is this applicant's current employment situation?
+        </Label>
+        <RadioGroup
+          value={dialogForm.watch("is_current_employment")}
+          onValueChange={(value) => dialogForm.setValue("is_current_employment", value)}
+          className="flex gap-4"
+        >
+          <div className="flex items-center">
+            <RadioGroupItem value="yes" id="current-yes" />
+            <Label htmlFor="current-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+          </div>
+          <div className="flex items-center">
+            <RadioGroupItem value="no" id="current-no" />
+            <Label htmlFor="current-no" className="ml-2 cursor-pointer font-normal">No</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -223,6 +255,23 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
+      <div>
+        <Label className="mb-2 block">Position Type</Label>
+        <Select
+          value={dialogForm.watch("position_type")}
+          onValueChange={(value) => dialogForm.setValue("position_type", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Type" />
+          </SelectTrigger>
+          <SelectContent>
+            {POSITION_TYPE_OPTIONS.map((type) => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {(status === "Employed" || status === "Self-Employed") && (
         <div>
           <Label htmlFor="position" className="mb-2 block">Position / Occupation *</Label>
@@ -285,6 +334,26 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         {dialogForm.formState.errors.duties && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.duties.message}</p>
         )}
+      </div>
+
+      <div>
+        <Label className="text-base font-medium mb-3 block">
+          Is this employment related to the nominated position?
+        </Label>
+        <RadioGroup
+          value={dialogForm.watch("is_related_to_nominated_position")}
+          onValueChange={(value) => dialogForm.setValue("is_related_to_nominated_position", value)}
+          className="flex gap-4"
+        >
+          <div className="flex items-center">
+            <RadioGroupItem value="yes" id="related-yes" />
+            <Label htmlFor="related-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+          </div>
+          <div className="flex items-center">
+            <RadioGroupItem value="no" id="related-no" />
+            <Label htmlFor="related-no" className="ml-2 cursor-pointer font-normal">No</Label>
+          </div>
+        </RadioGroup>
       </div>
 
       <DialogFooter>
@@ -420,6 +489,7 @@ export default function EmploymentPage() {
                 </RadioGroup>
 
                 {/* Current Job Fields (shown if Yes) */}
+                {/* 
                 {isCurrentlyEmployed === "yes" && (
                   <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
                     <h3 className="text-lg font-semibold text-gray-900">Current Job</h3>
@@ -536,6 +606,7 @@ export default function EmploymentPage() {
                     </div>
                   </div>
                 )}
+                */}
               </div>
 
               {/* Q2: Employment History */}
