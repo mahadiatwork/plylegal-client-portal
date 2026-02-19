@@ -120,6 +120,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
       { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
       { href: "/intake/temporary-work/main-applicant/other", title: "Other" },
       { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
+      { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
       { href: "/intake/temporary-work/main-applicant/education", title: "Education" },
       { href: "/intake/temporary-work/main-applicant/skills", title: "Skills" },
@@ -135,13 +136,11 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     ],
   },
   { href: "/intake/temporary-work/children", title: "Children" },
-  { href: "/intake/temporary-work/relationships", title: "Relationships" },
+  // { href: "/intake/temporary-work/relationships", title: "Relationships" },
   {
-    href: "/intake/temporary-work/all-applicants/addresses",
+    href: "/intake/temporary-work/all-applicants/visas",
     title: "All Applicants",
     subpages: [
-      { href: "/intake/temporary-work/all-applicants/addresses", title: "Addresses" },
-      { href: "/intake/temporary-work/all-applicants/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/all-applicants/visas", title: "Visas" },
       { href: "/intake/temporary-work/all-applicants/travel-history", title: "Travel History" },
       { href: "/intake/temporary-work/all-applicants/health", title: "Health" },

@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,14 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 const YEARS = Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() - i));
-
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
   "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
@@ -48,7 +46,6 @@ const COUNTRIES = [
   "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const REASONS = [
   "Visit Family",
   "Visit Friends",
@@ -67,7 +64,6 @@ const REASONS = [
   "Military Deployment",
   "Other",
 ];
-
 const LEGAL_STATUSES = [
   "Citizen",
   "Permanent Resident",
@@ -81,19 +77,16 @@ const LEGAL_STATUSES = [
   "No Legal Status",
   "Other",
 ];
-
 const formatDate = (day, month, year) => {
   if (!day || !month || !year) return "";
   return `${day} ${month} ${year}`;
 };
-
 function TravelDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
     country: z.string().min(1, "Country is required"),
     is_current_location: z.enum(["Yes", "No"]).optional(),
     reason_for_visit: z.string().min(1, "Reason is required"),
     legal_status: z.string().min(1, "Legal Status is required"),
-
     date_arrived_day: z.string().min(1, "Day is required"),
     date_arrived_month: z.string().min(1, "Month is required"),
     date_arrived_year: z.string().min(1, "Year is required"),
@@ -101,7 +94,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
     departure_month: z.string().optional(),
     departure_year: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
@@ -117,14 +109,11 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
       departure_year: "",
     }
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   const isCurrentLocation = dialogForm.watch("is_current_location");
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Travel History</h3>
@@ -132,7 +121,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
         Enter details of their current location and of previous travel including travel for work, study, holiday, leisure,
         business, military deployments and visits back to their own country:
       </p>
-
       {/* Country */}
       <div>
         <Label className="mb-2 block">Country</Label>
@@ -153,7 +141,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
       </div>
-
       {/* Current Location */}
       <div>
         <Label className="mb-2 block">Is this the main applicant&apos;s current location?</Label>
@@ -172,7 +159,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           ))}
         </div>
       </div>
-
       {/* Reason */}
       <div>
         <Label className="mb-2 block">Reason for being in this Country</Label>
@@ -193,7 +179,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_visit.message}</p>
         )}
       </div>
-
       {/* Legal Status */}
       <div>
         <Label className="mb-2 block">Legal Status in this Country</Label>
@@ -214,7 +199,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.legal_status.message}</p>
         )}
       </div>
-
       {/* Date Arrived */}
       <div>
         <Label className="mb-2 block">Date Arrived</Label>
@@ -263,7 +247,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_arrived_day.message}</p>
         )}
       </div>
-
       {/* Departure Date / Intended Departure Date */}
       <div>
         <Label className="mb-2 block">
@@ -311,7 +294,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           </Select>
         </div>
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
@@ -328,7 +310,6 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
     </div>
   );
 }
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -337,7 +318,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -349,17 +329,14 @@ export default function Page() {
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
-
   const form = useForm({
     defaultValues: {
       has_travel_history: "",
       travel_history: [],
     },
   });
-
   const hasTravelHistory = form.watch("has_travel_history");
   const travelHistory = form.watch("travel_history") || [];
-
   useEffect(() => {
     const savedData = draftSnap.draft?.partner_travel || {};
     if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
@@ -370,9 +347,7 @@ export default function Page() {
           "",
         travel_history: savedData.travel_history || [],
       };
-
       form.reset(formData);
-
       setTimeout(() => {
         form.setValue(
           "has_travel_history",
@@ -383,7 +358,6 @@ export default function Page() {
       }, 0);
     }
   }, [draftSnap.draft?.partner_travel, form]);
-
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
@@ -395,12 +369,10 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -422,20 +394,17 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Travel History</h1>
-          <p className="text-muted-foreground mt-2">
+    <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Travel History</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
             In this section you are to provide the travel history of the following included Applicants:
           </p>
-        </div>
-
+        </CardHeader>
+        <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-
             {/* Main question block */}
             <div className="space-y-4">
               <div className="text-sm text-foreground space-y-1">
@@ -445,7 +414,6 @@ export default function Page() {
                   <li>spent more than 3 consecutive months outside of their usual country of passport in the last 5 years?</li>
                 </ul>
               </div>
-
               <RadioGroup
                 value={hasTravelHistory}
                 onValueChange={(value) => form.setValue("has_travel_history", value)}
@@ -460,7 +428,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {/* Travel history table (shown if Yes) */}
             {hasTravelHistory === "yes" && (
               <div className="mt-8">
@@ -534,7 +501,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
@@ -544,7 +510,7 @@ export default function Page() {
             />
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

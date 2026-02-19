@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { COUNTRIES } from "@/reuseable/countries";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const CHARACTER_QUESTIONS = [
   {
     key: "convicted_child_offence",
@@ -78,19 +77,16 @@ const CHARACTER_QUESTIONS = [
     label: "Has your Sponsor ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency?",
   },
 ];
-
 function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Involvement with Criminal Conduct</h3>
@@ -98,7 +94,6 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
         Enter details of any applicant who is included in this application who has been associated with a person, group or
         organisation that has been/is involved in criminal conduct
       </p>
-
       <div>
         <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
         <Select
@@ -113,7 +108,6 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select
@@ -132,12 +126,10 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -145,8 +137,7 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
-function OtherCharacterDialog({ editingRow, onSave, onCancel, title = "Other Character Detail", description }) {
+function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     country: z.string().optional(),
     date_day: z.string().optional(),
@@ -154,17 +145,16 @@ function OtherCharacterDialog({ editingRow, onSave, onCancel, title = "Other Cha
     date_year: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { country: "", date_day: "", date_month: "", date_year: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 mb-4">{description}</p>
-
+      <h3 className="text-base font-bold text-gray-900 mb-2">Association with Violent Organisation</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of association with an organisation engaged in violence
+      </p>
       <div>
         <Label className="mb-2 block">Date</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -188,7 +178,6 @@ function OtherCharacterDialog({ editingRow, onSave, onCancel, title = "Other Cha
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -198,12 +187,10 @@ function OtherCharacterDialog({ editingRow, onSave, onCancel, title = "Other Cha
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -211,16 +198,120 @@ function OtherCharacterDialog({ editingRow, onSave, onCancel, title = "Other Cha
     </div>
   );
 }
-
-
-
+function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    country: z.string().optional(),
+    details: z.string().optional(),
+  });
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
+  });
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">National Security Risk</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of involvement in activities representing a risk to national security
+      </p>
+      <div>
+        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
+          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Country</Label>
+        <Select
+          value={dialogForm.watch("country")}
+          onValueChange={(value) => dialogForm.setValue("country", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    country: z.string().optional(),
+    details: z.string().optional(),
+  });
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
+  });
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Outstanding Debts</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of outstanding debts to the Australian Government
+      </p>
+      <div>
+        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
+          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Country</Label>
+        <Select
+          value={dialogForm.watch("country")}
+          onValueChange={(value) => dialogForm.setValue("country", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
+      </DialogFooter>
+    </div>
+  );
+}
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 const YEARS = Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i));
-
 function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -233,7 +324,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     date_issue_year: z.string().optional(),
     reference_number: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -248,7 +338,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
       reference_number: "",
     },
   });
-
   const handleSubmit = (data) => {
     // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
     let dateOfBirthDisplay = "";
@@ -256,7 +345,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     if (dobMatch) {
       dateOfBirthDisplay = dobMatch[1];
     }
-
     onSave({
       ...data,
       date_of_birth_display: dateOfBirthDisplay,
@@ -267,14 +355,12 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Police Clearance Certificate</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant who is included in this application who has applied for a Police Clearance Certificate in the last 12 months
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -298,7 +384,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Issuing Country</Label>
         <Select
@@ -320,7 +405,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.issuing_country.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Application Date</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -374,7 +458,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.application_date_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Date of Issue</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -425,12 +508,10 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Reference Number</Label>
         <Input {...dialogForm.register("reference_number")} placeholder="Enter reference number" />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -442,7 +523,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -459,7 +539,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     date_to_year: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -479,7 +558,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -494,7 +572,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Immigration Detention / Refugee Camp History</h3>
@@ -502,7 +579,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         Enter details of any applicant who is included in this application who has previously been in Immigration
         Detention, a Refugee Camp or Centre for Refugees
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -523,17 +599,14 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Location</Label>
         <Input {...dialogForm.register("location_type")} placeholder="Enter type of location" />
       </div>
-
       <div>
         <Label className="mb-2 block">Name of Centre / Camp</Label>
         <Input {...dialogForm.register("centre_name")} placeholder="Enter name of Centre / Camp" />
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -549,17 +622,14 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Location</Label>
         <Input {...dialogForm.register("location")} placeholder="Enter location" />
       </div>
-
       <div>
         <Label className="mb-2 block">Name of Organiser who ran the Centre/Camp</Label>
         <Input {...dialogForm.register("organiser")} placeholder="Enter name of organiser" />
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -577,7 +647,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -595,12 +664,10 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">Ok</Button>
@@ -608,7 +675,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     </div>
   );
 }
-
 function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -621,7 +687,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -636,7 +701,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
       details: "",
     },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -651,7 +715,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Prison / Institution History</h3>
@@ -659,7 +722,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
         Enter details of any applicant who is included in this application who has been confined in a prison or psychiatric
         institution by order of a court in relation to criminal proceedings
       </p>
-
       <div>
         <Label className="mb-2 block">
           Applicant Name <span className="text-red-600">*</span>
@@ -683,7 +745,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -734,7 +795,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -785,7 +845,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -801,12 +860,10 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -818,7 +875,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     </div>
   );
 }
-
 const TRAINING_TYPES = [
   "Military Training",
   "Paramilitary Training",
@@ -828,7 +884,6 @@ const TRAINING_TYPES = [
   "Biological Product Manufacturing",
   "Other",
 ];
-
 const SERVICE_TYPES = [
   "Intelligence",
   "Military - Voluntary Service",
@@ -841,8 +896,7 @@ const SERVICE_TYPES = [
   "Police",
   "Secret Police",
 ];
-
-function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
+function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     country_of_service: z.string().optional(),
     country_of_deployment: z.string().optional(),
@@ -857,7 +911,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
     position_rank: z.string().optional(),
     duties_description: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -875,8 +928,13 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
       duties_description: "",
     },
   });
-
   const handleSubmit = (data) => {
+    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
+    let dateOfBirthDisplay = "";
+    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
+    if (dobMatch) {
+      dateOfBirthDisplay = dobMatch[1];
+    }
     onSave({
       ...data,
       date_from_display:
@@ -890,7 +948,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Service History</h3>
@@ -898,8 +955,32 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
         Enter details relating to serving in a military force, police force, state sponsored militia, private militia,
         secret police or intelligence agency
       </p>
-
       <div>
+
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.applicant_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        )}
+      </div>
+      <div>
+
         <Label className="mb-2 block">Country of Service</Label>
         <Select
           value={dialogForm.watch("country_of_service")}
@@ -920,7 +1001,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_service.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Country of Deployment</Label>
         <Select
@@ -939,7 +1019,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -990,7 +1069,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1041,7 +1119,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Service</Label>
         <Select
@@ -1060,22 +1137,18 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Name of Organisation/Unit/Brigade Group</Label>
         <Input {...dialogForm.register("organisation_name")} placeholder="Enter organisation name" />
       </div>
-
       <div>
         <Label className="mb-2 block">Position/Rank</Label>
         <Input {...dialogForm.register("position_rank")} placeholder="Enter position or rank" />
       </div>
-
       <div>
         <Label className="mb-2 block">Description of Duties</Label>
         <Textarea rows={3} {...dialogForm.register("duties_description")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1087,8 +1160,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel }) {
     </div>
   );
 }
-
-function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
+function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     country_of_training: z.string().optional(),
     date_from_day: z.string().optional(),
@@ -1100,7 +1172,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
     training_type: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -1115,8 +1186,13 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
       details: "",
     },
   });
-
   const handleSubmit = (data) => {
+    // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
+    let dateOfBirthDisplay = "";
+    const dobMatch = data.applicant_name.match(/\(DOB:\s*(.+?)\)/);
+    if (dobMatch) {
+      dateOfBirthDisplay = dobMatch[1];
+    }
     onSave({
       ...data,
       date_from_display:
@@ -1130,7 +1206,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Training History</h3>
@@ -1138,7 +1213,29 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
         Enter details relating to undergoing any military/paramilitary training, been trained in weapons/explosives or in
         the manufacture of chemical/biological products
       </p>
-
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {dialogForm.formState.errors.applicant_name && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        )}
+      </div>
       <div>
         <Label className="mb-2 block">Country of Training</Label>
         <Select
@@ -1160,7 +1257,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_training.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1211,7 +1307,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1262,7 +1357,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Training</Label>
         <Select
@@ -1281,12 +1375,10 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1298,7 +1390,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel }) {
     </div>
   );
 }
-
 function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -1308,17 +1399,14 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
     date_year: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", date_day: "", date_month: "", date_year: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
-
       <div>
         <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -1328,7 +1416,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -1338,7 +1425,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -1362,12 +1448,10 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -1375,7 +1459,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
     </div>
   );
 }
-
 function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
     country: z.string().optional(),
@@ -1385,19 +1468,23 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
     offence_type: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { country: "", date_day: "", date_month: "", date_year: "", offence_type: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
-
-
-
+      <div>
+        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
+        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
+          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -1407,7 +1494,6 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date of Offence</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -1431,17 +1517,14 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Offence Type</Label>
         <Input {...dialogForm.register("offence_type")} placeholder="Choose Offence Type" />
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -1449,8 +1532,39 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
     </div>
   );
 }
-
-
+function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    details: z.string().optional(),
+  });
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues: editingRow || { applicant_name: "", details: "" },
+  });
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
+      <p className="text-sm text-gray-500 mb-4">{description}</p>
+      <div>
+        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
+        <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
+          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")} />
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
+      </DialogFooter>
+    </div>
+  );
+}
 
 const formSchema = z.object({
   ...CHARACTER_QUESTIONS.reduce((acc, q) => {
@@ -1473,7 +1587,6 @@ const formSchema = z.object({
   military_training_details: z.array(z.any()).optional(),
   military_service_details: z.array(z.any()).optional(),
 });
-
 const GENERIC_DIALOG_CONFIG = {
   acquitted_mental_illness: {
     description: "Enter details relating to any crime or offence on the grounds of mental illness, insanity or unsoundness of mind",
@@ -1508,7 +1621,6 @@ const GENERIC_DIALOG_CONFIG = {
     field: "people_smuggling_details"
   },
 };
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1516,7 +1628,6 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -1524,18 +1635,15 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   // Build applicant name options from main applicant, spouse/partner, and children draft data
   const applicantOptions = (() => {
     const opts = [];
-
     const buildLabel = (family, given, day, month, year) => {
       const name = [family, given].filter(Boolean).join(" ").trim();
       const dob = [day, month, year].filter(Boolean).join(" ");
       if (!name) return "";
       return dob ? `${name} (DOB: ${dob})` : name;
     };
-
     // Main applicant
     const main = draftStore.getSectionData('mainApplicant.details');
     if (main) {
@@ -1548,7 +1656,6 @@ export default function Page() {
       );
       if (label) opts.push(label);
     }
-
     // Spouse / partner
     const spouse = draftStore.getSectionData('spousePartner.details');
     if (spouse) {
@@ -1561,7 +1668,6 @@ export default function Page() {
       );
       if (label) opts.push(label);
     }
-
     // Children
     const childrenData = draftStore.getSectionData('mainApplicant.family')?.children || [];
     if (Array.isArray(childrenData)) {
@@ -1576,10 +1682,8 @@ export default function Page() {
         if (label) opts.push(label);
       });
     }
-
     return opts;
   })();
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -1603,7 +1707,6 @@ export default function Page() {
       military_service_details: [],
     },
   });
-
   useEffect(() => {
     const savedData = draftStore.getSectionData('familySponsor.details') || {};
     // Only get character-related fields
@@ -1639,7 +1742,6 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft, form]);
-
   const onSubmit = async (data) => {
     const existingData = draftStore.getSectionData('familySponsor.details') || {};
     const mergedData = { ...existingData, ...data };
@@ -1648,12 +1750,10 @@ export default function Page() {
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     const values = form.getValues();
     const existingData = draftStore.getSectionData('familySponsor.details') || {};
@@ -1672,17 +1772,15 @@ export default function Page() {
       });
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Character</h1>
-          <p className="text-muted-foreground mt-2">
-            Provide character information for all applicants.
-          </p>
-        </div>
-
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Character</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Provide character information for all applicants.
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             {CHARACTER_QUESTIONS.map((q) => (
@@ -1707,7 +1805,6 @@ export default function Page() {
                     ))}
                   </div>
                 </RadioGroup>
-
                 {form.watch(q.key) === "yes" && (
                   <div className="mt-4">
                     {q.key === "convicted_child_offence" && (
@@ -1737,168 +1834,370 @@ export default function Page() {
                       />
                     )}
 
-                    {q.key === "charged_child_offence" && (
-                      <RepeaterTable
-                        data={form.watch("charged_child_offence_details") || []}
-                        columns={[
-                          { key: "country", label: "Country" },
-                          { key: "offence_type", label: "Offence" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("charged_child_offence_details", [...(form.watch("charged_child_offence_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("charged_child_offence_details") || [])];
-                          current[i] = row;
-                          form.setValue("charged_child_offence_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("charged_child_offence_details", (form.watch("charged_child_offence_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <ConvictionDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Offence Character Detail"
-                            description="Enter details of any offence that is currently awaiting legal action in any country relating to persons under the age of 18, including but not limited to: child abuse, child sex, endangering a child, indecent dealings with a child, or possession of child pornography"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "convicted_general_offence" && (
-                      <RepeaterTable
-                        data={form.watch("convicted_general_offence_details") || []}
-                        columns={[
-                          { key: "country", label: "Country" },
-                          { key: "offence_type", label: "Offence" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("convicted_general_offence_details", [...(form.watch("convicted_general_offence_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("convicted_general_offence_details") || [])];
-                          current[i] = row;
-                          form.setValue("convicted_general_offence_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("convicted_general_offence_details", (form.watch("convicted_general_offence_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <ConvictionDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Offence Character Detail"
-                            description="Enter details relating to any crime or offence in any country (including any conviction which is removed from official records)"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-                    {q.key === "charged_general_offence" && (
-                      <RepeaterTable
-                        data={form.watch("charged_general_offence_details") || []}
-                        columns={[
-                          { key: "country", label: "Country" },
-                          { key: "offence_type", label: "Offence" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue("charged_general_offence_details", [...(form.watch("charged_general_offence_details") || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch("charged_general_offence_details") || [])];
-                          current[i] = row;
-                          form.setValue("charged_general_offence_details", current);
-                        }}
-                        onDelete={(i) => form.setValue("charged_general_offence_details", (form.watch("charged_general_offence_details") || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <ConvictionDialog
-                            {...props}
-                            applicantOptions={applicantOptions}
-                            title="Offence Character Detail"
-                            description="Enter details of any offence in any country that is currently awaiting legal action"
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-
-
-
-                    {q.key === "military_training" && (
+                    {q.key === "immigration_detention" && (
                       <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has previously been in Immigration Detention,
+                          a Refugee Camp or Centre for Refugees
+                        </p>
                         <RepeaterTable
-                          data={form.watch("military_training_details") || []}
+                          data={form.watch("immigration_detention_details") || []}
                           columns={[
-                            { key: "country_of_training", label: "Country" },
+                            { key: "applicant_name", label: "Name" },
+                            { key: "centre_name", label: "Name of Centre / Camp" },
+                            { key: "country", label: "Country" },
                             { key: "date_from_display", label: "Date From" },
                             { key: "date_to_display", label: "Date To" },
                           ]}
-                          onAdd={(row) => form.setValue("military_training_details", [...(form.watch("military_training_details") || []), row])}
-                          onEdit={(i, row) => {
-                            const current = [...(form.watch("military_training_details") || [])];
-                            current[i] = row;
-                            form.setValue("military_training_details", current);
+                          onAdd={(row) => {
+                            const current = form.watch("immigration_detention_details") || [];
+                            form.setValue("immigration_detention_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
                           }}
-                          onDelete={(i) => form.setValue("military_training_details", (form.watch("military_training_details") || []).filter((_, idx) => idx !== i))}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("immigration_detention_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("immigration_detention_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("immigration_detention_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("immigration_detention_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
                           DialogComponent={(props) => (
-                            <MilitaryTrainingDialog {...props} />
+                            <ImmigrationDetentionDialog {...props} applicantOptions={applicantOptions} />
                           )}
                           addButtonText="Add Details"
+                          testIdPrefix="immigration-detention"
+                        />
+                      </div>
+                    )}
+                    {q.key === "psychiatric_institution" && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          Enter details of any applicant who is included in this application who has been confined in a
+                          prison or psychiatric institution by order of a court in relation to criminal proceedings
+                        </p>
+                        <RepeaterTable
+                          data={form.watch("psychiatric_institution_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "date_from_display", label: "Date From" },
+                            { key: "date_to_display", label: "Date To" },
+                            { key: "country", label: "Country" },
+                          ]}
+                          onAdd={(row) => {
+                            const current = form.watch("psychiatric_institution_details") || [];
+                            form.setValue("psychiatric_institution_details", [...current, row], {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onEdit={(index, updatedRow) => {
+                            const current = [...(form.watch("psychiatric_institution_details") || [])];
+                            current[index] = updatedRow;
+                            form.setValue("psychiatric_institution_details", current, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          onDelete={(index) => {
+                            const current = form.watch("psychiatric_institution_details") || [];
+                            const updated = current.filter((_, i) => i !== index);
+                            form.setValue("psychiatric_institution_details", updated, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                              shouldTouch: true,
+                            });
+                          }}
+                          DialogComponent={(props) => (
+                            <PrisonInstitutionDialog {...props} applicantOptions={applicantOptions} />
+                          )}
+                          addButtonText="Add Details"
+                          testIdPrefix="prison-institution"
                         />
                       </div>
                     )}
 
-                    {q.key === "military_service" && (
-                      <div className="space-y-3">
+                    {
+                      q.key === "military_training" && (
+                        <div className="space-y-3">
+                          <RepeaterTable
+                            data={form.watch("military_training_details") || []}
+                            columns={[
+                              { key: "country_of_training", label: "Country" },
+                              { key: "date_from_display", label: "Date From" },
+                              { key: "date_to_display", label: "Date To" },
+                            ]}
+                            onAdd={(row) => form.setValue("military_training_details", [...(form.watch("military_training_details") || []), row])}
+                            onEdit={(i, row) => {
+                              const current = [...(form.watch("military_training_details") || [])];
+                              current[i] = row;
+                              form.setValue("military_training_details", current);
+                            }}
+                            onDelete={(i) => form.setValue("military_training_details", (form.watch("military_training_details") || []).filter((_, idx) => idx !== i))}
+                            DialogComponent={(props) => (
+                              <MilitaryTrainingDialog {...props} />
+                            )}
+                            addButtonText="Add Details"
+                          />
+                        </div>
+                      )
+                    }
+                    {
+                      q.key === "military_service" && (
+                        <div className="space-y-3">
+                          <RepeaterTable
+                            data={form.watch("military_service_details") || []}
+                            columns={[
+                              { key: "country_of_service", label: "Country of Service" },
+                              { key: "date_from_display", label: "Date From" },
+                              { key: "date_to_display", label: "Date To" },
+                              { key: "position_rank", label: "Position" },
+                            ]}
+                            onAdd={(row) => form.setValue("military_service_details", [...(form.watch("military_service_details") || []), row])}
+                            onEdit={(i, row) => {
+                              const current = [...(form.watch("military_service_details") || [])];
+                              current[i] = row;
+                              form.setValue("military_service_details", current);
+                            }}
+                            onDelete={(i) => form.setValue("military_service_details", (form.watch("military_service_details") || []).filter((_, idx) => idx !== i))}
+                            DialogComponent={(props) => (
+                              <MilitaryServiceDialog {...props} />
+                            )}
+                            addButtonText="Add Details"
+                          />
+                        </div>
+                      )
+                    }
+                    {
+                      GENERIC_DIALOG_CONFIG[q.key] && (
                         <RepeaterTable
-                          data={form.watch("military_service_details") || []}
+                          data={form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []}
                           columns={[
-                            { key: "country_of_service", label: "Country of Service" },
-                            { key: "date_from_display", label: "Date From" },
-                            { key: "date_to_display", label: "Date To" },
-                            { key: "position_rank", label: "Position" },
+                            { key: "country", label: "Country" },
+                            { key: "date_year", label: "Year" },
+                            { key: "details", label: "Details" }
                           ]}
-                          onAdd={(row) => form.setValue("military_service_details", [...(form.watch("military_service_details") || []), row])}
+                          onAdd={(row) => form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, [...(form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []), row])}
                           onEdit={(i, row) => {
-                            const current = [...(form.watch("military_service_details") || [])];
+                            const current = [...(form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || [])];
                             current[i] = row;
-                            form.setValue("military_service_details", current);
+                            form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, current);
                           }}
-                          onDelete={(i) => form.setValue("military_service_details", (form.watch("military_service_details") || []).filter((_, idx) => idx !== i))}
+                          onDelete={(i) => form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, (form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []).filter((_, idx) => idx !== i))}
                           DialogComponent={(props) => (
-                            <MilitaryServiceDialog {...props} />
+                            <OtherCharacterDialog
+                              {...props}
+                              title="Other Character Detail"
+                              description={GENERIC_DIALOG_CONFIG[q.key].description}
+                            />
                           )}
                           addButtonText="Add Details"
                         />
-                      </div>
-                    )}
+                      )
+                    }
 
-                    {GENERIC_DIALOG_CONFIG[q.key] && (
-                      <RepeaterTable
-                        data={form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []}
-                        columns={[
-                          { key: "country", label: "Country" },
-                          { key: "date_year", label: "Year" },
-                          { key: "details", label: "Details" }
-                        ]}
-                        onAdd={(row) => form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, [...(form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []), row])}
-                        onEdit={(i, row) => {
-                          const current = [...(form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || [])];
-                          current[i] = row;
-                          form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, current);
-                        }}
-                        onDelete={(i) => form.setValue(GENERIC_DIALOG_CONFIG[q.key].field, (form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []).filter((_, idx) => idx !== i))}
-                        DialogComponent={(props) => (
-                          <OtherCharacterDialog
-                            {...props}
-                            title="Other Character Detail"
-                            description={GENERIC_DIALOG_CONFIG[q.key].description}
-                          />
-                        )}
-                        addButtonText="Add Details"
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                    {
+                      q.key === "convicted_offence" && (
+                        <RepeaterTable
+                          data={form.watch("convicted_offence_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "country", label: "Country" },
+                            { key: "offence_type", label: "Offence" },
+                            { key: "details", label: "Details" }
+                          ]}
+                          onAdd={(row) => form.setValue("convicted_offence_details", [...(form.watch("convicted_offence_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("convicted_offence_details") || [])];
+                            current[i] = row;
+                            form.setValue("convicted_offence_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("convicted_offence_details", (form.watch("convicted_offence_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => (
+                            <ConvictionDialog
+                              {...props}
+                              applicantOptions={applicantOptions}
+                              title="Convictions for Crimes/Offences"
+                              description="Enter details of any applicant who is included in this application who has ever been convicted of an offence in any country (including any conviction which is now removed from official records). Please list each offence separately:"
+                            />
+                          )}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "awaiting_legal_action" && (
+                        <RepeaterTable
+                          data={form.watch("awaiting_legal_action_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "country", label: "Country" },
+                            { key: "offence_type", label: "Offence" },
+                            { key: "details", label: "Details" }
+                          ]}
+                          onAdd={(row) => form.setValue("awaiting_legal_action_details", [...(form.watch("awaiting_legal_action_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("awaiting_legal_action_details") || [])];
+                            current[i] = row;
+                            form.setValue("awaiting_legal_action_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("awaiting_legal_action_details", (form.watch("awaiting_legal_action_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => (
+                            <ConvictionDialog
+                              {...props}
+                              applicantOptions={applicantOptions}
+                              title="Awaiting Legal Action"
+                              description="Enter details of any applicant who has ever been charged with any offence in any country that is currently awaiting legal action:"
+                            />
+                          )}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "false_misleading_info" && (
+                        <RepeaterTable
+                          data={form.watch("false_misleading_info_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "details", label: "Details" }
+                          ]}
+                          onAdd={(row) => form.setValue("false_misleading_info_details", [...(form.watch("false_misleading_info_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("false_misleading_info_details") || [])];
+                            current[i] = row;
+                            form.setValue("false_misleading_info_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("false_misleading_info_details", (form.watch("false_misleading_info_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => (
+                            <SimpleCharacterDialog
+                              {...props}
+                              applicantOptions={applicantOptions}
+                              title="Invalid Australian Immigration"
+                              description="Enter details of any applicant who is included in this application who has ever provided any information or a document to the Australian Immigration or Customs Authorities which was wrong, incorrect, false or misleading"
+                            />
+                          )}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "sponsorship_payment" && (
+                        <RepeaterTable
+                          data={form.watch("sponsorship_payment_details") || []}
+                          columns={[
+                            { key: "applicant_name", label: "Name" },
+                            { key: "details", label: "Details" }
+                          ]}
+                          onAdd={(row) => form.setValue("sponsorship_payment_details", [...(form.watch("sponsorship_payment_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("sponsorship_payment_details") || [])];
+                            current[i] = row;
+                            form.setValue("sponsorship_payment_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("sponsorship_payment_details", (form.watch("sponsorship_payment_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => (
+                            <SimpleCharacterDialog
+                              {...props}
+                              applicantOptions={applicantOptions}
+                              title="Benefit for Sponsorship/Nomination"
+                              description="Enter details of any person included in this application who made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa"
+                            />
+                          )}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "associated_criminal_conduct" && (
+                        <RepeaterTable
+                          data={form.watch("criminal_conduct_details") || []}
+                          columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
+                          onAdd={(row) => form.setValue("criminal_conduct_details", [...(form.watch("criminal_conduct_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("criminal_conduct_details") || [])];
+                            current[i] = row;
+                            form.setValue("criminal_conduct_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("criminal_conduct_details", (form.watch("criminal_conduct_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => <CriminalConductDialog {...props} applicantOptions={applicantOptions} />}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "associated_violent_org" && (
+                        <RepeaterTable
+                          data={form.watch("violent_org_details") || []}
+                          columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
+                          onAdd={(row) => form.setValue("violent_org_details", [...(form.watch("violent_org_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("violent_org_details") || [])];
+                            current[i] = row;
+                            form.setValue("violent_org_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("violent_org_details", (form.watch("violent_org_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => <ViolentOrganizationDialog {...props} applicantOptions={applicantOptions} />}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "national_security_risk" && (
+                        <RepeaterTable
+                          data={form.watch("national_security_details") || []}
+                          columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
+                          onAdd={(row) => form.setValue("national_security_details", [...(form.watch("national_security_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("national_security_details") || [])];
+                            current[i] = row;
+                            form.setValue("national_security_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("national_security_details", (form.watch("national_security_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => <NationalSecurityDialog {...props} applicantOptions={applicantOptions} />}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
+                    {
+                      q.key === "outstanding_debts" && (
+                        <RepeaterTable
+                          data={form.watch("outstanding_debts_details") || []}
+                          columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
+                          onAdd={(row) => form.setValue("outstanding_debts_details", [...(form.watch("outstanding_debts_details") || []), row])}
+                          onEdit={(i, row) => {
+                            const current = [...(form.watch("outstanding_debts_details") || [])];
+                            current[i] = row;
+                            form.setValue("outstanding_debts_details", current);
+                          }}
+                          onDelete={(i) => form.setValue("outstanding_debts_details", (form.watch("outstanding_debts_details") || []).filter((_, idx) => idx !== i))}
+                          DialogComponent={(props) => <OutstandingDebtsDialog {...props} applicantOptions={applicantOptions} />}
+                          addButtonText="Add Details"
+                        />
+                      )
+                    }
 
+                  </div >
+                )
+                }
+              </div >
+            ))
+            }
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
@@ -1906,9 +2205,9 @@ export default function Page() {
               nextLabel="Continue"
               loading={draftSnap.isSaving}
             />
-          </div>
-        </form>
-      </div>
-    </div>
+          </div >
+        </form >
+      </CardContent >
+    </Card >
   );
 }

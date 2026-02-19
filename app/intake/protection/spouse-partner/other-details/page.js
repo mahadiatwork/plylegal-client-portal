@@ -14,11 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+// StickyNav import removed
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -458,134 +459,127 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-8 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">Other Personal Details</h1>
-            <p className="text-sm text-gray-600 mt-2">
-              In this section, provide additional details about the main applicant's spouse/partner.
-            </p>
-          </div>
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Other Personal Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide additional details about the main applicant's spouse/partner.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="space-y-8">
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
-            <div className="space-y-8">
-
-              {/* Question 1: Other Names */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("has_other_names")}
-                    onValueChange={(value) => form.setValue("has_other_names", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-has-other-names"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
-                      <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
-                      <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {form.formState.errors.has_other_names?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
-                  )}
-                </div>
-
-                {hasOtherNames === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of the other names your Spouse/Partner has been known by, including names before marriage
-                    </p>
-                    <RepeaterTable
-                      data={otherNames}
-                      columns={otherNameColumns}
-                      onAdd={(row) => updateOtherNames([...otherNames, row])}
-                      onEdit={(index, row) => {
-                        const updated = [...otherNames];
-                        updated[index] = row;
-                        updateOtherNames(updated);
-                      }}
-                      onDelete={(index) => {
-                        const updated = otherNames.filter((_, i) => i !== index);
-                        updateOtherNames(updated);
-                      }}
-                      DialogComponent={OtherNameDialog}
-                      addButtonText="Add"
-                      emptyMessage="No other names added"
-                      dialogTitle="Other Name"
-                      testIdPrefix="other-name"
-                    />
+            {/* Question 1: Other Names */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
+                </Label>
+                <RadioGroup
+                  value={form.watch("has_other_names")}
+                  onValueChange={(value) => form.setValue("has_other_names", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-has-other-names"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
+                    <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
                   </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
+                    <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.has_other_names?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
                 )}
               </div>
 
-              {/* Question 2: Chinese Commercial Code */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Does your Spouse/Partner use a Chinese Commercial Code for their name?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("use_chinese_code")}
-                    onValueChange={(value) => form.setValue("use_chinese_code", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-use-chinese-code"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
-                      <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
-                      <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
+              {hasOtherNames === "yes" && (
+                <div className="pl-0 mt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Enter details of the other names your Spouse/Partner has been known by, including names before marriage
+                  </p>
+                  <RepeaterTable
+                    data={otherNames}
+                    columns={otherNameColumns}
+                    onAdd={(row) => updateOtherNames([...otherNames, row])}
+                    onEdit={(index, row) => {
+                      const updated = [...otherNames];
+                      updated[index] = row;
+                      updateOtherNames(updated);
+                    }}
+                    onDelete={(index) => {
+                      const updated = otherNames.filter((_, i) => i !== index);
+                      updateOtherNames(updated);
+                    }}
+                    DialogComponent={OtherNameDialog}
+                    addButtonText="Add"
+                    emptyMessage="No other names added"
+                    dialogTitle="Other Name"
+                    testIdPrefix="other-name"
+                  />
                 </div>
-
-                {useChineseCode === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <Label htmlFor="chinese_code">Chinese Commercial Code</Label>
-                    <Input
-                      id="chinese_code"
-                      {...form.register("chinese_code")}
-                      className="max-w-md mt-1"
-                      data-testid="input-chinese-code"
-                      placeholder="Enter your Chinese Commercial Code"
-                    />
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Desktop Navigation */}
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              loading={isSaving}
-              submitting={isSubmitting}
-              disabledNext={!form.formState.isValid}
-            />
-          </form>
-        </div>
-      </div>
+            {/* Question 2: Chinese Commercial Code */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Does your Spouse/Partner use a Chinese Commercial Code for their name?
+                </Label>
+                <RadioGroup
+                  value={form.watch("use_chinese_code")}
+                  onValueChange={(value) => form.setValue("use_chinese_code", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-use-chinese-code"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
+                    <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
+                    <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
 
-      {/* Mobile Navigation */}
+              {useChineseCode === "yes" && (
+                <div className="pl-0 mt-4">
+                  <Label htmlFor="chinese_code">Chinese Commercial Code</Label>
+                  <Input
+                    id="chinese_code"
+                    {...form.register("chinese_code")}
+                    className="max-w-md mt-1"
+                    data-testid="input-chinese-code"
+                    placeholder="Enter your Chinese Commercial Code"
+                  />
+                </div>
+              )}
+            </div>
 
-    </div>
+          </div>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            loading={isSaving}
+            submitting={isSubmitting}
+            disabledNext={!form.formState.isValid}
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

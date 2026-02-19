@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,12 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+// StickyNav import removed
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -48,7 +47,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const LEGAL_STATUS_OPTIONS = [
   "Citizen",
   "Permanent Resident",
@@ -62,7 +60,6 @@ const LEGAL_STATUS_OPTIONS = [
   "No Legal Status",
   "Other"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -70,7 +67,6 @@ const months = [
 ];
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-
 // Address Dialog Schema
 const addressDialogSchema = z.object({
   address_line1: z.string().min(1, "Address is required"),
@@ -122,7 +118,6 @@ const addressDialogSchema = z.object({
     }
   }
 });
-
 function AddressDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
 
@@ -144,11 +139,9 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       legal_status: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -161,7 +154,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Choose an address already entered, or enter a new address
       </p>
-
       {/* Address Block */}
       <div className="space-y-4">
         <div>
@@ -177,7 +169,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.address_line1.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="address_line2">Address Line 2</Label>
           <Input
@@ -186,7 +177,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
             data-testid="input-address-line2"
           />
         </div>
-
         <div>
           <Label htmlFor="suburb">
             Suburb/Town/City <span className="text-red-500">*</span>
@@ -200,7 +190,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.suburb.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="state">State</Label>
           <Input
@@ -209,7 +198,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
             data-testid="input-state"
           />
         </div>
-
         <div>
           <Label htmlFor="postcode">
             Postcode <span className="text-red-500">*</span>
@@ -223,7 +211,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.postcode.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             Choose Country <span className="text-red-500">*</span>
@@ -246,7 +233,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
-
       {/* When (Date Range) */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">When</h3>
@@ -301,7 +287,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_from_day.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
           <div className="grid grid-cols-3 gap-2">
@@ -350,7 +335,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
-
       {/* Legal Status */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Legal Status</h3>
@@ -378,7 +362,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -399,7 +382,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Form schema
 const formSchema = z.object({
   all_same_address: z.enum(["yes", "no"]).optional(),
@@ -419,7 +401,6 @@ const formSchema = z.object({
     legal_status: z.string(),
   })).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -429,7 +410,6 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -437,7 +417,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -445,16 +424,13 @@ export default function Page() {
       main_applicant_addresses: [],
     },
   });
-
   const allSameAddress = form.watch("all_same_address");
   const mainApplicantAddresses = form.watch("main_applicant_addresses") || [];
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_addresses || {};
     if (Object.keys(savedData).length > 0) {
@@ -464,11 +440,9 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_addresses]);
-
   const updateMainApplicantAddresses = (newAddresses) => {
     form.setValue("main_applicant_addresses", newAddresses);
   };
-
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
@@ -483,12 +457,10 @@ export default function Page() {
       setIsSubmitting(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -529,7 +501,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   // Table column definitions
   const addressColumns = [
     {
@@ -567,14 +538,13 @@ export default function Page() {
     },
     { key: "legal_status", label: "Legal Status in this Country" },
   ];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Addresses</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Addresses</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               In this section you are to provide the residential history of the following included Applicants:
             </p>
           </div>
@@ -605,7 +575,6 @@ export default function Page() {
                   </div>
                 </RadioGroup>
               </div>
-
               {/* Address History Table - Only show when Yes */}
               {allSameAddress === "yes" && (
                 <div className="space-y-4">
@@ -637,7 +606,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}

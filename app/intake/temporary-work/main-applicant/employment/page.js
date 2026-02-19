@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   "Employed",
@@ -330,7 +331,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           maxLength={300}
           data-testid="textarea-duties"
         />
-        <p className="text-xs text-gray-500 mt-1 text-right">{(dialogForm.watch("duties") || "").length}/300</p>
+        <p className="text-xs text-gray-500 mt-1 text-right">{(dialogForm.watch("duties") || "").length}/300 characters</p>
         {dialogForm.formState.errors.duties && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.duties.message}</p>
         )}
@@ -369,7 +370,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           Ok
         </Button>
       </DialogFooter>
-    </div>
+    </div >
   );
 }
 
@@ -456,205 +457,279 @@ export default function EmploymentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Employment</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s employment history.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-8">
+            {/* Q1: Are you currently Employed in a paid position? */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Are you currently Employed in a paid position?
+              </Label>
+              <RadioGroup
+                value={isCurrentlyEmployed}
+                onValueChange={(value) => form.setValue("is_currently_employed", value)}
+                className="flex gap-4"
+                data-testid="radio-currently-employed"
+              >
+                <div className="flex items-center" data-testid="radio-currently-employed-yes">
+                  <RadioGroupItem value="yes" id="employed-yes" />
+                  <Label htmlFor="employed-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-currently-employed-no">
+                  <RadioGroupItem value="no" id="employed-no" />
+                  <Label htmlFor="employed-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
 
+              {/* Current Job Fields (shown if Yes) */}
+              {isCurrentlyEmployed === "yes" && (
+                <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
+                  {/*
+                  <h3 className="text-lg font-semibold text-gray-900">Current Job</h3>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-8">
-              {/* Q1: Are you currently Employed in a paid position? */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Are you currently Employed in a paid position?
-                </Label>
-                <RadioGroup
-                  value={isCurrentlyEmployed}
-                  onValueChange={(value) => form.setValue("is_currently_employed", value)}
-                  className="flex gap-4"
-                  data-testid="radio-currently-employed"
-                >
-                  <div className="flex items-center" data-testid="radio-currently-employed-yes">
-                    <RadioGroupItem value="yes" id="employed-yes" />
-                    <Label htmlFor="employed-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-currently-employed-no">
-                    <RadioGroupItem value="no" id="employed-no" />
-                    <Label htmlFor="employed-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="current_employer" className="mb-2 block">Employer/Organization *</Label>
+                      <Input
+                        id="current_employer"
+                        {...form.register("current_employer")}
+                        data-testid="input-current-employer"
+                      />
+                    </div>
 
-                {/* Current Job Fields (shown if Yes) */}
-                {/* 
-                {isCurrentlyEmployed === "yes" && (
-                  <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
-                    <h3 className="text-lg font-semibold text-gray-900">Current Job</h3>
+                    <div>
+                      <Label htmlFor="current_position" className="mb-2 block">Position/Job Title *</Label>
+                      <Input
+                        id="current_position"
+                        {...form.register("current_position")}
+                        data-testid="input-current-position"
+                      />
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="current_employer" className="mb-2 block">Employer/Organization *</Label>
-                        <Input
-                          id="current_employer"
-                          {...form.register("current_employer")}
-                          data-testid="input-current-employer"
-                        />
-                      </div>
+                    <div>
+                      <Label className="mb-2 block">Country *</Label>
+                      <Select
+                        value={form.watch("current_country")}
+                        onValueChange={(value) => form.setValue("current_country", value)}
+                      >
+                        <SelectTrigger data-testid="select-current-country">
+                          <SelectValue placeholder="Choose Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                      <div>
-                        <Label htmlFor="current_position" className="mb-2 block">Position/Job Title *</Label>
-                        <Input
-                          id="current_position"
-                          {...form.register("current_position")}
-                          data-testid="input-current-position"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block">Country *</Label>
+                    <div>
+                      <Label className="mb-2 block">Start Date *</Label>
+                      <div className="grid grid-cols-3 gap-2">
                         <Select
-                          value={form.watch("current_country")}
-                          onValueChange={(value) => form.setValue("current_country", value)}
+                          value={form.watch("current_start_date_day")}
+                          onValueChange={(value) => form.setValue("current_start_date_day", value)}
                         >
-                          <SelectTrigger data-testid="select-current-country">
-                            <SelectValue placeholder="Choose Country" />
+                          <SelectTrigger data-testid="select-current-start-day">
+                            <SelectValue placeholder="Day" />
                           </SelectTrigger>
                           <SelectContent>
-                            {COUNTRIES.map((country) => (
-                              <SelectItem key={country} value={country}>{country}</SelectItem>
+                            {DAYS.map((day) => (
+                              <SelectItem key={day} value={day}>{day}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={form.watch("current_start_date_month")}
+                          onValueChange={(value) => form.setValue("current_start_date_month", value)}
+                        >
+                          <SelectTrigger data-testid="select-current-start-month">
+                            <SelectValue placeholder="Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map((month) => (
+                              <SelectItem key={month} value={month}>{month}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={form.watch("current_start_date_year")}
+                          onValueChange={(value) => form.setValue("current_start_date_year", value)}
+                        >
+                          <SelectTrigger data-testid="select-current-start-year">
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEARS.map((year) => (
+                              <SelectItem key={year} value={year}>{year}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-
-                      <div>
-                        <Label className="mb-2 block">Start Date *</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          <Select
-                            value={form.watch("current_start_date_day")}
-                            onValueChange={(value) => form.setValue("current_start_date_day", value)}
-                          >
-                            <SelectTrigger data-testid="select-current-start-day">
-                              <SelectValue placeholder="Day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DAYS.map((day) => (
-                                <SelectItem key={day} value={day}>{day}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={form.watch("current_start_date_month")}
-                            onValueChange={(value) => form.setValue("current_start_date_month", value)}
-                          >
-                            <SelectTrigger data-testid="select-current-start-month">
-                              <SelectValue placeholder="Month" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {MONTHS.map((month) => (
-                                <SelectItem key={month} value={month}>{month}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={form.watch("current_start_date_year")}
-                            onValueChange={(value) => form.setValue("current_start_date_year", value)}
-                          >
-                            <SelectTrigger data-testid="select-current-start-year">
-                              <SelectValue placeholder="Year" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {YEARS.map((year) => (
-                                <SelectItem key={year} value={year}>{year}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
                     </div>
+                  </div>
 
+                  <div>
+                    <Label className="text-base font-medium mb-3 block">
+                      Still working here? *
+                    </Label>
+                    <RadioGroup
+                      value={stillWorking}
+                      onValueChange={(value) => form.setValue("still_working", value)}
+                      className="flex gap-4"
+                      data-testid="radio-still-working"
+                    >
+                      <div className="flex items-center">
+                        <RadioGroupItem value="yes" id="still-working-yes" />
+                        <Label htmlFor="still-working-yes" className="ml-2 cursor-pointer font-normal">
+                          Yes
+                        </Label>
+                      </div>
+                      <div className="flex items-center">
+                        <RadioGroupItem value="no" id="still-working-no" />
+                        <Label htmlFor="still-working-no" className="ml-2 cursor-pointer font-normal">
+                          No
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="mb-2 block">Employment Type</Label>
+                  {stillWorking === "no" && (
+                    <div>
+                      <Label className="mb-2 block">End Date *</Label>
+                      <div className="grid grid-cols-3 gap-2">
                         <Select
-                          value={form.watch("current_employment_type")}
-                          onValueChange={(value) => form.setValue("current_employment_type", value)}
+                          value={form.watch("current_end_date_day")}
+                          onValueChange={(value) => form.setValue("current_end_date_day", value)}
                         >
-                          <SelectTrigger data-testid="select-employment-type">
-                            <SelectValue placeholder="Choose Type" />
+                          <SelectTrigger data-testid="select-current-end-day">
+                            <SelectValue placeholder="Day" />
                           </SelectTrigger>
                           <SelectContent>
-                            {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            {DAYS.map((day) => (
+                              <SelectItem key={day} value={day}>{day}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={form.watch("current_end_date_month")}
+                          onValueChange={(value) => form.setValue("current_end_date_month", value)}
+                        >
+                          <SelectTrigger data-testid="select-current-end-month">
+                            <SelectValue placeholder="Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map((month) => (
+                              <SelectItem key={month} value={month}>{month}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={form.watch("current_end_date_year")}
+                          onValueChange={(value) => form.setValue("current_end_date_year", value)}
+                        >
+                          <SelectTrigger data-testid="select-current-end-year">
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEARS.map((year) => (
+                              <SelectItem key={year} value={year}>{year}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                  )}
 
-                      <div>
-                        <Label htmlFor="current_address" className="mb-2 block">Address</Label>
-                        <Input
-                          id="current_address"
-                          {...form.register("current_address")}
-                          data-testid="input-current-address"
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="mb-2 block">Employment Type</Label>
+                      <Select
+                        value={form.watch("current_employment_type")}
+                        onValueChange={(value) => form.setValue("current_employment_type", value)}
+                      >
+                        <SelectTrigger data-testid="select-employment-type">
+                          <SelectValue placeholder="Choose Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="current_address" className="mb-2 block">Address</Label>
+                      <Input
+                        id="current_address"
+                        {...form.register("current_address")}
+                        data-testid="input-current-address"
+                      />
                     </div>
                   </div>
-                )}
-                */}
-              </div>
-
-              {/* Q2: Employment History */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History (last 5 years)</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Enter details of your employment history for the previous 5 years
-                </p>
-                <RepeaterTable
-                  data={employmentHistory}
-                  columns={[
-                    { key: "date_from_day", label: "Date From", format: (row) => `${row.date_from_day} ${row.date_from_month} ${row.date_from_year}` },
-                    { key: "date_to_day", label: "Date To", format: (row) => row.date_to_day ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "Ongoing" },
-                    { key: "status", label: "Status" },
-                    { key: "position", label: "Position" },
-                    { key: "country", label: "Country" },
-                  ]}
-                  onAdd={(newRow) => {
-                    const updated = [...employmentHistory, newRow];
-                    form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  onEdit={(index, updatedRow) => {
-                    const updated = [...employmentHistory];
-                    updated[index] = updatedRow;
-                    form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  onDelete={(index) => {
-                    const updated = employmentHistory.filter((_, i) => i !== index);
-                    form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  DialogComponent={EmploymentHistoryDialog}
-                  addButtonText="Add"
-                  testIdPrefix="employment"
-                />
-              </div>
+                  */}
+                </div>
+              )}
             </div>
+          </div>
 
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              saveLabel="Save draft"
-              nextLabel="Continue"
-              loading={draftSnap.isSaving}
+          {/* Q2: Employment History */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History (last 5 years)</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter details of your employment history for the previous 5 years
+            </p>
+            <RepeaterTable
+              data={employmentHistory}
+              columns={[
+                { key: "date_from_day", label: "Date From", format: (row) => `${row.date_from_day} ${row.date_from_month} ${row.date_from_year}` },
+                { key: "date_to_day", label: "Date To", format: (row) => row.date_to_day ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "Ongoing" },
+                { key: "status", label: "Status" },
+                { key: "position", label: "Position" },
+                { key: "country", label: "Country" },
+              ]}
+              onAdd={(newRow) => {
+                const updated = [...employmentHistory, newRow];
+                form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+              }}
+              onEdit={(index, updatedRow) => {
+                const updated = [...employmentHistory];
+                updated[index] = updatedRow;
+                form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+              }}
+              onDelete={(index) => {
+                const updated = employmentHistory.filter((_, i) => i !== index);
+                form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+              }}
+              DialogComponent={EmploymentHistoryDialog}
+              addButtonText="Add"
+              testIdPrefix="employment"
             />
-          </form>
+          </div>
         </div>
-      </div>
-    </div>
+
+        <FormNavigation
+          onPrev={handlePrevious}
+          onNext={form.handleSubmit(onSubmit)}
+          onSave={handleSave}
+          saveLabel="Save draft"
+          nextLabel="Continue"
+          loading={draftSnap.isSaving}
+        />
+      </form >
+    </CardContent >
+    </Card >
   );
 }

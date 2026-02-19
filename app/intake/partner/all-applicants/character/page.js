@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
   "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
@@ -42,7 +41,6 @@ const COUNTRIES = [
   "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
 ];
-
 const CHARACTER_QUESTIONS = [
   {
     key: "police_check_last_12_months",
@@ -153,19 +151,16 @@ const CHARACTER_QUESTIONS = [
     label: "Has any person included in this application made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa?",
   },
 ];
-
 function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Involvement with Criminal Conduct</h3>
@@ -173,7 +168,6 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
         Enter details of any applicant who is included in this application who has been associated with a person, group or
         organisation that has been/is involved in criminal conduct
       </p>
-
       <div>
         <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
         <Select
@@ -188,7 +182,6 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select
@@ -207,12 +200,10 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -220,26 +211,22 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Association with Violent Organisation</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of association with an organisation engaged in violence
       </p>
-
       <div>
         <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -249,7 +236,6 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select
@@ -268,12 +254,10 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -281,26 +265,22 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
     </div>
   );
 }
-
 function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">National Security Risk</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of involvement in activities representing a risk to national security
       </p>
-
       <div>
         <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -310,7 +290,6 @@ function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select
@@ -329,12 +308,10 @@ function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -342,26 +319,22 @@ function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions
     </div>
   );
 }
-
 function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Outstanding Debts</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of outstanding debts to the Australian Government
       </p>
-
       <div>
         <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -371,7 +344,6 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select
@@ -390,12 +362,10 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -403,14 +373,12 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
     </div>
   );
 }
-
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 const YEARS = Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i));
-
 function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -423,7 +391,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     date_issue_year: z.string().optional(),
     reference_number: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -438,7 +405,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
       reference_number: "",
     },
   });
-
   const handleSubmit = (data) => {
     // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
     let dateOfBirthDisplay = "";
@@ -446,7 +412,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     if (dobMatch) {
       dateOfBirthDisplay = dobMatch[1];
     }
-
     onSave({
       ...data,
       date_of_birth_display: dateOfBirthDisplay,
@@ -457,14 +422,12 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Police Clearance Certificate</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant who is included in this application who has applied for a Police Clearance Certificate in the last 12 months
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -488,7 +451,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Issuing Country</Label>
         <Select
@@ -510,7 +472,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.issuing_country.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Application Date</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -564,7 +525,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.application_date_day.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Date of Issue</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -615,12 +575,10 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Reference Number</Label>
         <Input {...dialogForm.register("reference_number")} placeholder="Enter reference number" />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -632,7 +590,6 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -649,7 +606,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     date_to_year: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -669,7 +625,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -684,7 +639,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Immigration Detention / Refugee Camp History</h3>
@@ -692,7 +646,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         Enter details of any applicant who is included in this application who has previously been in Immigration
         Detention, a Refugee Camp or Centre for Refugees
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -713,17 +666,14 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Location</Label>
         <Input {...dialogForm.register("location_type")} placeholder="Enter type of location" />
       </div>
-
       <div>
         <Label className="mb-2 block">Name of Centre / Camp</Label>
         <Input {...dialogForm.register("centre_name")} placeholder="Enter name of Centre / Camp" />
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -739,17 +689,14 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Location</Label>
         <Input {...dialogForm.register("location")} placeholder="Enter location" />
       </div>
-
       <div>
         <Label className="mb-2 block">Name of Organiser who ran the Centre/Camp</Label>
         <Input {...dialogForm.register("organiser")} placeholder="Enter name of organiser" />
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -767,7 +714,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -785,12 +731,10 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">Ok</Button>
@@ -798,7 +742,6 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     </div>
   );
 }
-
 function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -811,7 +754,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     country: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -826,7 +768,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
       details: "",
     },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -841,7 +782,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Prison / Institution History</h3>
@@ -849,7 +789,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
         Enter details of any applicant who is included in this application who has been confined in a prison or psychiatric
         institution by order of a court in relation to criminal proceedings
       </p>
-
       <div>
         <Label className="mb-2 block">
           Applicant Name <span className="text-red-600">*</span>
@@ -873,7 +812,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -924,7 +862,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -975,7 +912,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -991,12 +927,10 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1008,7 +942,6 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     </div>
   );
 }
-
 const TRAINING_TYPES = [
   "Military Training",
   "Paramilitary Training",
@@ -1018,7 +951,6 @@ const TRAINING_TYPES = [
   "Biological Product Manufacturing",
   "Other",
 ];
-
 const SERVICE_TYPES = [
   "Intelligence",
   "Military - Voluntary Service",
@@ -1031,7 +963,6 @@ const SERVICE_TYPES = [
   "Police",
   "Secret Police",
 ];
-
 function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -1048,7 +979,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
     position_rank: z.string().optional(),
     duties_description: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -1067,7 +997,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
       duties_description: "",
     },
   });
-
   const handleSubmit = (data) => {
     // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
     let dateOfBirthDisplay = "";
@@ -1075,7 +1004,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
     if (dobMatch) {
       dateOfBirthDisplay = dobMatch[1];
     }
-
     onSave({
       ...data,
       date_of_birth_display: dateOfBirthDisplay,
@@ -1090,7 +1018,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Service History</h3>
@@ -1098,7 +1025,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
         Enter details of any applicant who is included in this application who has ever served in a military force,
         police force, state sponsored militia, private militia, secret police or intelligence agency
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -1122,7 +1048,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Country of Service</Label>
         <Select
@@ -1144,7 +1069,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_service.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Country of Deployment</Label>
         <Select
@@ -1163,7 +1087,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1214,7 +1137,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1265,7 +1187,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Service</Label>
         <Select
@@ -1284,22 +1205,18 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Name of Organisation/Unit/Brigade Group</Label>
         <Input {...dialogForm.register("organisation_name")} placeholder="Enter organisation name" />
       </div>
-
       <div>
         <Label className="mb-2 block">Position/Rank</Label>
         <Input {...dialogForm.register("position_rank")} placeholder="Enter position or rank" />
       </div>
-
       <div>
         <Label className="mb-2 block">Description of Duties</Label>
         <Textarea rows={3} {...dialogForm.register("duties_description")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1311,7 +1228,6 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -1325,7 +1241,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
     training_type: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || {
@@ -1341,7 +1256,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
       details: "",
     },
   });
-
   const handleSubmit = (data) => {
     // Extract DOB from applicant name if it's in the format "Name (DOB: day month year)"
     let dateOfBirthDisplay = "";
@@ -1349,7 +1263,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
     if (dobMatch) {
       dateOfBirthDisplay = dobMatch[1];
     }
-
     onSave({
       ...data,
       date_of_birth_display: dateOfBirthDisplay,
@@ -1364,7 +1277,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Training History</h3>
@@ -1372,7 +1284,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
         Enter details of any applicant who is included in this application who has undergone any military/paramilitary
         training, been trained in weapons/explosives or in the manufacture of chemical/biological products
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -1396,7 +1307,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Country of Training</Label>
         <Select
@@ -1418,7 +1328,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_training.message}</p>
         )}
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1469,7 +1378,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1520,7 +1428,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Training</Label>
         <Select
@@ -1539,12 +1446,10 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1556,7 +1461,6 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
     </div>
   );
 }
-
 function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -1566,17 +1470,14 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
     date_year: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", date_day: "", date_month: "", date_year: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
-
       <div>
         <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -1586,7 +1487,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -1596,7 +1496,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -1620,12 +1519,10 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -1633,7 +1530,6 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
     </div>
   );
 }
-
 function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -1644,17 +1540,14 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
     offence_type: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", country: "", date_day: "", date_month: "", date_year: "", offence_type: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
-
       <div>
         <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -1664,7 +1557,6 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Country</Label>
         <Select value={dialogForm.watch("country")} onValueChange={(value) => dialogForm.setValue("country", value)}>
@@ -1674,7 +1566,6 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date of Conviction/Charge</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -1698,17 +1589,14 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Offence Type</Label>
         <Input {...dialogForm.register("offence_type")} placeholder="Choose Offence Type" />
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -1716,23 +1604,19 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
     </div>
   );
 }
-
 function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions = [], title, description }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues: editingRow || { applicant_name: "", details: "" },
   });
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
-
       <div>
         <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
@@ -1742,12 +1626,10 @@ function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={dialogForm.handleSubmit(onSave)} className="bg-[#285646] text-white">Ok</Button>
@@ -1755,7 +1637,6 @@ function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 const formSchema = z.object({
   ...CHARACTER_QUESTIONS.reduce((acc, q) => {
     acc[q.key] = z.enum(["yes", "no"]).optional();
@@ -1793,7 +1674,6 @@ const formSchema = z.object({
   military_training_details: z.array(z.any()).optional(),
   military_service_details: z.array(z.any()).optional(),
 });
-
 const GENERIC_DIALOG_CONFIG = {
   domestic_violence_order: {
     title: "Domestic Violence Order",
@@ -1866,7 +1746,6 @@ const GENERIC_DIALOG_CONFIG = {
     field: "people_smuggling_details"
   },
 };
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1874,7 +1753,6 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -1886,18 +1764,15 @@ export default function Page() {
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
-
   // Build applicant name options from main applicant, spouse/partner, and children draft data
   const applicantOptions = (() => {
     const opts = [];
-
     const buildLabel = (family, given, day, month, year) => {
       const name = [family, given].filter(Boolean).join(" ").trim();
       const dob = [day, month, year].filter(Boolean).join(" ");
       if (!name) return "";
       return dob ? `${name} (DOB: ${dob})` : name;
     };
-
     // Main applicant
     const main = draftStore.getSectionData('mainApplicant.details');
     if (main) {
@@ -1910,7 +1785,6 @@ export default function Page() {
       );
       if (label) opts.push(label);
     }
-
     // Spouse / partner
     const spouse = draftStore.getSectionData('spousePartner.details');
     if (spouse) {
@@ -1923,7 +1797,6 @@ export default function Page() {
       );
       if (label) opts.push(label);
     }
-
     // Children
     const childrenData = draftStore.getSectionData('mainApplicant.family')?.children || [];
     if (Array.isArray(childrenData)) {
@@ -1938,10 +1811,8 @@ export default function Page() {
         if (label) opts.push(label);
       });
     }
-
     return opts;
   })();
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -1979,7 +1850,6 @@ export default function Page() {
       military_service_details: [],
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.partner_character || {};
     if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
@@ -1993,19 +1863,16 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.partner_character, form]);
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("partner_character", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "partner_character");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     const values = form.getValues();
     const result = await draftStore.saveSectionData("partner_character", values);
@@ -2022,17 +1889,15 @@ export default function Page() {
       });
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Character</h1>
-          <p className="text-muted-foreground mt-2">
+    <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Character</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
             Provide character information for all applicants.
           </p>
-        </div>
-
+        </CardHeader>
+        <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             {CHARACTER_QUESTIONS.map((q) => (
@@ -2057,7 +1922,6 @@ export default function Page() {
                     ))}
                   </div>
                 </RadioGroup>
-
                 {form.watch(q.key) === "yes" && (
                   <div className="mt-4">
                     {q.key === "police_check_last_12_months" && (
@@ -2107,7 +1971,6 @@ export default function Page() {
                         />
                       </div>
                     )}
-
                     {q.key === "immigration_detention" && (
                       <div className="space-y-3">
                         <p className="text-sm text-gray-600">
@@ -2157,7 +2020,6 @@ export default function Page() {
                         />
                       </div>
                     )}
-
                     {q.key === "psychiatric_institution" && (
                       <div className="space-y-3">
                         <p className="text-sm text-gray-600">
@@ -2206,7 +2068,6 @@ export default function Page() {
                         />
                       </div>
                     )}
-
                     {q.key === "military_training" && (
                       <div className="space-y-3">
                         <p className="text-sm text-gray-600">
@@ -2257,7 +2118,6 @@ export default function Page() {
                         />
                       </div>
                     )}
-
                     {q.key === "military_service" && (
                       <div className="space-y-3">
                         <p className="text-sm text-gray-600">
@@ -2310,7 +2170,6 @@ export default function Page() {
                         />
                       </div>
                     )}
-
                     {GENERIC_DIALOG_CONFIG[q.key] && (
                       <RepeaterTable
                         data={form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []}
@@ -2338,7 +2197,6 @@ export default function Page() {
                         addButtonText="Add Details"
                       />
                     )}
-
                     {q.key === "convicted_offence" && (
                       <RepeaterTable
                         data={form.watch("convicted_offence_details") || []}
@@ -2366,7 +2224,6 @@ export default function Page() {
                         addButtonText="Add Details"
                       />
                     )}
-
                     {q.key === "awaiting_legal_action" && (
                       <RepeaterTable
                         data={form.watch("awaiting_legal_action_details") || []}
@@ -2394,7 +2251,6 @@ export default function Page() {
                         addButtonText="Add Details"
                       />
                     )}
-
                     {q.key === "false_misleading_info" && (
                       <RepeaterTable
                         data={form.watch("false_misleading_info_details") || []}
@@ -2420,7 +2276,6 @@ export default function Page() {
                         addButtonText="Add Details"
                       />
                     )}
-
                     {q.key === "sponsorship_payment" && (
                       <RepeaterTable
                         data={form.watch("sponsorship_payment_details") || []}
@@ -2446,7 +2301,6 @@ export default function Page() {
                         addButtonText="Add Details"
                       />
                     )}
-
                     {q.key === "associated_criminal_conduct" && (
                       <RepeaterTable
                         data={form.watch("criminal_conduct_details") || []}
@@ -2511,7 +2365,6 @@ export default function Page() {
                 )}
               </div>
             ))}
-
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
@@ -2521,7 +2374,7 @@ export default function Page() {
             />
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

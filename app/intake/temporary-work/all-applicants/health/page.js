@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +18,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const formSchema = z.object({
   medical_condition: z.enum(["yes", "no"]).optional(),
   requires_assistance: z.enum(["yes", "no"]).optional(),
@@ -45,7 +44,6 @@ const formSchema = z.object({
   medical_assistance_details: z.array(z.any()).optional(),
   health_insurance_details: z.array(z.any()).optional(),
 });
-
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
   "January",
@@ -62,7 +60,6 @@ const MONTHS = [
   "December",
 ];
 const YEARS = Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i));
-
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
   "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
@@ -86,9 +83,7 @@ const COUNTRIES = [
   "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
 ];
-
 const HOSPITAL_REASONS = ["Give Birth", "Training", "Treatment", "Visiting", "Work", "Other"];
-
 const HEALTH_CONDITIONS = [
   "Blood disorder",
   "Cancer",
@@ -104,7 +99,6 @@ const HEALTH_CONDITIONS = [
   "Respiratory condition (including asthma)",
   "Other",
 ];
-
 const HEALTH_CARE_ROLES = [
   "Amb Ambulance Officer / Paramedic",
   "Chiropractor",
@@ -122,11 +116,8 @@ const HEALTH_CARE_ROLES = [
   "Other",
   "Other",
 ];
-
 const AGED_CARE_ROLES = ["Aged Care", "Disability Care", "Other"];
-
 const CHILDCARE_ROLES = ["Childcare Worker", "Teacher", "Trainee", "Volunteer", "Other"];
-
 const COURSE_TYPES = [
   "Secondary",
   "Diploma/Certificate",
@@ -135,12 +126,10 @@ const COURSE_TYPES = [
   "Doctorate/PhD",
   "Other",
 ];
-
 const formatDate = (day, month, year) => {
   if (!day || !month || !year) return "";
   return `${day} ${month} ${year}`;
 };
-
 function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -150,7 +139,6 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
     country_of_exam: z.string().min(1, "Country of examination is required"),
     hap_id: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -163,7 +151,6 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
         hap_id: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -175,7 +162,6 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Health Examinations</h3>
@@ -183,7 +169,6 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
         Enter details of any applicant included in this application who has undertaken a Health Examination
         for an Australian visa in the past 12 months.
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -204,7 +189,6 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Date Completed</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -255,7 +239,6 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Country of Examination</Label>
         <Select
@@ -274,12 +257,10 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">HAP ID (if available)</Label>
         <Input {...dialogForm.register("hap_id")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -291,14 +272,12 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
     </div>
   );
 }
-
 function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     reason: z.string().min(1, "Reason is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -308,12 +287,10 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Hospital and Health Care Details</h3>
@@ -322,7 +299,6 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
         public Hospital or Health Care facilities including nursing homes as a patient, visitor, employee or a trainee.
         A Health Care environment does not include a private doctor or dentist surgery.
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -343,7 +319,6 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Reason</Label>
         <Select value={dialogForm.watch("reason")} onValueChange={(value) => dialogForm.setValue("reason", value)}>
@@ -359,12 +334,10 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -376,14 +349,12 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     role: z.string().min(1, "Role is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -393,12 +364,10 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Health Care Work</h3>
@@ -406,7 +375,6 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
         Enter details of any applicant included in this application who intends to work as, or study or train to be, a
         health care worker or work within a health care facility while in Australia
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -427,7 +395,6 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Role</Label>
         <Select value={dialogForm.watch("role")} onValueChange={(value) => dialogForm.setValue("role", value)}>
@@ -443,12 +410,10 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -460,14 +425,12 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
     </div>
   );
 }
-
 function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     role: z.string().min(1, "Role is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -477,12 +440,10 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Aged and Disability Care Work</h3>
@@ -490,7 +451,6 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
         Enter details of any applicant included in this application who intends to work, study or train within aged care,
         or disability care while in Australia
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -511,7 +471,6 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Role</Label>
         <Select value={dialogForm.watch("role")} onValueChange={(value) => dialogForm.setValue("role", value)}>
@@ -527,12 +486,10 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -544,7 +501,6 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
     </div>
   );
 }
-
 function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -552,7 +508,6 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
     role: z.string().min(1, "Role is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -563,12 +518,10 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Childcare Details</h3>
@@ -576,7 +529,6 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         Enter details of any applicant included in this application who intends to work, or be a trainee, at a Childcare
         Centre (including pre-schools and creches) while in Australia.
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -597,12 +549,10 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Institution (if known)</Label>
         <Input {...dialogForm.register("institution")} />
       </div>
-
       <div>
         <Label className="mb-2 block">Role</Label>
         <Select value={dialogForm.watch("role")} onValueChange={(value) => dialogForm.setValue("role", value)}>
@@ -618,12 +568,10 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -635,7 +583,6 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
     </div>
   );
 }
-
 function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -650,7 +597,6 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
     end_date_year: z.string().optional(),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -668,7 +614,6 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -677,7 +622,6 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Classroom Details</h3>
@@ -685,7 +629,6 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         Enter details of any applicant included in this application who intends to be in a Classroom situation for more
         than 3 months (as a student, teacher, lecturer, or observer, etc) in Australia
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -706,7 +649,6 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Course Type</Label>
         <Select value={dialogForm.watch("course_type")} onValueChange={(value) => dialogForm.setValue("course_type", value)}>
@@ -722,17 +664,14 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Course Name</Label>
         <Input {...dialogForm.register("course_name")} />
       </div>
-
       <div>
         <Label className="mb-2 block">Institution</Label>
         <Input {...dialogForm.register("institution")} />
       </div>
-
       <div>
         <Label className="mb-2 block">Start Date</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -783,7 +722,6 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">End Date</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -834,12 +772,10 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -851,13 +787,11 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
     </div>
   );
 }
-
 function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -866,12 +800,10 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis Details</h3>
@@ -879,7 +811,6 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
         Enter details of any applicant included in this application who has ever had or currently has Tuberculosis or had a
         chest X-ray which showed an abnormality
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -900,12 +831,10 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -917,13 +846,11 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
     </div>
   );
 }
-
 function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -932,12 +859,10 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis Exposure Details</h3>
@@ -945,7 +870,6 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
         Enter details of any applicant included in this application who has ever been in close contact at home or at work
         with a person who has had Tuberculosis
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -966,12 +890,10 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -983,14 +905,12 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
     </div>
   );
 }
-
 function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     condition: z.string().min(1, "Health Condition is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -1000,12 +920,10 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Health Conditions</h3>
@@ -1014,7 +932,6 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
         incur medical costs, require treatment or medical follow up. Enter details of each condition including the expected
         medical costs, treatments or follow-up required.
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -1035,7 +952,6 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Health Condition</Label>
         <Select value={dialogForm.watch("condition")} onValueChange={(value) => dialogForm.setValue("condition", value)}>
@@ -1051,12 +967,10 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1068,13 +982,11 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
     </div>
   );
 }
-
 function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
     details: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -1083,19 +995,16 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
         details: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Assistive Technology and Activities of Daily Living</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant who requires health or community care
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -1116,12 +1025,10 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1133,7 +1040,6 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
     </div>
   );
 }
-
 function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -1147,7 +1053,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
     date_to_month: z.string().optional(),
     date_to_year: z.string().optional(),
   });
-
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
     defaultValues:
@@ -1164,7 +1069,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
         date_to_year: "",
       },
   });
-
   const handleSubmit = (data) => {
     onSave({
       ...data,
@@ -1173,7 +1077,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
     });
     dialogForm.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Health Insurance</h3>
@@ -1181,7 +1084,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
         Enter details of any applicant included in this application who holds Private Health Insurance that will cover them
         during their stay in Australia
       </p>
-
       <div>
         <Label className="mb-2 block">
           Name of Applicant <span className="text-red-600">*</span>
@@ -1202,22 +1104,18 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </SelectContent>
         </Select>
       </div>
-
       <div>
         <Label className="mb-2 block">Type of Cover</Label>
         <Input {...dialogForm.register("type_of_cover")} />
       </div>
-
       <div>
         <Label className="mb-2 block">Insurer</Label>
         <Input {...dialogForm.register("insurer")} />
       </div>
-
       <div>
         <Label className="mb-2 block">Insurance Policy Number</Label>
         <Input {...dialogForm.register("policy_number")} />
       </div>
-
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1268,7 +1166,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </Select>
         </div>
       </div>
-
       <div>
         <Label className="mb-2 block">Date To</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -1319,7 +1216,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
           </Select>
         </div>
       </div>
-
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -1331,7 +1227,6 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1340,18 +1235,15 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   // Build applicant name options from main applicant, spouse/partner, and children draft data
   const applicantOptions = (() => {
     const opts = [];
-
     const buildLabel = (family, given, day, month, year) => {
       const name = [family, given].filter(Boolean).join(" ").trim();
       const dob = [day, month, year].filter(Boolean).join(" ");
       if (!name) return "";
       return dob ? `${name} (DOB: ${dob})` : name;
     };
-
     // Main applicant
     const main = draftSnap.draft?.temporary_work_details;
     if (main) {
@@ -1364,7 +1256,6 @@ export default function Page() {
       );
       if (label) opts.push(label);
     }
-
     // Spouse / partner
     const spouse = draftSnap.draft?.temporary_work_spouse_details;
     if (spouse) {
@@ -1377,7 +1268,6 @@ export default function Page() {
       );
       if (label) opts.push(label);
     }
-
     // Children
     const childrenData = draftSnap.draft?.temporary_work_children?.children || [];
     if (Array.isArray(childrenData)) {
@@ -1392,11 +1282,9 @@ export default function Page() {
         if (label) opts.push(label);
       }
     }
-
     // Fallback to a generic option if nothing available yet
     return opts.length ? opts : ["Main Applicant"];
   })();
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -1404,7 +1292,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -1427,19 +1314,16 @@ export default function Page() {
       tuberculosis_details: [],
       close_contact_tb: "no",
       tuberculosis_exposure_details: [],
-
       health_conditions_list: [], // Keeping for backward compatibility if needed, or remove if fully deprecated
       medical_assistance_details: [],
       health_insurance_details: [],
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_health || {};
     if (Object.keys(savedData).length > 0) {
       Object.keys(savedData).forEach((key) => {
         let value = savedData[key];
-
         // Handle legacy empty strings by defaulting to "no" for question fields
         if (value === "" && [
           "medical_condition",
@@ -1456,14 +1340,12 @@ export default function Page() {
         ].includes(key)) {
           value = "no";
         }
-
         if (value !== undefined && value !== null) {
           form.setValue(key, value);
         }
       });
     }
   }, [draftSnap.draft?.temporary_work_health, form]);
-
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
@@ -1475,12 +1357,10 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -1502,19 +1382,15 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Health</h1>
-          <p className="text-muted-foreground mt-2">
-            For everyone who is to be included in this application, provide the following details about their health.
-          </p>
-        </div>
-
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">All Applicants' Health</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          For everyone who is to be included in this application, provide the following details about their health.
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             {/* Health examinations */}
@@ -1537,7 +1413,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("has_health_examinations") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1585,7 +1460,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             {/* Hospital / Health care facility */}
             <div className="pt-4 space-y-2">
               <Label>
@@ -1606,7 +1480,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("intends_hospital_entry") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1654,7 +1527,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             {/* Work / study questions */}
             <div className="space-y-2 pt-4">
               <Label>
@@ -1675,7 +1547,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("intends_healthcare_work") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1722,7 +1593,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <div className="space-y-2">
               <Label>
                 Does any applicant intend to work, study or train with aged care, or disability care while in Australia?
@@ -1741,7 +1611,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("intends_aged_care") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1788,7 +1657,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <div className="space-y-2">
               <Label>
                 Does any applicant intend to work at, or be a trainee at a Childcare Centre (including preschools and
@@ -1808,7 +1676,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("intends_childcare") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1856,7 +1723,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <div className="space-y-2">
               <Label>
                 Does any applicant intend to be in a Classroom situation for more than 3 months in their usual country
@@ -1876,7 +1742,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("intends_classroom") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1924,7 +1789,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             {/* Tuberculosis questions */}
             <div className="space-y-2 pt-4">
               <Label>
@@ -1945,7 +1809,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("had_tuberculosis") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -1992,7 +1855,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <div className="space-y-2">
               <Label>
                 Has any applicant been in close contact at home or at work with a person who has had Tuberculosis?
@@ -2011,7 +1873,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {form.watch("close_contact_tb") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
@@ -2058,7 +1919,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             {/* Health conditions list */}
             <div className="space-y-3 pt-4">
               <Label>
@@ -2078,7 +1938,6 @@ export default function Page() {
                   ))}
                 </div>
               </RadioGroup>
-
               {form.watch("medical_condition") === "yes" && (
                 <div className="mt-4 space-y-3">
                   <p className="text-sm text-gray-600">
@@ -2131,7 +1990,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
             {/* Ongoing medical care */}
             <div className="space-y-2 pt-4">
               <Label>
@@ -2151,7 +2009,6 @@ export default function Page() {
                   ))}
                 </div>
               </RadioGroup>
-
               {form.watch("requires_assistance") === "yes" && (
                 <div className="mt-4 space-y-3">
                   <p className="text-sm text-gray-600">
@@ -2199,7 +2056,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
             {/* Private health insurance */}
             <div className="space-y-2">
               <Label>
@@ -2218,7 +2074,6 @@ export default function Page() {
                   ))}
                 </div>
               </RadioGroup>
-
               {form.watch("health_insurance") === "yes" && (
                 <div className="mt-4 space-y-3">
                   <p className="text-sm text-gray-600">
@@ -2276,7 +2131,7 @@ export default function Page() {
             />
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

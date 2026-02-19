@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +11,6 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormNavigation } from "@/components/FormNavigation";
-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import {
@@ -24,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { COUNTRIES } from "@/reuseable/countries";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const formSchema = z.object({
   share_contact_phone_numbers: z.enum(["Yes", "No"]),
 
@@ -51,7 +49,6 @@ const formSchema = z.object({
   postal_postcode: z.string().optional(),
   postal_country: z.string().optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,7 +57,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -72,7 +68,6 @@ export default function Page() {
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -96,7 +91,6 @@ export default function Page() {
       postal_country: "",
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.partner_contact_details || {};
     if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
@@ -125,7 +119,6 @@ export default function Page() {
       if (savedData.postal_country) form.setValue("postal_country", savedData.postal_country);
     }
   }, [draftSnap.draft?.partner_contact_details, form]);
-
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
@@ -166,12 +159,10 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -214,20 +205,17 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
-    <div className="min-h-screen bg-background">
-
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Contact Details</h1>
-          <p className="text-muted-foreground mt-2">
-            Provide contact information for all applicants.
-          </p>
-        </div>
-
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Contact Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Provide contact information for all applicants.
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+
           <div className="bg-card border border-border rounded-lg p-6 space-y-8">
 
             <div className="space-y-4">
@@ -330,6 +318,7 @@ export default function Page() {
                   <Label htmlFor="shared_email" className="mb-2 block">
                     Email Address
                   </Label>
+
                   <Input
                     id="shared_email"
                     type="email"
@@ -337,8 +326,10 @@ export default function Page() {
                     data-testid="input-shared-email"
                   />
                 </div>
-              )}
-            </div>
+
+              )
+              }
+            </div >
 
             <div className="space-y-4">
               <Label className="text-base font-medium">Does everyone included in this application share the same postal address?</Label>
@@ -350,6 +341,7 @@ export default function Page() {
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Yes" id="postal-yes" />
                   <Label htmlFor="postal-yes">Yes</Label>
+
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="No" id="postal-no" />
@@ -434,9 +426,10 @@ export default function Page() {
               nextLabel="Continue"
               loading={isSaving}
             />
-          </div>
-        </form>
-      </div >
-    </div >
+          </div >
+        </form >
+
+      </CardContent >
+    </Card >
   );
 }

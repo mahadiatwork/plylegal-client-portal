@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const QUALIFICATION_LEVELS = [
   "Secondary",
@@ -508,84 +509,86 @@ export default function EducationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Education</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s education history.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-8">
+            {/* Q1: Have you ever undertaken or enrolled in any studies */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Have you ever undertaken or enrolled in any studies or training at secondary level or above? (including: high school, college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)?
+              </Label>
+              <RadioGroup
+                value={hasSecondaryEducation}
+                onValueChange={(value) => form.setValue("has_secondary_education", value)}
+                className="flex gap-4"
+                data-testid="radio-secondary-education"
+              >
+                <div className="flex items-center" data-testid="radio-secondary-education-yes">
+                  <RadioGroupItem value="yes" id="education-yes" />
+                  <Label htmlFor="education-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-secondary-education-no">
+                  <RadioGroupItem value="no" id="education-no" />
+                  <Label htmlFor="education-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
 
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-8">
-              {/* Q1: Have you ever undertaken or enrolled in any studies */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Have you ever undertaken or enrolled in any studies or training at secondary level or above? (including: high school, college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)?
-                </Label>
-                <RadioGroup
-                  value={hasSecondaryEducation}
-                  onValueChange={(value) => form.setValue("has_secondary_education", value)}
-                  className="flex gap-4"
-                  data-testid="radio-secondary-education"
-                >
-                  <div className="flex items-center" data-testid="radio-secondary-education-yes">
-                    <RadioGroupItem value="yes" id="education-yes" />
-                    <Label htmlFor="education-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-secondary-education-no">
-                    <RadioGroupItem value="no" id="education-no" />
-                    <Label htmlFor="education-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* Education History Repeater (shown if Yes) */}
-                {hasSecondaryEducation === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
-                    <RepeaterTable
-                      data={educationHistory}
-                      columns={[
-                        { key: "institution", label: "Institution" },
-                        { key: "qualification", label: "Qualification" },
-                        { key: "course_name", label: "Course Name" },
-                        { key: "date_from_year", label: "Year Started" },
-                        { key: "country", label: "Country" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...educationHistory, newRow];
-                        form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...educationHistory];
-                        updated[index] = updatedRow;
-                        form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = educationHistory.filter((_, i) => i !== index);
-                        form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={EducationDialog}
-                      addButtonText="Add"
-                      testIdPrefix="education"
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Education History Repeater (shown if Yes) */}
+              {hasSecondaryEducation === "yes" && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
+                  <RepeaterTable
+                    data={educationHistory}
+                    columns={[
+                      { key: "institution", label: "Institution" },
+                      { key: "qualification", label: "Qualification" },
+                      { key: "course_name", label: "Course Name" },
+                      { key: "date_from_year", label: "Year Started" },
+                      { key: "country", label: "Country" },
+                    ]}
+                    onAdd={(newRow) => {
+                      const updated = [...educationHistory, newRow];
+                      form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const updated = [...educationHistory];
+                      updated[index] = updatedRow;
+                      form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onDelete={(index) => {
+                      const updated = educationHistory.filter((_, i) => i !== index);
+                      form.setValue("education_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    DialogComponent={EducationDialog}
+                    addButtonText="Add"
+                    testIdPrefix="education"
+                  />
+                </div>
+              )}
             </div>
+          </div>
 
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              saveLabel="Save Draft"
-              nextLabel="Continue"
-              loading={draftSnap.isSaving}
-            />
-          </form>
-        </div>
-      </div>
-    </div>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            saveLabel="Save Draft"
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

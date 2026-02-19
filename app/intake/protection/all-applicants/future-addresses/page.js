@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,13 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+// StickyNav import removed
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { FormNavigation } from "@/components/FormNavigation";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -49,7 +48,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -58,7 +56,6 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 const futureYears = Array.from({ length: 20 }, (_, i) => (currentYear + i + 1).toString());
-
 // Future Address Dialog Schema
 const futureAddressDialogSchema = z.object({
   date_from_day: z.string().min(1, "Day is required"),
@@ -141,7 +138,6 @@ const futureAddressDialogSchema = z.object({
     }
   }
 });
-
 function FutureAddressDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const draftSnap = useSnapshot(draftStore);
@@ -177,10 +173,8 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
       mobile_phone_number: "",
     },
   });
-
   const selectedAddress = dialogForm.watch("selected_address");
   const isNewAddress = !selectedAddress || selectedAddress === "none";
-
   // Clear new address fields when an existing address is selected
   useEffect(() => {
     if (selectedAddress && selectedAddress !== "none") {
@@ -191,13 +185,11 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
       dialogForm.setValue("postcode", "");
     }
   }, [selectedAddress]);
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   const handleFormSubmit = (data) => {
     // Format the address string for display
     let addressDisplay = "";
@@ -216,7 +208,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
       address_display: addressDisplay,
     });
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -229,7 +220,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of all known addresses/places that {mainApplicantName} will stay during their time in Australia:
       </p>
-
       {/* Date From */}
       <div>
         <Label className="mb-2 block">
@@ -353,13 +343,11 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             ))}
           </SelectContent>
         </Select>
-
         <div className="flex items-center gap-2">
           <div className="flex-1 border-t"></div>
           <span className="text-sm text-gray-500">Or</span>
           <div className="flex-1 border-t"></div>
         </div>
-
         {/* New Address Fields */}
         {isNewAddress && (
           <div className="space-y-4">
@@ -376,7 +364,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.address_line1.message}</p>
               )}
             </div>
-
             <div>
               <Label htmlFor="address_line2" className="mb-2 block">
                 Street Line 2
@@ -387,7 +374,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
                 data-testid="input-address-line2"
               />
             </div>
-
             <div>
               <Label htmlFor="city" className="mb-2 block">
                 City
@@ -401,7 +387,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.city.message}</p>
               )}
             </div>
-
             <div>
               <Label htmlFor="state" className="mb-2 block">
                 State
@@ -412,7 +397,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
                 data-testid="input-state"
               />
             </div>
-
             <div>
               <Label htmlFor="postcode" className="mb-2 block">
                 Postcode
@@ -429,7 +413,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
           </div>
         )}
       </div>
-
       {/* Phone Numbers */}
       <div className="space-y-4 pt-4 border-t">
         <div>
@@ -452,7 +435,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
         </div>
-
         <div>
           <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -490,7 +472,6 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Form schema
 const formSchema = z.object({
   knows_future_address: z.enum(["yes", "no"]).optional(),
@@ -515,7 +496,6 @@ const formSchema = z.object({
     mobile_phone_number: z.string().optional(),
   })).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -525,7 +505,6 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -533,7 +512,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -541,16 +519,13 @@ export default function Page() {
       main_applicant_future_addresses: [],
     },
   });
-
   const knowsFutureAddress = form.watch("knows_future_address");
   const mainApplicantFutureAddresses = form.watch("main_applicant_future_addresses") || [];
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_future_addresses || {};
     if (Object.keys(savedData).length > 0) {
@@ -560,18 +535,15 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_future_addresses]);
-
   // Clear future addresses data when "No" is selected
   useEffect(() => {
     if (knowsFutureAddress === "no") {
       form.setValue("main_applicant_future_addresses", []);
     }
   }, [knowsFutureAddress]);
-
   const updateMainApplicantFutureAddresses = (newAddresses) => {
     form.setValue("main_applicant_future_addresses", newAddresses);
   };
-
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
@@ -586,12 +558,10 @@ export default function Page() {
       setIsSubmitting(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -632,7 +602,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   // Table column definitions
   const futureAddressColumns = [
     {
@@ -655,14 +624,13 @@ export default function Page() {
     },
     { key: "address_display", label: "Address" },
   ];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Future Addresses</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Future Addresses</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               In this section you are to provide details of the addresses/places you intend to stay during your time in Australia:
             </p>
           </div>
@@ -722,7 +690,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
             {/* Desktop Navigation */}
             <FormNavigation
               onPrev={handlePrevious}
@@ -735,7 +702,7 @@ export default function Page() {
           </form>
         </div>
       </div>
+
     </div>
   );
 }
-

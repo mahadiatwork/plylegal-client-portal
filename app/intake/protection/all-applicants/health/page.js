@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,13 +14,12 @@ import { StickyNav } from "@/components/StickyNav";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const formSchema = z.object({
   medical_condition: z.enum(["yes", "no"]).optional(),
   requires_assistance: z.enum(["yes", "no"]).optional(),
   health_insurance: z.enum(["yes", "no"]).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -31,7 +29,6 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -39,7 +36,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -48,7 +44,6 @@ export default function Page() {
       health_insurance: "no",
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_health || {};
     if (Object.keys(savedData).length > 0) {
@@ -59,7 +54,6 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_health]);
-
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
@@ -74,12 +68,10 @@ export default function Page() {
       setIsSubmitting(false);
     }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -120,17 +112,15 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Health</h1>
-          <p className="text-muted-foreground mt-2">
+          <CardTitle className="text-2xl font-semibold">Health</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
             Provide health information for all applicants.
           </p>
         </div>
-
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <div className="space-y-2">
@@ -149,7 +139,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             <div className="space-y-2">
               <Label>Do you or any family member require assistance with mobility or self-care?</Label>
               <RadioGroup
@@ -166,7 +155,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             <div className="space-y-2">
               <Label>Do you have adequate health insurance coverage for Australia?</Label>
               <RadioGroup
@@ -184,7 +172,6 @@ export default function Page() {
               </RadioGroup>
             </div>
           </div>
-
           <FormNavigation
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
@@ -195,8 +182,6 @@ export default function Page() {
           />
         </form>
       </div>
-
-
-    </div>
+    </div >
   );
 }

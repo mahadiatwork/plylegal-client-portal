@@ -83,7 +83,7 @@ export default function SubmitPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <Card className="border border-gray-200 shadow-sm rounded-lg">
+        <Card className="rounded-2xl shadow-md bg-white">
           <CardHeader className="px-6 py-8 border-b border-gray-200">
             <CardTitle className="text-2xl font-semibold text-gray-900">
               Review & Submit
