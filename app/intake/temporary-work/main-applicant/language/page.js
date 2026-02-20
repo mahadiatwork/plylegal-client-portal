@@ -365,18 +365,29 @@ export default function LanguagePage() {
       languages: [],
       has_english_test: "no",
       english_tests: [],
+      studied_in_english: "no",
+      studied_in_english_details: "",
     }
   });
 
   const isEnglishMainLanguage = form.watch("is_english_main_language");
   const hasEnglishTest = form.watch("has_english_test");
+  const studiedInEnglish = form.watch("studied_in_english");
   const languages = form.watch("languages") || [];
   const englishTests = form.watch("english_tests") || [];
 
   useEffect(() => {
     const savedData = draft.temporary_work_language || {};
     if (Object.keys(savedData).length > 0) {
-      form.reset(savedData);
+      form.reset({
+        is_english_main_language: "no",
+        languages: [],
+        has_english_test: "no",
+        english_tests: [],
+        studied_in_english: "no",
+        studied_in_english_details: "",
+        ...savedData,
+      });
     }
   }, [draft.temporary_work_language, form]);
 
@@ -539,6 +550,48 @@ export default function LanguagePage() {
                     DialogComponent={EnglishTestDialog}
                     addButtonText="Add"
                     testIdPrefix="english-test"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Q3: Studied in English-medium institution */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Has the applicant studied in a secondary and / or tertiary institution where the instruction was in English?
+              </Label>
+              <RadioGroup
+                value={studiedInEnglish}
+                onValueChange={(value) => form.setValue("studied_in_english", value)}
+                className="flex gap-4"
+                data-testid="radio-studied-in-english"
+              >
+                <div className="flex items-center" data-testid="radio-studied-in-english-yes">
+                  <RadioGroupItem value="yes" id="studied-english-yes" />
+                  <Label htmlFor="studied-english-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-studied-in-english-no">
+                  <RadioGroupItem value="no" id="studied-english-no" />
+                  <Label htmlFor="studied-english-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {studiedInEnglish === "yes" && (
+                <div className="mt-4">
+                  <Label htmlFor="studied_in_english_details" className="mb-2 block">
+                    Please provide details <span className="text-gray-400 font-normal">(institution name, course, years attended)</span>
+                  </Label>
+                  <textarea
+                    id="studied_in_english_details"
+                    {...form.register("studied_in_english_details")}
+                    rows={4}
+                    placeholder="e.g. University of Melbourne – Bachelor of Commerce, 2018–2021"
+                    data-testid="textarea-studied-in-english-details"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   />
                 </div>
               )}

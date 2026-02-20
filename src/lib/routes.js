@@ -143,6 +143,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     subpages: [
       { href: "/intake/temporary-work/all-applicants/visas", title: "Visas" },
       { href: "/intake/temporary-work/all-applicants/travel-history", title: "Travel History" },
+      { href: "/intake/temporary-work/all-applicants/countries-of-residence", title: "Countries of Residence" },
       { href: "/intake/temporary-work/all-applicants/health", title: "Health" },
       { href: "/intake/temporary-work/all-applicants/character", title: "Character" },
     ],
