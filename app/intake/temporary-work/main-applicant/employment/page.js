@@ -495,191 +495,7 @@ export default function EmploymentPage() {
               {/* Current Job Fields (shown if Yes) */}
               {isCurrentlyEmployed === "yes" && (
                 <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
-                  {/*
-                  <h3 className="text-lg font-semibold text-gray-900">Current Job</h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="current_employer" className="mb-2 block">Employer/Organization *</Label>
-                      <Input
-                        id="current_employer"
-                        {...form.register("current_employer")}
-                        data-testid="input-current-employer"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="current_position" className="mb-2 block">Position/Job Title *</Label>
-                      <Input
-                        id="current_position"
-                        {...form.register("current_position")}
-                        data-testid="input-current-position"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="mb-2 block">Country *</Label>
-                      <Select
-                        value={form.watch("current_country")}
-                        onValueChange={(value) => form.setValue("current_country", value)}
-                      >
-                        <SelectTrigger data-testid="select-current-country">
-                          <SelectValue placeholder="Choose Country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COUNTRIES.map((country) => (
-                            <SelectItem key={country} value={country}>{country}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label className="mb-2 block">Start Date *</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Select
-                          value={form.watch("current_start_date_day")}
-                          onValueChange={(value) => form.setValue("current_start_date_day", value)}
-                        >
-                          <SelectTrigger data-testid="select-current-start-day">
-                            <SelectValue placeholder="Day" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DAYS.map((day) => (
-                              <SelectItem key={day} value={day}>{day}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={form.watch("current_start_date_month")}
-                          onValueChange={(value) => form.setValue("current_start_date_month", value)}
-                        >
-                          <SelectTrigger data-testid="select-current-start-month">
-                            <SelectValue placeholder="Month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MONTHS.map((month) => (
-                              <SelectItem key={month} value={month}>{month}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={form.watch("current_start_date_year")}
-                          onValueChange={(value) => form.setValue("current_start_date_year", value)}
-                        >
-                          <SelectTrigger data-testid="select-current-start-year">
-                            <SelectValue placeholder="Year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {YEARS.map((year) => (
-                              <SelectItem key={year} value={year}>{year}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-base font-medium mb-3 block">
-                      Still working here? *
-                    </Label>
-                    <RadioGroup
-                      value={stillWorking}
-                      onValueChange={(value) => form.setValue("still_working", value)}
-                      className="flex gap-4"
-                      data-testid="radio-still-working"
-                    >
-                      <div className="flex items-center">
-                        <RadioGroupItem value="yes" id="still-working-yes" />
-                        <Label htmlFor="still-working-yes" className="ml-2 cursor-pointer font-normal">
-                          Yes
-                        </Label>
-                      </div>
-                      <div className="flex items-center">
-                        <RadioGroupItem value="no" id="still-working-no" />
-                        <Label htmlFor="still-working-no" className="ml-2 cursor-pointer font-normal">
-                          No
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {stillWorking === "no" && (
-                    <div>
-                      <Label className="mb-2 block">End Date *</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Select
-                          value={form.watch("current_end_date_day")}
-                          onValueChange={(value) => form.setValue("current_end_date_day", value)}
-                        >
-                          <SelectTrigger data-testid="select-current-end-day">
-                            <SelectValue placeholder="Day" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DAYS.map((day) => (
-                              <SelectItem key={day} value={day}>{day}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={form.watch("current_end_date_month")}
-                          onValueChange={(value) => form.setValue("current_end_date_month", value)}
-                        >
-                          <SelectTrigger data-testid="select-current-end-month">
-                            <SelectValue placeholder="Month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MONTHS.map((month) => (
-                              <SelectItem key={month} value={month}>{month}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={form.watch("current_end_date_year")}
-                          onValueChange={(value) => form.setValue("current_end_date_year", value)}
-                        >
-                          <SelectTrigger data-testid="select-current-end-year">
-                            <SelectValue placeholder="Year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {YEARS.map((year) => (
-                              <SelectItem key={year} value={year}>{year}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="mb-2 block">Employment Type</Label>
-                      <Select
-                        value={form.watch("current_employment_type")}
-                        onValueChange={(value) => form.setValue("current_employment_type", value)}
-                      >
-                        <SelectTrigger data-testid="select-employment-type">
-                          <SelectValue placeholder="Choose Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="current_address" className="mb-2 block">Address</Label>
-                      <Input
-                        id="current_address"
-                        {...form.register("current_address")}
-                        data-testid="input-current-address"
-                      />
-                    </div>
-                  </div>
-                  */}
                 </div>
               )}
             </div>
@@ -718,18 +534,17 @@ export default function EmploymentPage() {
               testIdPrefix="employment"
             />
           </div>
-        </div>
 
-        <FormNavigation
-          onPrev={handlePrevious}
-          onNext={form.handleSubmit(onSubmit)}
-          onSave={handleSave}
-          saveLabel="Save draft"
-          nextLabel="Continue"
-          loading={draftSnap.isSaving}
-        />
-      </form >
-    </CardContent >
-    </Card >
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            saveLabel="Save draft"
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }
