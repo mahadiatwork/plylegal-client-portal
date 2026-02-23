@@ -404,6 +404,7 @@ export default function ContactsPage() {
   const draftSnap = useSnapshot(draftStore);
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get Main Applicant Name
   const mainApplicantName = (() => {
@@ -500,118 +501,115 @@ export default function ContactsPage() {
   };
 
   const onSubmit = async (data) => {
-    setIsSaving(true);
+    setIsSubmitting(true);
     try {
       await draftStore.saveSectionData("partner_contacts", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`, null, "partner_contacts");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       if (next) router.push(next);
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <Card className="border border-gray-200 shadow-sm rounded-lg">
-          <CardHeader className="px-6 py-8 border-b border-gray-200">
-            <CardTitle className="text-2xl font-semibold text-gray-900">
-              Additional Contact Information
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-2">
-              Please provide any additional contact information or special instructions
-            </p>
-          </CardHeader>
-          <CardContent className="px-6 py-8">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              {Object.keys(errors).length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-red-800 mb-2">
-                    Please fix the following errors:
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                    {Object.entries(errors).map(([field, error]) => (
-                      <li key={field}>{error.message}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">
+          Additional Contact Information
+        </CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Please provide any additional contact information or special instructions
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {Object.keys(errors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-red-800 mb-2">
+                Please fix the following errors:
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{error.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-              {/* Family in Australia Question */}
-              <div className="space-y-4">
-                <Label className="text-base">
-                  Does the Main Applicant (<span suppressHydrationWarning>{mainApplicantName}</span>) have any family (parents, siblings, children) in Australia
-                  who have not already been listed previously in this questionnaire?
-                </Label>
-                <RadioGroup
-                  value={watch("has_family_in_australia")}
-                  onValueChange={(val) => setValue("has_family_in_australia", val)}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Yes" id="fam-yes" />
-                    <Label htmlFor="fam-yes">Yes</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="No" id="fam-no" />
-                    <Label htmlFor="fam-no">No</Label>
-                  </div>
-                </RadioGroup>
+          {/* Family in Australia Question */}
+          <div className="space-y-4">
+            <Label className="text-base">
+              Does the Main Applicant (<span suppressHydrationWarning>{mainApplicantName}</span>) have any family (parents, siblings, children) in Australia
+              who have not already been listed previously in this questionnaire?
+            </Label>
+            <RadioGroup
+              value={watch("has_family_in_australia")}
+              onValueChange={(val) => setValue("has_family_in_australia", val)}
+              className="flex gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Yes" id="fam-yes" />
+                <Label htmlFor="fam-yes">Yes</Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="No" id="fam-no" />
+                <Label htmlFor="fam-no">No</Label>
+              </div>
+            </RadioGroup>
+          </div>
 
-              {watch("has_family_in_australia") === "Yes" && (
-                <RepeaterTable
-                  data={watch("family_in_australia") || []}
-                  columns={[
-                    { key: "family_name", label: "Family Name" },
-                    { key: "given_names", label: "Given Names" },
-                    { key: "relationship", label: "Relationship" },
-                  ]}
-                  onAdd={(row) => {
-                    const current = watch("family_in_australia") || [];
-                    setValue("family_in_australia", [...current, row]);
-                  }}
-                  onEdit={(index, updatedRow) => {
-                    const current = [...(watch("family_in_australia") || [])];
-                    current[index] = updatedRow;
-                    setValue("family_in_australia", current);
-                  }}
-                  onDelete={(index) => {
-                    const current = watch("family_in_australia") || [];
-                    setValue("family_in_australia", current.filter((_, i) => i !== index));
-                  }}
-                  DialogComponent={(props) => (
-                    <FamilyContactDialog {...props} mainApplicantName={mainApplicantName} />
-                  )}
-                  addButtonText="Add Contact"
-                  emptyMessage="No contacts added yet"
-                  dialogTitle="Personal Contact"
-                  dialogSubtitle="Enter as much information about this Contact Person as possible"
-                />
+          {watch("has_family_in_australia") === "Yes" && (
+            <RepeaterTable
+              data={watch("family_in_australia") || []}
+              columns={[
+                { key: "family_name", label: "Family Name" },
+                { key: "given_names", label: "Given Names" },
+                { key: "relationship", label: "Relationship" },
+              ]}
+              onAdd={(row) => {
+                const current = watch("family_in_australia") || [];
+                setValue("family_in_australia", [...current, row]);
+              }}
+              onEdit={(index, updatedRow) => {
+                const current = [...(watch("family_in_australia") || [])];
+                current[index] = updatedRow;
+                setValue("family_in_australia", current);
+              }}
+              onDelete={(index) => {
+                const current = watch("family_in_australia") || [];
+                setValue("family_in_australia", current.filter((_, i) => i !== index));
+              }}
+              DialogComponent={(props) => (
+                <FamilyContactDialog {...props} mainApplicantName={mainApplicantName} />
               )}
+              addButtonText="Add Contact"
+              emptyMessage="No contacts added yet"
+              dialogTitle="Personal Contact"
+              dialogSubtitle="Enter as much information about this Contact Person as possible"
+            />
+          )}
 
-              <Field
-                type="textarea"
-                name="contacts_note"
-                control={control}
-                label="Additional Notes"
-                placeholder="Enter any additional contact information or special instructions..."
-                rows={6}
-              />
+          <Field
+            type="textarea"
+            name="contacts_note"
+            control={control}
+            label="Additional Notes"
+            placeholder="Enter any additional contact information or special instructions..."
+            rows={6}
+          />
 
-              <FormNavigation
-                onPrev={handlePrevious}
-                onNext={handleSubmit(onSubmit)}
-                onSave={handleSave}
-                loading={isSaving}
-                saveLabel="Save Draft"
-                nextLabel="Continue"
-              />
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={handleSubmit(onSubmit)}
+            onSave={handleSave}
+            loading={isSaving}
+            submitting={isSubmitting}
+            saveLabel="Save Draft"
+            nextLabel="Continue"
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

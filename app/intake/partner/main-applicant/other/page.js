@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
@@ -62,13 +63,13 @@ const formSchema = z.object({
   }
   return true;
 }, { message: "Chinese Commercial Code is required when 'Yes' is selected", path: ["chinese_code"] })
-.refine((data) => {
-  if (data.russian_descent === "yes") {
-    return data.patronymic_family_name && data.patronymic_family_name.trim().length > 0 &&
-           data.patronymic_given_names && data.patronymic_given_names.trim().length > 0;
-  }
-  return true;
-}, { message: "Patronymic name fields are required when 'Yes' is selected", path: ["patronymic_family_name"] });
+  .refine((data) => {
+    if (data.russian_descent === "yes") {
+      return data.patronymic_family_name && data.patronymic_family_name.trim().length > 0 &&
+        data.patronymic_given_names && data.patronymic_given_names.trim().length > 0;
+    }
+    return true;
+  }, { message: "Patronymic name fields are required when 'Yes' is selected", path: ["patronymic_family_name"] });
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -120,7 +121,7 @@ const prevDobDialogSchema = z.object({
   date_of_birth_day: z.string().optional(),
   date_of_birth_month: z.string().optional(),
   date_of_birth_year: z.string().optional(),
-  date_of_birth: z.string().min(1, "Date of birth is required"),
+  date_of_birth: z.string().optional(),
 }).refine((data) => {
   // Either all three fields are provided OR date_of_birth is provided
   if (data.date_of_birth) return true;
@@ -595,7 +596,7 @@ export default function Page() {
   const russianDescent = form.watch("russian_descent");
   const hasPrevDob = form.watch("has_prev_dob");
   const prevDobs = form.watch("prev_dobs") || [];
-  
+
   // Watch all form values for auto-save
   const watchedValues = useWatch({ control: form.control });
 
@@ -608,7 +609,7 @@ export default function Page() {
 
     // FIX: Only reset if we actually have data, preventing overwrites with empty objects
     if (savedData && Object.keys(savedData).length > 0) {
-      
+
       // FIX: Helper to safely convert incoming DB data to Strings for Select components
       const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
 
@@ -616,7 +617,7 @@ export default function Page() {
         // FIX: Ensure all fields are explicitly loaded and default to something safe
         has_other_names: safeStr(savedData.has_other_names) || "no",
         other_names: savedData.other_names || [],
-        
+
         use_chinese_code: safeStr(savedData.use_chinese_code) || "no",
         chinese_code: safeStr(savedData.chinese_code) || "",
         russian_descent: safeStr(savedData.russian_descent) || "no",
@@ -646,9 +647,9 @@ export default function Page() {
       // Merge with existing section data to preserve other fields
       const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
       const mergedData = { ...existingData, ...data };
-      
+
       const result = await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
-      
+
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/other');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
@@ -694,7 +695,7 @@ export default function Page() {
       const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
       const values = form.getValues();
       const mergedData = { ...existingData, ...values };
-      
+
       const result = await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
       if (result.success) {
         toast({
@@ -725,7 +726,7 @@ export default function Page() {
     if (!watchedValues || Object.keys(watchedValues).length === 0) return;
     // Don't auto-save immediately after form reset or while loading
     if (draftSnap.isLoading) return;
-    
+
     const timeoutId = setTimeout(() => {
       // Merge with existing section data
       const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
@@ -739,11 +740,11 @@ export default function Page() {
   // FIX: Update the synchronization logic for other_names
   const updateOtherNames = (newNames) => {
     form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
+
     // FIX: Merge with existing section data
     const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
     const currentValues = form.getValues();
-    draftStore.saveSectionData("mainApplicant.otherNames", { 
+    draftStore.saveSectionData("mainApplicant.otherNames", {
       ...existingData,
       ...currentValues,
       other_names: newNames // Pass the new array explicitly
@@ -753,11 +754,11 @@ export default function Page() {
   // FIX: Update the synchronization logic for prev_dobs
   const updatePrevDobs = (newDobs) => {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
+
     // FIX: Merge with existing section data
     const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
     const currentValues = form.getValues();
-    draftStore.saveSectionData("mainApplicant.otherNames", { 
+    draftStore.saveSectionData("mainApplicant.otherNames", {
       ...existingData,
       ...currentValues,
       prev_dobs: newDobs // Pass the new array explicitly
@@ -800,266 +801,263 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-8 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">Main Applicant's Other Details</h1>
-            <p className="text-sm text-gray-600 mt-2">
-              In this section, provide additional details about the main applicant.
-            </p>
-          </div>
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Other Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide additional details about the main applicant.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="space-y-8">
+            <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 py-8 space-y-8">
-            <div className="space-y-8">
-              <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
-
-              {/* Question 1: Other Names */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Have you ever had or been known by any other Name or Alias, or had a different name spelling?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("has_other_names")}
-                    onValueChange={(value) => form.setValue("has_other_names", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-has-other-names"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
-                      <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
-                      <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {form.formState.errors.has_other_names?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
-                  )}
-                </div>
-
-                {hasOtherNames === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of the other names you have been known by, including names before marriage
-                    </p>
-                    <RepeaterTable
-                      data={otherNames}
-                      columns={otherNameColumns}
-                      onAdd={(row) => updateOtherNames([...otherNames, row])}
-                      onEdit={(index, row) => {
-                        const updated = [...otherNames];
-                        updated[index] = row;
-                        updateOtherNames(updated);
-                      }}
-                      onDelete={(index) => {
-                        const updated = otherNames.filter((_, i) => i !== index);
-                        updateOtherNames(updated);
-                      }}
-                      DialogComponent={OtherNameDialog}
-                      addButtonText="Add"
-                      emptyMessage="No other names added"
-                      dialogTitle="Add other name"
-                      testIdPrefix="other-name"
-                    />
+            {/* Question 1: Other Names */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
+                </Label>
+                <RadioGroup
+                  value={form.watch("has_other_names")}
+                  onValueChange={(value) => form.setValue("has_other_names", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-has-other-names"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="other-names-yes" data-testid="radio-other-names-yes" />
+                    <Label htmlFor="other-names-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
                   </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="other-names-no" data-testid="radio-other-names-no" />
+                    <Label htmlFor="other-names-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.has_other_names?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_other_names.message}</p>
                 )}
               </div>
 
-              {/* Question 2: Chinese Commercial Code */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Do you use a Chinese Commercial Code for your name?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("use_chinese_code")}
-                    onValueChange={(value) => form.setValue("use_chinese_code", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-use-chinese-code"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
-                      <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
-                      <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {form.formState.errors.use_chinese_code?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.use_chinese_code.message}</p>
-                  )}
+              {hasOtherNames === "yes" && (
+                <div className="pl-0 mt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Enter details of the other names you have been known by, including names before marriage
+                  </p>
+                  <RepeaterTable
+                    data={otherNames}
+                    columns={otherNameColumns}
+                    onAdd={(row) => updateOtherNames([...otherNames, row])}
+                    onEdit={(index, row) => {
+                      const updated = [...otherNames];
+                      updated[index] = row;
+                      updateOtherNames(updated);
+                    }}
+                    onDelete={(index) => {
+                      const updated = otherNames.filter((_, i) => i !== index);
+                      updateOtherNames(updated);
+                    }}
+                    DialogComponent={OtherNameDialog}
+                    addButtonText="Add"
+                    emptyMessage="No other names added"
+                    dialogTitle="Add other name"
+                    testIdPrefix="other-name"
+                  />
                 </div>
-
-                {useChineseCode === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <div>
-                      <Label htmlFor="chinese_code">Chinese Commercial Code <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="chinese_code"
-                        {...form.register("chinese_code")}
-                        placeholder="Enter Chinese Commercial Code"
-                        data-testid="input-chinese-code"
-                        className="mt-2"
-                      />
-                      {form.formState.errors.chinese_code?.message && (
-                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.chinese_code.message}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Question 3: Russian Descent */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Are you of Russian descent?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("russian_descent")}
-                    onValueChange={(value) => form.setValue("russian_descent", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-russian-descent"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="russian-descent-yes" data-testid="radio-russian-descent-yes" />
-                      <Label htmlFor="russian-descent-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="russian-descent-no" data-testid="radio-russian-descent-no" />
-                      <Label htmlFor="russian-descent-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {form.formState.errors.russian_descent?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.russian_descent.message}</p>
-                  )}
-                </div>
-
-                {russianDescent === "yes" && (
-                  <div className="pl-0 mt-4 space-y-4">
-                    <p className="text-sm text-gray-600">
-                      In English, write your Patronymic Name
-                    </p>
-                    <div>
-                      <Label htmlFor="patronymic_family_name">Family Name <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="patronymic_family_name"
-                        {...form.register("patronymic_family_name")}
-                        placeholder="Enter Family Name"
-                        data-testid="input-patronymic-family-name"
-                        className="mt-2"
-                      />
-                      {form.formState.errors.patronymic_family_name?.message && (
-                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.patronymic_family_name.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="patronymic_given_names">Given Names <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="patronymic_given_names"
-                        {...form.register("patronymic_given_names")}
-                        placeholder="Enter Given Names"
-                        data-testid="input-patronymic-given-names"
-                        className="mt-2"
-                      />
-                      {form.formState.errors.patronymic_given_names?.message && (
-                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.patronymic_given_names.message}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Question 4: Previous Date of Birth */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base font-normal text-gray-900">
-                    Have you ever had a different Date of Birth?
-                  </Label>
-                  <RadioGroup
-                    value={form.watch("has_prev_dob")}
-                    onValueChange={(value) => form.setValue("has_prev_dob", value)}
-                    className="flex gap-4 mt-2"
-                    data-testid="radio-has-prev-dob"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="yes" id="prev-dob-yes" data-testid="radio-prev-dob-yes" />
-                      <Label htmlFor="prev-dob-yes" className="ml-2 cursor-pointer font-normal">
-                        Yes
-                      </Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="no" id="prev-dob-no" data-testid="radio-prev-dob-no" />
-                      <Label htmlFor="prev-dob-no" className="ml-2 cursor-pointer font-normal">
-                        No
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  {form.formState.errors.has_prev_dob?.message && (
-                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_prev_dob.message}</p>
-                  )}
-                </div>
-
-                {hasPrevDob === "yes" && (
-                  <div className="pl-0 mt-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter details of your previous Birth Dates.
-                    </p>
-                    <RepeaterTable
-                      data={prevDobs}
-                      columns={prevDobColumns}
-                      onAdd={(row) => updatePrevDobs([...prevDobs, row])}
-                      onEdit={(index, row) => {
-                        const updated = [...prevDobs];
-                        updated[index] = row;
-                        updatePrevDobs(updated);
-                      }}
-                      onDelete={(index) => {
-                        const updated = prevDobs.filter((_, i) => i !== index);
-                        updatePrevDobs(updated);
-                      }}
-                      DialogComponent={PreviousDOBDialog}
-                      addButtonText="Add"
-                      emptyMessage="No previous dates of birth added"
-                      dialogTitle="Previous Date of Birth"
-                      testIdPrefix="prev-dob"
-                    />
-                  </div>
-                )}
-              </div>
-
+              )}
             </div>
 
-            {/* Desktop Navigation */}
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              nextLabel="Continue"
-              loading={draftSnap.isSaving}
-            />
-          </form>
-        </div>
-      </div>
+            {/* Question 2: Chinese Commercial Code */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Do you use a Chinese Commercial Code for your name?
+                </Label>
+                <RadioGroup
+                  value={form.watch("use_chinese_code")}
+                  onValueChange={(value) => form.setValue("use_chinese_code", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-use-chinese-code"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
+                    <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
+                    <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.use_chinese_code?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.use_chinese_code.message}</p>
+                )}
+              </div>
+
+              {useChineseCode === "yes" && (
+                <div className="pl-0 mt-4">
+                  <div>
+                    <Label htmlFor="chinese_code">Chinese Commercial Code <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="chinese_code"
+                      {...form.register("chinese_code")}
+                      placeholder="Enter Chinese Commercial Code"
+                      data-testid="input-chinese-code"
+                      className="mt-2"
+                    />
+                    {form.formState.errors.chinese_code?.message && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.chinese_code.message}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Question 3: Russian Descent */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Are you of Russian descent?
+                </Label>
+                <RadioGroup
+                  value={form.watch("russian_descent")}
+                  onValueChange={(value) => form.setValue("russian_descent", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-russian-descent"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="russian-descent-yes" data-testid="radio-russian-descent-yes" />
+                    <Label htmlFor="russian-descent-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="russian-descent-no" data-testid="radio-russian-descent-no" />
+                    <Label htmlFor="russian-descent-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.russian_descent?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.russian_descent.message}</p>
+                )}
+              </div>
+
+              {russianDescent === "yes" && (
+                <div className="pl-0 mt-4 space-y-4">
+                  <p className="text-sm text-gray-600">
+                    In English, write your Patronymic Name
+                  </p>
+                  <div>
+                    <Label htmlFor="patronymic_family_name">Family Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="patronymic_family_name"
+                      {...form.register("patronymic_family_name")}
+                      placeholder="Enter Family Name"
+                      data-testid="input-patronymic-family-name"
+                      className="mt-2"
+                    />
+                    {form.formState.errors.patronymic_family_name?.message && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.patronymic_family_name.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="patronymic_given_names">Given Names <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="patronymic_given_names"
+                      {...form.register("patronymic_given_names")}
+                      placeholder="Enter Given Names"
+                      data-testid="input-patronymic-given-names"
+                      className="mt-2"
+                    />
+                    {form.formState.errors.patronymic_given_names?.message && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.patronymic_given_names.message}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Question 4: Previous Date of Birth */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-normal text-gray-900">
+                  Have you ever had a different Date of Birth?
+                </Label>
+                <RadioGroup
+                  value={form.watch("has_prev_dob")}
+                  onValueChange={(value) => form.setValue("has_prev_dob", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-has-prev-dob"
+                >
+                  <div className="flex items-center">
+                    <RadioGroupItem value="yes" id="prev-dob-yes" data-testid="radio-prev-dob-yes" />
+                    <Label htmlFor="prev-dob-yes" className="ml-2 cursor-pointer font-normal">
+                      Yes
+                    </Label>
+                  </div>
+                  <div className="flex items-center">
+                    <RadioGroupItem value="no" id="prev-dob-no" data-testid="radio-prev-dob-no" />
+                    <Label htmlFor="prev-dob-no" className="ml-2 cursor-pointer font-normal">
+                      No
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {form.formState.errors.has_prev_dob?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_prev_dob.message}</p>
+                )}
+              </div>
+
+              {hasPrevDob === "yes" && (
+                <div className="pl-0 mt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Enter details of your previous Birth Dates.
+                  </p>
+                  <RepeaterTable
+                    data={prevDobs}
+                    columns={prevDobColumns}
+                    onAdd={(row) => updatePrevDobs([...prevDobs, row])}
+                    onEdit={(index, row) => {
+                      const updated = [...prevDobs];
+                      updated[index] = row;
+                      updatePrevDobs(updated);
+                    }}
+                    onDelete={(index) => {
+                      const updated = prevDobs.filter((_, i) => i !== index);
+                      updatePrevDobs(updated);
+                    }}
+                    DialogComponent={PreviousDOBDialog}
+                    addButtonText="Add"
+                    emptyMessage="No previous dates of birth added"
+                    dialogTitle="Previous Date of Birth"
+                    testIdPrefix="prev-dob"
+                  />
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Desktop Navigation */}
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
+          />
+        </form>
+      </CardContent>
 
       {/* Mobile Navigation */}
 
-    </div>
+    </Card>
   );
 }

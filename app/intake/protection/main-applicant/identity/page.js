@@ -19,6 +19,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -115,7 +116,7 @@ const formSchema = z.object({
   // Question 1: Current Citizenship
   is_current_citizen: z.enum(["yes", "no"]),
   stateless_explanation: z.string().optional(),
-  
+
   // Question 2: Ever been a Citizen
   has_been_citizen: z.enum(["yes", "no"]),
   citizenships: z.array(z.object({
@@ -130,7 +131,7 @@ const formSchema = z.object({
     date_ceased_year: z.string().optional(),
     ceased_reason: z.string().optional(),
   })).optional(),
-  
+
   // Question 3: Passport/Travel Document
   has_passport: z.enum(["yes", "no"]),
   passports: z.array(z.object({
@@ -149,7 +150,7 @@ const formSchema = z.object({
     date_expiry_year: z.string().optional(),
     document_status: z.string(),
   })).optional(),
-  
+
   // Question 4: Identity Document
   has_identity_document: z.enum(["yes", "no"]),
   identity_documents: z.array(z.object({
@@ -166,7 +167,7 @@ const formSchema = z.object({
     date_expiry_month: z.string().optional(),
     date_expiry_year: z.string().optional(),
   })).optional(),
-  
+
   // Question 5: Temporary or Permanent Residency
   has_permanent_residency: z.enum(["yes", "no"]),
   pr_countries: z.array(z.object({
@@ -214,7 +215,7 @@ const citizenshipDialogSchema = z.object({
 function CitizenshipDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [stillCitizen, setStillCitizen] = useState(row?.still_citizen || "yes");
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(citizenshipDialogSchema),
     defaultValues: row || {
@@ -250,12 +251,12 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
     >
       <p className="text-sm text-gray-600 mb-4">
@@ -481,7 +482,7 @@ const passportDialogSchema = z.object({
 
 function PassportDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(passportDialogSchema),
     defaultValues: row || {
@@ -516,12 +517,12 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
   const futureYears = Array.from({ length: 20 }, (_, i) => (currentYear + i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
     >
       <div>
@@ -639,7 +640,7 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
 
       <div className="pt-4 border-t border-gray-200">
         <h4 className="text-sm font-medium text-gray-700 mb-3">Additional Details (Optional)</h4>
-        
+
         <div className="space-y-4">
           <div>
             <Label htmlFor="document_type">Type of Document</Label>
@@ -761,7 +762,7 @@ const identityDocDialogSchema = z.object({
 
 function IdentityDocumentDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(identityDocDialogSchema),
     defaultValues: row || {
@@ -794,12 +795,12 @@ function IdentityDocumentDialog({ editingRow, onSave, onCancel }) {
   const futureYears = Array.from({ length: 20 }, (_, i) => (currentYear + i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
     >
       <p className="text-sm text-gray-600 mb-4">
@@ -879,8 +880,8 @@ function IdentityDocumentDialog({ editingRow, onSave, onCancel }) {
       <div className="pt-4 border-t border-gray-200">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Name</h4>
         <p className="text-sm text-gray-600 mb-3">
-          Specify the name that is shown on this Identity Document by selecting one of the names for this person 
-          previously entered in this questionnaire. If the correct name is not shown as an option it will need to 
+          Specify the name that is shown on this Identity Document by selecting one of the names for this person
+          previously entered in this questionnaire. If the correct name is not shown as an option it will need to
           be added in the Other Names question located on this person's Other tab.
         </p>
         <div>
@@ -902,7 +903,7 @@ function IdentityDocumentDialog({ editingRow, onSave, onCancel }) {
         <p className="text-sm text-gray-600 mb-3">
           Enter the issue and expiry dates of the Document (Leave blank if not applicable)
         </p>
-        
+
         <div className="space-y-4">
           <div>
             <Label>Date Issued</Label>
@@ -1030,7 +1031,7 @@ const prDialogSchema = z.object({
 function PermanentResidencyDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const [residencyStatus, setResidencyStatus] = useState(row?.residency_status || "Permanent");
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(prDialogSchema),
     defaultValues: row || {
@@ -1061,12 +1062,12 @@ function PermanentResidencyDialog({ editingRow, onSave, onCancel }) {
   const futureYears = Array.from({ length: 20 }, (_, i) => (currentYear + i).toString());
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -1187,6 +1188,7 @@ export default function IdentityPage() {
   const { toast } = useToast();
   const snapshot = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const visaType = getVisaTypeFromPath(pathname);
 
@@ -1232,7 +1234,7 @@ export default function IdentityPage() {
         has_permanent_residency: savedData.has_permanent_residency || "no",
         pr_countries: savedData.pr_countries || [],
       };
-      
+
       // Use reset to properly update all form fields
       form.reset(formData);
     }
@@ -1263,11 +1265,11 @@ export default function IdentityPage() {
         });
         return;
       }
-      
+
       const data = form.getValues();
       console.log("Saving protection_identity data:", data); // Debug log
       const result = await draftStore.saveSectionData("protection_identity", data);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -1294,20 +1296,27 @@ export default function IdentityPage() {
   };
 
   const onSubmit = async (data) => {
-    const result = await draftStore.saveSectionData("protection_identity", data);
-    
-    if (result.success) {
-      draftStore.markPageComplete(`${visaType}/main-applicant/identity`);
-      const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
-      if (nextRoute) {
-        router.push(nextRoute);
+    setIsSubmitting(true);
+    try {
+      const result = await draftStore.saveSectionData("protection_identity", data);
+      if (result.success) {
+        await draftStore.markPageComplete(`${visaType}/main-applicant/identity`);
+        const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+        if (nextRoute) {
+          router.push(nextRoute);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
       }
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save changes",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1339,8 +1348,8 @@ export default function IdentityPage() {
   const citizenshipColumns = [
     { key: "country", label: "Country" },
     { key: "how_obtained", label: "How was this Citizenship obtained?" },
-    { 
-      key: "date_obtained", 
+    {
+      key: "date_obtained",
       label: "Date Obtained",
       format: (row) => {
         if (!row.date_obtained_day || !row.date_obtained_month || !row.date_obtained_year) return "-";
@@ -1348,8 +1357,8 @@ export default function IdentityPage() {
         return `${row.date_obtained_day} ${months[parseInt(row.date_obtained_month) - 1]} ${row.date_obtained_year}`;
       }
     },
-    { 
-      key: "still_citizen", 
+    {
+      key: "still_citizen",
       label: "Are you still a Citizen of this Country?",
       format: (row) => row.still_citizen === "yes" ? "Yes" : "No"
     },
@@ -1359,8 +1368,8 @@ export default function IdentityPage() {
     { key: "document_number", label: "Passport/Document Number" },
     { key: "name", label: "Name" },
     { key: "nationality", label: "Nationality" },
-    { 
-      key: "date_issued", 
+    {
+      key: "date_issued",
       label: "Date of Issue",
       format: (row) => {
         if (!row.date_issued_day || !row.date_issued_month || !row.date_issued_year) return "-";
@@ -1376,8 +1385,8 @@ export default function IdentityPage() {
     { key: "identification_number", label: "Identification Number" },
     { key: "name", label: "Name" },
     { key: "country_of_issue", label: "Country of Issue" },
-    { 
-      key: "date_issued", 
+    {
+      key: "date_issued",
       label: "Date of Issue",
       format: (row) => {
         if (!row.date_issued_day || !row.date_issued_month || !row.date_issued_year) return "-";
@@ -1390,8 +1399,8 @@ export default function IdentityPage() {
   const prCountryColumns = [
     { key: "country", label: "Country" },
     { key: "residency_status", label: "Status" },
-    { 
-      key: "expiry_date", 
+    {
+      key: "expiry_date",
       label: "Expiry Date",
       format: (row) => {
         if (!row.expiry_day || !row.expiry_month || !row.expiry_year) return "-";
@@ -1700,44 +1709,14 @@ export default function IdentityPage() {
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200 mt-8">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </div>
         </div>
       </form>

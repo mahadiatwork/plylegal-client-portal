@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
@@ -29,7 +28,6 @@ const childSchema = z.object({
   country_of_birth: z.string().min(1, "Country is required"),
   city_of_birth: z.string().optional(),
 });
-
 function ChildDialog({ editingRow, onSave, onCancel }) {
   const form = useForm({
     resolver: zodResolver(childSchema),
@@ -46,7 +44,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
       city_of_birth: "",
     },
   });
-
   useEffect(() => {
     if (editingRow) {
       form.reset(editingRow);
@@ -65,7 +62,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
       });
     }
   }, [editingRow]);
-
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -73,7 +69,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
-
   const countries = [
     "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
     "Bangladesh", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia",
@@ -85,12 +80,10 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
     "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
     "Vietnam"
   ];
-
   const handleSubmit = (data) => {
     onSave(data);
     form.reset();
   };
-
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
       <div className="space-y-2">
@@ -105,7 +98,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.family_name.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="given_names">Given Names *</Label>
         <Input
@@ -118,7 +110,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.given_names.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label>Gender *</Label>
         <RadioGroup
@@ -138,7 +129,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.gender.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label>Date of Birth *</Label>
         <div className="grid grid-cols-3 gap-4">
@@ -155,7 +145,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="birth_month">Month</Label>
             <Select value={form.watch("birth_month")} onValueChange={(value) => form.setValue("birth_month", value)}>
@@ -169,7 +158,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="birth_year">Year</Label>
             <Select value={form.watch("birth_year")} onValueChange={(value) => form.setValue("birth_year", value)}>
@@ -185,7 +173,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="relationship">This person is your: *</Label>
         <Select value={form.watch("relationship")} onValueChange={(value) => form.setValue("relationship", value)}>
@@ -202,7 +189,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.relationship.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label>Will this child be included in the application? *</Label>
         <RadioGroup
@@ -222,7 +208,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.included_in_application.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="country_of_birth">Country of Birth *</Label>
         <Select value={form.watch("country_of_birth")} onValueChange={(value) => form.setValue("country_of_birth", value)}>
@@ -239,7 +224,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-destructive">{form.formState.errors.country_of_birth.message}</p>
         )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="city_of_birth">City/Town of Birth</Label>
         <Input
@@ -249,7 +233,6 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
           data-testid="input-dialog-city-birth"
         />
       </div>
-
       <div className="flex justify-end gap-2 mt-6">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
@@ -265,12 +248,10 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
     </div>
   );
 }
-
 const formSchema = z.object({
   has_children: z.enum(["yes", "no"]).optional(),
   children: z.array(childSchema).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -278,10 +259,8 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-
   const [hasChildren, setHasChildren] = useState("no");
   const [children, setChildren] = useState([]);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -289,7 +268,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -297,7 +275,6 @@ export default function Page() {
       children: [],
     },
   });
-
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_children || {};
     if (Object.keys(savedData).length > 0) {
@@ -311,7 +288,6 @@ export default function Page() {
       }
     }
   }, [draftSnap.draft?.temporary_work_children, form]);
-
   const onSubmit = async (data) => {
     const submitData = {
       ...data,
@@ -322,12 +298,10 @@ export default function Page() {
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     const values = form.getValues();
     const submitData = {
@@ -348,26 +322,22 @@ export default function Page() {
       });
     }
   };
-
   const handleAddChild = (data) => {
     const updated = [...children, data];
     setChildren(updated);
     form.setValue("children", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
-
   const handleEditChild = (index, data) => {
     const updated = [...children];
     updated[index] = data;
     setChildren(updated);
     form.setValue("children", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
-
   const handleDeleteChild = (index) => {
     const updated = children.filter((_, i) => i !== index);
     setChildren(updated);
     form.setValue("children", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
-
   const columns = [
     { key: "given_names", label: "Name" },
     {
@@ -378,17 +348,15 @@ export default function Page() {
     { key: "gender", label: "Gender" },
     { key: "included_in_application", label: "Included in Application" },
   ];
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Children</h1>
-          <p className="text-muted-foreground mt-2">
+    <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Children</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
             Provide details about any children to be included in this application.
           </p>
-        </div>
-
+        </CardHeader>
+        <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <div className="space-y-2">
@@ -410,7 +378,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             {hasChildren === "yes" && (
               <div className="mt-6">
                 <RepeaterTable
@@ -426,7 +393,6 @@ export default function Page() {
                 />
               </div>
             )}
-
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
@@ -435,7 +401,7 @@ export default function Page() {
             />
           </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

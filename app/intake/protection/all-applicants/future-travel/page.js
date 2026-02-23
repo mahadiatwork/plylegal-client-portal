@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+// StickyNav import removed
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
-
+import { FormNavigation } from "@/components/FormNavigation";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -47,7 +47,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const FUTURE_TRAVEL_REASON_OPTIONS = [
   "Visit Family",
   "Visit Friends",
@@ -66,7 +65,6 @@ const FUTURE_TRAVEL_REASON_OPTIONS = [
   "Military Deployment",
   "Other"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -75,7 +73,6 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 const futureYears = Array.from({ length: 20 }, (_, i) => (currentYear + i).toString());
-
 // Future Travel Dialog Schema
 const futureTravelDialogSchema = z.object({
   travel_start_date_day: z.string().min(1, "Day is required"),
@@ -102,7 +99,7 @@ const futureTravelDialogSchema = z.object({
     parseInt(data.intended_arrival_date_month) - 1,
     parseInt(data.intended_arrival_date_day)
   );
-  
+
   if (arrivalDate < startDate) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -111,10 +108,9 @@ const futureTravelDialogSchema = z.object({
     });
   }
 });
-
 function FutureTravelDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  
+
   const dialogForm = useForm({
     resolver: zodResolver(futureTravelDialogSchema),
     defaultValues: row || {
@@ -132,18 +128,15 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
       reason_for_travel: "",
     },
   });
-
   // Get main applicant name from draft store
   const draftSnap = useSnapshot(draftStore);
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -156,11 +149,10 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter details of any proposed or booked travel to any Country
       </p>
-
       {/* Departure Details */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Departure Details</h3>
-        
+
         <div>
           <Label className="mb-2 block">
             Travel Start Date <span className="text-red-500">*</span>
@@ -210,7 +202,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.travel_start_date_day.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             Country {mainApplicantName} will Depart From <span className="text-red-500">*</span>
@@ -232,7 +223,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.departure_country.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="departure_city" className="mb-2 block">
             Departure City <span className="text-red-500">*</span>
@@ -246,7 +236,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.departure_city.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="flight_vessel_number" className="mb-2 block">
             Flight Number/Vessel Number (if known)
@@ -258,11 +247,10 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
           />
         </div>
       </div>
-
       {/* Arrival Details */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Arrival Details</h3>
-        
+
         <div>
           <Label className="mb-2 block">
             Intended Arrival Date <span className="text-red-500">*</span>
@@ -312,7 +300,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.intended_arrival_date_day.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             Country {mainApplicantName} will Arrive In <span className="text-red-500">*</span>
@@ -334,7 +321,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.arrival_country.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="arrival_city" className="mb-2 block">
             Arrival City <span className="text-red-500">*</span>
@@ -348,7 +334,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.arrival_city.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             Reason for Travel <span className="text-red-500">*</span>
@@ -371,7 +356,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -392,7 +376,6 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Form schema
 const formSchema = z.object({
   has_future_travel: z.enum(["yes", "no"]).optional(),
@@ -411,7 +394,6 @@ const formSchema = z.object({
     reason_for_travel: z.string(),
   })).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -420,7 +402,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -428,24 +410,20 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_future_travel: "",
+      has_future_travel: "no",
       main_applicant_future_travel: [],
     },
   });
-
   const hasFutureTravel = form.watch("has_future_travel");
   const mainApplicantFutureTravel = form.watch("main_applicant_future_travel") || [];
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_future_travel || {};
     if (Object.keys(savedData).length > 0) {
@@ -455,30 +433,33 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_future_travel]);
-
   // Clear future travel data when "No" is selected
   useEffect(() => {
     if (hasFutureTravel === "no") {
       form.setValue("main_applicant_future_travel", []);
     }
   }, [hasFutureTravel]);
-
   const updateMainApplicantFutureTravel = (newTravel) => {
     form.setValue("main_applicant_future_travel", newTravel);
   };
-
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_future_travel", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/future-travel`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_future_travel", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/future-travel`, null, "protection_future_travel");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -494,7 +475,7 @@ export default function Page() {
       const formData = form.getValues();
       console.log("Saving protection_future_travel data:", formData);
       const result = await draftStore.saveSectionData("protection_future_travel", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -519,7 +500,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   // Table column definitions
   const futureTravelColumns = [
     {
@@ -541,14 +521,13 @@ export default function Page() {
     },
     { key: "reason_for_travel", label: "Reason for Travel" },
   ];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Future Travel</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Future Travel</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               For everyone who is to be included in this application, provide the following details about their future travel plans:
             </p>
           </div>
@@ -608,60 +587,17 @@ export default function Page() {
                 </div>
               )}
             </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }
-

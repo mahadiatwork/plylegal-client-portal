@@ -15,22 +15,22 @@ export default function QuestionnairePage() {
   const params = useParams();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   // 1. New state for navigation feedback
   const [isNavigating, setIsNavigating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const applicationsSnap = useSnapshot(applicationsStore);
   const draftSnap = useSnapshot(draftStore);
   const authSnap = useSnapshot(authStore);
-  
+
   const rawId = params?.id;
   const appId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   const application = applicationsSnap.applications.find(
     app => String(app.id) === String(appId)
   );
-  
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -63,17 +63,17 @@ export default function QuestionnairePage() {
       draftStore.loadDraft(appId);
     }
   }, [appId]);
-  
+
   const handleStartQuestionnaire = (e) => {
     e.preventDefault();
 
     if (!application) return;
-    
+
     // 2. Set loading state immediately upon click
     setIsNavigating(true);
 
     let visaTypeCode = application.visaTypeCode?.toLowerCase();
-    
+
     if (!visaTypeCode && application.type) {
       const typeLower = application.type.toLowerCase();
       if (typeLower.includes('protection')) {
@@ -84,7 +84,7 @@ export default function QuestionnairePage() {
         visaTypeCode = 'temporary-work';
       }
     }
-    
+
     let route;
     if (visaTypeCode === 'protection') {
       route = `/intake/protection/start?applicationId=${appId}`;
@@ -93,11 +93,11 @@ export default function QuestionnairePage() {
     } else {
       route = `/intake/temporary-work/start?applicationId=${appId}`;
     }
-    
+
     router.push(route);
     // Note: We don't set setIsNavigating(false) because the page will unmount
   };
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -112,25 +112,25 @@ export default function QuestionnairePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-           <div className="text-lg text-red-600">Application not found.</div>
-           <Button className="mt-4" onClick={() => router.push('/dashboard')}>
-             Back to Dashboard
-           </Button>
+          <div className="text-lg text-red-600">Application not found.</div>
+          <Button className="mt-4" onClick={() => router.push('/dashboard')}>
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-background flex">
       <div className="hidden lg:block">
         <AppSidebar mode="contextual" application={application} />
       </div>
-      
+
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           <div className="absolute left-0 top-0 bottom-0">
@@ -138,16 +138,16 @@ export default function QuestionnairePage() {
           </div>
         </div>
       )}
-      
+
       <div className="flex-1 flex flex-col">
-        <AppHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
+        <AppHeader
+          onMenuClick={() => setSidebarOpen(true)}
         />
-        
+
         <div className="lg:hidden">
           <PillNav appId={appId} />
         </div>
-        
+
         <main className="flex-1 p-6">
           <div className="max-w-4xl mx-auto">
             <Card className="rounded-2xl shadow-sm text-center py-12">
@@ -155,16 +155,16 @@ export default function QuestionnairePage() {
                 <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                   <FileText className="w-8 h-8 text-primary" />
                 </div>
-                
+
                 <div>
                   <h2 className="font-serif text-2xl font-bold mb-2">
                     {application.type} Questionnaire
                   </h2>
                   <p className="text-muted-foreground max-w-lg mx-auto">
-                    Complete the comprehensive questionnaire to gather all necessary information for your visa application.
+                    This questionnaire helps us build your application properly from the beginning. If you’re unsure about any question, let us know and we’ll guide you through it.
                   </p>
                 </div>
-                
+
                 {draftSnap.completionStatus && Object.keys(draftSnap.completionStatus).length > 0 && (
                   <div className="max-w-md mx-auto">
                     <div className="flex items-center justify-between mb-2">
@@ -174,7 +174,7 @@ export default function QuestionnairePage() {
                       </span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-primary h-2 rounded-full transition-all duration-300"
                         style={{ width: `${draftStore.getCompletionPercentage().percentage}%` }}
                       />
@@ -184,7 +184,7 @@ export default function QuestionnairePage() {
                     </p>
                   </div>
                 )}
-                
+
                 {/* 3. Updated Button with Loading State */}
                 <Button
                   size="lg"
@@ -199,12 +199,12 @@ export default function QuestionnairePage() {
                       Loading Questionnaire...
                     </>
                   ) : (
-                    draftSnap.draft && Object.keys(draftSnap.draft).length > 0 
-                      ? "Continue Questionnaire" 
+                    draftSnap.draft && Object.keys(draftSnap.draft).length > 0
+                      ? "Continue Questionnaire"
                       : "Start Questionnaire"
                   )}
                 </Button>
-                
+
                 {draftSnap.lastSaved && (
                   <p className="text-xs text-muted-foreground">
                     Last saved: {new Date(draftSnap.lastSaved).toLocaleString()}

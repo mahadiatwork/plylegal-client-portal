@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -36,18 +36,18 @@ export default function IntakeStartPage() {
     if (draftSnap.draft.started) {
       setStarted(true);
     }
-    
+
     const data = draftStore.getCompletionPercentage();
     setCompletionData(data);
   }, [draftSnap.draft.started, draftSnap.completionStatus]);
-  
+
   const currentApp = appsSnap.applications.find(app => app.id === draftSnap.currentApplicationId);
   const isSubmitted = currentApp?.status === "submitted";
   const completionPercentage = completionData.percentage;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!started) {
       setError("You must check the box to begin the application");
       return;
@@ -55,7 +55,7 @@ export default function IntakeStartPage() {
 
     await draftStore.saveDraft({ started: true });
     await draftStore.markPageComplete(`${visaType}/start`);
-    
+
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
@@ -64,12 +64,9 @@ export default function IntakeStartPage() {
     <div className="max-w-2xl mx-auto">
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader className="space-y-3 pb-6">
-          <CardTitle className="text-3xl font-semibold">
-            Your Questionnaire
+          <CardTitle className="text-3xl font-semibold text-slate-800">
+            Before You Begin
           </CardTitle>
-          <CardDescription className="text-base leading-relaxed">
-            Our Questionnaire is designed to assist you to provide the information we need.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isSubmitted && (
@@ -81,7 +78,7 @@ export default function IntakeStartPage() {
                     Application Submitted Successfully
                   </h3>
                   <p className="text-sm text-green-700 mt-1">
-                    Your application has been submitted and is now under review. 
+                    Your application has been submitted and is now under review.
                     You completed {completionPercentage}% of all sections.
                   </p>
                   <div className="mt-4">
@@ -98,8 +95,8 @@ export default function IntakeStartPage() {
               </div>
             </div>
           )}
-          
-          <form 
+
+          <form
             onSubmit={handleSubmit}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
@@ -108,27 +105,19 @@ export default function IntakeStartPage() {
             }}
             className="space-y-8"
           >
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-3">1. Start</h3>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  This is the first and most important part of the process. Click the Start button below to commence filling out your Questionnaire.
-                </p>
-              </div>
+            <div className="space-y-4">
+              <p className="text-base text-slate-700 leading-relaxed">
+                This questionnaire is the foundation of your visa application. Please complete each section carefully and provide as much detail as you can. If you're unsure about a question, answer what you can and continue. You can save your progress and return at any time before submitting.
+              </p>
+              <p className="text-base text-slate-700 leading-relaxed">
+                Once submitted, we will review your responses and use this information to prepare your visa application.
+              </p>
+            </div>
 
-              <div>
-                <h3 className="text-lg font-medium mb-3">2. Edit</h3>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Follow the instructions on each page and answer every question, providing as much information as you can. If you don't know the answer to a question, you can continue and come back and edit an answer later. You can save, close, and come back to the Questionnaire at any stage before you submit it.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium mb-3">3. Submit</h3>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  When you get to the end of the Questionnaire, you will be able to review all of the information you have provided. When you have provided all of the information you can, click the Submit button to send your completed Questionnaire to us.
-                </p>
-              </div>
+            <div className="bg-blue-50 rounded-lg p-5">
+              <p className="text-sm text-slate-700 leading-relaxed">
+                <span className="font-semibold">Accuracy matters.</span> Incomplete or incorrect information can lead to delays, refusal, or visa cancellation. If you're unsure about anything, let us know.
+              </p>
             </div>
 
             <div className="flex items-start space-x-3 p-6 bg-white rounded-xl border-2">
@@ -144,24 +133,14 @@ export default function IntakeStartPage() {
               />
               <div className="space-y-1 leading-none">
                 <Label htmlFor="started" className="text-base font-medium cursor-pointer">
-                  I understand and wish to begin the application
+                  I confirm that the information I provide will be accurate to the best of my knowledge.
                 </Label>
-                <p className="text-sm text-gray-600">
-                  By checking this box, you confirm that you will provide accurate information
-                </p>
                 {error && (
                   <p className="text-sm text-red-600 mt-2">
                     {error}
                   </p>
                 )}
               </div>
-            </div>
-
-            <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded">
-              <h4 className="text-red-900 font-semibold mb-2">Important</h4>
-              <p className="text-sm text-red-800 leading-relaxed">
-                Please note that this is not an application form. We may use the information you have provided in this questionnaire to prepare a visa, nomination or sponsorship application including any application forms. Remember, providing us with all the correct information will help us to prepare your application. Providing incorrect or incomplete information may result in your application being delayed, refused or any Visa granted being cancelled.
-              </p>
             </div>
 
             <div className="flex justify-end gap-3">
@@ -172,7 +151,7 @@ export default function IntakeStartPage() {
                 data-testid="button-begin"
                 className="min-h-11 px-8 bg-[#285646] hover:bg-[#1f4236]"
               >
-                {isSubmitted ? "Application Submitted" : "Start"}
+                {isSubmitted ? "Application Submitted" : "Start Questionnaire"}
               </Button>
             </div>
           </form>

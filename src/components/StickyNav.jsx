@@ -6,6 +6,7 @@ export function StickyNav({
   onSave,
   onNext,
   loading = false,
+  submitting = false,
   disabledNext = false,
   showPrev = true,
   nextLabel = "Continue",
@@ -23,7 +24,7 @@ export function StickyNav({
               type="button"
               variant="outline"
               onClick={onPrev}
-              disabled={loading}
+              disabled={loading || submitting}
               data-testid={previousTestId || "button-previous"}
               className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
             >
@@ -39,7 +40,7 @@ export function StickyNav({
               type="button"
               variant="secondary"
               onClick={onSave}
-              disabled={loading}
+              disabled={loading || submitting}
               data-testid={saveTestId || "button-save-draft"}
               className="min-h-[44px] flex-1 sm:flex-none"
             >
@@ -55,12 +56,16 @@ export function StickyNav({
           <Button
             type="button"
             onClick={onNext}
-            disabled={loading || disabledNext}
+            disabled={loading || submitting || disabledNext}
             data-testid={nextTestId || "button-continue"}
             className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
           >
+            {submitting ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <ChevronRight className="w-4 h-4 ml-1" />
+            )}
             {nextLabel}
-            <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>
       </div>

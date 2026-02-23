@@ -579,87 +579,83 @@ export default function FutureAddressesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <Card className="border border-gray-200 shadow-sm rounded-lg">
-          <CardHeader className="px-6 py-8 border-b border-gray-200">
-            <CardTitle className="text-2xl font-semibold text-gray-900">
-              Future Addresses
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 py-8">
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
-                  e.preventDefault();
-                }
-              }}
-              className="space-y-8"
-            >
-              {Object.keys(errors).length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-red-800 mb-2">
-                    Please fix the following errors:
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                    {Object.entries(errors).map(([field, error]) => (
-                      <li key={field}>{error.message}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">
+          Future Addresses
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+              e.preventDefault();
+            }
+          }}
+          className="space-y-8"
+        >
+          {Object.keys(errors).length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-red-800 mb-2">
+                Please fix the following errors:
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                {Object.entries(errors).map(([field, error]) => (
+                  <li key={field}>{error.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-              <Field
-                type="radio"
-                name="knows_future_address"
-                control={control}
-                label="Do you know your intended address after arrival?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
+          <Field
+            type="radio"
+            name="knows_future_address"
+            control={control}
+            label="Do you know your intended address after arrival?"
+            options={[
+              { value: "Yes", label: "Yes" },
+              { value: "No", label: "No" },
+            ]}
+          />
+
+          {mounted && knowsFutureAddress === "Yes" && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Future Addresses</h3>
+              <p className="text-sm text-gray-600">
+                Please provide your intended addresses after arrival
+              </p>
+              <RepeaterTable
+                data={futureAddresses}
+                columns={futureAddressColumns}
+                onAdd={(row) => updateFutureAddresses([...futureAddresses, row])}
+                onEdit={(index, row) => {
+                  const updated = [...futureAddresses];
+                  updated[index] = row;
+                  updateFutureAddresses(updated);
+                }}
+                onDelete={(index) => {
+                  const updated = futureAddresses.filter((_, i) => i !== index);
+                  updateFutureAddresses(updated);
+                }}
+                DialogComponent={FutureAddressDialog}
+                addButtonText="Add Future Address"
+                emptyMessage="No future addresses added"
+                dialogTitle="Future Address"
               />
+            </div>
+          )}
 
-              {mounted && knowsFutureAddress === "Yes" && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900">Future Addresses</h3>
-                  <p className="text-sm text-gray-600">
-                    Please provide your intended addresses after arrival
-                  </p>
-                  <RepeaterTable
-                    data={futureAddresses}
-                    columns={futureAddressColumns}
-                    onAdd={(row) => updateFutureAddresses([...futureAddresses, row])}
-                    onEdit={(index, row) => {
-                      const updated = [...futureAddresses];
-                      updated[index] = row;
-                      updateFutureAddresses(updated);
-                    }}
-                    onDelete={(index) => {
-                      const updated = futureAddresses.filter((_, i) => i !== index);
-                      updateFutureAddresses(updated);
-                    }}
-                    DialogComponent={FutureAddressDialog}
-                    addButtonText="Add Future Address"
-                    emptyMessage="No future addresses added"
-                    dialogTitle="Future Address"
-                  />
-                </div>
-              )}
-
-              <FormNavigation
-                onPrev={handlePrevious}
-                onNext={handleSubmit(onSubmit)}
-                onSave={handleSave}
-                loading={isSaving}
-                saveLabel="Save Draft"
-                nextLabel="Continue"
-              />
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={handleSubmit(onSubmit)}
+            onSave={handleSave}
+            loading={isSaving}
+            saveLabel="Save Draft"
+            nextLabel="Continue"
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

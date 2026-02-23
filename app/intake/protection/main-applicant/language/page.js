@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 
 const PROFICIENCY_LEVELS = ["Basic", "Intermediate", "Proficient", "Fluent/Native"];
 const TEST_TYPES = ["IELTS Academic", "IELTS General", "PTE Academic", "TOEFL iBT", "OET", "Other"];
@@ -62,12 +63,12 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -183,12 +184,12 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form 
+    <form
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
         dialogForm.handleSubmit(handleSubmit)(e);
-      }} 
+      }}
       className="space-y-4"
     >
       <div>
@@ -350,6 +351,7 @@ export default function LanguagePage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -383,7 +385,7 @@ export default function LanguagePage() {
         has_english_test: savedData.has_english_test || "no",
         english_tests: savedData.english_tests || [],
       };
-      
+
       // Use reset to properly update all form fields
       form.reset(formData);
     }
@@ -402,11 +404,11 @@ export default function LanguagePage() {
         });
         return;
       }
-      
+
       const formData = form.getValues();
       console.log("Saving protection_language data:", formData); // Debug log
       const result = await draftStore.saveSectionData("protection_language", formData);
-      
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -433,13 +435,20 @@ export default function LanguagePage() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_language", data);
-    const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/language`);
-    
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
-    if (nextRoute) {
-      router.push(nextRoute);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_language", data);
+      const visaType = getVisaTypeFromPath(pathname);
+      await draftStore.markPageComplete(`${visaType}/main-applicant/language`);
+      const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+      if (nextRoute) {
+        router.push(nextRoute);
+      }
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -453,13 +462,8 @@ export default function LanguagePage() {
 
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
-      <StickyNav 
-        onPrev={handlePrevious}
-        onSave={handleSave}
-        onNext={form.handleSubmit(onSubmit)}
-        loading={isSaving}
-      />
-      
+
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -581,40 +585,15 @@ export default function LanguagePage() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                data-testid="button-previous"
-              >
-                Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#285646] hover:bg-[#1e4136] text-white"
-                  data-testid="button-continue"
-                >
-                  Continue
-                </Button>
-              </div>
+            <div className="mt-8 pt-6 border-t">
+              <FormNavigation
+                onPrev={handlePrevious}
+                onNext={form.handleSubmit(onSubmit)}
+                onSave={handleSave}
+                loading={isSaving}
+                submitting={isSubmitting}
+                disabledNext={!form.formState.isValid}
+              />
             </div>
           </form>
         </div>

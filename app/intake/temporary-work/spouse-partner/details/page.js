@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,9 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp } from "lucide-react";
-
-
+// import { ChevronDown, ChevronUp } from "lucide-react";
 const formSchema = z.object({
   family_name: z.string().optional(),
   given_names: z.string().optional(),
@@ -32,7 +29,6 @@ const formSchema = z.object({
   city_of_birth: z.string().optional(),
   country_of_residence: z.string().optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,9 +37,8 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-  const [showJsonData, setShowJsonData] = useState(false);
+  // const [showJsonData, setShowJsonData] = useState(false);
   const isSavingRef = useRef(false);
-
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -51,7 +46,6 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -68,33 +62,26 @@ export default function Page() {
       country_of_residence: "",
     },
   });
-
   // Populate Form
   useEffect(() => {
     // 1. Safety Check: If saving, do not touch the form
     if (isSavingRef.current) return;
-
     // 2. Wait for loading
     if (draftSnap.isLoading && !draftSnap.draft?.temporary_work_spouse_details) {
       return;
     }
-
     const savedData = draftSnap.draft?.temporary_work_spouse_details;
-
     // 3. Populate: Only if we have actual data
     if (savedData && Object.keys(savedData).length > 0) {
-
       const monthsList = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
       ];
-
       const normalizeNumber = (val) => {
         if (!val) return "";
         const num = Number(val);
         return isNaN(num) ? val : String(num);
       };
-
       const normalizeMonth = (val) => {
         if (!val) return "";
         const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
@@ -105,29 +92,23 @@ export default function Page() {
         }
         return String(val);
       };
-
       const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
-
       // 4. Prepare the clean data object
       const formData = {
         family_name: safeStr(savedData.family_name),
         given_names: safeStr(savedData.given_names),
         preferred_names: safeStr(savedData.preferred_names),
         gender: safeStr(savedData.gender),
-
         birth_day: normalizeNumber(savedData.birth_day),
         birth_month: normalizeMonth(savedData.birth_month),
         birth_year: safeStr(savedData.birth_year),
-
         intending_to_migrate: safeStr(savedData.intending_to_migrate) || "No",
         country_of_birth: safeStr(savedData.country_of_birth),
         city_of_birth: safeStr(savedData.city_of_birth),
         country_of_residence: safeStr(savedData.country_of_residence),
       };
-
       // 5. Reset the form
       form.reset(formData);
-
       // 6. FORCE UPDATE (Safety Net)
       // FIX: Added Countries and Radio button here to force the UI to update
       setTimeout(() => {
@@ -135,31 +116,26 @@ export default function Page() {
         if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
         if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
         if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
-
         // Selects & Radios (Add these lines!)
         if (savedData.country_of_birth) form.setValue("country_of_birth", safeStr(savedData.country_of_birth));
         if (savedData.country_of_residence) form.setValue("country_of_residence", safeStr(savedData.country_of_residence));
         form.setValue("intending_to_migrate", safeStr(savedData.intending_to_migrate) || "No");
       }, 0);
     }
-
   }, [
     draftSnap.isLoading,
     JSON.stringify(draftSnap.draft?.temporary_work_spouse_details)
   ]);
-
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_spouse_details", data);
     await draftStore.markPageComplete(`${visaType}/spouse-partner/details`, null, "temporary_work_spouse_details");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (next) router.push(next);
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     isSavingRef.current = true;
@@ -183,7 +159,6 @@ export default function Page() {
       isSavingRef.current = false;
     }
   };
-
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -191,7 +166,6 @@ export default function Page() {
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
-
   const countries = [
     "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
     "Bangladesh", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia",
@@ -203,36 +177,31 @@ export default function Page() {
     "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
     "Vietnam"
   ];
-
   // Helper references for cleaner logic
   const savedDetails = draftSnap.draft?.temporary_work_spouse_details;
   const currentFormValues = form.getValues();
-
-  // Prepare JSON data for display
-  const jsonData = {
-    fullDraft: draftSnap.draft,
-    temporaryWorkSpouseDetails: savedDetails,
-    completionStatus: draftSnap.completionStatus,
-    currentApplicationId: draftSnap.currentApplicationId,
-    formValues: currentFormValues,
-
-    // USE || HERE so that "" falls back to the saved data
-    birth_day: currentFormValues.birth_day || savedDetails?.birth_day,
-    birth_month: currentFormValues.birth_month || savedDetails?.birth_month,
-    birth_year: currentFormValues.birth_year || savedDetails?.birth_year,
-  };
-
+  // // Prepare JSON data for display
+  // const jsonData = {
+  //   fullDraft: draftSnap.draft,
+  //   temporaryWorkSpouseDetails: savedDetails,
+  //   completionStatus: draftSnap.completionStatus,
+  //   currentApplicationId: draftSnap.currentApplicationId,
+  //   formValues: currentFormValues,
+  //   // USE || HERE so that "" falls back to the saved data
+  //   birth_day: currentFormValues.birth_day || savedDetails?.birth_day,
+  //   birth_month: currentFormValues.birth_month || savedDetails?.birth_month,
+  //   birth_year: currentFormValues.birth_year || savedDetails?.birth_year,
+  // };
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Spouse/Partner Personal Details</h1>
-          <p className="text-muted-foreground mt-2">
-            Provide information about your spouse or partner.
-          </p>
-        </div>
-
-        {/* JSON Data Viewer Card */}
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Spouse/Partner Personal Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Provide information about your spouse or partner.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {/* JSON Data Viewer Card - Commented out
         <Card className="mb-6 border-blue-200">
           <CardHeader
             className="cursor-pointer hover:bg-blue-50 transition-colors"
@@ -257,11 +226,10 @@ export default function Page() {
             </CardContent>
           )}
         </Card>
-
+        */}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Personal Details</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="family_name">Family Name *</Label>
@@ -272,7 +240,6 @@ export default function Page() {
                   data-testid="input-family-name"
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="given_names">Given Names *</Label>
                 <Input
@@ -283,7 +250,6 @@ export default function Page() {
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="preferred_names">Preferred Names</Label>
               <Input
@@ -293,7 +259,6 @@ export default function Page() {
                 data-testid="input-preferred-names"
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="gender">Gender *</Label>
               <RadioGroup
@@ -310,7 +275,6 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-
             <div className="space-y-2">
               <Label>Date of Birth *</Label>
               <div className="grid grid-cols-3 gap-4">
@@ -327,7 +291,6 @@ export default function Page() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="birth_month">Month</Label>
                   <Select value={form.watch("birth_month")} onValueChange={(value) => form.setValue("birth_month", value)}>
@@ -341,7 +304,6 @@ export default function Page() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="birth_year">Year</Label>
                   <Select value={form.watch("birth_year")} onValueChange={(value) => form.setValue("birth_year", value)}>
@@ -358,10 +320,8 @@ export default function Page() {
               </div>
             </div>
           </div>
-
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Residency & Migration Info</h2>
-
             <div className="space-y-2">
               <Label>Is your Spouse/Partner intending to migrate/travel to Australia as part of this application? *</Label>
               <RadioGroup
@@ -379,10 +339,8 @@ export default function Page() {
               </RadioGroup>
             </div>
           </div>
-
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Birth & Residence Details</h2>
-
             <div className="space-y-2">
               <Label htmlFor="country_of_birth">Country of Birth *</Label>
               <Select value={form.watch("country_of_birth")} onValueChange={(value) => form.setValue("country_of_birth", value)}>
@@ -396,7 +354,6 @@ export default function Page() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="city_of_birth">City or Town of Birth *</Label>
               <Input
@@ -406,7 +363,6 @@ export default function Page() {
                 data-testid="input-city-birth"
               />
             </div>
-
             {form.watch("intending_to_migrate") !== "Yes" && (
               <div className="space-y-2">
                 <Label htmlFor="country_of_residence">Country of Current Residence *</Label>
@@ -430,7 +386,7 @@ export default function Page() {
             loading={isSaving}
           />
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const PROFICIENCY_LEVELS = ["Basic", "Intermediate", "Proficient", "Fluent/Native"];
 const TEST_TYPES = ["IELTS Academic", "IELTS General", "PTE Academic", "TOEFL iBT", "OET", "Other"];
@@ -364,18 +365,29 @@ export default function LanguagePage() {
       languages: [],
       has_english_test: "no",
       english_tests: [],
+      studied_in_english: "no",
+      studied_in_english_details: "",
     }
   });
 
   const isEnglishMainLanguage = form.watch("is_english_main_language");
   const hasEnglishTest = form.watch("has_english_test");
+  const studiedInEnglish = form.watch("studied_in_english");
   const languages = form.watch("languages") || [];
   const englishTests = form.watch("english_tests") || [];
 
   useEffect(() => {
     const savedData = draft.temporary_work_language || {};
     if (Object.keys(savedData).length > 0) {
-      form.reset(savedData);
+      form.reset({
+        is_english_main_language: "no",
+        languages: [],
+        has_english_test: "no",
+        english_tests: [],
+        studied_in_english: "no",
+        studied_in_english_details: "",
+        ...savedData,
+      });
     }
   }, [draft.temporary_work_language, form]);
 
@@ -417,140 +429,184 @@ export default function LanguagePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Language</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s language proficiency.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-8">
+            {/* Q1: Is the English language your main language? */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Is the English language your main language?
+              </Label>
+              <RadioGroup
+                value={isEnglishMainLanguage}
+                onValueChange={(value) => form.setValue("is_english_main_language", value)}
+                className="flex gap-4"
+                data-testid="radio-english-main"
+              >
+                <div className="flex items-center" data-testid="radio-english-main-yes">
+                  <RadioGroupItem value="yes" id="english-main-yes" />
+                  <Label htmlFor="english-main-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-english-main-no">
+                  <RadioGroupItem value="no" id="english-main-no" />
+                  <Label htmlFor="english-main-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
 
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-8">
-              {/* Q1: Is the English language your main language? */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Is the English language your main language?
-                </Label>
-                <RadioGroup
-                  value={isEnglishMainLanguage}
-                  onValueChange={(value) => form.setValue("is_english_main_language", value)}
-                  className="flex gap-4"
-                  data-testid="radio-english-main"
-                >
-                  <div className="flex items-center" data-testid="radio-english-main-yes">
-                    <RadioGroupItem value="yes" id="english-main-yes" />
-                    <Label htmlFor="english-main-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-english-main-no">
-                    <RadioGroupItem value="no" id="english-main-no" />
-                    <Label htmlFor="english-main-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* Languages Repeater (shown if No) */}
-                {isEnglishMainLanguage === "no" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Languages Used</h3>
-                    <RepeaterTable
-                      data={languages}
-                      columns={[
-                        { key: "language", label: "Language" },
-                        { key: "proficiency", label: "Proficiency" },
-                        { key: "is_main_language", label: "Main Language?", format: (row) => row.is_main_language === "yes" ? "Yes" : "No" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...languages, newRow];
-                        form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...languages];
-                        updated[index] = updatedRow;
-                        form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = languages.filter((_, i) => i !== index);
-                        form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={LanguageDialog}
-                      addButtonText="Add"
-                      testIdPrefix="language"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Q2: Have you undertaken any English language test */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Have you undertaken any English language test within the last 36 months?
-                </Label>
-                <RadioGroup
-                  value={hasEnglishTest}
-                  onValueChange={(value) => form.setValue("has_english_test", value)}
-                  className="flex gap-4"
-                  data-testid="radio-english-test"
-                >
-                  <div className="flex items-center" data-testid="radio-english-test-yes">
-                    <RadioGroupItem value="yes" id="english-test-yes" />
-                    <Label htmlFor="english-test-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-english-test-no">
-                    <RadioGroupItem value="no" id="english-test-no" />
-                    <Label htmlFor="english-test-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* English Test Results Repeater (shown if Yes) */}
-                {hasEnglishTest === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">English Test Results</h3>
-                    <RepeaterTable
-                      data={englishTests}
-                      columns={[
-                        { key: "date_day", label: "Date", format: (row) => `${row.date_day}/${row.date_month}/${row.date_year}` },
-                        { key: "test_type", label: "Test Type" },
-                        { key: "location", label: "Location" },
-                        { key: "reference_number", label: "Reference Number" },
-                        { key: "overall_score", label: "Overall Score" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...englishTests, newRow];
-                        form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...englishTests];
-                        updated[index] = updatedRow;
-                        form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      onDelete={(index) => {
-                        const updated = englishTests.filter((_, i) => i !== index);
-                        form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                      }}
-                      DialogComponent={EnglishTestDialog}
-                      addButtonText="Add"
-                      testIdPrefix="english-test"
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Languages Repeater (shown if No) */}
+              {isEnglishMainLanguage === "no" && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Languages Used</h3>
+                  <RepeaterTable
+                    data={languages}
+                    columns={[
+                      { key: "language", label: "Language" },
+                      { key: "proficiency", label: "Proficiency" },
+                      { key: "is_main_language", label: "Main Language?", format: (row) => row.is_main_language === "yes" ? "Yes" : "No" },
+                    ]}
+                    onAdd={(newRow) => {
+                      const updated = [...languages, newRow];
+                      form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const updated = [...languages];
+                      updated[index] = updatedRow;
+                      form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onDelete={(index) => {
+                      const updated = languages.filter((_, i) => i !== index);
+                      form.setValue("languages", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    DialogComponent={LanguageDialog}
+                    addButtonText="Add"
+                    testIdPrefix="language"
+                  />
+                </div>
+              )}
             </div>
 
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              nextLabel="Continue"
-              loading={draftSnap.isSaving}
-            />
-          </form>
-        </div>
-      </div>
-    </div>
+            {/* Q2: Have you undertaken any English language test */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Have you undertaken any English language test within the last 36 months?
+              </Label>
+              <RadioGroup
+                value={hasEnglishTest}
+                onValueChange={(value) => form.setValue("has_english_test", value)}
+                className="flex gap-4"
+                data-testid="radio-english-test"
+              >
+                <div className="flex items-center" data-testid="radio-english-test-yes">
+                  <RadioGroupItem value="yes" id="english-test-yes" />
+                  <Label htmlFor="english-test-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-english-test-no">
+                  <RadioGroupItem value="no" id="english-test-no" />
+                  <Label htmlFor="english-test-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {/* English Test Results Repeater (shown if Yes) */}
+              {hasEnglishTest === "yes" && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">English Test Results</h3>
+                  <RepeaterTable
+                    data={englishTests}
+                    columns={[
+                      { key: "date_day", label: "Date", format: (row) => `${row.date_day}/${row.date_month}/${row.date_year}` },
+                      { key: "test_type", label: "Test Type" },
+                      { key: "location", label: "Location" },
+                      { key: "reference_number", label: "Reference Number" },
+                      { key: "overall_score", label: "Overall Score" },
+                    ]}
+                    onAdd={(newRow) => {
+                      const updated = [...englishTests, newRow];
+                      form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onEdit={(index, updatedRow) => {
+                      const updated = [...englishTests];
+                      updated[index] = updatedRow;
+                      form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    onDelete={(index) => {
+                      const updated = englishTests.filter((_, i) => i !== index);
+                      form.setValue("english_tests", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                    }}
+                    DialogComponent={EnglishTestDialog}
+                    addButtonText="Add"
+                    testIdPrefix="english-test"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Q3: Studied in English-medium institution */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Has the applicant studied in a secondary and / or tertiary institution where the instruction was in English?
+              </Label>
+              <RadioGroup
+                value={studiedInEnglish}
+                onValueChange={(value) => form.setValue("studied_in_english", value)}
+                className="flex gap-4"
+                data-testid="radio-studied-in-english"
+              >
+                <div className="flex items-center" data-testid="radio-studied-in-english-yes">
+                  <RadioGroupItem value="yes" id="studied-english-yes" />
+                  <Label htmlFor="studied-english-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-studied-in-english-no">
+                  <RadioGroupItem value="no" id="studied-english-no" />
+                  <Label htmlFor="studied-english-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {studiedInEnglish === "yes" && (
+                <div className="mt-4">
+                  <Label htmlFor="studied_in_english_details" className="mb-2 block">
+                    Please provide details <span className="text-gray-400 font-normal">(institution name, course, years attended)</span>
+                  </Label>
+                  <textarea
+                    id="studied_in_english_details"
+                    {...form.register("studied_in_english_details")}
+                    rows={4}
+                    placeholder="e.g. University of Melbourne – Bachelor of Commerce, 2018–2021"
+                    data-testid="textarea-studied-in-english-details"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

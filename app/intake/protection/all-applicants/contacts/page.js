@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,12 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
+// StickyNav import removed
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -48,7 +48,6 @@ const COUNTRY_OPTIONS = [
   "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
   "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
-
 const RELATIONSHIP_OPTIONS = [
   "Adopted Child",
   "Adopted Parent",
@@ -75,7 +74,6 @@ const RELATIONSHIP_OPTIONS = [
   "Uncle or Aunt",
   "Ward"
 ];
-
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -83,7 +81,6 @@ const months = [
 ];
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-
 // Personal Contact Dialog Schema
 const personalContactDialogSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
@@ -116,7 +113,6 @@ const personalContactDialogSchema = z.object({
   postcode: z.string().min(1, "Postcode is required"),
   country: z.string().min(1, "Country is required"),
 });
-
 function PersonalContactDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const draftSnap = useSnapshot(draftStore);
@@ -126,7 +122,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   const dialogForm = useForm({
     resolver: zodResolver(personalContactDialogSchema),
     defaultValues: row || {
@@ -159,11 +154,9 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       country: "",
     },
   });
-
   const handleFormSubmit = (data) => {
     onSave(data);
   };
-
   return (
     <form
       onSubmit={(e) => {
@@ -176,7 +169,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       <p className="text-sm text-gray-600 mb-4">
         Enter as much information about this Contact Person as possible
       </p>
-
       {/* Personal Details Section */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">This Person's Personal Details</h3>
@@ -194,7 +186,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.family_name.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="given_names" className="mb-2 block">
             This Person's Given Names <span className="text-red-500">*</span>
@@ -208,7 +199,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.given_names.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             This Person's Gender <span className="text-red-500">*</span>
@@ -231,7 +221,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             This person is {mainApplicantName}'s: <span className="text-red-500">*</span>
@@ -253,7 +242,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.relationship.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             This Person's Nationality <span className="text-red-500">*</span>
@@ -275,7 +263,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.nationality.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             This Person's Date of Birth <span className="text-red-500">*</span>
@@ -325,7 +312,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.birth_day.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             This Person's Country of Birth <span className="text-red-500">*</span>
@@ -347,7 +333,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country_of_birth.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="suburb_of_birth" className="mb-2 block">
             This Person's Suburb of Birth
@@ -358,7 +343,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             data-testid="input-suburb-of-birth"
           />
         </div>
-
         <div>
           <Label htmlFor="city_of_birth" className="mb-2 block">
             This Person's City or Town of Birth
@@ -369,7 +353,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             data-testid="input-city-of-birth"
           />
         </div>
-
         <div>
           <Label htmlFor="state_of_birth" className="mb-2 block">
             This Person's State or Province of Birth
@@ -381,7 +364,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
           />
         </div>
       </div>
-
       {/* Telephone and Email Contact Section */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">This Person's Telephone and Email Contact</h3>
@@ -406,7 +388,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
         </div>
-
         <div>
           <Label className="mb-2 block">This Person's Office Hours Phone Number</Label>
           <div className="grid grid-cols-3 gap-2">
@@ -427,7 +408,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
         </div>
-
         <div>
           <Label className="mb-2 block">This Person's Mobile Phone Number</Label>
           <div className="grid grid-cols-2 gap-2">
@@ -443,7 +423,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
         </div>
-
         <div>
           <Label htmlFor="email_address" className="mb-2 block">
             This Person's Email Address
@@ -459,7 +438,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
-
       {/* Residential Address Section */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">This Person's Residential Address</h3>
@@ -480,7 +458,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.address_line1.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="address_line2" className="mb-2 block">
             Address Line 2
@@ -491,7 +468,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             data-testid="input-address-line2"
           />
         </div>
-
         <div>
           <Label htmlFor="suburb" className="mb-2 block">
             Suburb/Town/City <span className="text-red-500">*</span>
@@ -505,7 +481,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.suburb.message}</p>
           )}
         </div>
-
         <div>
           <Label htmlFor="state" className="mb-2 block">
             State
@@ -516,7 +491,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             data-testid="input-state"
           />
         </div>
-
         <div>
           <Label htmlFor="postcode" className="mb-2 block">
             Postcode <span className="text-red-500">*</span>
@@ -530,7 +504,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.postcode.message}</p>
           )}
         </div>
-
         <div>
           <Label className="mb-2 block">
             Choose Country <span className="text-red-500">*</span>
@@ -553,7 +526,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
-
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -574,7 +546,6 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
     </form>
   );
 }
-
 // Form schema
 const formSchema = z.object({
   has_family_in_australia: z.enum(["yes", "no"]).optional(),
@@ -608,7 +579,6 @@ const formSchema = z.object({
     country: z.string(),
   })).optional(),
 });
-
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -617,7 +587,7 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -625,24 +595,20 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_family_in_australia: "",
+      has_family_in_australia: "no",
       main_applicant_contacts: [],
     },
   });
-
   const hasFamilyInAustralia = form.watch("has_family_in_australia");
   const mainApplicantContacts = form.watch("main_applicant_contacts") || [];
-
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
-
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_contacts || {};
     if (Object.keys(savedData).length > 0) {
@@ -652,30 +618,33 @@ export default function Page() {
       });
     }
   }, [draftSnap.draft?.protection_contacts]);
-
   // Clear contacts data when "No" is selected
   useEffect(() => {
     if (hasFamilyInAustralia === "no") {
       form.setValue("main_applicant_contacts", []);
     }
   }, [hasFamilyInAustralia]);
-
   const updateMainApplicantContacts = (newContacts) => {
     form.setValue("main_applicant_contacts", newContacts);
   };
-
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_contacts", data);
-    await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    setIsSubmitting(true);
+    try {
+      await draftStore.saveSectionData("protection_contacts", data);
+      await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`, null, "protection_contacts");
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      if (next) router.push(next);
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -716,7 +685,6 @@ export default function Page() {
       setIsSaving(false);
     }
   };
-
   // Table column definitions
   const contactColumns = [
     {
@@ -738,14 +706,13 @@ export default function Page() {
     },
     { key: "relationship", label: "Relationship" },
   ];
-
   return (
     <div className="min-h-screen bg-[#E0E7FF]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Contacts</h1>
-            <p className="text-muted-foreground mt-2">
+            <CardTitle className="text-2xl font-semibold">Contacts</CardTitle>
+            <p className="text-sm text-gray-600 mt-2">
               For everyone who is to be included in this application, provide the following details about their Australian contacts:
             </p>
           </div>
@@ -808,60 +775,16 @@ export default function Page() {
                 )}
               </div>
             </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center justify-between pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                className="min-h-9"
-                data-testid="button-previous"
-              >
-                ← Previous
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="min-h-9"
-                  data-testid="button-save"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Draft"
-                  )}
-                </Button>
-                <Button
-                  type="submit"
-                  className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
-                  data-testid="button-next"
-                >
-                  Next →
-                </Button>
-              </div>
-            </div>
+            <FormNavigation
+              onPrev={handlePrevious}
+              disabledNext={!form.formState.isValid}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+            />
           </form>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      <StickyNav
-        onPrev={handlePrevious}
-        onNext={form.handleSubmit(onSubmit)}
-        onSave={handleSave}
-        loading={isSaving}
-        previousTestId="button-previous-mobile"
-        nextTestId="button-next-mobile"
-        saveTestId="button-save-mobile"
-      />
     </div>
   );
 }
-

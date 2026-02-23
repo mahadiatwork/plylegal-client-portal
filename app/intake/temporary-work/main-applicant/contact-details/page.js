@@ -17,6 +17,8 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+// ─── Address constants ───────────────────────────────────────────────
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -59,6 +61,21 @@ const LEGAL_STATUSES = [
   "No Legal Status",
   "Other",
 ];
+
+// ─── Contact details schema ─────────────────────────────────────────
+const contactFormSchema = z.object({
+  // Contact detail fields
+  phone: z.string().optional(),
+  mobile: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  emergency_contact_name: z.string().optional(),
+  emergency_contact_phone: z.string().optional(),
+  // Address fields
+  all_same_address: z.string().optional(),
+  address_history: z.array(z.any()).optional(),
+});
+
+// ─── Address Dialog (unchanged from addresses page) ──────────────────
 function AddressDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
     address1: z.string().min(1, "Address is required"),
@@ -101,7 +118,6 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Address</h3>
       <p className="text-sm text-gray-500 mb-4">Choose an address already entered, or enter a new address</p>
-      {/* Choose Address - Placeholder for now as implicit requirements suggest functionality that might need backend or store lookup */}
       <div className="mb-4">
         <Select disabled>
           <SelectTrigger>
@@ -119,52 +135,32 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       </div>
       <div>
         <Label htmlFor="address1" className="mb-2 block">Address (including Street Number and Name)</Label>
-        <Input
-          id="address1"
-          {...dialogForm.register("address1")}
-          data-testid="input-address1"
-        />
+        <Input id="address1" {...dialogForm.register("address1")} data-testid="input-address1" />
         {dialogForm.formState.errors.address1 && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.address1.message}</p>
         )}
       </div>
       <div>
         <Label htmlFor="address2" className="mb-2 block">Address Line 2</Label>
-        <Input
-          id="address2"
-          {...dialogForm.register("address2")}
-          data-testid="input-address2"
-        />
+        <Input id="address2" {...dialogForm.register("address2")} data-testid="input-address2" />
       </div>
       <div>
         <Label htmlFor="suburb" className="mb-2 block">Suburb/Town/City</Label>
-        <Input
-          id="suburb"
-          {...dialogForm.register("suburb")}
-          data-testid="input-suburb"
-        />
+        <Input id="suburb" {...dialogForm.register("suburb")} data-testid="input-suburb" />
         {dialogForm.formState.errors.suburb && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.suburb.message}</p>
         )}
       </div>
       <div>
         <Label htmlFor="state" className="mb-2 block">State</Label>
-        <Input
-          id="state"
-          {...dialogForm.register("state")}
-          data-testid="input-state"
-        />
+        <Input id="state" {...dialogForm.register("state")} data-testid="input-state" />
         {dialogForm.formState.errors.state && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.state.message}</p>
         )}
       </div>
       <div>
         <Label htmlFor="postcode" className="mb-2 block">Postcode</Label>
-        <Input
-          id="postcode"
-          {...dialogForm.register("postcode")}
-          data-testid="input-postcode"
-        />
+        <Input id="postcode" {...dialogForm.register("postcode")} data-testid="input-postcode" />
         {dialogForm.formState.errors.postcode && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.postcode.message}</p>
         )}
@@ -194,44 +190,17 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         <div className="mb-4">
           <Label className="mb-2 block">Date From</Label>
           <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_from_day")}
-              onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
-            >
-              <SelectTrigger data-testid="select-date-from-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {DAYS.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={dialogForm.watch("date_from_day")} onValueChange={(value) => dialogForm.setValue("date_from_day", value)}>
+              <SelectTrigger data-testid="select-date-from-day"><SelectValue placeholder="Choose Day" /></SelectTrigger>
+              <SelectContent>{DAYS.map((day) => (<SelectItem key={day} value={day}>{day}</SelectItem>))}</SelectContent>
             </Select>
-            <Select
-              value={dialogForm.watch("date_from_month")}
-              onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
-            >
-              <SelectTrigger data-testid="select-date-from-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTHS.map((month) => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={dialogForm.watch("date_from_month")} onValueChange={(value) => dialogForm.setValue("date_from_month", value)}>
+              <SelectTrigger data-testid="select-date-from-month"><SelectValue placeholder="Choose Month" /></SelectTrigger>
+              <SelectContent>{MONTHS.map((month) => (<SelectItem key={month} value={month}>{month}</SelectItem>))}</SelectContent>
             </Select>
-            <Select
-              value={dialogForm.watch("date_from_year")}
-              onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
-            >
-              <SelectTrigger data-testid="select-date-from-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {YEARS.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={dialogForm.watch("date_from_year")} onValueChange={(value) => dialogForm.setValue("date_from_year", value)}>
+              <SelectTrigger data-testid="select-date-from-year"><SelectValue placeholder="Choose Year" /></SelectTrigger>
+              <SelectContent>{YEARS.map((year) => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
             </Select>
           </div>
           {dialogForm.formState.errors.date_from_day && (
@@ -241,44 +210,17 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         <div className="mb-4">
           <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
           <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_to_day")}
-              onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
-            >
-              <SelectTrigger data-testid="select-date-to-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {DAYS.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={dialogForm.watch("date_to_day")} onValueChange={(value) => dialogForm.setValue("date_to_day", value)}>
+              <SelectTrigger data-testid="select-date-to-day"><SelectValue placeholder="Choose Day" /></SelectTrigger>
+              <SelectContent>{DAYS.map((day) => (<SelectItem key={day} value={day}>{day}</SelectItem>))}</SelectContent>
             </Select>
-            <Select
-              value={dialogForm.watch("date_to_month")}
-              onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
-            >
-              <SelectTrigger data-testid="select-date-to-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTHS.map((month) => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={dialogForm.watch("date_to_month")} onValueChange={(value) => dialogForm.setValue("date_to_month", value)}>
+              <SelectTrigger data-testid="select-date-to-month"><SelectValue placeholder="Choose Month" /></SelectTrigger>
+              <SelectContent>{MONTHS.map((month) => (<SelectItem key={month} value={month}>{month}</SelectItem>))}</SelectContent>
             </Select>
-            <Select
-              value={dialogForm.watch("date_to_year")}
-              onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
-            >
-              <SelectTrigger data-testid="select-date-to-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {YEARS.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select value={dialogForm.watch("date_to_year")} onValueChange={(value) => dialogForm.setValue("date_to_year", value)}>
+              <SelectTrigger data-testid="select-date-to-year"><SelectValue placeholder="Choose Year" /></SelectTrigger>
+              <SelectContent>{YEARS.map((year) => (<SelectItem key={year} value={year}>{year}</SelectItem>))}</SelectContent>
             </Select>
           </div>
         </div>
@@ -320,6 +262,8 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
     </div>
   );
 }
+
+// ─── Main Page ───────────────────────────────────────────────────────
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -328,59 +272,114 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
-    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      // If we have applicationId in store but not in URL, update URL to include it
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
-      router.replace(newUrl);
     }
-  }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
+  }, [searchParams, draftSnap.currentApplicationId]);
+
   const form = useForm({
+    resolver: zodResolver(contactFormSchema),
     defaultValues: {
+      // Contact details
+      phone: "",
+      mobile: "",
+      email: "",
+      emergency_contact_name: "",
+      emergency_contact_phone: "",
+      // Address fields
       all_same_address: "no",
       address_history: [],
     },
   });
+
   const addressHistory = form.watch("address_history") || [];
+
+  // Load saved contact details
   useEffect(() => {
-    const savedData = draftSnap.draft?.partner_addresses || {};
-    if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
-      const formData = {
-        all_same_address: savedData.all_same_address || "no",
-        address_history: savedData.address_history || [],
-      };
-      form.reset(formData);
-      // Force update pattern (though less critical for arrays, good for radio)
-      setTimeout(() => {
-        form.setValue("all_same_address", savedData.all_same_address || "no");
-      }, 0);
+    const savedData = draftSnap.draft?.temporary_work_contact_details || {};
+    if (Object.keys(savedData).length > 0) {
+      Object.keys(savedData).forEach((key) => {
+        if (savedData[key] !== undefined && savedData[key] !== null) {
+          form.setValue(key, savedData[key]);
+        }
+      });
     }
-  }, [draftSnap.draft?.partner_addresses, form]);
+  }, [draftSnap.draft?.temporary_work_contact_details, form]);
+
+  // Load saved address data
+  useEffect(() => {
+    const savedData = draftSnap.draft?.temporary_work_addresses || {};
+    if (Object.keys(savedData).length > 0) {
+      if (savedData.all_same_address) {
+        form.setValue("all_same_address", savedData.all_same_address);
+      }
+      if (savedData.address_history) {
+        form.setValue("address_history", savedData.address_history);
+      }
+    }
+  }, [draftSnap.draft?.temporary_work_addresses, form]);
+
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      await draftStore.saveSectionData("partner_addresses", data);
-      await draftStore.markPageComplete(`${visaType}/all-applicants/addresses`, null, "partner_addresses");
+      // Save contact details (phone, mobile, email, emergency) separately
+      const contactData = {
+        phone: data.phone,
+        mobile: data.mobile,
+        email: data.email,
+        emergency_contact_name: data.emergency_contact_name,
+        emergency_contact_phone: data.emergency_contact_phone,
+      };
+      await draftStore.saveSectionData("temporary_work_contact_details", contactData);
+      await draftStore.markPageComplete(`${visaType}/main-applicant/contact-details`, null, "temporary_work_contact_details");
+
+      // Save address data separately
+      const addressData = {
+        all_same_address: data.all_same_address,
+        address_history: data.address_history,
+      };
+      await draftStore.saveSectionData("temporary_work_addresses", addressData);
+      await draftStore.markPageComplete(`${visaType}/main-applicant/addresses`, null, "temporary_work_addresses");
+
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
     }
   };
+
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
     if (prev) router.push(prev);
   };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const values = form.getValues();
-      const result = await draftStore.saveSectionData("partner_addresses", values);
-      if (result.success) {
+
+      // Save contact details
+      const contactData = {
+        phone: values.phone,
+        mobile: values.mobile,
+        email: values.email,
+        emergency_contact_name: values.emergency_contact_name,
+        emergency_contact_phone: values.emergency_contact_phone,
+      };
+      const contactResult = await draftStore.saveSectionData("temporary_work_contact_details", contactData);
+
+      // Save address data
+      const addressData = {
+        all_same_address: values.all_same_address,
+        address_history: values.address_history,
+      };
+      const addressResult = await draftStore.saveSectionData("temporary_work_addresses", addressData);
+
+      if (contactResult.success && addressResult.success) {
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully",
@@ -396,17 +395,81 @@ export default function Page() {
       setIsSaving(false);
     }
   };
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Addresses</CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            In this section you are to provide the residential history of the following included Applicants:
-          </p>
-        </CardHeader>
-        <CardContent>
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Contact Details</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Provide contact and address information for the main applicant.
+        </p>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* ── Section 1: Contact Information ──────────────────── */}
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <h2 className="text-xl font-semibold text-foreground">Contact Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  {...form.register("phone")}
+                  placeholder="Enter phone number"
+                  data-testid="input-phone"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Mobile Number</Label>
+                <Input
+                  id="mobile"
+                  {...form.register("mobile")}
+                  placeholder="Enter mobile number"
+                  data-testid="input-mobile"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                {...form.register("email")}
+                placeholder="Enter email address"
+                data-testid="input-email"
+              />
+              {form.formState.errors.email && (
+                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+              )}
+            </div>
+            <div className="border-t border-border pt-6 mt-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Emergency Contact</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_name">Name</Label>
+                  <Input
+                    id="emergency_contact_name"
+                    {...form.register("emergency_contact_name")}
+                    placeholder="Enter emergency contact name"
+                    data-testid="input-emergency-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_phone">Phone Number</Label>
+                  <Input
+                    id="emergency_contact_phone"
+                    {...form.register("emergency_contact_phone")}
+                    placeholder="Enter emergency contact phone"
+                    data-testid="input-emergency-phone"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section 2: Address History ──────────────────────── */}
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <h2 className="text-xl font-semibold text-foreground">Address History</h2>
             <div className="space-y-2">
               <Label>Does every applicant who is to be included in this application currently live at the same residential address?</Label>
               <RadioGroup
@@ -423,8 +486,7 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Address History</h3>
+            <div className="mt-4">
               <RepeaterTable
                 data={addressHistory}
                 columns={[
@@ -452,14 +514,16 @@ export default function Page() {
                 testIdPrefix="address"
               />
             </div>
-            <FormNavigation
-              onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
-              onSave={handleSave}
-              nextLabel="Continue"
-              loading={isSaving}
-            />
           </div>
+
+          {/* ── Navigation ─────────────────────────────────────── */}
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            nextLabel="Continue"
+            loading={isSaving}
+          />
         </form>
       </CardContent>
     </Card>
