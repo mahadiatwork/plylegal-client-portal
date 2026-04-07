@@ -43,6 +43,8 @@ const formSchema = z.object({
   health_conditions_list: z.array(z.string()).optional(),
   medical_assistance_details: z.array(z.any()).optional(),
   health_insurance_details: z.array(z.any()).optional(),
+  visited_outside_passport_country: z.enum(["yes", "no"]).optional(),
+  visited_outside_details: z.array(z.any()).optional(),
 });
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -1227,6 +1229,130 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
+function VisitedOutsideDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
+  const dialogSchema = z.object({
+    applicant_name: z.string().min(1, "Name of applicant is required"),
+    country: z.string().min(1, "Country is required"),
+    date_from_day: z.string().optional(),
+    date_from_month: z.string().optional(),
+    date_from_year: z.string().optional(),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
+  });
+  const dialogForm = useForm({
+    resolver: zodResolver(dialogSchema),
+    defaultValues:
+      editingRow || {
+        applicant_name: "",
+        country: "",
+        date_from_day: "",
+        date_from_month: "",
+        date_from_year: "",
+        date_to_day: "",
+        date_to_month: "",
+        date_to_year: "",
+      },
+  });
+  const handleSubmit = (data) => {
+    onSave({
+      ...data,
+      date_from_display:
+        data.date_from_day && data.date_from_month && data.date_from_year
+          ? `${data.date_from_day} ${data.date_from_month} ${data.date_from_year}`
+          : "",
+      date_to_display:
+        data.date_to_day && data.date_to_month && data.date_to_year
+          ? `${data.date_to_day} ${data.date_to_month} ${data.date_to_year}`
+          : "",
+    });
+    dialogForm.reset();
+  };
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <h3 className="text-base font-bold text-gray-900 mb-2">Visited Outside Passport Country</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter details of applicants who visited or lived outside their country of passport for more than 3 consecutive months in the last 5 years.
+      </p>
+      <div>
+        <Label className="mb-2 block">
+          Name of Applicant <span className="text-red-600">*</span>
+        </Label>
+        <Select
+          value={dialogForm.watch("applicant_name")}
+          onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Applicant" />
+          </SelectTrigger>
+          <SelectContent>
+            {applicantOptions.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Country</Label>
+        <Select
+          value={dialogForm.watch("country")}
+          onValueChange={(value) => dialogForm.setValue("country", value)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select value={dialogForm.watch("date_from_day")} onValueChange={(v) => dialogForm.setValue("date_from_day", v)}>
+            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_from_month")} onValueChange={(v) => dialogForm.setValue("date_from_month", v)}>
+            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectContent>{MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_from_year")} onValueChange={(v) => dialogForm.setValue("date_from_year", v)}>
+            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div>
+        <Label className="mb-2 block">Date To <span className="text-gray-400 font-normal">(leave blank if ongoing)</span></Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select value={dialogForm.watch("date_to_day")} onValueChange={(v) => dialogForm.setValue("date_to_day", v)}>
+            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_to_month")} onValueChange={(v) => dialogForm.setValue("date_to_month", v)}>
+            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectContent>{MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={dialogForm.watch("date_to_year")} onValueChange={(v) => dialogForm.setValue("date_to_year", v)}>
+            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">Ok</Button>
+      </DialogFooter>
+    </div>
+  );
+}
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
@@ -1314,9 +1440,11 @@ export default function Page() {
       tuberculosis_details: [],
       close_contact_tb: "no",
       tuberculosis_exposure_details: [],
-      health_conditions_list: [], // Keeping for backward compatibility if needed, or remove if fully deprecated
+      health_conditions_list: [],
       medical_assistance_details: [],
       health_insurance_details: [],
+      visited_outside_passport_country: "no",
+      visited_outside_details: [],
     },
   });
   useEffect(() => {
@@ -1725,8 +1853,8 @@ export default function Page() {
             )}
             <div className="space-y-2">
               <Label>
-                Does any applicant intend to be in a Classroom situation for more than 3 months in their usual country
-                of passport in the last 5 years?
+                Does any applicant intend to be in a Classroom situation for more than 3 months (as a student, teacher,
+                lecturer, or observer, etc) in Australia?
               </Label>
               <RadioGroup
                 value={form.watch("intends_classroom")}
@@ -2122,6 +2250,74 @@ export default function Page() {
                 </div>
               )}
             </div>
+            {/* New question: visited outside passport country for 3+ months */}
+            <div className="space-y-2 pt-4">
+              <Label>
+                In the last five years, has any applicant visited, or lived, outside their country of passport, for more
+                than 3 consecutive months?
+              </Label>
+              <RadioGroup
+                value={form.watch("visited_outside_passport_country")}
+                onValueChange={(value) => form.setValue("visited_outside_passport_country", value)}
+              >
+                <div className="flex gap-4">
+                  {["yes", "no"].map((option) => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option} id={`outside-passport-${option}`} />
+                      <Label htmlFor={`outside-passport-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            </div>
+            {form.watch("visited_outside_passport_country") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of applicants who have visited or lived outside their country of passport for more than
+                  3 consecutive months in the last 5 years.
+                </p>
+                <RepeaterTable
+                  data={form.watch("visited_outside_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "country", label: "Country" },
+                    { key: "date_from_display", label: "Date From" },
+                    { key: "date_to_display", label: "Date To" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("visited_outside_details") || [];
+                    form.setValue("visited_outside_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("visited_outside_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("visited_outside_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("visited_outside_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("visited_outside_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <VisitedOutsideDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="visited-outside"
+                />
+              </div>
+            )}
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}

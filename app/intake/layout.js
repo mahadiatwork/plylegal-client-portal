@@ -9,9 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, Menu, X, ArrowLeft, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { getIntakeRoutes, calculateProgress } from "@/lib/routes";
+import { getIntakeRoutes, calculateProgress, PROFILE_SUBPAGES } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
@@ -21,6 +22,12 @@ export default function IntakeLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
+
+  // Active profileId from URL
+  const profileIdFromUrl = searchParams.get('profileId');
+
+  // Profiles from draft
+  const profiles = draftSnap.draft?.profiles || [];
 
   // Prevent hydration mismatch by only rendering interactive elements after mount
   useEffect(() => {
@@ -229,7 +236,131 @@ export default function IntakeLayout({ children }) {
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
-                  
+
+                  // ── For temporary-work: replace Main Applicant / Spouse / Children with per-profile sections ──
+                  // Only suppress the static sections AFTER profiles have been added. Before that, show them normally.
+                  const isProfileSection = visaType === 'temporary-work' &&
+                    profiles.length > 0 && (
+                      route.href.includes('/main-applicant') ||
+                      route.href.includes('/spouse-partner') ||
+                      route.href === '/intake/temporary-work/children'
+                    );
+
+                  if (isProfileSection) return null; // replaced by dynamic profile sections below
+
+                  // ── Profile sections injection point (after Application Profile route) ──
+                  if (visaType === 'temporary-work' && route.href === '/intake/temporary-work/profile' && profiles.length > 0) {
+                    return (
+                      <div key="profile-routes">
+                        {/* Application Profile nav item */}
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            const appId = draftSnap.currentApplicationId;
+                            const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
+                            router.push(href);
+                            setSidebarOpen(false);
+                          }}
+                          className={cn(
+                            "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
+                            isRouteActive(route.href) && "bg-primary/20 font-semibold",
+                            isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                          )}
+                        >
+                          {isRouteCompleted(route.href) && <Check className="w-4 h-4 mr-2" />}
+                          {route.title}
+                        </Button>
+
+                        {/* Per-profile sections */}
+                        {profiles.map((profile) => {
+                          const profileKey = profile.id;
+                          const isProfileExpanded = isSectionExpanded(`profile-${profileKey}`);
+                          const profileName = `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Unnamed';
+                          const relLabel = {
+                            main_applicant: 'Main Applicant',
+                            spouse: 'Spouse/Partner',
+                            child: 'Child',
+                            other: 'Other',
+                          }[profile.relationship] || profile.relationship;
+
+                          // Check if any subpage for this profile is currently active
+                          const isThisProfileActive = profileIdFromUrl === profileKey;
+
+                          return (
+                            <Collapsible
+                              key={`profile-${profileKey}`}
+                              open={isProfileExpanded || isThisProfileActive}
+                              onOpenChange={() => toggleSection(`profile-${profileKey}`)}
+                            >
+                              <div className="space-y-1">
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className={cn(
+                                      "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
+                                      isThisProfileActive && "bg-primary/20"
+                                    )}
+                                    data-testid={`nav-profile-${profileKey}`}
+                                  >
+                                    <span className="flex items-center gap-2 text-left">
+                                      <span className="flex-1 truncate">
+                                        <span className="block text-xs text-sidebar-foreground/60">{relLabel}</span>
+                                        <span className="font-medium">{profileName}</span>
+                                      </span>
+                                    </span>
+                                    <ChevronDown
+                                      className={cn(
+                                        "w-4 h-4 transition-transform duration-200 flex-shrink-0",
+                                        (isProfileExpanded || isThisProfileActive) && "transform rotate-180"
+                                      )}
+                                    />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="overflow-hidden">
+                                  <ul className="ml-6 mt-1 mb-1 space-y-1">
+                                    {PROFILE_SUBPAGES.map((subpage) => {
+                                      const isActive = isRouteActive(subpage.href) && profileIdFromUrl === profileKey;
+                                      const completionKey = `${visaType}/main-applicant/${subpage.href.split('/main-applicant/')[1]}__${profileKey}`;
+                                      const isComplete = draftSnap.completionStatus?.[completionKey] === true;
+                                      return (
+                                        <li key={`${subpage.href}-${profileKey}`} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              const appId = draftSnap.currentApplicationId;
+                                              const url = new URLSearchParams();
+                                              if (appId) url.set('applicationId', appId);
+                                              url.set('profileId', profileKey);
+                                              router.push(`${subpage.href}?${url.toString()}`);
+                                              setSidebarOpen(false);
+                                              draftStore.setActiveProfile(profileKey);
+                                            }}
+                                            className={cn(
+                                              "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                              isActive
+                                                ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
+                                                : "text-sidebar-foreground",
+                                              isComplete && !isActive && "text-sidebar-foreground/70"
+                                            )}
+                                            data-testid={`nav-sub-${subpage.href}-${profileKey}`}
+                                          >
+                                            {isComplete && <Check className="w-3 h-3 mr-2" />}
+                                            {subpage.title}
+                                          </Button>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </CollapsibleContent>
+                              </div>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
                   if (hasSubpages) {
                     return (
                       <Collapsible

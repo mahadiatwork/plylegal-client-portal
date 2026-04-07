@@ -84,10 +84,10 @@ export default function SubmitPage() {
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">
-          Review & Submit
+          Submit Questionnaire
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Review your application before final submission
+          Please review your answers before submitting your questionnaire to your migration agent.
         </p>
       </CardHeader>
       <CardContent>
@@ -120,19 +120,19 @@ export default function SubmitPage() {
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>Review all sections to ensure accuracy</span>
+                <span>By clicking <strong>Submit</strong>, the information you have provided in this questionnaire will be sent to your migration agent for review.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>Make sure all required documents are uploaded</span>
+                <span>Once submitted, your migration agent will review your responses and contact you if additional information is required.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>Once submitted, you may need to contact support to make changes</span>
+                <span>Please ensure all details provided are accurate and complete before proceeding.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>You will receive a confirmation email after submission</span>
+                <span>Incomplete or incorrect information may result in delays or refusal of your visa application.</span>
               </li>
             </ul>
           </div>
@@ -141,7 +141,7 @@ export default function SubmitPage() {
           <FormNavigation
             onPrev={handlePrevious}
             onNext={handleSubmit}
-            nextLabel={isSubmitting ? "Submitting..." : "Submit Application"}
+            nextLabel={isSubmitting ? "Submitting..." : "Submit Questionnaire"}
             disabledNext={!isFullyComplete || isSubmitting}
             loading={isSubmitting}
             onSave={null} // No save button

@@ -456,6 +456,7 @@ export default function Page() {
     defaultValues: {
       has_aus_visa_history: "",
       visa_history: [],
+      visa_grant_number: "",
     },
   });
   const hasAusVisaHistory = form.watch("has_aus_visa_history");
@@ -466,6 +467,7 @@ export default function Page() {
       const formData = {
         has_aus_visa_history: savedData.has_aus_visa_history || "",
         visa_history: savedData.visa_history || [],
+        visa_grant_number: savedData.visa_grant_number || "",
       };
       form.reset(formData);
       setTimeout(() => {
@@ -512,9 +514,9 @@ export default function Page() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">All Applicants' Visas</CardTitle>
+        <CardTitle className="text-2xl font-semibold">All Applicants&apos; Visas</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          In this section you are to provide the visa history of the following included Applicants.
+          In this section, provide details of any Australian visa grant numbers held by any applicants included in this application.
         </p>
       </CardHeader>
       <CardContent>
@@ -522,7 +524,7 @@ export default function Page() {
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             {/* Main question */}
             <div className="space-y-2">
-              <Label>Has the main applicant ever previously applied for or held a Visa for Australia?</Label>
+              <Label>Do any family members included in this application have an Australian visa grant number from a previous visa application?</Label>
               <RadioGroup
                 value={hasAusVisaHistory}
                 onValueChange={(value) => form.setValue("has_aus_visa_history", value)}
@@ -537,39 +539,18 @@ export default function Page() {
                 </div>
               </RadioGroup>
             </div>
-            {/* Visa history table (shown if Yes) */}
+            {/* Grant number field (shown if Yes) */}
             {hasAusVisaHistory === "yes" && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Visa for main applicant</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Enter details of all Australian Visas applied for or held by this person
+              <div className="space-y-2">
+                <Label htmlFor="visa_grant_number">Visa Grant Number</Label>
+                <p className="text-sm text-gray-500">
+                  Please provide the visa grant number(s) for any included family members who hold an Australian visa.
                 </p>
-                <RepeaterTable
-                  data={visaHistory}
-                  columns={[
-                    { key: "visa_country", label: "Country" },
-                    { key: "visa_type", label: "Type" },
-                    { key: "linked_passport", label: "Linked Passport" },
-                    { key: "decision_date_year", label: "Decision Date" },
-                    { key: "outcome", label: "Outcome" },
-                    { key: "cancelled", label: "Cancelled" },
-                  ]}
-                  onAdd={(newRow) => {
-                    const updated = [...visaHistory, newRow];
-                    form.setValue("visa_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  onEdit={(index, updatedRow) => {
-                    const updated = [...visaHistory];
-                    updated[index] = updatedRow;
-                    form.setValue("visa_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  onDelete={(index) => {
-                    const updated = visaHistory.filter((_, i) => i !== index);
-                    form.setValue("visa_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  DialogComponent={VisaDialog}
-                  addButtonText="Add Visa"
-                  testIdPrefix="visa"
+                <Input
+                  id="visa_grant_number"
+                  {...form.register("visa_grant_number")}
+                  placeholder="e.g. 1234567890"
+                  data-testid="input-visa-grant-number"
                 />
               </div>
             )}

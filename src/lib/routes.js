@@ -113,6 +113,7 @@ export const PROTECTION_VISA_ROUTES = [
 // Temporary Work Visa Routes (482 visa)
 export const TEMPORARY_WORK_VISA_ROUTES = [
   { href: "/intake/temporary-work/start", title: "Getting Started" },
+  { href: "/intake/temporary-work/profile", title: "Application Profile" },
   {
     href: "/intake/temporary-work/main-applicant/details",
     title: "Main Applicant",
@@ -149,6 +150,18 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     ],
   },
   { href: "/intake/temporary-work/submit", title: "Submit" },
+];
+
+// Per-profile sub-pages (shared definition used by sidebar + routing)
+export const PROFILE_SUBPAGES = [
+  { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+  { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
+  { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
+  { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
+  { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
+  { href: "/intake/temporary-work/main-applicant/education", title: "Education" },
+  { href: "/intake/temporary-work/main-applicant/skills", title: "Skills" },
+  { href: "/intake/temporary-work/main-applicant/language", title: "Language" },
 ];
 
 // Extract visa type from pathname

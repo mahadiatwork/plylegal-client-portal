@@ -200,7 +200,7 @@ export default function QuestionnairePage() {
                     </>
                   ) : (
                     draftSnap.draft && Object.keys(draftSnap.draft).length > 0
-                      ? "Continue Questionnaire"
+                      ? "Continue"
                       : "Start Questionnaire"
                   )}
                 </Button>

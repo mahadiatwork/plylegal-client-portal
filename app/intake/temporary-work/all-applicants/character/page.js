@@ -1876,14 +1876,28 @@ export default function Page() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">All Applicants' Character</CardTitle>
+        <CardTitle className="text-2xl font-semibold">All Applicants&apos; Character</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Provide character information for all applicants.
+          The following questions must be answered for all persons included in this application. Please answer each question carefully.
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            {/* Preliminary Declarations */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-semibold text-amber-900">Important Instructions</p>
+              <p className="text-sm text-amber-800">
+                The following questions relate to the character and background of all persons included in this application.
+                You must answer each question truthfully. If you are in doubt about whether to answer Yes or No to any question,
+                you should answer <strong>Yes</strong>. Failure to provide accurate information may affect the outcome of your visa application.
+              </p>
+              <p className="text-sm text-amber-800">
+                If you answer <strong>Yes</strong> to any question, you will be required to provide further details.
+                Answering Yes does not automatically mean your visa will be refused.
+              </p>
+            </div>
+
             {CHARACTER_QUESTIONS.map((q) => (
               <div key={q.key} className="space-y-3">
                 <Label>{q.label}</Label>

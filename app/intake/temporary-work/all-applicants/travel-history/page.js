@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
@@ -47,20 +48,10 @@ const COUNTRIES = [
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 const REASONS = [
-  "Visit Family",
-  "Visit Friends",
+  "Work, study or training",
   "Business",
-  "Holiday",
-  "Study",
-  "Work",
-  "Medical",
-  "Temporary Residence",
-  "Permanent Residence",
-  "Residence",
-  "Live There",
-  "Transit",
-  "Travel",
-  "Working Holiday",
+  "Visit Family",
+  "Holiday or Leisure",
   "Military Deployment",
   "Other",
 ];
@@ -90,6 +81,7 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
     country: z.string().min(1, "Country is required"),
     is_current_location: z.enum(["Yes", "No"]).optional(),
     reason_for_visit: z.string().min(1, "Reason is required"),
+    other_reason_details: z.string().optional(),
     legal_status: z.string().min(1, "Legal Status is required"),
     date_arrived_day: z.string().min(1, "Day is required"),
     date_arrived_month: z.string().min(1, "Month is required"),
@@ -122,6 +114,7 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
   };
 
   const isCurrentLocation = dialogForm.watch("is_current_location");
+  const reasonForVisit = dialogForm.watch("reason_for_visit");
 
   const handleApplicantSelect = (value) => {
     dialogForm.setValue("applicant_name", value);
@@ -233,6 +226,18 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_visit.message}</p>
         )}
       </div>
+
+      {/* Other reason details - shown when "Other" is selected */}
+      {reasonForVisit === "Other" && (
+        <div>
+          <Label className="mb-2 block">Please provide details</Label>
+          <Textarea
+            {...dialogForm.register("other_reason_details")}
+            rows={3}
+            placeholder="Please describe the reason for visiting this country..."
+          />
+        </div>
+      )}
 
       {/* Legal Status */}
       <div>

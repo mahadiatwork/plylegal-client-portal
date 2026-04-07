@@ -60,24 +60,18 @@ export default function Page() {
   const [showJsonData, setShowJsonData] = useState(false);
   const isSavingRef = useRef(false);
 
+  // ── Profile-awareness ──────────────────────────────────────────────────────
+  const profileId = searchParams.get('profileId');
+  const appId = searchParams.get('applicationId');
+  const activeProfile = profileId ? draftSnap.draft?.profiles?.find(p => p.id === profileId) : null;
+  // ──────────────────────────────────────────────────────────────────────────
+
   // Set application ID from URL params if available
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'details/page.js:64', message: 'Application ID useEffect triggered', data: { appIdFromUrl: searchParams.get('applicationId'), currentAppId: draftSnap.currentApplicationId, hasDraft: !!draftSnap.draft, hasTemporaryWorkDetails: !!draftSnap.draft?.temporary_work_details }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-    // #endregion
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'details/page.js:67', message: 'Loading draft - before loadDraft', data: { appId: appIdFromUrl, currentDraftKeys: Object.keys(draftSnap.draft || {}) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       draftStore.setApplicationId(appIdFromUrl);
-      draftStore.loadDraft(appIdFromUrl).then((loadedData) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'details/page.js:70', message: 'Draft loaded - after loadDraft', data: { hasLoadedData: !!loadedData, loadedDataKeys: Object.keys(loadedData || {}), hasTemporaryWorkDetails: !!loadedData?.temporary_work_details, temporaryWorkDetailsKeys: Object.keys(loadedData?.temporary_work_details || {}), birth_day: loadedData?.temporary_work_details?.birth_day, marital_status: loadedData?.temporary_work_details?.marital_status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-        // #endregion
-        console.log('📦 Data loaded from database:', loadedData);
-        console.log('📦 Temporary work details:', loadedData?.temporary_work_details);
-      });
+      draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
@@ -110,50 +104,27 @@ export default function Page() {
     },
   });
 
-  // Watch this for UI conditionals (instead of using useState)
-  const isMainApplicant = form.watch("is_main_applicant");
-
-  // Populate Form
+  // Populate Form — profile-aware
   useEffect(() => {
-    // 1. Safety Check: If saving, do not touch the form
     if (isSavingRef.current) return;
+    if (draftSnap.isLoading) return;
 
-    // 2. Wait for loading: If loading AND we have no data, wait.
-    // NOTE: This will now properly re-run when loading finishes because we added it to dependencies.
-    if (draftSnap.isLoading && !draftSnap.draft?.temporary_work_details) {
-      return;
-    }
+    // Resolve saved data: profile-specific first, fallback to legacy key
+    const savedData = profileId
+      ? (draftSnap.draft?.profiles_data?.[profileId]?.details || {})
+      : (draftSnap.draft?.temporary_work_details || {});
 
-    const savedData = draftSnap.draft?.temporary_work_details;
+    const monthsList = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+    const normalizeNumber = (val) => { if (!val) return ""; const num = Number(val); return isNaN(num) ? val : String(num); };
+    const normalizeMonth = (val) => { if (!val) return ""; if (!isNaN(Number(val))) return String(Number(val)); const idx = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase()); return idx !== -1 ? String(idx + 1) : val; };
+    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
 
-    // 3. Populate: Only if we have actual data
     if (savedData && Object.keys(savedData).length > 0) {
-
-      // --- NORMALIZATION HELPERS (Fixes the "07" vs "7" bug) ---
-      const monthsList = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-      ];
-
-      const normalizeNumber = (val) => {
-        if (!val) return "";
-        const num = Number(val);
-        return isNaN(num) ? val : String(num);
-      };
-
-      const normalizeMonth = (val) => {
-        if (!val) return "";
-        if (!isNaN(Number(val))) return String(Number(val));
-        const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
-        return monthIndex !== -1 ? String(monthIndex + 1) : val;
-      };
-
-      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
-
-      // 4. Prepare the clean data object
       const formData = {
         is_main_applicant: safeStr(savedData.is_main_applicant) || "yes",
-
         completing_family_name: safeStr(savedData.completing_family_name),
         completing_given_names: safeStr(savedData.completing_given_names),
         completing_preferred_names: safeStr(savedData.completing_preferred_names),
@@ -161,63 +132,75 @@ export default function Page() {
         completing_birth_day: normalizeNumber(savedData.completing_birth_day),
         completing_birth_month: normalizeMonth(savedData.completing_birth_month),
         completing_birth_year: safeStr(savedData.completing_birth_year),
-
         prefix: safeStr(savedData.prefix),
         family_name: safeStr(savedData.family_name),
         given_names: safeStr(savedData.given_names),
         preferred_names: safeStr(savedData.preferred_names),
         gender: safeStr(savedData.gender),
-
-        // APPLICANT BIRTH DATES (Normalized)
         birth_day: normalizeNumber(savedData.birth_day),
         birth_month: normalizeMonth(savedData.birth_month),
         birth_year: safeStr(savedData.birth_year),
-
         country_of_birth: safeStr(savedData.country_of_birth),
         city_of_birth: safeStr(savedData.city_of_birth),
         state_of_birth: safeStr(savedData.state_of_birth),
-
         marital_status: safeStr(savedData.marital_status),
         marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
         marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
         marital_status_date_year: safeStr(savedData.marital_status_date_year),
       };
-
-      // 5. Reset the form with the clean data
       form.reset(formData);
-
-      // 6. FORCE UPDATE (Safety Net): Explicitly set these fields to ensure UI catches up
-      // We wrap this in a tiny timeout to ensure the render cycle is complete
       setTimeout(() => {
         if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
         if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
         if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
         if (savedData.marital_status) form.setValue("marital_status", safeStr(savedData.marital_status));
       }, 0);
+    } else if (profileId && activeProfile) {
+      // Pre-fill from profile card data when no saved form data yet
+      form.reset({
+        is_main_applicant: activeProfile.relationship === 'main_applicant' ? 'yes' : 'no',
+        family_name: activeProfile.family_name || "",
+        given_names: activeProfile.given_names || "",
+        gender: activeProfile.gender || "",
+        birth_day: activeProfile.birth_day || "",
+        birth_month: activeProfile.birth_month || "",
+        birth_year: activeProfile.birth_year || "",
+        completing_family_name: "", completing_given_names: "", completing_preferred_names: "",
+        completing_gender: "", completing_birth_day: "", completing_birth_month: "", completing_birth_year: "",
+        prefix: "", preferred_names: "", country_of_birth: "", city_of_birth: "", state_of_birth: "",
+        marital_status: "", marital_status_date_day: "", marital_status_date_month: "", marital_status_date_year: "",
+      });
     }
-
-    // DEPENDENCY ARRAY FIX:
-    // 1. Added draftSnap.isLoading (Critical!)
-    // 2. Added JSON.stringify to ensure it runs whenever the CONTENT changes, not just the reference.
   }, [
     draftSnap.isLoading,
-    JSON.stringify(draftSnap.draft?.temporary_work_details)
+    profileId,
+    JSON.stringify(profileId
+      ? draftSnap.draft?.profiles_data?.[profileId]?.details
+      : draftSnap.draft?.temporary_work_details
+    ),
   ]);
 
   const onSubmit = async (data) => {
-    // NOTE: Saving is now handled by the "Save Draft" button only
-    // Continue button just navigates without saving
-    // await draftStore.saveSectionData("temporary_work_details", data);
-    // console.log("📦 Data saved to database:", data);
-    // await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
-
+    const urlParams = new URLSearchParams();
+    if (appId) urlParams.set('applicationId', appId);
+    if (profileId) urlParams.set('profileId', profileId);
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) router.push(next);
+    if (next) {
+      const base = next.split('?')[0];
+      const nextWithProfile = urlParams.toString() ? `${base}?${urlParams.toString()}` : next;
+      router.push(nextWithProfile);
+    }
   };
 
   const handlePrevious = () => {
+    const urlParams = new URLSearchParams();
+    if (appId) urlParams.set('applicationId', appId);
+    if (profileId) urlParams.set('profileId', profileId);
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (prev) router.push(prev);
+    if (prev) {
+      const base = prev.split('?')[0];
+      router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);
+    }
   };
 
   const handleSave = async () => {
@@ -225,20 +208,18 @@ export default function Page() {
     isSavingRef.current = true;
     try {
       const values = form.getValues();
-      console.log("📦 Data saved to database:", values);
-      const result = await draftStore.saveSectionData("temporary_work_details", values);
-      if (result.success) {
-        toast({
-          title: "Draft saved",
-          description: "Your changes have been saved successfully",
-        });
-
+      let result;
+      if (profileId) {
+        result = await draftStore.saveProfileSectionData(profileId, "details", values);
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to save draft",
-          variant: "destructive",
-        });
+        result = await draftStore.saveSectionData("temporary_work_details", values);
+        await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+      }
+      if (result.success) {
+        toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
       }
     } finally {
       setIsSaving(false);
@@ -282,20 +263,27 @@ export default function Page() {
     marital_status: currentFormValues.marital_status || savedDetails?.marital_status,
   };
 
-
+  // Watch is_main_applicant for conditional rendering
+  const isMainApplicant = form.watch("is_main_applicant");
 
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Main Applicant's Details</CardTitle>
+        <CardTitle className="text-2xl font-semibold">
+          {activeProfile
+            ? `Details — ${activeProfile.given_names} ${activeProfile.family_name}`
+            : "Main Applicant's Details"}
+        </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           In the Main Applicant section, please provide details about the person who is intending to be the primary applicant.
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Main Applicant's Personal Details Section */}
-          <div className="space-y-6 border-gray-200">
+          
+          {/* Personal Information */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Personal Information</h3>
             <div>
               <Label>Family Name</Label>
               <Input {...form.register("family_name")} data-testid="input-family-name" />
@@ -309,14 +297,6 @@ export default function Page() {
               <Input {...form.register("given_names")} data-testid="input-given-names" />
               {form.formState.errors.given_names?.message && (
                 <p className="text-sm text-red-600 mt-1">{form.formState.errors.given_names.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label>Preferred Names</Label>
-              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
-              {form.formState.errors.preferred_names?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
               )}
             </div>
 
@@ -405,30 +385,6 @@ export default function Page() {
             </div>
 
             <div>
-              <Label>Country of Birth</Label>
-              <Input {...form.register("country_of_birth")} placeholder="Choose Country" data-testid="input-country-of-birth" />
-              {form.formState.errors.country_of_birth?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.country_of_birth.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label>City or Town of Birth</Label>
-              <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
-              {form.formState.errors.city_of_birth?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.city_of_birth.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label>State or Province of Birth</Label>
-              <Input {...form.register("state_of_birth")} data-testid="input-state-of-birth" />
-              {form.formState.errors.state_of_birth?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
-              )}
-            </div>
-
-            <div>
               <Label>What is your marital status?</Label>
               <Select
                 value={form.watch("marital_status") || ""}
@@ -511,6 +467,46 @@ export default function Page() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Other names/spellings */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Other names/spellings</h3>
+            <div>
+              <Label>Preferred Names</Label>
+              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
+              {form.formState.errors.preferred_names?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Birthplace Information */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Birthplace Information</h3>
+            <div>
+              <Label>Country of Birth</Label>
+              <Input {...form.register("country_of_birth")} placeholder="Choose Country" data-testid="input-country-of-birth" />
+              {form.formState.errors.country_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.country_of_birth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>City or Town of Birth</Label>
+              <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
+              {form.formState.errors.city_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.city_of_birth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>State or Province of Birth</Label>
+              <Input {...form.register("state_of_birth")} data-testid="input-state-of-birth" />
+              {form.formState.errors.state_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
+              )}
+            </div>
           </div>
 
           {/* Form Navigation */}

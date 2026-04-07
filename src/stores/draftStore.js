@@ -11,15 +11,116 @@ export const draftStore = proxy({
   draft: {},
   completionStatus: {}, // Track which pages are completed: { "start": true, "main-applicant/details": true, ... }
   currentApplicationId: null, // Track which application this draft belongs to
+  activeProfileId: null, // Currently selected profile in the questionnaire
   shouldPrefill: false,
   lastSaved: null,
   isLoading: false,
   isSaving: false,
 
+  // ─── Profile Helpers ───────────────────────────────────────────────────────
+
+  /** Return all profiles, defaulting to empty array */
+  getProfiles() {
+    return this.draft?.profiles || [];
+  },
+
+  /** Set the active profile being edited */
+  setActiveProfile(profileId) {
+    this.activeProfileId = profileId;
+  },
+
+  /** Get a single profile by id */
+  getProfile(profileId) {
+    return (this.draft?.profiles || []).find(p => p.id === profileId) || null;
+  },
+
+  /** Add a new profile and persist */
+  async addProfile(profile) {
+    const newProfile = {
+      id: profile.id || `profile_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      ...profile,
+    };
+    const profiles = [...(this.draft?.profiles || []), newProfile];
+    const newDraft = { ...this.draft, profiles };
+    this.draft = newDraft;
+    await db.saveDraft(this.draft, this.currentApplicationId);
+    return newProfile;
+  },
+
+  /** Update an existing profile by id */
+  async updateProfile(profileId, updates) {
+    const profiles = (this.draft?.profiles || []).map(p =>
+      p.id === profileId ? { ...p, ...updates } : p
+    );
+    const newDraft = { ...this.draft, profiles };
+    this.draft = newDraft;
+    await db.saveDraft(this.draft, this.currentApplicationId);
+  },
+
+  /** Delete a profile and its data */
+  async deleteProfile(profileId) {
+    const profiles = (this.draft?.profiles || []).filter(p => p.id !== profileId);
+    const profiles_data = { ...(this.draft?.profiles_data || {}) };
+    delete profiles_data[profileId];
+    const newDraft = { ...this.draft, profiles, profiles_data };
+    this.draft = newDraft;
+    await db.saveDraft(this.draft, this.currentApplicationId);
+  },
+
+  /** Get section data for a specific profile */
+  getProfileSectionData(profileId, section) {
+    return this.draft?.profiles_data?.[profileId]?.[section] || {};
+  },
+
+  /** Save section data for a specific profile */
+  async saveProfileSectionData(profileId, section, data) {
+    try {
+      this.isSaving = true;
+      const appId = this.currentApplicationId;
+      if (!appId) {
+        this.isSaving = false;
+        return { success: false, error: 'Application ID required' };
+      }
+
+      const newDraft = JSON.parse(JSON.stringify(this.draft));
+      if (!newDraft.profiles_data) newDraft.profiles_data = {};
+      if (!newDraft.profiles_data[profileId]) newDraft.profiles_data[profileId] = {};
+      newDraft.profiles_data[profileId][section] = data;
+      this.draft = newDraft;
+
+      const result = await db.saveDraft(this.draft, appId);
+      if (result.success) {
+        this.lastSaved = new Date().toISOString();
+        this.isSaving = false;
+        return { success: true };
+      }
+      this.isSaving = false;
+      return { success: false, error: result.error };
+    } catch (error) {
+      this.isSaving = false;
+      return { success: false, error: error.message };
+    }
+  },
+
+  /** Mark a per-profile page as complete */
+  async markProfilePageComplete(profileId, pageKey, applicationId) {
+    const fullKey = `${pageKey}__${profileId}`;
+    return this.markPageComplete(fullKey, applicationId, false);
+  },
+
+  /** Check if a per-profile page is complete */
+  isProfilePageComplete(profileId, pageKey) {
+    const fullKey = `${pageKey}__${profileId}`;
+    return this.completionStatus[fullKey] === true;
+  },
+
+  // ─── End Profile Helpers ───────────────────────────────────────────────────
+
   // Set the current application context
   setApplicationId(appId) {
     this.currentApplicationId = appId;
   },
+
 
   // Actions
   async saveDraft(data, applicationId) {

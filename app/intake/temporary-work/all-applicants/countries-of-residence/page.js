@@ -69,7 +69,6 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
         date_to_day: z.string().optional(),
         date_to_month: z.string().optional(),
         date_to_year: z.string().optional(),
-        total_time: z.string().optional(),
     });
 
     const dialogForm = useForm({
@@ -88,7 +87,6 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
             date_to_day: "",
             date_to_month: "",
             date_to_year: "",
-            total_time: "",
         },
     });
 
@@ -292,19 +290,6 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                 </div>
             </div>
 
-            {/* Total Time Spent */}
-            <div>
-                <Label htmlFor="total_time" className="mb-2 block">
-                    Total Time Spent in This Country <span className="text-gray-400 font-normal">(e.g. 2 years 4 months)</span>
-                </Label>
-                <Input
-                    id="total_time"
-                    {...dialogForm.register("total_time")}
-                    placeholder="e.g. 2 years 4 months"
-                    data-testid="input-total-time"
-                />
-            </div>
-
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
                     Cancel
@@ -470,7 +455,6 @@ export default function Page() {
                                             ? formatDate(row.date_to_day, row.date_to_month, row.date_to_year)
                                             : "Ongoing",
                                 },
-                                { key: "total_time", label: "Total Time" },
                             ]}
                             onAdd={(newRow) => {
                                 const updated = [...residenceRecords, newRow];
