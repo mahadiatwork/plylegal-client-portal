@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,15 +8,19 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import {
+  getVisaTypeFromPath,
+  getNextTemporaryWorkChildRoute,
+  getPreviousTemporaryWorkChildRoute,
+  getTemporaryWorkChildrenListHref,
+} from "@/lib/routes";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const formSchema = z.object({
+const childDetailsSchema = z.object({
   prefix: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
@@ -34,10 +38,11 @@ const formSchema = z.object({
   marital_status_date_year: z.string().optional(),
 });
 
-export default function Page() {
+export default function ChildDetailsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const params = useParams();
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
@@ -45,26 +50,27 @@ export default function Page() {
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
 
-  const profileId = searchParams.get("profileId");
+  const childId = typeof params?.childId === "string" ? params.childId : null;
+  const profileId = childId;
   const appId = searchParams.get("applicationId");
-  const activeProfile = profileId ? draftSnap.draft?.profiles?.find((p) => p.id === profileId) : null;
-  const isSpouseProfile = activeProfile?.relationship === "spouse";
-
-  const spouseForDob =
-    profileId && draftSnap.draft?.profiles
-      ? draftSnap.draft.profiles.find((p) => p.id === profileId && p.relationship === "spouse")
+  const activeProfile =
+    childId && draftSnap.draft?.profiles
+      ? draftSnap.draft.profiles.find((p) => p.id === childId) ?? null
       : null;
-  const spouseProfileDobSig = spouseForDob
-    ? `${spouseForDob.birth_day ?? ""}|${spouseForDob.birth_month ?? ""}|${spouseForDob.birth_year ?? ""}`
+
+  const childForDob =
+    childId && draftSnap.draft?.profiles
+      ? draftSnap.draft.profiles.find((p) => p.id === childId && p.relationship === "child")
+      : null;
+  const childProfileDobSig = childForDob
+    ? `${childForDob.birth_day ?? ""}|${childForDob.birth_month ?? ""}|${childForDob.birth_year ?? ""}`
     : "";
 
   const populateFormKey = useMemo(() => {
-    const savedSlice =
-      isSpouseProfile && profileId
-        ? draftSnap.draft?.profiles_data?.[profileId]?.details ?? null
-        : draftSnap.draft?.temporary_work_spouse_details ?? null;
-    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${String(isSpouseProfile)}|${JSON.stringify(savedSlice)}|${spouseProfileDobSig}`;
-  }, [draftSnap.isLoading, profileId, isSpouseProfile, draftSnap.draft, spouseProfileDobSig]);
+    const details =
+      profileId != null ? draftSnap.draft?.profiles_data?.[profileId]?.details ?? null : null;
+    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${childProfileDobSig}`;
+  }, [draftSnap.isLoading, profileId, draftSnap.draft, childProfileDobSig]);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get("applicationId");
@@ -74,8 +80,19 @@ export default function Page() {
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
+  useEffect(() => {
+    if (!childId) return;
+    if (!activeProfile || activeProfile.relationship !== "child") {
+      router.replace(
+        appId
+          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(appId)}`
+          : "/intake/temporary-work/profile"
+      );
+    }
+  }, [childId, activeProfile, router, appId]);
+
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(childDetailsSchema),
     defaultValues: {
       prefix: "",
       family_name: "",
@@ -95,13 +112,22 @@ export default function Page() {
     },
   });
 
+  const withQuery = (href) => {
+    if (!href) return href;
+    const base = href.split("?")[0];
+    const u = new URLSearchParams();
+    if (appId) u.set("applicationId", appId);
+    if (childId) u.set("profileId", childId);
+    const q = u.toString();
+    return q ? `${base}?${q}` : href;
+  };
+
   useEffect(() => {
     if (isSavingRef.current) return;
     if (draftSnap.isLoading) return;
+    if (!profileId) return;
 
-    const savedData = isSpouseProfile && profileId
-      ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
-      : draftSnap.draft?.temporary_work_spouse_details || {};
+    const savedData = draftSnap.draft?.profiles_data?.[profileId]?.details || {};
 
     const monthsList = [
       "January", "February", "March", "April", "May", "June",
@@ -122,11 +148,11 @@ export default function Page() {
     };
     const safeStr = (val) => (val === null || val === undefined ? "" : String(val));
 
-    const profileDob = spouseForDob
+    const profileDob = childForDob
       ? {
-          birth_day: normalizeNumber(spouseForDob.birth_day),
-          birth_month: normalizeMonth(spouseForDob.birth_month),
-          birth_year: safeStr(spouseForDob.birth_year),
+          birth_day: normalizeNumber(childForDob.birth_day),
+          birth_month: normalizeMonth(childForDob.birth_month),
+          birth_year: safeStr(childForDob.birth_year),
         }
       : { birth_day: "", birth_month: "", birth_year: "" };
 
@@ -158,16 +184,16 @@ export default function Page() {
         form.setValue("birth_year", mergedBirthYear);
         if (savedData.marital_status) form.setValue("marital_status", safeStr(savedData.marital_status));
       }, 0);
-    } else if (spouseForDob) {
+    } else if (childForDob) {
       form.reset({
-        prefix: "",
-        family_name: spouseForDob.family_name || "",
-        given_names: spouseForDob.given_names || "",
-        preferred_names: "",
-        gender: spouseForDob.gender || "",
+        family_name: childForDob.family_name || "",
+        given_names: childForDob.given_names || "",
+        gender: childForDob.gender || "",
         birth_day: profileDob.birth_day,
         birth_month: profileDob.birth_month,
         birth_year: profileDob.birth_year,
+        prefix: "",
+        preferred_names: "",
         country_of_birth: "",
         city_of_birth: "",
         state_of_birth: "",
@@ -185,26 +211,17 @@ export default function Page() {
   }, [populateFormKey]);
 
   const onSubmit = async () => {
-    const urlParams = new URLSearchParams();
-    if (appId) urlParams.set("applicationId", appId);
-    if (profileId) urlParams.set("profileId", profileId);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-    if (next) {
-      const base = next.split("?")[0];
-      const nextWithProfile = urlParams.toString() ? `${base}?${urlParams.toString()}` : next;
-      router.push(nextWithProfile);
-    }
+    const next = getNextTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
+    if (next) router.push(withQuery(next));
   };
 
   const handlePrevious = () => {
-    const urlParams = new URLSearchParams();
-    if (appId) urlParams.set("applicationId", appId);
-    if (profileId) urlParams.set("profileId", profileId);
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
     if (prev) {
-      const base = prev.split("?")[0];
-      router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);
+      router.push(withQuery(prev));
+      return;
     }
+    router.push(withQuery(getTemporaryWorkChildrenListHref(draftSnap.currentApplicationId)));
   };
 
   const handleSave = async () => {
@@ -212,19 +229,9 @@ export default function Page() {
     isSavingRef.current = true;
     try {
       const values = form.getValues();
-      let result;
-      if (profileId && isSpouseProfile) {
-        result = await draftStore.saveProfileSectionData(profileId, "details", values);
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
-      } else {
-        result = await draftStore.saveSectionData("temporary_work_spouse_details", values);
-        await draftStore.markPageComplete(
-          `${visaType}/spouse-partner/details`,
-          null,
-          "temporary_work_spouse_details"
-        );
-      }
+      const result = await draftStore.saveProfileSectionData(profileId, "details", values);
       if (result.success) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
         toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
@@ -238,7 +245,7 @@ export default function Page() {
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const months = [
     "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "July", "August", "September", "October", "November", "December"
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
@@ -249,35 +256,43 @@ export default function Page() {
     "De Facto Relationship",
     "Divorced",
     "Widowed",
-    "Separated",
+    "Separated"
   ];
 
-  const titleName = activeProfile
-    ? `${activeProfile.given_names || ""} ${activeProfile.family_name || ""}`.trim()
-    : "";
+  if (!activeProfile || activeProfile.relationship !== "child") {
+    return null;
+  }
 
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">
-          {titleName ? `Details — ${titleName}` : "Spouse/Partner's Details"}
+          Details — {activeProfile.given_names} {activeProfile.family_name}
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Provide details for the spouse or partner included in this application (citizenship is captured on Identity).
+          Provide personal and birthplace details for this dependent child included in the application.
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          
+          {/* Personal Information */}
           <div className="space-y-6">
             <h3 className="text-lg font-medium border-b pb-2">Personal Information</h3>
             <div>
               <Label>Family Name</Label>
               <Input {...form.register("family_name")} data-testid="input-family-name" />
+              {form.formState.errors.family_name?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.family_name.message}</p>
+              )}
             </div>
 
             <div>
               <Label>Given Names</Label>
               <Input {...form.register("given_names")} data-testid="input-given-names" />
+              {form.formState.errors.given_names?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.given_names.message}</p>
+              )}
             </div>
 
             <div>
@@ -290,13 +305,16 @@ export default function Page() {
               >
                 {["Male", "Female", "Other"].map((gender) => (
                   <div key={gender} className="flex items-center">
-                    <RadioGroupItem value={gender} id={`spouse-gender-${gender.toLowerCase()}`} />
-                    <Label htmlFor={`spouse-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                    <RadioGroupItem value={gender} id={`main-gender-${gender.toLowerCase()}`} />
+                    <Label htmlFor={`main-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
                       {gender}
                     </Label>
                   </div>
                 ))}
               </RadioGroup>
+              {form.formState.errors.gender?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.gender.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -311,12 +329,13 @@ export default function Page() {
                   </SelectTrigger>
                   <SelectContent>
                     {days.map((day) => (
-                      <SelectItem key={day} value={day}>
-                        {day}
-                      </SelectItem>
+                      <SelectItem key={day} value={day}>{day}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {form.formState.errors.birth_day?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_day.message}</p>
+                )}
               </div>
 
               <div>
@@ -330,12 +349,13 @@ export default function Page() {
                   </SelectTrigger>
                   <SelectContent>
                     {months.map((month, idx) => (
-                      <SelectItem key={month} value={(idx + 1).toString()}>
-                        {month}
-                      </SelectItem>
+                      <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {form.formState.errors.birth_month?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_month.message}</p>
+                )}
               </div>
 
               <div>
@@ -349,12 +369,13 @@ export default function Page() {
                   </SelectTrigger>
                   <SelectContent>
                     {years.map((year) => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
+                      <SelectItem key={year} value={year}>{year}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {form.formState.errors.birth_year?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.birth_year.message}</p>
+                )}
               </div>
             </div>
 
@@ -369,12 +390,13 @@ export default function Page() {
                 </SelectTrigger>
                 <SelectContent>
                   {maritalStatuses.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {form.formState.errors.marital_status?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.marital_status.message}</p>
+              )}
             </div>
 
             {form.watch("marital_status") && form.watch("marital_status") !== "Never Married" && (
@@ -384,14 +406,11 @@ export default function Page() {
                   {form.watch("marital_status") === "De Facto Relationship" && "Date De Facto Relationship Began"}
                   {form.watch("marital_status") === "Divorced" && "Date of Divorce"}
                   {form.watch("marital_status") === "Widowed" && "Date of Death of Spouse"}
-                  {form.watch("marital_status") === "Separated" && "Date of Separation"}{" "}
-                  <span className="text-red-600">*</span>
+                  {form.watch("marital_status") === "Separated" && "Date of Separation"} <span className="text-red-600">*</span>
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">
-                      Day
-                    </Label>
+                    <Label htmlFor="marital_status_date_day" className="text-xs text-gray-600">Day</Label>
                     <Select
                       value={form.watch("marital_status_date_day") || ""}
                       onValueChange={(value) => form.setValue("marital_status_date_day", value)}
@@ -401,18 +420,14 @@ export default function Page() {
                       </SelectTrigger>
                       <SelectContent>
                         {days.map((day) => (
-                          <SelectItem key={day} value={day}>
-                            {day}
-                          </SelectItem>
+                          <SelectItem key={day} value={day}>{day}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">
-                      Month
-                    </Label>
+                    <Label htmlFor="marital_status_date_month" className="text-xs text-gray-600">Month</Label>
                     <Select
                       value={form.watch("marital_status_date_month") || ""}
                       onValueChange={(value) => form.setValue("marital_status_date_month", value)}
@@ -422,18 +437,14 @@ export default function Page() {
                       </SelectTrigger>
                       <SelectContent>
                         {months.map((month, idx) => (
-                          <SelectItem key={month} value={(idx + 1).toString()}>
-                            {month}
-                          </SelectItem>
+                          <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">
-                      Year
-                    </Label>
+                    <Label htmlFor="marital_status_date_year" className="text-xs text-gray-600">Year</Label>
                     <Select
                       value={form.watch("marital_status_date_year") || ""}
                       onValueChange={(value) => form.setValue("marital_status_date_year", value)}
@@ -443,9 +454,7 @@ export default function Page() {
                       </SelectTrigger>
                       <SelectContent>
                         {years.map((year) => (
-                          <SelectItem key={year} value={year}>
-                            {year}
-                          </SelectItem>
+                          <SelectItem key={year} value={year}>{year}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -455,36 +464,47 @@ export default function Page() {
             )}
           </div>
 
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium border-b pb-2">Birthplace Information</h3>
-            <div>
-              <Label>Country of Birth</Label>
-              <Input
-                {...form.register("country_of_birth")}
-                placeholder="Choose Country"
-                data-testid="input-country-of-birth"
-              />
-            </div>
-
-            <div>
-              <Label>City or Town of Birth</Label>
-              <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
-            </div>
-
-            <div>
-              <Label>State or Province of Birth</Label>
-              <Input {...form.register("state_of_birth")} data-testid="input-state-of-birth" />
-            </div>
-          </div>
-
+          {/* Other names/spellings */}
           <div className="space-y-6">
             <h3 className="text-lg font-medium border-b pb-2">Other names/spellings</h3>
             <div>
               <Label>Preferred Names</Label>
               <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
+              {form.formState.errors.preferred_names?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
+              )}
             </div>
           </div>
 
+          {/* Birthplace Information */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Birthplace Information</h3>
+            <div>
+              <Label>Country of Birth</Label>
+              <Input {...form.register("country_of_birth")} placeholder="Choose Country" data-testid="input-country-of-birth" />
+              {form.formState.errors.country_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.country_of_birth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>City or Town of Birth</Label>
+              <Input {...form.register("city_of_birth")} data-testid="input-city-of-birth" />
+              {form.formState.errors.city_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.city_of_birth.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>State or Province of Birth</Label>
+              <Input {...form.register("state_of_birth")} data-testid="input-state-of-birth" />
+              {form.formState.errors.state_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Form Navigation */}
           <FormNavigation
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}

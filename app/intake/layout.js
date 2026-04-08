@@ -9,7 +9,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, Menu, X, ArrowLeft, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { getIntakeRoutes, calculateProgress, PROFILE_SUBPAGES } from "@/lib/routes";
+import {
+  getIntakeRoutes,
+  calculateProgress,
+  PROFILE_SUBPAGES,
+  TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
+  buildTemporaryWorkChildHref,
+  getTemporaryWorkChildProfileCompletionKey,
+} from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -272,16 +279,33 @@ export default function IntakeLayout({ children }) {
                         </Button>
 
                         {/* Per-profile sections */}
-                        {profiles.map((profile) => {
+                        {(() => {
+                          const sortedProfiles = [...profiles].sort((a, b) => {
+                            const order = { main_applicant: 0, spouse: 1, child: 2, other: 3 };
+                            return (order[a.relationship] ?? 4) - (order[b.relationship] ?? 4);
+                          });
+                          let nextApplicantSlot = 3;
+                          return sortedProfiles.map((profile) => {
                           const profileKey = profile.id;
                           const isProfileExpanded = isSectionExpanded(`profile-${profileKey}`);
                           const profileName = `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Unnamed';
-                          const relLabel = {
-                            main_applicant: 'Main Applicant',
-                            spouse: 'Spouse/Partner',
-                            child: 'Child',
-                            other: 'Other',
-                          }[profile.relationship] || profile.relationship;
+                          let applicantOrdinal;
+                          if (profile.relationship === 'main_applicant') {
+                            applicantOrdinal = 1;
+                          } else if (profile.relationship === 'spouse') {
+                            applicantOrdinal = 2;
+                          } else {
+                            applicantOrdinal = nextApplicantSlot;
+                            nextApplicantSlot += 1;
+                          }
+                          const parenLabel =
+                            profile.relationship === 'main_applicant'
+                              ? 'Main Applicant'
+                              : profile.relationship === 'spouse'
+                                ? 'Spouse/Partner'
+                                : profile.relationship === 'child'
+                                  ? `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Child'
+                                  : 'Other';
 
                           // Check if any subpage for this profile is currently active
                           const isThisProfileActive = profileIdFromUrl === profileKey;
@@ -304,7 +328,9 @@ export default function IntakeLayout({ children }) {
                                   >
                                     <span className="flex items-center gap-2 text-left">
                                       <span className="flex-1 truncate">
-                                        <span className="block text-xs text-sidebar-foreground/60">{relLabel}</span>
+                                        <span className="block text-xs text-sidebar-foreground/60">
+                                          Applicant {applicantOrdinal} ({parenLabel})
+                                        </span>
                                         <span className="font-medium">{profileName}</span>
                                       </span>
                                     </span>
@@ -318,9 +344,23 @@ export default function IntakeLayout({ children }) {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="overflow-hidden">
                                   <ul className="ml-6 mt-1 mb-1 space-y-1">
-                                    {PROFILE_SUBPAGES.map((subpage) => {
-                                      const isActive = isRouteActive(subpage.href) && profileIdFromUrl === profileKey;
-                                      const completionKey = `${visaType}/main-applicant/${subpage.href.split('/main-applicant/')[1]}__${profileKey}`;
+                                    {(profile.relationship === 'child'
+                                      ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((sp) => ({
+                                          href: buildTemporaryWorkChildHref(profileKey, sp.pathSuffix),
+                                          title: sp.title,
+                                          pathSuffix: sp.pathSuffix,
+                                        }))
+                                      : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                    ).map((subpage) => {
+                                      const isActive =
+                                        profileIdFromUrl === profileKey &&
+                                        (profile.relationship === 'child'
+                                          ? pathname.startsWith(`/intake/temporary-work/children/${profileKey}/`)
+                                          : isRouteActive(subpage.href));
+                                      const completionKey =
+                                        profile.relationship === 'child'
+                                          ? `${getTemporaryWorkChildProfileCompletionKey(profileKey, subpage.pathSuffix)}__${profileKey}`
+                                          : `${visaType}/main-applicant/${subpage.href.split('/main-applicant/')[1]}__${profileKey}`;
                                       const isComplete = draftSnap.completionStatus?.[completionKey] === true;
                                       return (
                                         <li key={`${subpage.href}-${profileKey}`} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
@@ -356,7 +396,8 @@ export default function IntakeLayout({ children }) {
                               </div>
                             </Collapsible>
                           );
-                        })}
+                        });
+                        })()}
                       </div>
                     );
                   }

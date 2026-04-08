@@ -84,10 +84,10 @@ export default function SubmitPage() {
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">
-          Submit Questionnaire
+          Review &amp; Submit
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Please review your answers before submitting your questionnaire to your migration agent.
+          Take a moment to review your answers before submitting.
         </p>
       </CardHeader>
       <CardContent>
@@ -102,11 +102,11 @@ export default function SubmitPage() {
               )}
               <div className="flex-1">
                 <h3 className={`font-semibold ${isFullyComplete ? 'text-green-900' : 'text-yellow-900'}`}>
-                  {isFullyComplete ? 'Application Complete' : 'Application Incomplete'}
+                  {isFullyComplete ? 'Questionnaire Complete' : 'Application Incomplete'}
                 </h3>
                 <p className={`text-sm mt-1 ${isFullyComplete ? 'text-green-700' : 'text-yellow-700'}`}>
                   {isFullyComplete
-                    ? 'All sections have been completed. You may now submit your application.'
+                    ? 'All sections have now been completed. When you are ready, you may submit your questionnaire.'
                     : `You have completed ${completionPercentage}% of the application. Please complete all sections before submitting.`
                   }
                 </p>
@@ -120,19 +120,19 @@ export default function SubmitPage() {
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>By clicking <strong>Submit</strong>, the information you have provided in this questionnaire will be sent to your migration agent for review.</span>
+                <span>Please review your answers carefully to ensure everything is accurate.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>Once submitted, your migration agent will review your responses and contact you if additional information is required.</span>
+                <span>Once submitted, your questionnaire will be locked. If you need to make changes afterwards, please contact our team.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>Please ensure all details provided are accurate and complete before proceeding.</span>
+                <span>You will receive a confirmation email once your questionnaire has been submitted.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>Incomplete or incorrect information may result in delays or refusal of your visa application.</span>
+                <span>If you have not already done so, please go to the <strong>Upload Documents</strong> tab in the portal and upload the supporting documents for your visa application.</span>
               </li>
             </ul>
           </div>
@@ -141,7 +141,7 @@ export default function SubmitPage() {
           <FormNavigation
             onPrev={handlePrevious}
             onNext={handleSubmit}
-            nextLabel={isSubmitting ? "Submitting..." : "Submit Questionnaire"}
+            nextLabel={isSubmitting ? "Submitting..." : "Submit"}
             disabledNext={!isFullyComplete || isSubmitting}
             loading={isSubmitting}
             onSave={null} // No save button

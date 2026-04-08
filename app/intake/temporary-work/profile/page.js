@@ -196,6 +196,9 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
               )}
             </div>
           </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Add name as it appears in their passport. If they have one name, add it as a family name.
+          </p>
 
           {/* Gender */}
           <div>
@@ -350,11 +353,19 @@ export default function ApplicationProfilePage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900">Main Applicant Profile</h3>
+            <p className="text-sm text-gray-600 mt-1">Add the nominated worker (main applicant) first.</p>
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 mt-4">Family Unit Profile</h3>
+            <p className="text-sm text-gray-600 mt-1">Then add a spouse or partner and each dependent child who will be included.</p>
+          </div>
           {/* Info banner */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
             <p className="font-bold mb-1" style={{ color: '#1E4034' }}>Who should be included?</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for the 482 visa (nominated worker)</li>
+              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for the Skills in Demand Visa (subclass 482) (nominated worker)</li>
               <li style={{ color: '#1E4034' }} className="font-bold"><strong>Spouse / De Facto</strong> — add if migrating together</li>
               <li style={{ color: '#1E4034' }} className="font-bold"><strong>Dependent Children</strong> — add each child who will be included</li>
             </ul>

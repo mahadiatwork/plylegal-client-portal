@@ -473,9 +473,24 @@ export const draftStore = proxy({
       return `${visaType}/${pathWithoutPrefix}`;
     });
 
+    // Skills in Demand (482): each dependent child profile adds Details / Identity / Custody (profile-scoped keys)
+    let childExtraTotal = 0;
+    let childExtraCompleted = 0;
+    if (visaType === 'temporary-work') {
+      (this.getProfiles() || []).forEach((p) => {
+        if (p.relationship !== 'child') return;
+        const id = p.id;
+        ['details', 'identity', 'custody'].forEach((suffix) => {
+          childExtraTotal += 1;
+          const fullKey = `temporary-work/children/${id}/${suffix}__${id}`;
+          if (this.completionStatus[fullKey] === true) childExtraCompleted += 1;
+        });
+      });
+    }
+
     // Count completed pages
-    const completedCount = allPages.filter(page => this.isPageComplete(page)).length;
-    const totalPages = allPages.length;
+    const completedCount = allPages.filter(page => this.isPageComplete(page)).length + childExtraCompleted;
+    const totalPages = allPages.length + childExtraTotal;
 
     return {
       completed: completedCount,

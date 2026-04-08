@@ -188,7 +188,7 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                     )}
                 </div>
                 <div>
-                    <Label htmlFor="state" className="mb-2 block">State / Province</Label>
+                    <Label htmlFor="state" className="mb-2 block">State / Territory</Label>
                     <Input
                         id="state"
                         {...dialogForm.register("state")}
@@ -424,8 +424,8 @@ export default function Page() {
             <CardHeader>
                 <CardTitle className="text-2xl font-semibold">All Applicants&apos; Countries of Residence</CardTitle>
                 <p className="text-sm text-gray-600 mt-2">
-                    Give details of all countries where the applicants spent a total period of time that adds up to 12 months or
-                    more in the past 10 years since turning 16 year of age.
+                    Provide details of all countries where the applicant(s) have spent a total of 12 months or more in the past
+                    10 years since turning 16.
                 </p>
             </CardHeader>
             <CardContent>

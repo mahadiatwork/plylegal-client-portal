@@ -151,7 +151,7 @@ export default function IntakeStartPage() {
                 data-testid="button-begin"
                 className="min-h-11 px-8 bg-[#285646] hover:bg-[#1f4236]"
               >
-                {isSubmitted ? "Application Submitted" : "Start Questionnaire"}
+                {isSubmitted ? "Application Submitted" : "Continue"}
               </Button>
             </div>
           </form>

@@ -1513,9 +1513,9 @@ export default function Page() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">All Applicants' Health</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Health</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          For everyone who is to be included in this application, provide the following details about their health.
+          Provide health information for all applicants.
         </p>
       </CardHeader>
       <CardContent>
@@ -1585,6 +1585,74 @@ export default function Page() {
                   )}
                   addButtonText="Add"
                   testIdPrefix="health-exam"
+                />
+              </div>
+            )}
+            {/* Visited outside passport country for 3+ months (spec order: after health examinations) */}
+            <div className="space-y-2 pt-4">
+              <Label>
+                In the last five years, has any applicant visited, or lived, outside their country of passport, for more
+                than 3 consecutive months?
+              </Label>
+              <RadioGroup
+                value={form.watch("visited_outside_passport_country")}
+                onValueChange={(value) => form.setValue("visited_outside_passport_country", value)}
+              >
+                <div className="flex gap-4">
+                  {["yes", "no"].map((option) => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option} id={`outside-passport-${option}`} />
+                      <Label htmlFor={`outside-passport-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            </div>
+            {form.watch("visited_outside_passport_country") === "yes" && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-gray-600">
+                  Enter details of applicants who have visited or lived outside their country of passport for more than
+                  3 consecutive months in the last 5 years.
+                </p>
+                <RepeaterTable
+                  data={form.watch("visited_outside_details") || []}
+                  columns={[
+                    { key: "applicant_name", label: "Name" },
+                    { key: "country", label: "Country" },
+                    { key: "date_from_display", label: "Date From" },
+                    { key: "date_to_display", label: "Date To" },
+                  ]}
+                  onAdd={(row) => {
+                    const current = form.watch("visited_outside_details") || [];
+                    form.setValue("visited_outside_details", [...current, row], {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const current = [...(form.watch("visited_outside_details") || [])];
+                    current[index] = updatedRow;
+                    form.setValue("visited_outside_details", current, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onDelete={(index) => {
+                    const current = form.watch("visited_outside_details") || [];
+                    const updated = current.filter((_, i) => i !== index);
+                    form.setValue("visited_outside_details", updated, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  DialogComponent={(props) => (
+                    <VisitedOutsideDialog {...props} applicantOptions={applicantOptions} />
+                  )}
+                  addButtonText="Add"
+                  testIdPrefix="visited-outside"
                 />
               </div>
             )}
@@ -2250,74 +2318,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-            {/* New question: visited outside passport country for 3+ months */}
-            <div className="space-y-2 pt-4">
-              <Label>
-                In the last five years, has any applicant visited, or lived, outside their country of passport, for more
-                than 3 consecutive months?
-              </Label>
-              <RadioGroup
-                value={form.watch("visited_outside_passport_country")}
-                onValueChange={(value) => form.setValue("visited_outside_passport_country", value)}
-              >
-                <div className="flex gap-4">
-                  {["yes", "no"].map((option) => (
-                    <div key={option} className="flex items-center space-x-2">
-                      <RadioGroupItem value={option} id={`outside-passport-${option}`} />
-                      <Label htmlFor={`outside-passport-${option}`}>{option === "yes" ? "Yes" : "No"}</Label>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-            </div>
-            {form.watch("visited_outside_passport_country") === "yes" && (
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-gray-600">
-                  Enter details of applicants who have visited or lived outside their country of passport for more than
-                  3 consecutive months in the last 5 years.
-                </p>
-                <RepeaterTable
-                  data={form.watch("visited_outside_details") || []}
-                  columns={[
-                    { key: "applicant_name", label: "Name" },
-                    { key: "country", label: "Country" },
-                    { key: "date_from_display", label: "Date From" },
-                    { key: "date_to_display", label: "Date To" },
-                  ]}
-                  onAdd={(row) => {
-                    const current = form.watch("visited_outside_details") || [];
-                    form.setValue("visited_outside_details", [...current, row], {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true,
-                    });
-                  }}
-                  onEdit={(index, updatedRow) => {
-                    const current = [...(form.watch("visited_outside_details") || [])];
-                    current[index] = updatedRow;
-                    form.setValue("visited_outside_details", current, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true,
-                    });
-                  }}
-                  onDelete={(index) => {
-                    const current = form.watch("visited_outside_details") || [];
-                    const updated = current.filter((_, i) => i !== index);
-                    form.setValue("visited_outside_details", updated, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true,
-                    });
-                  }}
-                  DialogComponent={(props) => (
-                    <VisitedOutsideDialog {...props} applicantOptions={applicantOptions} />
-                  )}
-                  addButtonText="Add"
-                  testIdPrefix="visited-outside"
-                />
-              </div>
-            )}
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}

@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
@@ -46,7 +48,18 @@ const formSchema = z.object({
   marital_status_date_day: z.string().optional(),
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
-});
+
+  citizenship_other_than_birth: z.enum(["yes", "no"]).optional(),
+  citizenships: z.array(citizenshipRowSchema).optional(),
+}).refine(
+  (data) => {
+    if (data.citizenship_other_than_birth === "yes") {
+      return data.citizenships && data.citizenships.length > 0;
+    }
+    return true;
+  },
+  { message: "Please add at least one citizenship", path: ["citizenships"] }
+);
 
 export default function Page() {
   const router = useRouter();
@@ -57,13 +70,35 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [showJsonData, setShowJsonData] = useState(false);
   const isSavingRef = useRef(false);
 
   // ── Profile-awareness ──────────────────────────────────────────────────────
   const profileId = searchParams.get('profileId');
   const appId = searchParams.get('applicationId');
   const activeProfile = profileId ? draftSnap.draft?.profiles?.find(p => p.id === profileId) : null;
+
+  /** Profile card on `draft.profiles` (DOB lives here). When URL has no profileId, use main applicant row. */
+  const profileForDob = (() => {
+    const profiles = draftSnap.draft?.profiles;
+    if (!profiles?.length) return null;
+    if (profileId) return profiles.find((p) => p.id === profileId) ?? null;
+    return profiles.find((p) => p.relationship === "main_applicant") ?? null;
+  })();
+  const profileDobBirthSig = `${profileForDob?.birth_day ?? ""}|${profileForDob?.birth_month ?? ""}|${profileForDob?.birth_year ?? ""}`;
+
+  // Single stable serialized key so useEffect's dependency array never changes length (React 19).
+  // Use profileDobBirthSig (primitives) — not the profile object — so Valtio mutations to DOB re-run populate.
+  const populateFormKey = useMemo(() => {
+    const details =
+      profileId != null
+        ? draftSnap.draft?.profiles_data?.[profileId]?.details ?? null
+        : draftSnap.draft?.temporary_work_details ?? null;
+    const identity =
+      profileId != null
+        ? draftSnap.draft?.profiles_data?.[profileId]?.identity ?? null
+        : draftSnap.draft?.temporary_work_identity ?? null;
+    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${JSON.stringify(identity)}|${profileDobBirthSig}`;
+  }, [draftSnap.isLoading, profileId, draftSnap.draft, profileDobBirthSig]);
   // ──────────────────────────────────────────────────────────────────────────
 
   // Set application ID from URL params if available
@@ -101,6 +136,8 @@ export default function Page() {
       marital_status_date_day: "",
       marital_status_date_month: "",
       marital_status_date_year: "",
+      citizenship_other_than_birth: "",
+      citizenships: [],
     },
   });
 
@@ -114,13 +151,44 @@ export default function Page() {
       ? (draftSnap.draft?.profiles_data?.[profileId]?.details || {})
       : (draftSnap.draft?.temporary_work_details || {});
 
+    const identityLegacy = profileId
+      ? (draftSnap.draft?.profiles_data?.[profileId]?.identity || {})
+      : (draftSnap.draft?.temporary_work_identity || {});
+
     const monthsList = [
       "January","February","March","April","May","June",
       "July","August","September","October","November","December"
     ];
     const normalizeNumber = (val) => { if (!val) return ""; const num = Number(val); return isNaN(num) ? val : String(num); };
-    const normalizeMonth = (val) => { if (!val) return ""; if (!isNaN(Number(val))) return String(Number(val)); const idx = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase()); return idx !== -1 ? String(idx + 1) : val; };
+    const normalizeMonth = (val) => {
+      if (val === null || val === undefined || val === "") return "";
+      const s = String(val).trim();
+      if (!s) return "";
+      if (!isNaN(Number(s))) return String(Number(s));
+      const idx = monthsList.findIndex((m) => m.toLowerCase() === s.toLowerCase());
+      return idx !== -1 ? String(idx + 1) : "";
+    };
     const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+    // Application Profile stores DOB as: day "01"–"31" (padded), month full name "August", year string.
+    // Details <Select> values: day "1"–"31", month "1"–"12". Map profile → form when saved section is empty.
+    const profileDob = profileForDob
+      ? {
+          birth_day: normalizeNumber(profileForDob.birth_day),
+          birth_month: normalizeMonth(profileForDob.birth_month),
+          birth_year: safeStr(profileForDob.birth_year),
+        }
+      : { birth_day: "", birth_month: "", birth_year: "" };
+
+    let migratedCitizenships = Array.isArray(savedData?.citizenships) ? savedData.citizenships : [];
+    let migratedCotb = savedData?.citizenship_other_than_birth;
+    if (
+      (!migratedCitizenships || migratedCitizenships.length === 0) &&
+      identityLegacy?.citizenships?.length > 0
+    ) {
+      migratedCitizenships = identityLegacy.citizenships;
+      migratedCotb = migratedCotb || "yes";
+    }
 
     if (savedData && Object.keys(savedData).length > 0) {
       const formData = {
@@ -137,9 +205,9 @@ export default function Page() {
         given_names: safeStr(savedData.given_names),
         preferred_names: safeStr(savedData.preferred_names),
         gender: safeStr(savedData.gender),
-        birth_day: normalizeNumber(savedData.birth_day),
-        birth_month: normalizeMonth(savedData.birth_month),
-        birth_year: safeStr(savedData.birth_year),
+        birth_day: normalizeNumber(savedData.birth_day) || profileDob.birth_day,
+        birth_month: normalizeMonth(savedData.birth_month) || profileDob.birth_month,
+        birth_year: safeStr(savedData.birth_year) || profileDob.birth_year,
         country_of_birth: safeStr(savedData.country_of_birth),
         city_of_birth: safeStr(savedData.city_of_birth),
         state_of_birth: safeStr(savedData.state_of_birth),
@@ -147,38 +215,43 @@ export default function Page() {
         marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
         marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
         marital_status_date_year: safeStr(savedData.marital_status_date_year),
+        citizenship_other_than_birth: safeStr(migratedCotb) || "",
+        citizenships: migratedCitizenships,
       };
-      form.reset(formData);
+      const mergedBirthDay = normalizeNumber(savedData.birth_day) || profileDob.birth_day;
+      const mergedBirthMonth = normalizeMonth(savedData.birth_month) || profileDob.birth_month;
+      const mergedBirthYear = safeStr(savedData.birth_year) || profileDob.birth_year;
+      form.reset({ ...formData, birth_day: mergedBirthDay, birth_month: mergedBirthMonth, birth_year: mergedBirthYear });
       setTimeout(() => {
-        if (savedData.birth_day) form.setValue("birth_day", normalizeNumber(savedData.birth_day));
-        if (savedData.birth_month) form.setValue("birth_month", normalizeMonth(savedData.birth_month));
-        if (savedData.birth_year) form.setValue("birth_year", safeStr(savedData.birth_year));
+        form.setValue("birth_day", mergedBirthDay);
+        form.setValue("birth_month", mergedBirthMonth);
+        form.setValue("birth_year", mergedBirthYear);
         if (savedData.marital_status) form.setValue("marital_status", safeStr(savedData.marital_status));
       }, 0);
-    } else if (profileId && activeProfile) {
-      // Pre-fill from profile card data when no saved form data yet
+    } else if (profileForDob) {
+      // Pre-fill from profile card when there is no saved details blob yet (incl. legacy route without profileId).
       form.reset({
-        is_main_applicant: activeProfile.relationship === 'main_applicant' ? 'yes' : 'no',
-        family_name: activeProfile.family_name || "",
-        given_names: activeProfile.given_names || "",
-        gender: activeProfile.gender || "",
-        birth_day: activeProfile.birth_day || "",
-        birth_month: activeProfile.birth_month || "",
-        birth_year: activeProfile.birth_year || "",
+        is_main_applicant: profileForDob.relationship === 'main_applicant' ? 'yes' : 'no',
+        family_name: profileForDob.family_name || "",
+        given_names: profileForDob.given_names || "",
+        gender: profileForDob.gender || "",
+        birth_day: profileDob.birth_day,
+        birth_month: profileDob.birth_month,
+        birth_year: profileDob.birth_year,
         completing_family_name: "", completing_given_names: "", completing_preferred_names: "",
         completing_gender: "", completing_birth_day: "", completing_birth_month: "", completing_birth_year: "",
         prefix: "", preferred_names: "", country_of_birth: "", city_of_birth: "", state_of_birth: "",
         marital_status: "", marital_status_date_day: "", marital_status_date_month: "", marital_status_date_year: "",
+        citizenship_other_than_birth: identityLegacy?.citizenships?.length ? "yes" : "",
+        citizenships: identityLegacy?.citizenships?.length ? identityLegacy.citizenships : [],
       });
+      setTimeout(() => {
+        form.setValue("birth_day", profileDob.birth_day);
+        form.setValue("birth_month", profileDob.birth_month);
+        form.setValue("birth_year", profileDob.birth_year);
+      }, 0);
     }
-  }, [
-    draftSnap.isLoading,
-    profileId,
-    JSON.stringify(profileId
-      ? draftSnap.draft?.profiles_data?.[profileId]?.details
-      : draftSnap.draft?.temporary_work_details
-    ),
-  ]);
+  }, [populateFormKey]);
 
   const onSubmit = async (data) => {
     const urlParams = new URLSearchParams();
@@ -244,24 +317,8 @@ export default function Page() {
     "Separated"
   ];
 
-  // Helper references for cleaner logic
-  const savedDetails = draftSnap.draft?.temporary_work_details;
-  const currentFormValues = form.getValues();
-
-  // Prepare JSON data for display
-  const jsonData = {
-    fullDraft: draftSnap.draft,
-    temporaryWorkDetails: savedDetails,
-    completionStatus: draftSnap.completionStatus,
-    currentApplicationId: draftSnap.currentApplicationId,
-    formValues: currentFormValues,
-
-    // USE || HERE so that "" falls back to the saved data
-    birth_day: currentFormValues.birth_day || savedDetails?.birth_day,
-    birth_month: currentFormValues.birth_month || savedDetails?.birth_month,
-    birth_year: currentFormValues.birth_year || savedDetails?.birth_year,
-    marital_status: currentFormValues.marital_status || savedDetails?.marital_status,
-  };
+  const citizenshipOther = form.watch("citizenship_other_than_birth");
+  const citizenshipsList = form.watch("citizenships") || [];
 
   // Watch is_main_applicant for conditional rendering
   const isMainApplicant = form.watch("is_main_applicant");
@@ -469,18 +526,6 @@ export default function Page() {
             )}
           </div>
 
-          {/* Other names/spellings */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium border-b pb-2">Other names/spellings</h3>
-            <div>
-              <Label>Preferred Names</Label>
-              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
-              {form.formState.errors.preferred_names?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
-              )}
-            </div>
-          </div>
-
           {/* Birthplace Information */}
           <div className="space-y-6">
             <h3 className="text-lg font-medium border-b pb-2">Birthplace Information</h3>
@@ -507,6 +552,86 @@ export default function Page() {
                 <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
               )}
             </div>
+          </div>
+
+          {/* Other names/spellings */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Other names/spellings</h3>
+            <div>
+              <Label>Preferred Names</Label>
+              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
+              {form.formState.errors.preferred_names?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Citizenships */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Citizenships</h3>
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Does the applicant hold citizenship in any country other than their country of birth?
+              </Label>
+              <RadioGroup
+                value={citizenshipOther || ""}
+                onValueChange={(value) => {
+                  form.setValue("citizenship_other_than_birth", value);
+                  if (value === "no") {
+                    form.setValue("citizenships", [], { shouldValidate: true, shouldDirty: true });
+                  }
+                }}
+                className="flex gap-4"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="cotb-yes" />
+                  <Label htmlFor="cotb-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="cotb-no" />
+                  <Label htmlFor="cotb-no" className="ml-2 cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            {citizenshipOther === "yes" && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  Enter details of each citizenship held in a country other than your country of birth.
+                </p>
+                <RepeaterTable
+                  data={citizenshipsList}
+                  columns={[
+                    { key: "country", label: "Country" },
+                    { key: "how_obtained", label: "How was this Citizenship obtained?" },
+                    {
+                      key: "date_obtained_day",
+                      label: "Date Obtained",
+                      format: (row) =>
+                        `${row.date_obtained_day || ""} ${row.date_obtained_month || ""} ${row.date_obtained_year || ""}`,
+                    },
+                  ]}
+                  onAdd={(newRow) => {
+                    const updated = [...citizenshipsList, newRow];
+                    form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...citizenshipsList];
+                    updated[index] = updatedRow;
+                    form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onDelete={(index) => {
+                    const updated = citizenshipsList.filter((_, i) => i !== index);
+                    form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  DialogComponent={CitizenshipDialog}
+                  addButtonText="Add"
+                  testIdPrefix="details-citizenship"
+                />
+                {form.formState.errors.citizenships && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.citizenships.message}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Form Navigation */}

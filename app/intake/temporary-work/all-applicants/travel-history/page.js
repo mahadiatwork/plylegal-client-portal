@@ -17,6 +17,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -74,10 +75,50 @@ const formatDate = (day, month, year) => {
   return `${day} ${month} ${year}`;
 };
 
+/** Map legacy single-name rows to stable ids (profile id or legacy_name:…). */
+function normalizeLegacyApplicantToken(rawName, profiles) {
+  const original = String(rawName || "").trim();
+  const name = original
+    .replace(/\s*\(Spouse\/Partner\)\s*$/i, "")
+    .replace(/\s*\(Child\)\s*$/i, "")
+    .trim();
+  const p = (profiles || []).find((pr) => {
+    const fn = `${pr.given_names || ""} ${pr.family_name || ""}`.trim();
+    return fn && fn === name;
+  });
+  if (p) return p.id;
+  return `legacy_name:${original || name}`;
+}
+
+function migrateTravelRows(rows, profiles) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    if (Array.isArray(r.applicant_ids) && r.applicant_ids.length > 0) return r;
+    if (r.applicant_name) {
+      const id = normalizeLegacyApplicantToken(r.applicant_name, profiles);
+      const { applicant_name, ...rest } = r;
+      return { ...rest, applicant_ids: [id] };
+    }
+    return { ...r, applicant_ids: Array.isArray(r.applicant_ids) ? r.applicant_ids : [] };
+  });
+}
+
+function applicantLabels(ids, profiles) {
+  return (ids || [])
+    .map((id) => {
+      const s = String(id);
+      if (s.startsWith("legacy_name:")) return s.slice("legacy_name:".length);
+      const p = (profiles || []).find((pr) => pr.id === id);
+      return p ? `${p.given_names || ""} ${p.family_name || ""}`.trim() || id : id;
+    })
+    .filter(Boolean)
+    .join(", ");
+}
+
 // ─── Travel Dialog ────────────────────────────────────────────────────
-function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHistoryByName = {} }) {
+function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHistoryByKey = {} }) {
   const dialogFormSchema = z.object({
-    applicant_name: z.string().min(1, "Please select an applicant"),
+    applicant_ids: z.array(z.string()).min(1, "Select at least one applicant"),
     country: z.string().min(1, "Country is required"),
     is_current_location: z.enum(["Yes", "No"]).optional(),
     reason_for_visit: z.string().min(1, "Reason is required"),
@@ -94,7 +135,7 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
-      applicant_name: "",
+      applicant_ids: [],
       country: "",
       is_current_location: "",
       reason_for_visit: "",
@@ -108,6 +149,40 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
     }
   });
 
+  useEffect(() => {
+    if (editingRow) {
+      dialogForm.reset({
+        applicant_ids: Array.isArray(editingRow.applicant_ids) ? editingRow.applicant_ids : [],
+        country: editingRow.country ?? "",
+        is_current_location: editingRow.is_current_location ?? "",
+        reason_for_visit: editingRow.reason_for_visit ?? "",
+        other_reason_details: editingRow.other_reason_details ?? "",
+        legal_status: editingRow.legal_status ?? "",
+        date_arrived_day: editingRow.date_arrived_day ?? "",
+        date_arrived_month: editingRow.date_arrived_month ?? "",
+        date_arrived_year: editingRow.date_arrived_year ?? "",
+        departure_day: editingRow.departure_day ?? "",
+        departure_month: editingRow.departure_month ?? "",
+        departure_year: editingRow.departure_year ?? "",
+      });
+    } else {
+      dialogForm.reset({
+        applicant_ids: [],
+        country: "",
+        is_current_location: "",
+        reason_for_visit: "",
+        other_reason_details: "",
+        legal_status: "",
+        date_arrived_day: "",
+        date_arrived_month: "",
+        date_arrived_year: "",
+        departure_day: "",
+        departure_month: "",
+        departure_year: "",
+      });
+    }
+  }, [editingRow, dialogForm]);
+
   const handleSubmit = (data) => {
     onSave(data);
     dialogForm.reset();
@@ -115,21 +190,27 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
 
   const isCurrentLocation = dialogForm.watch("is_current_location");
   const reasonForVisit = dialogForm.watch("reason_for_visit");
+  const applicantIds = dialogForm.watch("applicant_ids") || [];
 
-  const handleApplicantSelect = (value) => {
-    dialogForm.setValue("applicant_name", value);
+  const toggleApplicant = (id, checked) => {
+    const next = checked
+      ? [...applicantIds, id]
+      : applicantIds.filter((x) => x !== id);
+    dialogForm.setValue("applicant_ids", next, { shouldValidate: true });
 
-    // Prefill from existing data for this applicant (if adding a new entry)
-    if (!editingRow && travelHistoryByName[value]) {
-      const existing = travelHistoryByName[value];
-      const fieldsToPrefill = [
-        "country", "is_current_location", "reason_for_visit", "legal_status",
-        "date_arrived_day", "date_arrived_month", "date_arrived_year",
-        "departure_day", "departure_month", "departure_year",
-      ];
-      fieldsToPrefill.forEach((key) => {
-        if (existing[key]) dialogForm.setValue(key, existing[key]);
-      });
+    if (!editingRow && checked) {
+      const key = [...next].sort().join("|");
+      const existing = travelHistoryByKey[key];
+      if (existing) {
+        const fieldsToPrefill = [
+          "country", "is_current_location", "reason_for_visit", "legal_status",
+          "date_arrived_day", "date_arrived_month", "date_arrived_year",
+          "departure_day", "departure_month", "departure_year",
+        ];
+        fieldsToPrefill.forEach((field) => {
+          if (existing[field]) dialogForm.setValue(field, existing[field]);
+        });
+      }
     }
   };
 
@@ -141,28 +222,31 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
         business, military deployments and visits back to their own country:
       </p>
 
-      {/* Applicant Name */}
+      {/* Applicant(s) — multi-select (profile ids) */}
       <div>
-        <Label className="mb-2 block">Applicant Name</Label>
-        <Select
-          value={dialogForm.watch("applicant_name")}
-          onValueChange={handleApplicantSelect}
-        >
-          <SelectTrigger data-testid="select-applicant-name">
-            <SelectValue placeholder="Choose Applicant" />
-          </SelectTrigger>
-          <SelectContent>
-            {applicants.length === 0 ? (
-              <SelectItem value="__none__" disabled>No applicants found</SelectItem>
-            ) : (
-              applicants.map((a) => (
-                <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.applicant_name && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_name.message}</p>
+        <Label className="mb-2 block">Which applicant(s) does this travel apply to?</Label>
+        <p className="text-xs text-muted-foreground mb-2">Select one or more applicants.</p>
+        <div className="space-y-2 rounded-md border border-border p-3">
+          {applicants.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No applicants found. Complete Application Profile first.</p>
+          ) : (
+            applicants.map((a) => (
+              <div key={a.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`travel-applicant-${a.id}`}
+                  checked={applicantIds.includes(a.id)}
+                  onCheckedChange={(c) => toggleApplicant(a.id, !!c)}
+                  data-testid={`checkbox-travel-applicant-${a.id}`}
+                />
+                <Label htmlFor={`travel-applicant-${a.id}`} className="font-normal cursor-pointer">
+                  {a.label}
+                </Label>
+              </div>
+            ))
+          )}
+        </div>
+        {dialogForm.formState.errors.applicant_ids && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_ids.message}</p>
         )}
       </div>
 
@@ -402,61 +486,57 @@ export default function Page() {
   const hasTravelHistory = form.watch("has_travel_history");
   const travelHistory = form.watch("travel_history") || [];
 
-  // ── Build applicants list from previously entered draft data ──────────
+  const profiles = draftSnap.draft?.profiles || [];
+
+  // ── Applicants: profile ids + labels (fallback to legacy section keys if no profiles) ──
   const applicants = useMemo(() => {
+    if (profiles.length > 0) {
+      return profiles.map((p) => ({
+        id: p.id,
+        label: `${p.given_names || ""} ${p.family_name || ""}`.trim() || "Applicant",
+      }));
+    }
     const list = [];
-
-    // 1. Main applicant
     const mainDetails = draftSnap.draft?.temporary_work_details;
-    if (mainDetails) {
-      const given = mainDetails.given_names || "";
-      const family = mainDetails.family_name || "";
-      const fullName = [given, family].filter(Boolean).join(" ");
-      if (fullName.trim()) {
-        list.push({ label: fullName.trim(), value: fullName.trim() });
-      }
+    if (mainDetails?.given_names || mainDetails?.family_name) {
+      list.push({
+        id: "legacy_main",
+        label: [mainDetails.given_names, mainDetails.family_name].filter(Boolean).join(" "),
+      });
     }
-
-    // 2. Spouse / Partner
     const spouseDetails = draftSnap.draft?.temporary_work_spouse_details;
-    if (spouseDetails) {
-      const given = spouseDetails.given_names || "";
-      const family = spouseDetails.family_name || "";
-      const fullName = [given, family].filter(Boolean).join(" ");
-      if (fullName.trim()) {
-        list.push({ label: `${fullName.trim()} (Spouse/Partner)`, value: fullName.trim() });
-      }
+    if (spouseDetails?.given_names || spouseDetails?.family_name) {
+      list.push({
+        id: "legacy_spouse",
+        label: `${[spouseDetails.given_names, spouseDetails.family_name].filter(Boolean).join(" ")} (Spouse/Partner)`,
+      });
     }
-
-    // 3. Children with included_in_application === "Yes"
     const childrenData = draftSnap.draft?.temporary_work_children;
     if (childrenData?.children && Array.isArray(childrenData.children)) {
       childrenData.children
         .filter((child) => child.included_in_application === "Yes")
-        .forEach((child) => {
-          const given = child.given_names || "";
-          const family = child.family_name || "";
-          const fullName = [given, family].filter(Boolean).join(" ");
-          if (fullName.trim()) {
-            list.push({ label: `${fullName.trim()} (Child)`, value: fullName.trim() });
+        .forEach((child, idx) => {
+          const label = [child.given_names, child.family_name].filter(Boolean).join(" ");
+          if (label.trim()) {
+            list.push({ id: `legacy_child_${idx}`, label: `${label} (Child)` });
           }
         });
     }
-
     return list;
   }, [
+    profiles,
     draftSnap.draft?.temporary_work_details,
     draftSnap.draft?.temporary_work_spouse_details,
     draftSnap.draft?.temporary_work_children,
   ]);
 
-  // ── Build lookup map: most recent entry per applicant name ────────────
-  const travelHistoryByName = useMemo(() => {
+  const travelHistoryByKey = useMemo(() => {
     const map = {};
-    // Iterate in order so last entry per name wins
     travelHistory.forEach((entry) => {
-      if (entry.applicant_name) {
-        map[entry.applicant_name] = entry;
+      const ids = entry.applicant_ids;
+      if (Array.isArray(ids) && ids.length > 0) {
+        const key = [...ids].sort().join("|");
+        map[key] = entry;
       }
     });
     return map;
@@ -466,12 +546,13 @@ export default function Page() {
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_travel || {};
     if (Object.keys(savedData).length > 0) {
+      const migrated = migrateTravelRows(savedData.travel_history || [], profiles);
       const formData = {
         has_travel_history:
           savedData.has_travel_history ??
           savedData.travelled_internationally ??
           "",
-        travel_history: savedData.travel_history || [],
+        travel_history: migrated,
       };
       form.reset(formData);
       setTimeout(() => {
@@ -483,7 +564,7 @@ export default function Page() {
         );
       }, 0);
     }
-  }, [draftSnap.draft?.temporary_work_travel, form]);
+  }, [draftSnap.draft?.temporary_work_travel, draftSnap.draft?.profiles, form, profiles]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);
@@ -532,11 +613,11 @@ export default function Page() {
           <TravelDialog
             {...props}
             applicants={applicants}
-            travelHistoryByName={travelHistoryByName}
+            travelHistoryByKey={travelHistoryByKey}
           />
         );
       },
-    [applicants, travelHistoryByName]
+    [applicants, travelHistoryByKey]
   );
 
   return (
@@ -544,7 +625,8 @@ export default function Page() {
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">All Applicants&apos; Travel History</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          In this section you are to provide the travel history of the following included Applicants:
+          Include: work, study or training; business; holiday/leisure trips; military deployment; visits back to your own
+          country.
         </p>
       </CardHeader>
       <CardContent>
@@ -552,13 +634,10 @@ export default function Page() {
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             {/* Main question block */}
             <div className="space-y-4">
-              <div className="text-sm text-foreground space-y-1">
-                <p className="font-semibold">Has the main applicant:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>travelled to any country in the last 10 years (since turning 16), OR</li>
-                  <li>spent more than 3 consecutive months outside of their usual country of passport in the last 5 years?</li>
-                </ul>
-              </div>
+              <p className="text-sm text-foreground">
+                In the past 10 years since turning 16 years of age, have any of the applicants travelled outside their usual
+                country of residence?
+              </p>
               <RadioGroup
                 value={hasTravelHistory}
                 onValueChange={(value) => form.setValue("has_travel_history", value)}
@@ -585,7 +664,11 @@ export default function Page() {
                 <RepeaterTable
                   data={travelHistory}
                   columns={[
-                    { key: "applicant_name", label: "Applicant" },
+                    {
+                      key: "applicant_ids",
+                      label: "Applicant(s)",
+                      format: (row) => applicantLabels(row.applicant_ids, profiles),
+                    },
                     { key: "country", label: "Country" },
                     { key: "arrival_display", label: "Arrival Date" },
                     { key: "departure_display", label: "Departure Date" },

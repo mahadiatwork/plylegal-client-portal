@@ -110,7 +110,7 @@ export const PROTECTION_VISA_ROUTES = [
   { href: "/intake/protection/submit", title: "Submit" },
 ];
 
-// Temporary Work Visa Routes (482 visa)
+// Temporary Work — Skills in Demand Visa (subclass 482)
 export const TEMPORARY_WORK_VISA_ROUTES = [
   { href: "/intake/temporary-work/start", title: "Getting Started" },
   { href: "/intake/temporary-work/profile", title: "Application Profile" },
@@ -119,7 +119,6 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     title: "Main Applicant",
     subpages: [
       { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
-      { href: "/intake/temporary-work/main-applicant/other", title: "Other" },
       { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
       { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -134,6 +133,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     subpages: [
       { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
       { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
+      { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
     ],
   },
   { href: "/intake/temporary-work/children", title: "Children" },
@@ -155,7 +155,6 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
 // Per-profile sub-pages (shared definition used by sidebar + routing)
 export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
-  { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
   { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
   { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
   { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -237,6 +236,66 @@ export function calculateProgress(currentHref, visaType) {
   const currentIndex = allRoutes.indexOf(currentHref);
   if (currentIndex === -1) return 0;
   return Math.round(((currentIndex + 1) / allRoutes.length) * 100);
+}
+
+/** Per dependent child under Application Profile — Skills in Demand (482) */
+export const TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES = [
+  { pathSuffix: "details", title: "Details" },
+  { pathSuffix: "identity", title: "Identity" },
+  { pathSuffix: "custody", title: "Custody" },
+];
+
+const TEMPORARY_WORK_CHILD_FLOW = ["details", "identity", "custody"];
+
+export function buildTemporaryWorkChildHref(childId, pathSuffix) {
+  return `/intake/temporary-work/children/${childId}/${pathSuffix}`;
+}
+
+/** Completion key segment (before `__profileId`) */
+export function getTemporaryWorkChildProfileCompletionKey(childId, pathSuffix) {
+  return `temporary-work/children/${childId}/${pathSuffix}`;
+}
+
+function appendQueryParams(path, applicationId, profileId) {
+  const params = new URLSearchParams();
+  if (applicationId) params.set("applicationId", applicationId);
+  if (profileId) params.set("profileId", profileId);
+  const q = params.toString();
+  return q ? `${path}?${q}` : path;
+}
+
+export function getNextTemporaryWorkChildRoute(pathname, applicationId, childId) {
+  const m = pathname.match(/\/children\/([^/]+)\/(details|identity|custody)/);
+  const id = childId || m?.[1];
+  const section = m?.[2];
+  if (!id || !section) return null;
+  const i = TEMPORARY_WORK_CHILD_FLOW.indexOf(section);
+  if (i === -1 || i === TEMPORARY_WORK_CHILD_FLOW.length - 1) return null;
+  const next = buildTemporaryWorkChildHref(id, TEMPORARY_WORK_CHILD_FLOW[i + 1]);
+  return appendQueryParams(next, applicationId, id);
+}
+
+export function getPreviousTemporaryWorkChildRoute(pathname, applicationId, childId) {
+  const m = pathname.match(/\/children\/([^/]+)\/(details|identity|custody)/);
+  const id = childId || m?.[1];
+  const section = m?.[2];
+  if (!id || !section) return null;
+  const i = TEMPORARY_WORK_CHILD_FLOW.indexOf(section);
+  if (i <= 0) return null;
+  const prev = buildTemporaryWorkChildHref(id, TEMPORARY_WORK_CHILD_FLOW[i - 1]);
+  return appendQueryParams(prev, applicationId, id);
+}
+
+/** Previous step before the first child subsection (children list page). */
+export function getTemporaryWorkChildrenListHref(applicationId) {
+  const path = "/intake/temporary-work/children";
+  return applicationId ? `${path}?applicationId=${encodeURIComponent(applicationId)}` : path;
+}
+
+/** After last child subsection (Custody), continue to All Applicants. */
+export function getAfterTemporaryWorkChildCustodyNext(applicationId) {
+  const path = "/intake/temporary-work/all-applicants/visas";
+  return applicationId ? `${path}?applicationId=${encodeURIComponent(applicationId)}` : path;
 }
 
 export const CHARACTER_QUESTIONS = [
