@@ -433,7 +433,7 @@ export default function LanguagePage() {
       await draftStore.markPageComplete(`${visaType}/spouse-partner/language`, null, "temporary_work_spouse_language");
     }
 
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
     if (nextRoute) {
       const urlParams = new URLSearchParams();
       if (appId) urlParams.set("applicationId", appId);
@@ -449,7 +449,7 @@ export default function LanguagePage() {
     if (profileId) urlParams.set("profileId", profileId);
     
     const visaType = getVisaTypeFromPath(pathname);
-    const prev = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
     if (prev) {
       const base = prev.split("?")[0];
       router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);

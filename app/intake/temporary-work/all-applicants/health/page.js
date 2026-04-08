@@ -1479,14 +1479,14 @@ export default function Page() {
     try {
       await draftStore.saveSectionData("temporary_work_health", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/health`, null, "temporary_work_health");
-      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
     }
   };
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

@@ -494,7 +494,7 @@ export default function EducationPage() {
     const visaType = getVisaTypeFromPath(pathname);
     draftStore.markPageComplete(`${visaType}/main-applicant/education`);
 
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
     if (nextRoute) {
       router.push(nextRoute);
     }
@@ -502,7 +502,7 @@ export default function EducationPage() {
 
   const handlePrevious = () => {
     const visaType = getVisaTypeFromPath(pathname);
-    const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
+    const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
     if (previousRoute) {
       router.push(previousRoute);
     }

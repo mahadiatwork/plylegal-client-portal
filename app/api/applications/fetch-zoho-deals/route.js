@@ -234,12 +234,25 @@ export async function POST(request) {
     const deals = await zohoClient.getRelatedRecords('Contacts', zohoContactId, 'Deals');
     
     if (!deals || deals.length === 0) {
-      console.log('📋 No deals found in Deals related list');
+      console.log('📋 No deals found in Deals related list — removing stale CRM-linked applications (Zoho is source of truth)');
+      const existingWhenEmpty = await loadApplicationsServer(userId);
+      let staleRemoved = 0;
+      for (const app of existingWhenEmpty || []) {
+        if (!app.zohoId) continue;
+        try {
+          console.log(`🗑️ Removing stale CRM application (no deals returned): ${app.id} (zohoId: ${app.zohoId})`);
+          const del = await deleteApplicationServer(app.id);
+          if (del.success) staleRemoved++;
+        } catch (e) {
+          console.error(`❌ Failed to remove stale app ${app.id}:`, e.message);
+        }
+      }
       return NextResponse.json({
         success: true,
         deals: [],
         rawDealsData: [],
-        message: 'No deals found'
+        message: 'No deals found',
+        staleRemoved,
       });
     }
 
@@ -440,6 +453,28 @@ export async function POST(request) {
       
       console.log(`✅ Removed ${removedCount} duplicate applications`);
     }
+
+    // Zoho CRM is source of truth: remove Firebase applications that are not in this sync
+    const syncedAppIds = new Set(
+      applicationsFromZoho.map((a) => a.id).filter(Boolean)
+    );
+    let orphansRemoved = 0;
+    const appsAfterDupes = await loadApplicationsServer(userId);
+    for (const app of appsAfterDupes || []) {
+      if (syncedAppIds.has(app.id)) continue;
+      try {
+        console.log(
+          `🗑️ Removing application not in current Zoho CRM deal list: ${app.id} (zohoId: ${app.zohoId || 'none'}, reference: ${app.reference || ''})`
+        );
+        const del = await deleteApplicationServer(app.id);
+        if (del.success) orphansRemoved++;
+      } catch (e) {
+        console.error(`❌ Failed to remove orphan application ${app.id}:`, e.message);
+      }
+    }
+    if (orphansRemoved > 0) {
+      console.log(`✅ Removed ${orphansRemoved} application(s) not present in current CRM deals`);
+    }
     
     // Reload to get final count after cleanup
     const finalAppsAfterCleanup = await loadApplicationsServer(userId);
@@ -453,7 +488,8 @@ export async function POST(request) {
       finalCount: finalAppsAfterCleanup?.length || 0,
       duplicatesFound: duplicatesByZohoId.length,
       duplicatesRemoved: removedCount,
-      message: `Fetched ${deals.length} deals from Zoho CRM, synced ${applicationsFromZoho.length} applications, and removed ${removedCount} duplicates (final count: ${finalAppsAfterCleanup?.length || 0})`
+      orphansRemoved,
+      message: `Fetched ${deals.length} deals from Zoho CRM, synced ${applicationsFromZoho.length} applications, removed ${removedCount} duplicate(s) and ${orphansRemoved} stale application(s) (final count: ${finalAppsAfterCleanup?.length || 0})`
     });
   } catch (error) {
     console.error('❌ Error fetching deals from Zoho CRM:', error);

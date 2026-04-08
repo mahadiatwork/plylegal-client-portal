@@ -571,7 +571,7 @@ export default function Page() {
     try {
       await draftStore.saveSectionData("temporary_work_travel", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`, null, "temporary_work_travel");
-      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
@@ -579,7 +579,7 @@ export default function Page() {
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) router.push(prev);
   };
 

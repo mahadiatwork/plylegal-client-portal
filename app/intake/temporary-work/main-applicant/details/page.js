@@ -257,7 +257,7 @@ export default function Page() {
     const urlParams = new URLSearchParams();
     if (appId) urlParams.set('applicationId', appId);
     if (profileId) urlParams.set('profileId', profileId);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (next) {
       const base = next.split('?')[0];
       const nextWithProfile = urlParams.toString() ? `${base}?${urlParams.toString()}` : next;
@@ -269,7 +269,7 @@ export default function Page() {
     const urlParams = new URLSearchParams();
     if (appId) urlParams.set('applicationId', appId);
     if (profileId) urlParams.set('profileId', profileId);
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
       const base = prev.split('?')[0];
       router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);

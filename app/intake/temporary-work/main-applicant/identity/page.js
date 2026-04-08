@@ -741,7 +741,7 @@ export default function IdentityPage() {
           await draftStore.markPageComplete(`${visaType}/main-applicant/identity`, null, "temporary_work_identity");
         }
 
-        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         if (nextRoute) {
           router.push(withProfileQuery(nextRoute));
         }
@@ -758,7 +758,7 @@ export default function IdentityPage() {
   };
 
   const handlePrevious = () => {
-    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
       router.push(withProfileQuery(previousRoute));
     }

@@ -237,6 +237,60 @@ export const draftStore = proxy({
     }
   },
 
+  /**
+   * Copy questionnaire answers from another application (intended: Subclass 482 → 186).
+   * Preserves visaContext as 186 on the current application. Does not copy completion status.
+   */
+  async importQuestionnaireFrom482Application(sourceApplicationId) {
+    const targetId = this.currentApplicationId;
+    if (!targetId) {
+      return { success: false, error: 'No application selected' };
+    }
+    const ctx = this.visaContext ?? this.draft?.visaContext;
+    if (ctx !== '186') {
+      return { success: false, error: 'Import is only available for Employer Nomination (subclass 186) applications' };
+    }
+    if (!sourceApplicationId || sourceApplicationId === targetId) {
+      return { success: false, error: 'Choose a different application to import from' };
+    }
+
+    try {
+      const sourceData = await db.loadDraft(sourceApplicationId);
+      if (!sourceData || Object.keys(sourceData).length === 0) {
+        return { success: false, error: 'The selected application has no saved questionnaire data' };
+      }
+
+      const merged = { ...this.draft };
+      Object.keys(sourceData).forEach((k) => {
+        if (k === 'visaContext') return;
+        if (
+          k.startsWith('temporary_work_') ||
+          k === 'profiles' ||
+          k === 'profiles_data' ||
+          k === 'started'
+        ) {
+          merged[k] = sourceData[k];
+        }
+      });
+      merged.visaContext = '186';
+      this.visaContext = '186';
+
+      this.draft = merged;
+      this.isSaving = true;
+      const result = await db.saveDraft(this.draft, targetId);
+      this.isSaving = false;
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to save imported data' };
+      }
+      this.lastSaved = new Date().toISOString();
+      return { success: true };
+    } catch (error) {
+      this.isSaving = false;
+      console.error('importQuestionnaireFrom482Application:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
   async setPrefill(value) {
     try {
       await db.setPrefill(value);
@@ -450,13 +504,20 @@ export const draftStore = proxy({
       }
     }
 
+    if (!visaType && (this.draft?.visaContext || Object.keys(this.draft || {}).some((k) => k.startsWith('temporary_work_')))) {
+      visaType = 'temporary-work';
+    }
+
     // If no visa type detected, return empty
     if (!visaType) {
       return { completed: 0, total: 0, percentage: 0 };
     }
 
-    // Get routes for the detected visa type
-    const routes = getIntakeRoutes(visaType);
+    const visaContextForRoutes =
+      visaType === 'temporary-work' ? (this.visaContext ?? this.draft?.visaContext ?? null) : null;
+
+    // Get routes for the detected visa type (186 vs 482 order for temporary-work)
+    const routes = getIntakeRoutes(visaType, visaContextForRoutes);
 
     // Extract all page paths from routes (excluding submit page)
     const allPagePaths = [];

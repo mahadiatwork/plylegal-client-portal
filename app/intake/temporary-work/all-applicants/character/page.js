@@ -158,12 +158,12 @@ export default function Page() {
   const onSubmit = async (data) => {
     await draftStore.saveSectionData("temporary_work_character", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "temporary_work_character");
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (next) router.push(next);
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) router.push(prev);
   };
 

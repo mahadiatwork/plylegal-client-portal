@@ -736,12 +736,12 @@ export default function IdentityPage() {
 
       if (result.success) {
         if (profileId) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/identity`);
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/identity`);
         } else {
           await draftStore.markPageComplete(`${visaType}/spouse-partner/identity`, null, "temporary_work_spouse_identity");
         }
 
-        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         if (nextRoute) {
           router.push(withProfileQuery(nextRoute));
         }
@@ -758,7 +758,7 @@ export default function IdentityPage() {
   };
 
   const handlePrevious = () => {
-    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
       router.push(withProfileQuery(previousRoute));
     }

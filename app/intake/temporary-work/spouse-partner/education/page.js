@@ -513,7 +513,7 @@ export default function EducationPage() {
       await draftStore.markPageComplete(`${visaType}/spouse-partner/education`, null, "temporary_work_spouse_education");
     }
 
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
+    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
     if (nextRoute) {
       const urlParams = new URLSearchParams();
       if (appId) urlParams.set("applicationId", appId);
@@ -529,7 +529,7 @@ export default function EducationPage() {
     if (profileId) urlParams.set("profileId", profileId);
     
     const visaType = getVisaTypeFromPath(pathname);
-    const prev = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
     if (prev) {
       const base = prev.split("?")[0];
       router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);

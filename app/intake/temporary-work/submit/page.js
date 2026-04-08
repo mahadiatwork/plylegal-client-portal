@@ -1,16 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { useToast } from "@/hooks/use-toast";
 import { getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { CheckCircle2, AlertCircle, Send } from "lucide-react";
-import { StickyNav } from "@/components/StickyNav"; // Should be able to remove this line potentially, but StickyNav is used in line 176... wait, I am replacing the usage.
+import { CheckCircle2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 
 export default function SubmitPage() {
@@ -31,7 +29,7 @@ export default function SubmitPage() {
   const isFullyComplete = completionPercentage === 100;
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) router.push(prev);
   };
 
@@ -92,27 +90,19 @@ export default function SubmitPage() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Completion Status */}
-          <div className={`p-6 rounded-lg border ${isFullyComplete ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-            <div className="flex items-start gap-4">
-              {isFullyComplete ? (
+          {isFullyComplete && (
+            <div className="p-6 rounded-lg border bg-green-50 border-green-200">
+              <div className="flex items-start gap-4">
                 <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1">
-                <h3 className={`font-semibold ${isFullyComplete ? 'text-green-900' : 'text-yellow-900'}`}>
-                  {isFullyComplete ? 'Questionnaire Complete' : 'Application Incomplete'}
-                </h3>
-                <p className={`text-sm mt-1 ${isFullyComplete ? 'text-green-700' : 'text-yellow-700'}`}>
-                  {isFullyComplete
-                    ? 'All sections have now been completed. When you are ready, you may submit your questionnaire.'
-                    : `You have completed ${completionPercentage}% of the application. Please complete all sections before submitting.`
-                  }
-                </p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-900">Questionnaire Complete</h3>
+                  <p className="text-sm mt-1 text-green-700">
+                    All sections have now been completed. When you are ready, you may submit your questionnaire.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Submission Information */}
           <div className="p-6 rounded-lg border border-gray-200 bg-white">

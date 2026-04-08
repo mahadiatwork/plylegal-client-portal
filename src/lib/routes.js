@@ -241,8 +241,11 @@ export function getIntakeRoutes(visaType, visaContext) {
 // Legacy export for backward compatibility
 export const INTAKE_ROUTES = PARTNER_VISA_ROUTES;
 
-export function getAllRoutes(visaType) {
-  const routes = getIntakeRoutes(visaType);
+/**
+ * @param {string|null|undefined} visaContext For temporary-work only: '186' uses employer-nomination route order; omit or '482' uses Skills in Demand (482) order.
+ */
+export function getAllRoutes(visaType, visaContext = null) {
+  const routes = getIntakeRoutes(visaType, visaContext);
   const allRoutes = [];
   routes.forEach((route) => {
     if (route.subpages) {
@@ -254,8 +257,11 @@ export function getAllRoutes(visaType) {
   return allRoutes;
 }
 
-export function getNextRoute(currentHref, visaType, applicationId = null) {
-  const allRoutes = getAllRoutes(visaType);
+/**
+ * @param {string|null|undefined} visaContext Pass draftStore.visaContext for Employer Nomination (186) so next step matches 186 sidebar.
+ */
+export function getNextRoute(currentHref, visaType, applicationId = null, visaContext = null) {
+  const allRoutes = getAllRoutes(visaType, visaContext);
   const currentIndex = allRoutes.indexOf(currentHref);
   if (currentIndex === -1 || currentIndex === allRoutes.length - 1) {
     return null;
@@ -269,8 +275,8 @@ export function getNextRoute(currentHref, visaType, applicationId = null) {
   return nextRoute;
 }
 
-export function getPreviousRoute(currentHref, visaType, applicationId = null) {
-  const allRoutes = getAllRoutes(visaType);
+export function getPreviousRoute(currentHref, visaType, applicationId = null, visaContext = null) {
+  const allRoutes = getAllRoutes(visaType, visaContext);
   const currentIndex = allRoutes.indexOf(currentHref);
   if (currentIndex <= 0) {
     return null;
@@ -284,8 +290,8 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null) {
   return previousRoute;
 }
 
-export function calculateProgress(currentHref, visaType) {
-  const allRoutes = getAllRoutes(visaType);
+export function calculateProgress(currentHref, visaType, visaContext = null) {
+  const allRoutes = getAllRoutes(visaType, visaContext);
   const currentIndex = allRoutes.indexOf(currentHref);
   if (currentIndex === -1) return 0;
   return Math.round(((currentIndex + 1) / allRoutes.length) * 100);

@@ -64,7 +64,7 @@ export default function IntakeLayout({ children }) {
   const visaType = getVisaTypeFromPath(pathname);
   const INTAKE_ROUTES = getIntakeRoutes(visaType, draftSnap.visaContext);
 
-  const progress = calculateProgress(pathname, visaType);
+  const progress = calculateProgress(pathname, visaType, draftSnap.visaContext);
 
   // Get real completion data from draftStore
   const completionData = draftSnap.completionStatus || {};
@@ -297,14 +297,17 @@ export default function IntakeLayout({ children }) {
                             applicantOrdinal = nextApplicantSlot;
                             nextApplicantSlot += 1;
                           }
+                          // Type label only (name is shown on the line below). Child/others must not use full name here.
                           const parenLabel =
                             profile.relationship === 'main_applicant'
                               ? 'Main Applicant'
                               : profile.relationship === 'spouse'
                                 ? 'Spouse/Partner'
                                 : profile.relationship === 'child'
-                                  ? `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Child'
-                                  : 'Other';
+                                  ? 'Child'
+                                  : profile.relationship === 'other'
+                                    ? 'Dependent'
+                                    : 'Dependent';
 
                           // Check if any subpage for this profile is currently active
                           const isThisProfileActive = profileIdFromUrl === profileKey;
@@ -355,8 +358,8 @@ export default function IntakeLayout({ children }) {
                                     ).map((subpage) => {
                                       const isActive =
                                         profileIdFromUrl === profileKey &&
-                                        (profile.relationship === 'child'
-                                          ? pathname.startsWith(`/intake/temporary-work/children/${profileKey}/`)
+                                        (profile.relationship === 'child' && subpage.pathSuffix
+                                          ? pathname === buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix)
                                           : isRouteActive(subpage.href));
                                       const completionKey =
                                         profile.relationship === 'child'

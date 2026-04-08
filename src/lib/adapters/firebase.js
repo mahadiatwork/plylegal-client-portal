@@ -589,10 +589,24 @@ export class FirebaseAdapter extends BaseAdapter {
       const deals = await zohoClient.getRelatedRecords('Contacts', zohoContactId, 'Deals');
       
       if (!deals || deals.length === 0) {
-        // Still update store with empty array to clear any stale data
-        applicationsStore.applications = [];
-        applicationsStore.rawDealsData = []; // Store empty array for debugging
-        return [];
+        applicationsStore.rawDealsData = [];
+        // Zoho is source of truth: remove CRM-linked rows when no deals returned
+        try {
+          const appsRef = collection(this.db, 'applications');
+          const allQ = query(appsRef, where('userId', '==', userId));
+          const snap = await getDocs(allQ);
+          for (const d of snap.docs) {
+            const data = d.data();
+            if (data.zohoId) {
+              await deleteDoc(doc(this.db, 'applications', d.id));
+            }
+          }
+        } catch (e) {
+          console.error('⚠️ Failed to prune stale CRM applications:', e.message);
+        }
+        const remaining = await this.loadApplications(userId);
+        applicationsStore.applications = remaining;
+        return remaining;
       }
       
       // STEP 2: Convert Zoho deals to application format and update store immediately
@@ -680,7 +694,22 @@ export class FirebaseAdapter extends BaseAdapter {
         }
       }
       
-      // STEP 4: Update applicationsStore immediately with Zoho data (before Firebase sync)
+      // STEP 4: Zoho is source of truth — remove Firebase rows not in this CRM sync
+      const syncedIds = new Set(applicationsFromZoho.map((a) => a.id).filter(Boolean));
+      try {
+        const appsRef = collection(this.db, 'applications');
+        const allQ = query(appsRef, where('userId', '==', userId));
+        const allSnap = await getDocs(allQ);
+        for (const d of allSnap.docs) {
+          if (syncedIds.has(d.id)) continue;
+          console.log(`🗑️ Removing application not in current Zoho deals: ${d.id}`);
+          await deleteDoc(doc(this.db, 'applications', d.id));
+        }
+      } catch (e) {
+        console.error('⚠️ Failed to prune orphan applications:', e.message);
+      }
+
+      // STEP 5: Update applicationsStore with Zoho data
       applicationsStore.applications = applicationsFromZoho;
       applicationsStore.rawDealsData = deals; // Store raw deals JSON for debugging
       
