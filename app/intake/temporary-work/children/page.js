@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { buildTemporaryWorkChildHref } from "@/lib/routes";
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
@@ -261,6 +263,8 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
   const [hasChildren, setHasChildren] = useState("no");
   const [children, setChildren] = useState([]);
+  const childProfiles = (draftSnap.draft?.profiles || []).filter((p) => p.relationship === "child");
+  const appIdForLinks = draftSnap.currentApplicationId || searchParams.get("applicationId");
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -357,6 +361,30 @@ export default function Page() {
           </p>
         </CardHeader>
         <CardContent>
+        {childProfiles.length > 0 && (
+          <div className="mb-8 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+            <p className="font-medium text-foreground mb-2">Children from Application Profile</p>
+            <p className="text-muted-foreground mb-3">
+              Dependent children added on Application Profile have their own Details, Identity, and Custody steps. Open a child below or use the sidebar.
+            </p>
+            <ul className="space-y-2">
+              {childProfiles.map((c) => {
+                const name = `${c.given_names || ""} ${c.family_name || ""}`.trim() || "Child";
+                const q = new URLSearchParams();
+                if (appIdForLinks) q.set("applicationId", appIdForLinks);
+                q.set("profileId", c.id);
+                const href = `${buildTemporaryWorkChildHref(c.id, "details")}?${q.toString()}`;
+                return (
+                  <li key={c.id}>
+                    <Link href={href} className="text-primary font-medium underline-offset-4 hover:underline">
+                      {name} — questionnaire
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <div className="space-y-2">

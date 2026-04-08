@@ -9,9 +9,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, Menu, X, ArrowLeft, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { getIntakeRoutes, calculateProgress } from "@/lib/routes";
+import {
+  getIntakeRoutes,
+  calculateProgress,
+  PROFILE_SUBPAGES,
+  TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
+  buildTemporaryWorkChildHref,
+  getTemporaryWorkChildProfileCompletionKey,
+} from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
@@ -21,6 +29,12 @@ export default function IntakeLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
+
+  // Active profileId from URL
+  const profileIdFromUrl = searchParams.get('profileId');
+
+  // Profiles from draft
+  const profiles = draftSnap.draft?.profiles || [];
 
   // Prevent hydration mismatch by only rendering interactive elements after mount
   useEffect(() => {
@@ -229,7 +243,165 @@ export default function IntakeLayout({ children }) {
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
-                  
+
+                  // ── For temporary-work: replace Main Applicant / Spouse / Children with per-profile sections ──
+                  // Only suppress the static sections AFTER profiles have been added. Before that, show them normally.
+                  const isProfileSection = visaType === 'temporary-work' &&
+                    profiles.length > 0 && (
+                      route.href.includes('/main-applicant') ||
+                      route.href.includes('/spouse-partner') ||
+                      route.href === '/intake/temporary-work/children'
+                    );
+
+                  if (isProfileSection) return null; // replaced by dynamic profile sections below
+
+                  // ── Profile sections injection point (after Application Profile route) ──
+                  if (visaType === 'temporary-work' && route.href === '/intake/temporary-work/profile' && profiles.length > 0) {
+                    return (
+                      <div key="profile-routes">
+                        {/* Application Profile nav item */}
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            const appId = draftSnap.currentApplicationId;
+                            const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
+                            router.push(href);
+                            setSidebarOpen(false);
+                          }}
+                          className={cn(
+                            "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
+                            isRouteActive(route.href) && "bg-primary/20 font-semibold",
+                            isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                          )}
+                        >
+                          {isRouteCompleted(route.href) && <Check className="w-4 h-4 mr-2" />}
+                          {route.title}
+                        </Button>
+
+                        {/* Per-profile sections */}
+                        {(() => {
+                          const sortedProfiles = [...profiles].sort((a, b) => {
+                            const order = { main_applicant: 0, spouse: 1, child: 2, other: 3 };
+                            return (order[a.relationship] ?? 4) - (order[b.relationship] ?? 4);
+                          });
+                          let nextApplicantSlot = 3;
+                          return sortedProfiles.map((profile) => {
+                          const profileKey = profile.id;
+                          const isProfileExpanded = isSectionExpanded(`profile-${profileKey}`);
+                          const profileName = `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Unnamed';
+                          let applicantOrdinal;
+                          if (profile.relationship === 'main_applicant') {
+                            applicantOrdinal = 1;
+                          } else if (profile.relationship === 'spouse') {
+                            applicantOrdinal = 2;
+                          } else {
+                            applicantOrdinal = nextApplicantSlot;
+                            nextApplicantSlot += 1;
+                          }
+                          const parenLabel =
+                            profile.relationship === 'main_applicant'
+                              ? 'Main Applicant'
+                              : profile.relationship === 'spouse'
+                                ? 'Spouse/Partner'
+                                : profile.relationship === 'child'
+                                  ? `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Child'
+                                  : 'Other';
+
+                          // Check if any subpage for this profile is currently active
+                          const isThisProfileActive = profileIdFromUrl === profileKey;
+
+                          return (
+                            <Collapsible
+                              key={`profile-${profileKey}`}
+                              open={isProfileExpanded || isThisProfileActive}
+                              onOpenChange={() => toggleSection(`profile-${profileKey}`)}
+                            >
+                              <div className="space-y-1">
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className={cn(
+                                      "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
+                                      isThisProfileActive && "bg-primary/20"
+                                    )}
+                                    data-testid={`nav-profile-${profileKey}`}
+                                  >
+                                    <span className="flex items-center gap-2 text-left">
+                                      <span className="flex-1 truncate">
+                                        <span className="block text-xs text-sidebar-foreground/60">
+                                          Applicant {applicantOrdinal} ({parenLabel})
+                                        </span>
+                                        <span className="font-medium">{profileName}</span>
+                                      </span>
+                                    </span>
+                                    <ChevronDown
+                                      className={cn(
+                                        "w-4 h-4 transition-transform duration-200 flex-shrink-0",
+                                        (isProfileExpanded || isThisProfileActive) && "transform rotate-180"
+                                      )}
+                                    />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="overflow-hidden">
+                                  <ul className="ml-6 mt-1 mb-1 space-y-1">
+                                    {(profile.relationship === 'child'
+                                      ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((sp) => ({
+                                          href: buildTemporaryWorkChildHref(profileKey, sp.pathSuffix),
+                                          title: sp.title,
+                                          pathSuffix: sp.pathSuffix,
+                                        }))
+                                      : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                    ).map((subpage) => {
+                                      const isActive =
+                                        profileIdFromUrl === profileKey &&
+                                        (profile.relationship === 'child'
+                                          ? pathname.startsWith(`/intake/temporary-work/children/${profileKey}/`)
+                                          : isRouteActive(subpage.href));
+                                      const completionKey =
+                                        profile.relationship === 'child'
+                                          ? `${getTemporaryWorkChildProfileCompletionKey(profileKey, subpage.pathSuffix)}__${profileKey}`
+                                          : `${visaType}/main-applicant/${subpage.href.split('/main-applicant/')[1]}__${profileKey}`;
+                                      const isComplete = draftSnap.completionStatus?.[completionKey] === true;
+                                      return (
+                                        <li key={`${subpage.href}-${profileKey}`} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              const appId = draftSnap.currentApplicationId;
+                                              const url = new URLSearchParams();
+                                              if (appId) url.set('applicationId', appId);
+                                              url.set('profileId', profileKey);
+                                              router.push(`${subpage.href}?${url.toString()}`);
+                                              setSidebarOpen(false);
+                                              draftStore.setActiveProfile(profileKey);
+                                            }}
+                                            className={cn(
+                                              "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                              isActive
+                                                ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
+                                                : "text-sidebar-foreground",
+                                              isComplete && !isActive && "text-sidebar-foreground/70"
+                                            )}
+                                            data-testid={`nav-sub-${subpage.href}-${profileKey}`}
+                                          >
+                                            {isComplete && <Check className="w-3 h-3 mr-2" />}
+                                            {subpage.title}
+                                          </Button>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </CollapsibleContent>
+                              </div>
+                            </Collapsible>
+                          );
+                        });
+                        })()}
+                      </div>
+                    );
+                  }
+
                   if (hasSubpages) {
                     return (
                       <Collapsible

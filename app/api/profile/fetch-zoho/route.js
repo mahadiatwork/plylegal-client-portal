@@ -238,6 +238,22 @@ export async function POST(request) {
                   dealsProcessed++;
                 }
               }
+
+              // Skills in Demand (subclass 482): ensure Zoho Deal_Name matches official product name when this deal is a 482 / TSS / Skills in Demand application.
+              const dealLabel = (deal.Deal_Name || deal.DealName || '').toLowerCase();
+              if (
+                dealLabel.includes('482') ||
+                dealLabel.includes('skills in demand') ||
+                dealLabel.includes('tss')
+              ) {
+                try {
+                  await zohoClient.updateRecord('Deals', deal.id, {
+                    Deal_Name: 'Skills in Demand Visa (subclass 482)',
+                  });
+                } catch (zohoDealNameErr) {
+                  console.warn('⚠️ Could not update Deal_Name in Zoho CRM:', zohoDealNameErr.message);
+                }
+              }
               
               console.log(`✅ ${isNew ? 'Created' : 'Updated'} application ${appId} from Deal ${deal.id}`);
             } catch (dealError) {
@@ -275,7 +291,12 @@ export async function POST(request) {
     function mapDealToVisaType(deal) {
       // Extract visa type from deal name or stage
       const dealName = (deal.Deal_Name || deal.DealName || '').toLowerCase();
-      if (dealName.includes('work') || dealName.includes('482') || dealName.includes('tss')) {
+      if (
+        dealName.includes('work') ||
+        dealName.includes('482') ||
+        dealName.includes('tss') ||
+        dealName.includes('skills in demand')
+      ) {
         return 'tss';
       } else if (dealName.includes('partner') || dealName.includes('309') || dealName.includes('820')) {
         return 'partner';

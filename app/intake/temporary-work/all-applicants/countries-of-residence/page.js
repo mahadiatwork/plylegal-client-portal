@@ -69,7 +69,6 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
         date_to_day: z.string().optional(),
         date_to_month: z.string().optional(),
         date_to_year: z.string().optional(),
-        total_time: z.string().optional(),
     });
 
     const dialogForm = useForm({
@@ -88,7 +87,6 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
             date_to_day: "",
             date_to_month: "",
             date_to_year: "",
-            total_time: "",
         },
     });
 
@@ -190,7 +188,7 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                     )}
                 </div>
                 <div>
-                    <Label htmlFor="state" className="mb-2 block">State / Province</Label>
+                    <Label htmlFor="state" className="mb-2 block">State / Territory</Label>
                     <Input
                         id="state"
                         {...dialogForm.register("state")}
@@ -290,19 +288,6 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                         </SelectContent>
                     </Select>
                 </div>
-            </div>
-
-            {/* Total Time Spent */}
-            <div>
-                <Label htmlFor="total_time" className="mb-2 block">
-                    Total Time Spent in This Country <span className="text-gray-400 font-normal">(e.g. 2 years 4 months)</span>
-                </Label>
-                <Input
-                    id="total_time"
-                    {...dialogForm.register("total_time")}
-                    placeholder="e.g. 2 years 4 months"
-                    data-testid="input-total-time"
-                />
             </div>
 
             <DialogFooter>
@@ -439,8 +424,8 @@ export default function Page() {
             <CardHeader>
                 <CardTitle className="text-2xl font-semibold">All Applicants&apos; Countries of Residence</CardTitle>
                 <p className="text-sm text-gray-600 mt-2">
-                    Give details of all countries where the applicants spent a total period of time that adds up to 12 months or
-                    more in the past 10 years since turning 16 year of age.
+                    Provide details of all countries where the applicant(s) have spent a total of 12 months or more in the past
+                    10 years since turning 16.
                 </p>
             </CardHeader>
             <CardContent>
@@ -470,7 +455,6 @@ export default function Page() {
                                             ? formatDate(row.date_to_day, row.date_to_month, row.date_to_year)
                                             : "Ongoing",
                                 },
-                                { key: "total_time", label: "Total Time" },
                             ]}
                             onAdd={(newRow) => {
                                 const updated = [...residenceRecords, newRow];

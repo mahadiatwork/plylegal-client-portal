@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,7 +8,11 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import {
+  getVisaTypeFromPath,
+  getNextTemporaryWorkChildRoute,
+  getPreviousTemporaryWorkChildRoute,
+} from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -248,7 +252,7 @@ const passportDialogSchema = z.object({
   }
 );
 
-function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
+function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, applicantNameOptions = APPLICANT_NAME_OPTIONS }) {
   const initialIsOriginal = row?.is_original_date !== undefined ? row.is_original_date : "yes";
   const [isOriginalDate, setIsOriginalDate] = useState(initialIsOriginal);
 
@@ -400,7 +404,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
             <SelectValue placeholder="Choose Applicant" />
           </SelectTrigger>
           <SelectContent>
-            {APPLICANT_NAME_OPTIONS.map((opt) => (
+            {applicantNameOptions.map((opt) => (
               <SelectItem key={opt} value={opt}>{opt}</SelectItem>
             ))}
           </SelectContent>
@@ -614,17 +618,21 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   );
 }
 
-export default function IdentityPage() {
+export default function ChildProfileIdentityPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const params = useParams();
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
 
   const visaType = getVisaTypeFromPath(pathname);
   const [isSaving, setIsSaving] = useState(false);
-  const profileId = searchParams.get("profileId");
+  const childId = typeof params?.childId === "string" ? params.childId : null;
+  const profileId = childId;
   const appIdParam = searchParams.get("applicationId");
+
+  const profile = childId ? draftStore.getProfile(childId) : null;
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -634,6 +642,17 @@ export default function IdentityPage() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
+
+  useEffect(() => {
+    if (!childId) return;
+    if (!profile || profile.relationship !== "child") {
+      router.replace(
+        appIdParam
+          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(appIdParam)}`
+          : "/intake/temporary-work/profile"
+      );
+    }
+  }, [childId, profile, router, appIdParam]);
 
   const emptyNational = {
     family_name: "",
@@ -660,9 +679,8 @@ export default function IdentityPage() {
   });
 
   useEffect(() => {
-    const savedData = profileId
-      ? (draftSnap.draft?.profiles_data?.[profileId]?.identity || {})
-      : (draftSnap.draft?.temporary_work_identity || {});
+    if (!profileId) return;
+    const savedData = draftSnap.draft?.profiles_data?.[profileId]?.identity || {};
 
     if (savedData && Object.keys(savedData).length > 0) {
       const migrated = migrateLegacyIdentity(savedData);
@@ -672,12 +690,7 @@ export default function IdentityPage() {
         other_identity_documents: migrated.other_identity_documents || [],
       });
     }
-  }, [
-    draftSnap.draft?.temporary_work_identity,
-    draftSnap.draft?.profiles_data,
-    profileId,
-    form,
-  ]);
+  }, [draftSnap.draft?.profiles_data, profileId, form]);
 
   const hasPassport = form.watch("has_passport");
   const hasNationalId = form.watch("has_national_id");
@@ -702,13 +715,16 @@ export default function IdentityPage() {
     return q ? `${base}?${q}` : href;
   };
 
+  const passportNameOptions =
+    profile?.given_names || profile?.family_name
+      ? [`${profile.given_names || ""} ${profile.family_name || ""}`.trim()]
+      : ["Applicant"];
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const data = form.getValues();
-      const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_identity", data);
+      const result = await draftStore.saveProfileSectionData(profileId, "identity", data);
 
       if (result.success) {
         toast({
@@ -730,18 +746,19 @@ export default function IdentityPage() {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_identity", data);
+      const result = await draftStore.saveProfileSectionData(profileId, "identity", data);
 
       if (result.success) {
-        if (profileId) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/identity`);
-        } else {
-          await draftStore.markPageComplete(`${visaType}/main-applicant/identity`, null, "temporary_work_identity");
-        }
+        await draftStore.markProfilePageComplete(
+          profileId,
+          `${visaType}/children/${childId}/identity`
+        );
 
-        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        const nextRoute = getNextTemporaryWorkChildRoute(
+          pathname,
+          draftSnap.currentApplicationId,
+          childId
+        );
         if (nextRoute) {
           router.push(withProfileQuery(nextRoute));
         }
@@ -758,18 +775,31 @@ export default function IdentityPage() {
   };
 
   const handlePrevious = () => {
-    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const previousRoute = getPreviousTemporaryWorkChildRoute(
+      pathname,
+      draftSnap.currentApplicationId,
+      childId
+    );
     if (previousRoute) {
       router.push(withProfileQuery(previousRoute));
     }
   };
 
+  if (!profile || profile.relationship !== "child") {
+    return null;
+  }
+
+  const childTitle =
+    profile.given_names || profile.family_name
+      ? `${profile.given_names || ""} ${profile.family_name || ""}`.trim()
+      : "Child";
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Main Applicant's Identity</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Identity — {childTitle}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          In this section, provide details about the main applicant&apos;s identity.
+          Provide passport, national ID, and other identity documents for this dependent child.
         </p>
       </CardHeader>
       <CardContent>
@@ -827,7 +857,9 @@ export default function IdentityPage() {
                     const updated = passports.filter((_, i) => i !== index);
                     form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                   }}
-                  DialogComponent={PassportDialog}
+                  DialogComponent={(dialogProps) => (
+                    <PassportDialog {...dialogProps} applicantNameOptions={passportNameOptions} />
+                  )}
                   addButtonText="Add"
                   testIdPrefix="passport"
                 />

@@ -662,7 +662,7 @@ export default function IdentityPage() {
   useEffect(() => {
     const savedData = profileId
       ? (draftSnap.draft?.profiles_data?.[profileId]?.identity || {})
-      : (draftSnap.draft?.temporary_work_identity || {});
+      : (draftSnap.draft?.temporary_work_spouse_identity || {});
 
     if (savedData && Object.keys(savedData).length > 0) {
       const migrated = migrateLegacyIdentity(savedData);
@@ -673,7 +673,7 @@ export default function IdentityPage() {
       });
     }
   }, [
-    draftSnap.draft?.temporary_work_identity,
+    draftSnap.draft?.temporary_work_spouse_identity,
     draftSnap.draft?.profiles_data,
     profileId,
     form,
@@ -708,7 +708,7 @@ export default function IdentityPage() {
       const data = form.getValues();
       const result = profileId
         ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_identity", data);
+        : await draftStore.saveSectionData("temporary_work_spouse_identity", data);
 
       if (result.success) {
         toast({
@@ -732,13 +732,13 @@ export default function IdentityPage() {
     try {
       const result = profileId
         ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_identity", data);
+        : await draftStore.saveSectionData("temporary_work_spouse_identity", data);
 
       if (result.success) {
         if (profileId) {
           await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/identity`);
         } else {
-          await draftStore.markPageComplete(`${visaType}/main-applicant/identity`, null, "temporary_work_identity");
+          await draftStore.markPageComplete(`${visaType}/spouse-partner/identity`, null, "temporary_work_spouse_identity");
         }
 
         const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
@@ -767,9 +767,9 @@ export default function IdentityPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Main Applicant's Identity</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Spouse / Partner — Identity</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          In this section, provide details about the main applicant&apos;s identity.
+          Provide identity documents for the spouse or partner included in this application.
         </p>
       </CardHeader>
       <CardContent>
