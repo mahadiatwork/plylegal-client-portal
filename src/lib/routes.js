@@ -152,6 +152,49 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
   { href: "/intake/temporary-work/submit", title: "Submit" },
 ];
 
+// Employer Nomination Visa (subclass 186) — same pages, but spouse gets Education + Language
+export const EMPLOYER_NOMINATION_ROUTES = [
+  { href: "/intake/temporary-work/start", title: "Getting Started" },
+  { href: "/intake/temporary-work/profile", title: "Application Profile" },
+  {
+    href: "/intake/temporary-work/main-applicant/details",
+    title: "Main Applicant",
+    subpages: [
+      { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+      { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
+      { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
+      { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
+      { href: "/intake/temporary-work/main-applicant/education", title: "Education" },
+      { href: "/intake/temporary-work/main-applicant/skills", title: "Skills" },
+      { href: "/intake/temporary-work/main-applicant/language", title: "Language" },
+    ],
+  },
+  {
+    href: "/intake/temporary-work/spouse-partner/details",
+    title: "Spouse/Partner",
+    subpages: [
+      { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
+      { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
+      { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
+      { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
+      { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
+    ],
+  },
+  { href: "/intake/temporary-work/children", title: "Children" },
+  {
+    href: "/intake/temporary-work/all-applicants/visas",
+    title: "All Applicants",
+    subpages: [
+      { href: "/intake/temporary-work/all-applicants/visas", title: "Visas" },
+      { href: "/intake/temporary-work/all-applicants/travel-history", title: "Travel History" },
+      { href: "/intake/temporary-work/all-applicants/countries-of-residence", title: "Countries of Residence" },
+      { href: "/intake/temporary-work/all-applicants/health", title: "Health" },
+      { href: "/intake/temporary-work/all-applicants/character", title: "Character" },
+    ],
+  },
+  { href: "/intake/temporary-work/submit", title: "Submit" },
+];
+
 // Per-profile sub-pages (shared definition used by sidebar + routing)
 export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
@@ -163,6 +206,15 @@ export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/language", title: "Language" },
 ];
 
+// Per-profile sub-pages for 186 spouse (adds Education + Language)
+export const EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES = [
+  { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
+  { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
+  { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
+  { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
+  { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
+];
+
 // Extract visa type from pathname
 export function getVisaTypeFromPath(pathname) {
   if (pathname.includes('/intake/partner/')) return 'partner';
@@ -171,14 +223,15 @@ export function getVisaTypeFromPath(pathname) {
   return 'partner'; // default
 }
 
-// Get routes based on visa type
-export function getIntakeRoutes(visaType) {
+// Get routes based on visa type and optional visa context (subclass)
+export function getIntakeRoutes(visaType, visaContext) {
   switch (visaType) {
     case 'partner':
       return PARTNER_VISA_ROUTES;
     case 'protection':
       return PROTECTION_VISA_ROUTES;
     case 'temporary-work':
+      if (visaContext === '186') return EMPLOYER_NOMINATION_ROUTES;
       return TEMPORARY_WORK_VISA_ROUTES;
     default:
       return PARTNER_VISA_ROUTES;

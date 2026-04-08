@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { authStore } from "@/stores/authStore";
 import { applicationsStore } from "@/stores/applicationsStore";
-import { AppSidebar } from "@/components/AppSidebar";
+
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const { user, userProfile } = useSnapshot(authStore);
   
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: userProfile?.firstName || "",
@@ -410,29 +410,10 @@ export default function ProfilePage() {
   };
   
   return (
-    <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:block">
-        <AppSidebar mode="global" />
-      </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <AppHeader />
       
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm" 
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div className="absolute left-0 top-0 bottom-0">
-            <AppSidebar mode="global" onClose={() => setSidebarOpen(false)} />
-          </div>
-        </div>
-      )}
-      
-      <div className="flex-1 flex flex-col">
-        <AppHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
-        />
-        
-        <main className="flex-1 px-6 py-8">
+      <main className="flex-1 px-6 py-8">
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Your Profile Card */}
             <Card>
@@ -900,8 +881,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           </div>
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

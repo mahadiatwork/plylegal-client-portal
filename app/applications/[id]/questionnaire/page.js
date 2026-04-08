@@ -73,15 +73,20 @@ export default function QuestionnairePage() {
     setIsNavigating(true);
 
     let visaTypeCode = application.visaTypeCode?.toLowerCase();
+    let visaContext = null;
 
-    if (!visaTypeCode && application.type) {
+    if (application.type) {
       const typeLower = application.type.toLowerCase();
       if (typeLower.includes('protection')) {
         visaTypeCode = 'protection';
       } else if (typeLower.includes('partner')) {
         visaTypeCode = 'partner';
+      } else if (typeLower.includes('nomination') || typeLower.includes('186')) {
+        visaTypeCode = 'temporary-work';
+        visaContext = '186';
       } else if (typeLower.includes('temporary') || typeLower.includes('work')) {
         visaTypeCode = 'temporary-work';
+        visaContext = '482';
       }
     }
 
@@ -92,6 +97,10 @@ export default function QuestionnairePage() {
       route = `/intake/partner/start?applicationId=${appId}`;
     } else {
       route = `/intake/temporary-work/start?applicationId=${appId}`;
+      if (visaContext) {
+        draftStore.setVisaContext(visaContext);
+        draftStore.saveDraft({ visaContext }, appId);
+      }
     }
 
     router.push(route);

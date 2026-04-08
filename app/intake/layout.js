@@ -13,6 +13,7 @@ import {
   getIntakeRoutes,
   calculateProgress,
   PROFILE_SUBPAGES,
+  EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES,
   TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
   buildTemporaryWorkChildHref,
   getTemporaryWorkChildProfileCompletionKey,
@@ -61,7 +62,7 @@ export default function IntakeLayout({ children }) {
   };
 
   const visaType = getVisaTypeFromPath(pathname);
-  const INTAKE_ROUTES = getIntakeRoutes(visaType);
+  const INTAKE_ROUTES = getIntakeRoutes(visaType, draftSnap.visaContext);
 
   const progress = calculateProgress(pathname, visaType);
 
@@ -245,9 +246,7 @@ export default function IntakeLayout({ children }) {
                   const isExpanded = isSectionExpanded(route.href);
 
                   // ── For temporary-work: replace Main Applicant / Spouse / Children with per-profile sections ──
-                  // Only suppress the static sections AFTER profiles have been added. Before that, show them normally.
-                  const isProfileSection = visaType === 'temporary-work' &&
-                    profiles.length > 0 && (
+                  const isProfileSection = visaType === 'temporary-work' && (
                       route.href.includes('/main-applicant') ||
                       route.href.includes('/spouse-partner') ||
                       route.href === '/intake/temporary-work/children'
@@ -350,7 +349,9 @@ export default function IntakeLayout({ children }) {
                                           title: sp.title,
                                           pathSuffix: sp.pathSuffix,
                                         }))
-                                      : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                      : (profile.relationship === 'spouse' && draftSnap.visaContext === '186')
+                                          ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                          : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
                                     ).map((subpage) => {
                                       const isActive =
                                         profileIdFromUrl === profileKey &&
@@ -360,7 +361,7 @@ export default function IntakeLayout({ children }) {
                                       const completionKey =
                                         profile.relationship === 'child'
                                           ? `${getTemporaryWorkChildProfileCompletionKey(profileKey, subpage.pathSuffix)}__${profileKey}`
-                                          : `${visaType}/main-applicant/${subpage.href.split('/main-applicant/')[1]}__${profileKey}`;
+                                          : `${visaType}/${profile.relationship === 'spouse' ? 'spouse-partner' : 'main-applicant'}/${subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1]}__${profileKey}`;
                                       const isComplete = draftSnap.completionStatus?.[completionKey] === true;
                                       return (
                                         <li key={`${subpage.href}-${profileKey}`} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">

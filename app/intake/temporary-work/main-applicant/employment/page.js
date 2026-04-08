@@ -91,6 +91,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     is_current_employment: z.string().optional(),
     position_type: z.string().optional(),
     is_related_to_nominated_position: z.string().optional(),
+    visa_held: z.string().optional(),
   });
 
   const dialogForm = useForm({
@@ -111,10 +112,14 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       is_current_employment: "",
       position_type: "",
       is_related_to_nominated_position: "",
+      visa_held: "",
     }
   });
 
+  const draftSnap = useSnapshot(draftStore);
+  const visaContext = draftSnap.visaContext || '482';
   const status = dialogForm.watch("status");
+  const country = dialogForm.watch("country");
 
   const handleSubmit = (data) => {
     onSave(data);
@@ -313,6 +318,19 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
+      {visaContext === '186' && country === 'Australia' && (
+        <div>
+          <Label htmlFor="visa_held" className="mb-2 block">What visa(s) were held during this period?</Label>
+          <Textarea
+            id="visa_held"
+            {...dialogForm.register("visa_held")}
+            rows={2}
+            data-testid="textarea-visa-held"
+            placeholder="e.g., Subclass 482 Temporary Skill Shortage visa"
+          />
+        </div>
+      )}
+
       <div>
         <Label htmlFor="city" className="mb-2 block">City/Town</Label>
         <Input
@@ -503,9 +521,9 @@ export default function EmploymentPage() {
 
           {/* Q2: Employment History */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History (last 5 years)</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History (last {draftSnap.visaContext === '186' ? '10' : '5'} years)</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Enter details of your employment history for the previous 5 years
+              Enter details of your employment history for the previous {draftSnap.visaContext === '186' ? '10' : '5'} years
             </p>
             <RepeaterTable
               data={employmentHistory}

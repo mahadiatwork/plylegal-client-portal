@@ -12,10 +12,16 @@ export const draftStore = proxy({
   completionStatus: {}, // Track which pages are completed: { "start": true, "main-applicant/details": true, ... }
   currentApplicationId: null, // Track which application this draft belongs to
   activeProfileId: null, // Currently selected profile in the questionnaire
+  visaContext: null, // '482' or '186' — determines visa-specific behaviour
   shouldPrefill: false,
   lastSaved: null,
   isLoading: false,
   isSaving: false,
+
+  /** Set the visa context (subclass) for the current application */
+  setVisaContext(context) {
+    this.visaContext = context;
+  },
 
   // ─── Profile Helpers ───────────────────────────────────────────────────────
 
@@ -174,6 +180,12 @@ export const draftStore = proxy({
       fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'draftStore.js:68', message: 'After db.loadDraft', data: { hasData: !!data, dataKeys: Object.keys(data || {}), hasTemporaryWorkDetails: !!data?.temporary_work_details, temporaryWorkDetailsKeys: Object.keys(data?.temporary_work_details || {}), birth_day: data?.temporary_work_details?.birth_day, marital_status: data?.temporary_work_details?.marital_status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion
       this.draft = data || {};
+
+      // Restore visaContext from persisted draft data
+      if (this.draft.visaContext) {
+        this.visaContext = this.draft.visaContext;
+      }
+
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'draftStore.js:69', message: 'After setting this.draft', data: { draftKeys: Object.keys(this.draft || {}), hasTemporaryWorkDetails: !!this.draft?.temporary_work_details, birth_day: this.draft?.temporary_work_details?.birth_day, marital_status: this.draft?.temporary_work_details?.marital_status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
       // #endregion

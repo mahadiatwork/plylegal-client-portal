@@ -70,8 +70,7 @@ export function AppSidebar({ mode, application, onClose }) {
         </Link>
         
         <div>
-          <div className="text-xs text-sidebar-foreground/70">{application.reference}</div>
-          <h2 className="font-serif text-lg font-semibold text-sidebar-foreground mt-1">{application.type}</h2>
+          <h2 className="font-serif text-lg font-semibold text-sidebar-foreground">{application.type}</h2>
         </div>
       </div>
       
