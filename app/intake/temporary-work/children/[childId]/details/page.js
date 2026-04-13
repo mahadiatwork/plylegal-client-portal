@@ -112,15 +112,7 @@ export default function ChildDetailsPage() {
     },
   });
 
-  const withQuery = (href) => {
-    if (!href) return href;
-    const base = href.split("?")[0];
-    const u = new URLSearchParams();
-    if (appId) u.set("applicationId", appId);
-    if (childId) u.set("profileId", childId);
-    const q = u.toString();
-    return q ? `${base}?${q}` : href;
-  };
+
 
   useEffect(() => {
     if (isSavingRef.current) return;
@@ -211,17 +203,24 @@ export default function ChildDetailsPage() {
   }, [populateFormKey]);
 
   const onSubmit = async () => {
-    const next = getNextTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
-    if (next) router.push(withQuery(next));
+    const values = form.getValues();
+    const result = await draftStore.saveProfileSectionData(profileId, "details", values);
+    if (result.success) {
+      await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
+      const next = getNextTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
+      if (next) router.push(next);
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
+    }
   };
 
   const handlePrevious = () => {
     const prev = getPreviousTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
     if (prev) {
-      router.push(withQuery(prev));
+      router.push(prev);
       return;
     }
-    router.push(withQuery(getTemporaryWorkChildrenListHref(draftSnap.currentApplicationId)));
+    router.push(getTemporaryWorkChildrenListHref(draftSnap.currentApplicationId));
   };
 
   const handleSave = async () => {

@@ -582,13 +582,16 @@ export default function SkillsPage() {
   const draftSnap = useSnapshot(draftStore);
   const draft = draftSnap.draft;
 
+  const profileId = searchParams.get('profileId');
+  const visaType = getVisaTypeFromPath(pathname);
+
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
-    if (appIdFromUrl && appIdFromUrl !== draftStore.currentApplicationId) {
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
-  }, [searchParams]);
+  }, [searchParams, draftSnap.currentApplicationId]);
 
   const form = useForm({
     defaultValues: {
@@ -605,15 +608,20 @@ export default function SkillsPage() {
   const assessments = form.watch("assessments") || [];
 
   useEffect(() => {
-    const savedData = draft.temporary_work_skills || {};
+    const savedData = profileId
+      ? draftSnap.draft?.profiles_data?.[profileId]?.skills || {}
+      : draftSnap.draft?.temporary_work_skills || {};
+
     if (Object.keys(savedData).length > 0) {
       form.reset(savedData);
     }
-  }, [draft.temporary_work_skills, form]);
+  }, [draftSnap.draft?.temporary_work_skills, draftSnap.draft?.profiles_data, profileId, form]);
 
   const handleSave = async () => {
     const formData = form.getValues();
-    const result = await draftStore.saveSectionData("temporary_work_skills", formData);
+    const result = profileId
+      ? await draftStore.saveProfileSectionData(profileId, "skills", formData)
+      : await draftStore.saveSectionData("temporary_work_skills", formData);
 
     if (result.success) {
       toast({
@@ -630,19 +638,32 @@ export default function SkillsPage() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("temporary_work_skills", data);
-    const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/skills`);
+    const result = profileId
+      ? await draftStore.saveProfileSectionData(profileId, "skills", data)
+      : await draftStore.saveSectionData("temporary_work_skills", data);
 
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
-    if (nextRoute) {
-      router.push(nextRoute);
+    if (result.success) {
+      if (profileId) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/skills`);
+      } else {
+        await draftStore.markPageComplete(`${visaType}/main-applicant/skills`, null, "temporary_work_skills");
+      }
+
+      const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (nextRoute) {
+        router.push(nextRoute);
+      }
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to save changes",
+        variant: "destructive",
+      });
     }
   };
 
   const handlePrevious = () => {
-    const visaType = getVisaTypeFromPath(pathname);
-    const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
+    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
       router.push(previousRoute);
     }

@@ -625,6 +625,7 @@ export default function IdentityPage() {
   const [isSaving, setIsSaving] = useState(false);
   const profileId = searchParams.get("profileId");
   const appIdParam = searchParams.get("applicationId");
+  const visaType = getVisaTypeFromPath(pathname);
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -692,15 +693,7 @@ export default function IdentityPage() {
   ];
   const nidYears = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
 
-  const withProfileQuery = (href) => {
-    if (!href) return href;
-    const base = href.split("?")[0];
-    const url = new URLSearchParams();
-    if (appIdParam) url.set("applicationId", appIdParam);
-    if (profileId) url.set("profileId", profileId);
-    const q = url.toString();
-    return q ? `${base}?${q}` : href;
-  };
+
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -743,7 +736,7 @@ export default function IdentityPage() {
 
         const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         if (nextRoute) {
-          router.push(withProfileQuery(nextRoute));
+          router.push(nextRoute);
         }
       } else {
         toast({
@@ -760,7 +753,7 @@ export default function IdentityPage() {
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
-      router.push(withProfileQuery(previousRoute));
+      router.push(previousRoute);
     }
   };
 

@@ -705,15 +705,7 @@ export default function ChildProfileIdentityPage() {
   ];
   const nidYears = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
 
-  const withProfileQuery = (href) => {
-    if (!href) return href;
-    const base = href.split("?")[0];
-    const url = new URLSearchParams();
-    if (appIdParam) url.set("applicationId", appIdParam);
-    if (profileId) url.set("profileId", profileId);
-    const q = url.toString();
-    return q ? `${base}?${q}` : href;
-  };
+
 
   const passportNameOptions =
     profile?.given_names || profile?.family_name
@@ -727,6 +719,7 @@ export default function ChildProfileIdentityPage() {
       const result = await draftStore.saveProfileSectionData(profileId, "identity", data);
 
       if (result.success) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/identity`);
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully",
@@ -760,7 +753,7 @@ export default function ChildProfileIdentityPage() {
           childId
         );
         if (nextRoute) {
-          router.push(withProfileQuery(nextRoute));
+          router.push(nextRoute);
         }
       } else {
         toast({
@@ -781,7 +774,7 @@ export default function ChildProfileIdentityPage() {
       childId
     );
     if (previousRoute) {
-      router.push(withProfileQuery(previousRoute));
+      router.push(previousRoute);
     }
   };
 

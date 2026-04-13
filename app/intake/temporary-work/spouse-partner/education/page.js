@@ -451,13 +451,14 @@ export default function EducationPage() {
   const activeProfile = profileId ? draftSnap.draft?.profiles?.find((p) => p.id === profileId) : null;
   const isSpouseProfile = activeProfile?.relationship === "spouse";
 
+  // Keep draft/application context in sync with URL param
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
-    if (appIdFromUrl && appIdFromUrl !== draftStore.currentApplicationId) {
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
-  }, [searchParams]);
+  }, [searchParams, draftSnap.currentApplicationId]);
 
   const form = useForm({
     defaultValues: {
@@ -482,57 +483,48 @@ export default function EducationPage() {
 
   const handleSave = async () => {
     const formData = form.getValues();
-    let result;
-    if (profileId && isSpouseProfile) {
-      result = await draftStore.saveProfileSectionData(profileId, "education", formData);
-    } else {
-      result = await draftStore.saveSectionData("temporary_work_spouse_education", formData);
-    }
+    const result = (profileId && isSpouseProfile)
+      ? await draftStore.saveProfileSectionData(profileId, "education", formData)
+      : await draftStore.saveSectionData("temporary_work_spouse_education", formData);
 
     if (result.success) {
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
+      const visaType = getVisaTypeFromPath(pathname);
+      if (profileId && isSpouseProfile) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/education`);
+      } else {
+        await draftStore.markPageComplete(`${visaType}/spouse-partner/education`, null, "temporary_work_spouse_education");
+      }
+      toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
     } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save changes",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
     }
   };
 
   const onSubmit = async (data) => {
     const visaType = getVisaTypeFromPath(pathname);
-    if (profileId && isSpouseProfile) {
-      await draftStore.saveProfileSectionData(profileId, "education", data);
-      await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/education`);
-    } else {
-      await draftStore.saveSectionData("temporary_work_spouse_education", data);
-      await draftStore.markPageComplete(`${visaType}/spouse-partner/education`, null, "temporary_work_spouse_education");
-    }
+    const result = (profileId && isSpouseProfile)
+      ? await draftStore.saveProfileSectionData(profileId, "education", data)
+      : await draftStore.saveSectionData("temporary_work_spouse_education", data);
 
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
-    if (nextRoute) {
-      const urlParams = new URLSearchParams();
-      if (appId) urlParams.set("applicationId", appId);
-      if (profileId) urlParams.set("profileId", profileId);
-      const base = nextRoute.split("?")[0];
-      router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : nextRoute);
+    if (result.success) {
+      if (profileId && isSpouseProfile) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/education`);
+      } else {
+        await draftStore.markPageComplete(`${visaType}/spouse-partner/education`, null, "temporary_work_spouse_education");
+      }
+
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (next) router.push(next);
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
     }
   };
 
   const handlePrevious = () => {
-    const urlParams = new URLSearchParams();
-    if (appId) urlParams.set("applicationId", appId);
-    if (profileId) urlParams.set("profileId", profileId);
-    
     const visaType = getVisaTypeFromPath(pathname);
-    const prev = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
-      const base = prev.split("?")[0];
-      router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);
+      router.push(prev);
     }
   };
 

@@ -4,21 +4,57 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+
+const formSchema = z.object({
+  // Question 1: Other Names
+  has_other_names: z.enum(["yes", "no"]),
+  other_names: z.array(z.object({
+    family_name: z.string(),
+    given_names: z.string(),
+    reason_for_change: z.string(),
+    has_evidence: z.string().optional(),
+    evidence_type: z.string().optional(),
+    document_issue_day: z.string().optional(),
+    document_issue_month: z.string().optional(),
+    document_issue_year: z.string().optional(),
+    document_reference_number: z.string().optional(),
+    issuing_country: z.string().optional(),
+    issuing_state: z.string().optional(),
+    place_of_issue: z.string().optional(),
+    use_in_application: z.string().optional(),
+  })).optional(),
+
+  // Question 2: Chinese Commercial Code
+  use_chinese_code: z.enum(["yes", "no"]),
+  chinese_code: z.string().optional(),
+
+  // Question 3: Russian Descent
+  russian_descent: z.enum(["yes", "no"]),
+  patronymic_family_name: z.string().optional(),
+  patronymic_given_names: z.string().optional(),
+
+  // Question 4: Previous Date of Birth
+  has_prev_dob: z.enum(["yes", "no"]),
+  prev_dobs: z.array(z.object({
+    date_of_birth: z.string(),
+  })).optional(),
+});
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -50,11 +86,11 @@ const EVIDENCE_TYPE_OPTIONS = [
   "Other Document"
 ];
 
-const otherNameDialogSchema = z.object({
+const dialogSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
   reason_for_change: z.string().min(1, "Reason for change is required"),
-  has_evidence: z.string().min(1, "Please select yes or no"),
+  has_evidence: z.string(),
   evidence_type: z.string().optional(),
   document_issue_day: z.string().optional(),
   document_issue_month: z.string().optional(),
@@ -63,14 +99,23 @@ const otherNameDialogSchema = z.object({
   issuing_country: z.string().optional(),
   issuing_state: z.string().optional(),
   place_of_issue: z.string().optional(),
+  use_in_application: z.string().optional(),
 });
 
+const prevDobDialogSchema = z.object({
+  date_of_birth: z.string().min(1, "Date of birth is required"),
+});
+
+// Other Name Dialog Component
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
-  const [hasEvidence, setHasEvidence] = useState(row?.has_evidence || "no");
+  const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
+  const initialUseInApplication = row?.use_in_application === "yes";
+  const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
+  const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
 
   const dialogForm = useForm({
-    resolver: zodResolver(otherNameDialogSchema),
+    resolver: zodResolver(dialogSchema),
     defaultValues: row || {
       family_name: "",
       given_names: "",
@@ -84,6 +129,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       issuing_country: "",
       issuing_state: "",
       place_of_issue: "",
+      use_in_application: "no",
     },
   });
 
@@ -91,6 +137,10 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
     if (row?.has_evidence !== undefined) {
       setHasEvidence(row.has_evidence);
       dialogForm.setValue("has_evidence", row.has_evidence);
+    }
+    if (row?.use_in_application !== undefined) {
+      setUseInApplication(row.use_in_application === "yes");
+      dialogForm.setValue("use_in_application", row.use_in_application);
     }
   }, [row]);
 
@@ -141,7 +191,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
           <SelectTrigger data-testid="select-reason-for-change">
             <SelectValue placeholder="Choose Reason for Change" />
           </SelectTrigger>
-          <SelectContent position="popper" className="max-h-[200px] overflow-y-auto z-[9999]">
+          <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
             {REASON_OPTIONS.map((reason) => (
               <SelectItem key={reason} value={reason}>{reason}</SelectItem>
             ))}
@@ -152,18 +202,32 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
+      <div className="flex items-center space-x-2 pt-2">
+        <Checkbox
+          id="use_in_application"
+          checked={useInApplication}
+          onCheckedChange={(checked) => {
+            setUseInApplication(checked);
+            dialogForm.setValue("use_in_application", checked ? "yes" : "no");
+          }}
+        />
+        <Label htmlFor="use_in_application" className="text-sm font-normal cursor-pointer">
+          Use this name in the application
+        </Label>
+      </div>
+
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
 
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
-            Do you have evidence of this Other Name? <span className="text-red-500">*</span>
+            Do you have evidence of this Other Name?
           </Label>
           <RadioGroup
             value={hasEvidence}
             onValueChange={(value) => {
               setHasEvidence(value);
-              dialogForm.setValue("has_evidence", value, { shouldValidate: true });
+              dialogForm.setValue("has_evidence", value);
             }}
             className="flex gap-4"
             data-testid="radio-has-evidence"
@@ -181,9 +245,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
               </Label>
             </div>
           </RadioGroup>
-          {dialogForm.formState.errors.has_evidence && (
-            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.has_evidence.message}</p>
-          )}
         </div>
 
         {hasEvidence === "yes" && (
@@ -197,7 +258,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
                 <SelectTrigger data-testid="select-evidence-type">
                   <SelectValue placeholder="Choose Evidence Type" />
                 </SelectTrigger>
-                <SelectContent position="popper" className="z-[9999]">
+                <SelectContent position="popper">
                   {EVIDENCE_TYPE_OPTIONS.map((type) => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
@@ -215,7 +276,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
                   <SelectTrigger data-testid="select-document-day">
                     <SelectValue placeholder="Choose Day" />
                   </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto z-[9999]">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {days.map((day) => (
                       <SelectItem key={day} value={day}>{day}</SelectItem>
                     ))}
@@ -229,7 +290,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
                   <SelectTrigger data-testid="select-document-month">
                     <SelectValue placeholder="Choose Month" />
                   </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto z-[9999]">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {months.map((month, idx) => (
                       <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
                     ))}
@@ -243,7 +304,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
                   <SelectTrigger data-testid="select-document-year">
                     <SelectValue placeholder="Choose Year" />
                   </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto z-[9999]">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {years.map((year) => (
                       <SelectItem key={year} value={year}>{year}</SelectItem>
                     ))}
@@ -307,42 +368,78 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#285646] hover:bg-[#1e4336] text-white"
           data-testid="button-ok"
         >
-          Ok
+          Save
         </Button>
       </DialogFooter>
     </div>
   );
 }
 
-const formSchema = z.object({
-  has_other_names: z.enum(["yes", "no"]),
-  other_names: z.array(z.object({
-    family_name: z.string(),
-    given_names: z.string(),
-    reason_for_change: z.string(),
-    has_evidence: z.string().optional(),
-    evidence_type: z.string().optional(),
-    document_issue_day: z.string().optional(),
-    document_issue_month: z.string().optional(),
-    document_issue_year: z.string().optional(),
-    document_reference_number: z.string().optional(),
-    issuing_country: z.string().optional(),
-    issuing_state: z.string().optional(),
-    place_of_issue: z.string().optional(),
-  })).optional(),
-  use_chinese_code: z.enum(["yes", "no"]).optional(),
-  chinese_code: z.string().optional(),
-});
+// Previous Date of Birth Dialog Component
+function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
+  const row = editingRow;
+
+  const dialogForm = useForm({
+    resolver: zodResolver(prevDobDialogSchema),
+    defaultValues: row || {
+      date_of_birth: "",
+    },
+  });
+
+  const handleFormSubmit = (data) => {
+    onSave(data);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
+        <Input
+          id="date_of_birth"
+          type="date"
+          {...dialogForm.register("date_of_birth")}
+          data-testid="input-date-of-birth"
+          className="w-full"
+        />
+        {dialogForm.formState.errors.date_of_birth && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth.message}</p>
+        )}
+      </div>
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          data-testid="button-cancel-dob"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          onClick={dialogForm.handleSubmit(handleFormSubmit)}
+          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          data-testid="button-save-dob"
+        >
+          Save
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
 
 export default function Page() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const profileId = searchParams.get('profileId');
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const [isSaving, setIsSaving] = useState(false);
 
+  const profileId = searchParams.get('profileId');
+
+  // Set application ID from URL params if available
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -356,70 +453,66 @@ export default function Page() {
     defaultValues: {
       has_other_names: "no",
       other_names: [],
+      // FIX: Add all missing fields here with their default/initial values
       use_chinese_code: "no",
       chinese_code: "",
+      russian_descent: "no",
+      patronymic_family_name: "",
+      patronymic_given_names: "",
+      has_prev_dob: "no",
+      prev_dobs: [],
     },
   });
 
   // Watch form values
   const hasOtherNames = form.watch("has_other_names");
   const otherNames = form.watch("other_names") || [];
-  const useChineseCode = form.watch("use_chinese_code");
 
+  // Populate Form
   useEffect(() => {
     const savedData = profileId
       ? draftSnap.draft?.profiles_data?.[profileId]?.other || {}
-      : draftSnap.draft?.temporary_work_spouse_other || {};
+      : draftSnap.draft?.temporary_work_other || {};
 
-    if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
-      });
+    // FIX: Only reset if we actually have data, preventing overwrites with empty objects
+    if (savedData && Object.keys(savedData).length > 0) {
+
+      // FIX: Helper to safely convert incoming DB data to Strings for Select components
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+      const formData = {
+        // FIX: Ensure all fields are explicitly loaded and default to something safe
+        has_other_names: safeStr(savedData.has_other_names) || "no",
+        other_names: savedData.other_names || [],
+
+        use_chinese_code: safeStr(savedData.use_chinese_code) || "no",
+        chinese_code: safeStr(savedData.chinese_code) || "",
+        russian_descent: safeStr(savedData.russian_descent) || "no",
+        patronymic_family_name: safeStr(savedData.patronymic_family_name) || "",
+        patronymic_given_names: safeStr(savedData.patronymic_given_names) || "",
+        has_prev_dob: safeStr(savedData.has_prev_dob) || "no",
+        prev_dobs: savedData.prev_dobs || [],
+      };
+
+      // Use reset to properly update all form fields
+      form.reset(formData);
     }
-  }, [draftSnap.draft?.temporary_work_spouse_other, draftSnap.draft?.profiles_data, profileId, form]);
+  }, [draftSnap.draft?.temporary_work_other, draftSnap.draft?.profiles_data, profileId, form]);
 
   const onSubmit = async (data) => {
     const result = profileId
       ? await draftStore.saveProfileSectionData(profileId, "other", data)
-      : await draftStore.saveSectionData("temporary_work_spouse_other", data);
+      : await draftStore.saveSectionData("temporary_work_other", data);
 
     if (result.success) {
       if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/other`);
       } else {
-        await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`, null, "temporary_work_spouse_other");
+        await draftStore.markPageComplete(`${visaType}/main-applicant/other`, null, "temporary_work_other");
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) router.push(next);
-    } else {
-      toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
-    }
-  };
-
-  const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-    if (prev) router.push(prev);
-  };
-
-  const handleSave = async () => {
-    const values = form.getValues();
-    const result = profileId
-      ? await draftStore.saveProfileSectionData(profileId, "other", values)
-      : await draftStore.saveSectionData("temporary_work_spouse_other", values);
-
-    if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`);
-      }
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
     } else {
       toast({
         title: "Error",
@@ -429,14 +522,90 @@ export default function Page() {
     }
   };
 
+  const handlePrevious = () => {
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    if (prev) router.push(prev);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const isValid = await form.trigger();
+      if (!isValid) {
+        toast({
+          title: "Validation error",
+          description: "Please fix the errors in the form before saving",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const values = form.getValues();
+      const result = profileId
+        ? await draftStore.saveProfileSectionData(profileId, "other", values)
+        : await draftStore.saveSectionData("temporary_work_other", values);
+
+      if (result.success) {
+        if (profileId) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/other`);
+        } else {
+          await draftStore.markPageComplete(`${visaType}/main-applicant/other`);
+        }
+        toast({
+          title: "Draft saved",
+          description: "Your changes have been saved successfully",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save draft",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to save draft",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // FIX: Update the synchronization logic for other_names
   const updateOtherNames = async (newNames) => {
-    const currentValues = form.getValues();
     form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
+    // FIX: Use the complete current state and override just the updated array
     if (profileId) {
-      await draftStore.saveProfileSectionData(profileId, "other", { ...currentValues, other_names: newNames });
+      await draftStore.saveProfileSectionData(profileId, "other", {
+        ...form.getValues(),
+        other_names: newNames
+      });
     } else {
-      await draftStore.saveSectionData("temporary_work_spouse_other", { ...currentValues, other_names: newNames });
+      await draftStore.saveSectionData("temporary_work_other", {
+        ...form.getValues(),
+        other_names: newNames
+      });
+    }
+  };
+
+  // FIX: Update the synchronization logic for prev_dobs
+  const updatePrevDobs = async (newDobs) => {
+    form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+
+    // FIX: Use the complete current state and override just the updated array
+    if (profileId) {
+      await draftStore.saveProfileSectionData(profileId, "other", {
+        ...form.getValues(),
+        prev_dobs: newDobs
+      });
+    } else {
+      await draftStore.saveSectionData("temporary_work_other", {
+        ...form.getValues(),
+        prev_dobs: newDobs
+      });
     }
   };
 
@@ -446,12 +615,28 @@ export default function Page() {
     { key: "reason_for_change", label: "Reason for Change" },
   ];
 
+  const prevDobColumns = [
+    {
+      key: "date_of_birth",
+      label: "Date of Birth",
+      format: (row) => {
+        if (!row.date_of_birth) return "";
+        try {
+          const date = new Date(row.date_of_birth);
+          return date.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch {
+          return row.date_of_birth;
+        }
+      }
+    },
+  ];
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Other Personal Details</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Other Details</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          In this section, provide additional details about the main applicant's spouse/partner.
+          In this section, provide additional details about the main applicant.
         </p>
       </CardHeader>
       <CardContent>
@@ -463,7 +648,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
+                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
                 </Label>
                 <RadioGroup
                   value={form.watch("has_other_names")}
@@ -492,7 +677,7 @@ export default function Page() {
               {hasOtherNames === "yes" && (
                 <div className="pl-0 mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of the other names your Spouse/Partner has been known by, including names before marriage
+                    Enter details of the other names you have been known by, including names before marriage
                   </p>
                   <RepeaterTable
                     data={otherNames}
@@ -510,55 +695,16 @@ export default function Page() {
                     DialogComponent={OtherNameDialog}
                     addButtonText="Add"
                     emptyMessage="No other names added"
-                    dialogTitle="Other Name"
+                    dialogTitle="Add other name"
                     testIdPrefix="other-name"
                   />
                 </div>
               )}
             </div>
 
-            {/* Question 2: Chinese Commercial Code */}
-            <div className="space-y-4">
-              <div>
-                <Label className="text-base font-normal text-gray-900">
-                  Does your Spouse/Partner use a Chinese Commercial Code for their name?
-                </Label>
-                <RadioGroup
-                  value={form.watch("use_chinese_code")}
-                  onValueChange={(value) => form.setValue("use_chinese_code", value)}
-                  className="flex gap-4 mt-2"
-                  data-testid="radio-use-chinese-code"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
-                    <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
-                    <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {useChineseCode === "yes" && (
-                <div className="pl-0 mt-4">
-                  <Label htmlFor="chinese_code">Chinese Commercial Code</Label>
-                  <Input
-                    id="chinese_code"
-                    {...form.register("chinese_code")}
-                    className="max-w-md mt-1"
-                    data-testid="input-chinese-code"
-                    placeholder="Enter your Chinese Commercial Code"
-                  />
-                </div>
-              )}
-            </div>
           </div>
 
+          {/* Desktop Navigation */}
           <FormNavigation
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
@@ -568,6 +714,9 @@ export default function Page() {
           />
         </form>
       </CardContent>
+
+      {/* Mobile Navigation */}
+
     </Card>
   );
 }

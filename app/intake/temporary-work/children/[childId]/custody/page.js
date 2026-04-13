@@ -196,9 +196,10 @@ export default function ChildCustodyPage() {
     try {
       const result = await draftStore.saveProfileSectionData(childId, "custody", payload);
       if (result.success) {
+        await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
-        toast({ title: "Error", description: "Failed to save draft", variant: "destructive" });
+        toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
       }
     } finally {
       setIsSaving(false);

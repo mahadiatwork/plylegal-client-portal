@@ -85,6 +85,8 @@ export default function Page() {
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
 
+  const profileId = searchParams.get('profileId');
+
   useEffect(() => {
     const appIdFromUrl = searchParams.get("applicationId");
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -112,8 +114,13 @@ export default function Page() {
   });
 
   useEffect(() => {
-    const rawContact = draftSnap.draft?.temporary_work_contact_details || {};
+    const rawContact = profileId
+      ? draftSnap.draft?.profiles_data?.[profileId]?.contact_details || {}
+      : draftSnap.draft?.temporary_work_contact_details || {};
+    
+    // Check old style addresses or profile style
     const addressesSection = draftSnap.draft?.temporary_work_addresses || {};
+    
     const merged = migrateResidentialFromLegacy(
       Object.keys(rawContact).length ? rawContact : {},
       addressesSection
@@ -137,7 +144,7 @@ export default function Page() {
         postcode: ra.postcode ?? "",
       });
     }
-  }, [draftSnap.draft?.temporary_work_contact_details, draftSnap.draft?.temporary_work_addresses, form]);
+  }, [draftSnap.draft?.temporary_work_contact_details, draftSnap.draft?.profiles_data, draftSnap.draft?.temporary_work_addresses, profileId, form]);
 
   const buildPayload = () => {
     const v = form.getValues();
@@ -155,11 +162,27 @@ export default function Page() {
     setIsSaving(true);
     try {
       const payload = buildPayload();
-      await draftStore.saveSectionData("temporary_work_contact_details", payload);
-      await draftStore.markPageComplete(`${visaType}/main-applicant/contact-details`, null, "temporary_work_contact_details");
+      
+      const result = profileId
+        ? await draftStore.saveProfileSectionData(profileId, "contact_details", payload)
+        : await draftStore.saveSectionData("temporary_work_contact_details", payload);
 
-      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-      if (next) router.push(next);
+      if (result.success) {
+        if (profileId) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/contact-details`);
+        } else {
+          await draftStore.markPageComplete(`${visaType}/main-applicant/contact-details`, null, "temporary_work_contact_details");
+        }
+
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save draft",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -174,7 +197,10 @@ export default function Page() {
     setIsSaving(true);
     try {
       const payload = buildPayload();
-      const result = await draftStore.saveSectionData("temporary_work_contact_details", payload);
+      const result = profileId
+        ? await draftStore.saveProfileSectionData(profileId, "contact_details", payload)
+        : await draftStore.saveSectionData("temporary_work_contact_details", payload);
+
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -183,7 +209,7 @@ export default function Page() {
       } else {
         toast({
           title: "Error",
-          description: "Failed to save draft",
+          description: result.error || "Failed to save draft",
           variant: "destructive",
         });
       }

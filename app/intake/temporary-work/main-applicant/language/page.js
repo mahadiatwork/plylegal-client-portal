@@ -351,13 +351,16 @@ export default function LanguagePage() {
   const draftSnap = useSnapshot(draftStore);
   const draft = draftSnap.draft;
 
+  const profileId = searchParams.get('profileId');
+  const visaType = getVisaTypeFromPath(pathname);
+
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
-    if (appIdFromUrl && appIdFromUrl !== draftStore.currentApplicationId) {
+    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
-  }, [searchParams]);
+  }, [searchParams, draftSnap.currentApplicationId]);
 
   const form = useForm({
     defaultValues: {
@@ -377,7 +380,10 @@ export default function LanguagePage() {
   const englishTests = form.watch("english_tests") || [];
 
   useEffect(() => {
-    const savedData = draft.temporary_work_language || {};
+    const savedData = profileId
+      ? draftSnap.draft?.profiles_data?.[profileId]?.language || {}
+      : draftSnap.draft?.temporary_work_language || {};
+
     if (Object.keys(savedData).length > 0) {
       form.reset({
         is_english_main_language: "no",
@@ -389,11 +395,13 @@ export default function LanguagePage() {
         ...savedData,
       });
     }
-  }, [draft.temporary_work_language, form]);
+  }, [draftSnap.draft?.temporary_work_language, draftSnap.draft?.profiles_data, profileId, form]);
 
   const handleSave = async () => {
     const formData = form.getValues();
-    const result = await draftStore.saveSectionData("temporary_work_language", formData);
+    const result = profileId
+      ? await draftStore.saveProfileSectionData(profileId, "language", formData)
+      : await draftStore.saveSectionData("temporary_work_language", formData);
 
     if (result.success) {
       toast({
@@ -410,19 +418,32 @@ export default function LanguagePage() {
   };
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("temporary_work_language", data);
-    const visaType = getVisaTypeFromPath(pathname);
-    draftStore.markPageComplete(`${visaType}/main-applicant/language`);
+    const result = profileId
+      ? await draftStore.saveProfileSectionData(profileId, "language", data)
+      : await draftStore.saveSectionData("temporary_work_language", data);
 
-    const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
-    if (nextRoute) {
-      router.push(nextRoute);
+    if (result.success) {
+      if (profileId) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/language`);
+      } else {
+        await draftStore.markPageComplete(`${visaType}/main-applicant/language`, null, "temporary_work_language");
+      }
+
+      const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (nextRoute) {
+        router.push(nextRoute);
+      }
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to save changes",
+        variant: "destructive",
+      });
     }
   };
 
   const handlePrevious = () => {
-    const visaType = getVisaTypeFromPath(pathname);
-    const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId, draftStore.visaContext);
+    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
       router.push(previousRoute);
     }

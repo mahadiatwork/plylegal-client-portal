@@ -66,8 +66,9 @@ export default function Page() {
     return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${String(isSpouseProfile)}|${JSON.stringify(savedSlice)}|${spouseProfileDobSig}`;
   }, [draftSnap.isLoading, profileId, isSpouseProfile, draftSnap.draft, spouseProfileDobSig]);
 
+  // Keep draft/application context in sync with URL param
   useEffect(() => {
-    const appIdFromUrl = searchParams.get("applicationId");
+    const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
@@ -185,25 +186,31 @@ export default function Page() {
   }, [populateFormKey]);
 
   const onSubmit = async () => {
-    const urlParams = new URLSearchParams();
-    if (appId) urlParams.set("applicationId", appId);
-    if (profileId) urlParams.set("profileId", profileId);
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-    if (next) {
-      const base = next.split("?")[0];
-      const nextWithProfile = urlParams.toString() ? `${base}?${urlParams.toString()}` : next;
-      router.push(nextWithProfile);
+    const values = form.getValues();
+    const result = (profileId && isSpouseProfile)
+      ? await draftStore.saveProfileSectionData(profileId, "details", values)
+      : await draftStore.saveSectionData("temporary_work_spouse_details", values);
+
+    if (result.success) {
+      if (profileId && isSpouseProfile) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+      } else {
+        await draftStore.markPageComplete(`${visaType}/spouse-partner/details`, null, "temporary_work_spouse_details");
+      }
+
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (next) {
+        router.push(next);
+      }
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
     }
   };
 
   const handlePrevious = () => {
-    const urlParams = new URLSearchParams();
-    if (appId) urlParams.set("applicationId", appId);
-    if (profileId) urlParams.set("profileId", profileId);
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
-      const base = prev.split("?")[0];
-      router.push(urlParams.toString() ? `${base}?${urlParams.toString()}` : prev);
+      router.push(prev);
     }
   };
 
@@ -215,14 +222,18 @@ export default function Page() {
       let result;
       if (profileId && isSpouseProfile) {
         result = await draftStore.saveProfileSectionData(profileId, "details", values);
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
+        if (result.success) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        }
       } else {
         result = await draftStore.saveSectionData("temporary_work_spouse_details", values);
-        await draftStore.markPageComplete(
-          `${visaType}/spouse-partner/details`,
-          null,
-          "temporary_work_spouse_details"
-        );
+        if (result.success) {
+          await draftStore.markPageComplete(
+            `${visaType}/spouse-partner/details`,
+            null,
+            "temporary_work_spouse_details"
+          );
+        }
       }
       if (result.success) {
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });

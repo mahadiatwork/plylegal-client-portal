@@ -121,7 +121,7 @@ export default function IntakeStartPage() {
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader className="space-y-3 pb-6">
           <CardTitle className="text-3xl font-semibold text-slate-800">
-            Before You Begin
+            Get Started
           </CardTitle>
         </CardHeader>
         <CardContent>
