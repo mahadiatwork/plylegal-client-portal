@@ -343,8 +343,20 @@ export default function Page() {
 
     // ── Build applicants list ────────────────────────────────────────────
     const applicants = useMemo(() => {
-        const list = [];
+        const profiles = draftSnap.draft?.profiles || [];
+        if (profiles.length > 0) {
+            return profiles.map((p) => {
+                const fullName = [p.given_names, p.family_name].filter(Boolean).join(" ");
+                return {
+                    label: fullName.trim() || "Unnamed",
+                    value: fullName.trim() || "Unnamed",
+                    id: p.id
+                };
+            });
+        }
 
+        // Fallback for backward compatibility if profiles array is empty
+        const list = [];
         const mainDetails = draftSnap.draft?.temporary_work_details;
         if (mainDetails) {
             const fullName = [mainDetails.given_names, mainDetails.family_name].filter(Boolean).join(" ");
@@ -369,6 +381,7 @@ export default function Page() {
 
         return list;
     }, [
+        draftSnap.draft?.profiles,
         draftSnap.draft?.temporary_work_details,
         draftSnap.draft?.temporary_work_spouse_details,
         draftSnap.draft?.temporary_work_children,

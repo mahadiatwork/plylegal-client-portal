@@ -1361,15 +1361,21 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-  // Build applicant name options from main applicant, spouse/partner, and children draft data
+  // Build applicant name options from profiles array (or fallback to manual mapping)
   const applicantOptions = (() => {
-    const opts = [];
+    const profiles = draftSnap.draft?.profiles || [];
     const buildLabel = (family, given, day, month, year) => {
-      const name = [family, given].filter(Boolean).join(" ").trim();
+      const name = [given, family].filter(Boolean).join(" ").trim();
       const dob = [day, month, year].filter(Boolean).join(" ");
       if (!name) return "";
       return dob ? `${name} (DOB: ${dob})` : name;
     };
+
+    if (profiles.length > 0) {
+      return profiles.map((p) => buildLabel(p.family_name, p.given_names, p.birth_day, p.birth_month, p.birth_year)).filter(Boolean);
+    }
+
+    const opts = [];
     // Main applicant
     const main = draftSnap.draft?.temporary_work_details;
     if (main) {

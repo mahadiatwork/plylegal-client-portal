@@ -12,6 +12,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -106,6 +107,7 @@ const CHARACTER_QUESTIONS = [
 const formSchema = z.object(
   CHARACTER_QUESTIONS.reduce((acc, q) => {
     acc[q.key] = z.enum(["yes", "no"]).optional();
+    acc[`${q.key}_applicant_name`] = z.string().optional();
     acc[`${q.key}_details`] = z.string().optional();
     return acc;
   }, {})
@@ -113,6 +115,7 @@ const formSchema = z.object(
 
 const defaultFormValues = CHARACTER_QUESTIONS.reduce((acc, q) => {
   acc[q.key] = "no";
+  acc[`${q.key}_applicant_name`] = "";
   acc[`${q.key}_details`] = "";
   return acc;
 }, {});
@@ -124,6 +127,37 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+
+  // Build applicant name options from profiles array
+  const applicantOptions = (() => {
+    const profiles = draftSnap.draft?.profiles || [];
+    if (profiles.length > 0) {
+      return profiles.map((p) => {
+        const name = [p.given_names, p.family_name].filter(Boolean).join(" ").trim();
+        return name || "Unnamed Applicant";
+      });
+    }
+
+    // Fallback if profiles array is empty
+    const opts = [];
+    const main = draftSnap.draft?.temporary_work_details;
+    if (main) {
+      const name = [main.given_names, main.family_name].filter(Boolean).join(" ").trim();
+      if (name) opts.push(name);
+    }
+    const spouse = draftSnap.draft?.temporary_work_spouse_details;
+    if (spouse) {
+      const name = [spouse.given_names, spouse.family_name].filter(Boolean).join(" ").trim();
+      if (name) opts.push(name);
+    }
+    const childrenData = draftSnap.draft?.temporary_work_children?.children || [];
+    childrenData.forEach(child => {
+      const name = [child.given_names, child.family_name].filter(Boolean).join(" ").trim();
+      if (name) opts.push(name);
+    });
+
+    return opts.length ? opts : ["Main Applicant"];
+  })();
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get("applicationId");
@@ -146,6 +180,10 @@ export default function Page() {
     CHARACTER_QUESTIONS.forEach((q) => {
       if (savedData[q.key] === "yes" || savedData[q.key] === "no") {
         merged[q.key] = savedData[q.key];
+      }
+      const appName = savedData[`${q.key}_applicant_name`];
+      if (typeof appName === "string") {
+        merged[`${q.key}_applicant_name`] = appName;
       }
       const det = savedData[`${q.key}_details`];
       if (typeof det === "string") {
@@ -227,13 +265,32 @@ export default function Page() {
                   </div>
                 </RadioGroup>
                 {form.watch(q.key) === "yes" && (
-                  <div className="mt-2">
-                    <Label className="text-sm text-muted-foreground">Give details</Label>
-                    <Textarea
-                      className="mt-1"
-                      rows={4}
-                      {...form.register(`${q.key}_details`)}
-                    />
+                  <div className="mt-4 space-y-4 bg-muted/30 p-4 rounded-lg border border-border">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Which applicant does this declaration apply to?</Label>
+                      <Select
+                        value={form.watch(`${q.key}_applicant_name`) || ""}
+                        onValueChange={(value) => form.setValue(`${q.key}_applicant_name`, value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Applicant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {applicantOptions.map((name) => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Give details</Label>
+                      <Textarea
+                        className="bg-white"
+                        rows={4}
+                        {...form.register(`${q.key}_details`)}
+                        placeholder="Please provide full details as requested in the instructions above..."
+                      />
+                    </div>
                   </div>
                 )}
               </div>

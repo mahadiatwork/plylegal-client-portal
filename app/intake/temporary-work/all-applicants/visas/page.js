@@ -18,6 +18,8 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Plus, Trash2 } from "lucide-react";
+import { useFieldArray } from "react-hook-form";
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -457,15 +459,7 @@ function buildApplicantOptions(draft) {
   return [];
 }
 
-function upsertGrantEntry(entries, applicantId, patch) {
-  const list = Array.isArray(entries) ? [...entries] : [];
-  const idx = list.findIndex((e) => e.applicantId === applicantId);
-  const base = idx >= 0 ? { ...list[idx] } : { applicantId, hasGrantNumber: false, grantNumber: "" };
-  const next = { ...base, ...patch, applicantId };
-  if (idx >= 0) list[idx] = next;
-  else list.push(next);
-  return list;
-}
+
 
 export default function Page() {
   const router = useRouter();
@@ -475,7 +469,6 @@ export default function Page() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedApplicantId, setSelectedApplicantId] = useState("");
 
   const applicantOptions = useMemo(
     () => buildApplicantOptions(draftSnap.draft),
@@ -490,20 +483,16 @@ export default function Page() {
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
-  const form = useForm({
+  const { control, register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       visa_grant_entries: [],
     },
   });
 
-  const entries = form.watch("visa_grant_entries") || [];
-
-  useEffect(() => {
-    if (applicantOptions.length === 0) return;
-    if (!selectedApplicantId || !applicantOptions.some((a) => a.id === selectedApplicantId)) {
-      setSelectedApplicantId(applicantOptions[0].id);
-    }
-  }, [applicantOptions, selectedApplicantId]);
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "visa_grant_entries",
+  });
 
   useEffect(() => {
     const draft = draftSnap.draft;
@@ -522,33 +511,22 @@ export default function Page() {
           applicantId: mainId,
           hasGrantNumber: savedData.has_aus_visa_history === "yes",
           grantNumber: savedData.visa_grant_number || "",
+          history: [],
         },
       ];
     }
 
     const byId = new Map(visa_grant_entries.map((e) => [e.applicantId, e]));
-    opts.forEach((o) => {
-      if (!byId.has(o.id)) {
-        byId.set(o.id, { applicantId: o.id, hasGrantNumber: false, grantNumber: "" });
-      }
-    });
-    visa_grant_entries = opts.map((o) => byId.get(o.id));
+    
+    // We only force-add if the list was empty and we have options
+    if (visa_grant_entries.length === 0 && opts.length > 0) {
+      visa_grant_entries = [
+        { applicantId: opts[0].id, hasGrantNumber: false, grantNumber: "", history: [] }
+      ];
+    }
 
-    form.reset({ visa_grant_entries });
-  }, [draftSnap.draft?.temporary_work_visas, draftSnap.draft?.profiles, draftSnap.draft?.temporary_work_details, form]);
-
-  const currentEntry =
-    entries.find((e) => e.applicantId === selectedApplicantId) || {
-      applicantId: selectedApplicantId,
-      hasGrantNumber: false,
-      grantNumber: "",
-    };
-
-  const patchCurrent = (patch) => {
-    if (!selectedApplicantId) return;
-    const next = upsertGrantEntry(entries, selectedApplicantId, patch);
-    form.setValue("visa_grant_entries", next, { shouldDirty: true });
-  };
+    reset({ visa_grant_entries });
+  }, [draftSnap.draft?.temporary_work_visas, draftSnap.draft?.profiles, draftSnap.draft?.temporary_work_details, reset]);
 
   const onSubmit = async (data) => {
     setIsSaving(true);
@@ -570,7 +548,7 @@ export default function Page() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const values = form.getValues();
+      const values = watch();
       const result = await draftStore.saveSectionData("temporary_work_visas", values);
       if (result.success) {
         toast({
@@ -599,81 +577,141 @@ export default function Page() {
         </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            {applicantOptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Add applicants on the Application Profile page to answer this section.
-              </p>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label>Applicant</Label>
-                  <Select
-                    value={selectedApplicantId}
-                    onValueChange={setSelectedApplicantId}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <div className="space-y-6">
+            {fields.map((field, index) => (
+              <div key={field.id} className="bg-card border border-border rounded-lg p-6 space-y-6 relative group">
+                {fields.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                    title="Delete record"
                   >
-                    <SelectTrigger data-testid="select-visa-applicant">
-                      <SelectValue placeholder="Choose applicant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {applicantOptions.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>
-                    Do any family members included in this application have an Australian visa grant number from a
-                    previous visa application?
-                  </Label>
-                  <RadioGroup
-                    value={currentEntry.hasGrantNumber ? "yes" : "no"}
-                    onValueChange={(value) =>
-                      patchCurrent({
-                        hasGrantNumber: value === "yes",
-                        grantNumber: value === "yes" ? currentEntry.grantNumber : "",
-                      })
-                    }
-                  >
-                    <div className="flex gap-4">
-                      {["yes", "no"].map((option) => (
-                        <div key={option} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option} id={`aus-visa-${selectedApplicantId}-${option}`} />
-                          <Label htmlFor={`aus-visa-${selectedApplicantId}-${option}`}>
-                            {option === "yes" ? "Yes" : "No"}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {currentEntry.hasGrantNumber && (
-                  <div className="space-y-2">
-                    <Label htmlFor="visa_grant_number">Visa Grant Number</Label>
-                    <p className="text-sm text-gray-500">
-                      Enter the grant number for the applicant selected above.
-                    </p>
-                    <Input
-                      id="visa_grant_number"
-                      value={currentEntry.grantNumber || ""}
-                      onChange={(e) => patchCurrent({ grantNumber: e.target.value })}
-                      placeholder="e.g. 1234567890"
-                      data-testid="input-visa-grant-number"
-                    />
-                  </div>
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 )}
-              </>
+                
+                {applicantOptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Add applicants on the Application Profile page to answer this section.
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Applicant</Label>
+                      <Select
+                        value={watch(`visa_grant_entries.${index}.applicantId`)}
+                        onValueChange={(val) => setValue(`visa_grant_entries.${index}.applicantId`, val, { shouldDirty: true })}
+                      >
+                        <SelectTrigger data-testid={`select-visa-applicant-${index}`}>
+                          <SelectValue placeholder="Choose applicant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {applicantOptions.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>
+                        Do any family members included in this application have an Australian visa grant number from a
+                        previous visa application?
+                      </Label>
+                      <RadioGroup
+                        value={watch(`visa_grant_entries.${index}.hasGrantNumber`) ? "yes" : "no"}
+                        onValueChange={(value) => {
+                          setValue(`visa_grant_entries.${index}.hasGrantNumber`, value === "yes", { shouldDirty: true });
+                          if (value !== "yes") {
+                            setValue(`visa_grant_entries.${index}.grantNumber`, "", { shouldDirty: true });
+                          }
+                        }}
+                      >
+                        <div className="flex gap-4">
+                          {["yes", "no"].map((option) => (
+                            <div key={option} className="flex items-center space-x-2">
+                              <RadioGroupItem value={option} id={`aus-visa-${field.id}-${option}`} />
+                              <Label htmlFor={`aus-visa-${field.id}-${option}`}>
+                                {option === "yes" ? "Yes" : "No"}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {watch(`visa_grant_entries.${index}.hasGrantNumber`) ? (
+                      <div className="space-y-2">
+                        <Label htmlFor={`visa_grant_number-${index}`}>Visa Grant Number</Label>
+                        <p className="text-sm text-gray-500">
+                          Enter the grant number for the applicant selected above.
+                        </p>
+                        <Input
+                          id={`visa_grant_number-${index}`}
+                          {...register(`visa_grant_entries.${index}.grantNumber`)}
+                          placeholder="e.g. 1234567890"
+                          data-testid={`input-visa-grant-number-${index}`}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Visa History</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Enter details of all Australian Visas applied for or held by this person
+                        </p>
+                        <RepeaterTable
+                          data={watch(`visa_grant_entries.${index}.history`) || []}
+                          columns={[
+                            { key: "visa_country", label: "Country" },
+                            { key: "visa_type", label: "Type" },
+                            { key: "linked_passport", label: "Linked Passport" },
+                            { key: "decision_date_year", label: "Decision Date" },
+                            { key: "outcome", label: "Outcome" },
+                            { key: "cancelled", label: "Cancelled" },
+                          ]}
+                          onAdd={(newRow) => {
+                            const history = watch(`visa_grant_entries.${index}.history`) || [];
+                            setValue(`visa_grant_entries.${index}.history`, [...history, newRow], { shouldDirty: true });
+                          }}
+                          onEdit={(idx, updatedRow) => {
+                            const history = [...(watch(`visa_grant_entries.${index}.history`) || [])];
+                            history[idx] = updatedRow;
+                            setValue(`visa_grant_entries.${index}.history`, history, { shouldDirty: true });
+                          }}
+                          onDelete={(idx) => {
+                            const history = (watch(`visa_grant_entries.${index}.history`) || []).filter((_, i) => i !== idx);
+                            setValue(`visa_grant_entries.${index}.history`, history, { shouldDirty: true });
+                          }}
+                          DialogComponent={VisaDialog}
+                          addButtonText="Add Visa"
+                          testIdPrefix={`visa-${index}`}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+
+            {applicantOptions.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full py-6 border-dashed border-2 hover:bg-slate-50 flex items-center justify-center gap-2 group"
+                onClick={() => append({ applicantId: applicantOptions[0].id, hasGrantNumber: false, grantNumber: "", history: [] })}
+              >
+                <Plus className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+                <span className="font-semibold text-gray-600">Add Applicant Visa Record</span>
+              </Button>
             )}
 
             <FormNavigation
               onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
+              onNext={handleSubmit(onSubmit)}
               onSave={handleSave}
               nextLabel="Continue"
               loading={isSaving}
