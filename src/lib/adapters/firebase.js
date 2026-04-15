@@ -8,6 +8,10 @@
 import { BaseAdapter } from './base';
 import { auth, db } from '@/lib/firebase';
 import { ZohoCRMClient } from '@/lib/zohoClient';
+import {
+  mapZohoDealToVisaTypeCode,
+  normalizeSkillsInDemandTypeLabel,
+} from '@/lib/visaDisplay';
 import { nanoid } from 'nanoid';
 import { applicationsStore } from '@/stores/applicationsStore';
 import {
@@ -510,12 +514,15 @@ export class FirebaseAdapter extends BaseAdapter {
                 
                 // Extract Visa Type from Deal_Name or use Visa_Type field
                 const dealName = deal.Deal_Name || deal.DealName || '';
-                const visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
-                
+                let visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
+                visaType = normalizeSkillsInDemandTypeLabel(visaType);
+                const visaTypeCode = this.mapDealToVisaType(deal);
+
                 await updateDoc(doc(this.db, 'applications', appId), {
                   userId: userId,
                   reference: dealName || existingApp.data().reference, // Reference = Deal_Name
-                  type: visaType, // type = Visa_Type
+                  type: visaType, // type = Visa_Type (normalized for Skills in Demand / 482)
+                  visaTypeCode,
                   status: this.mapDealStageToStatus(deal.Stage || deal.Deal_Stage || 'draft'), // status = Stage
                   closingDate: deal.Closing_Date || existingApp.data().closingDate || '', // Closing_Date
                   lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || new Date().toISOString(), // Last updated time
@@ -532,8 +539,9 @@ export class FirebaseAdapter extends BaseAdapter {
               // Extract Visa Type from Deal_Name or use Visa_Type field
               // Deal_Name format: "Name - Visa Type (Subclass XXX)"
               const dealName = deal.Deal_Name || deal.DealName || '';
-              const visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
-              
+              let visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
+              visaType = normalizeSkillsInDemandTypeLabel(visaType);
+
               const newApp = {
                 id: appId,
                 userId: userId,
@@ -617,7 +625,8 @@ export class FirebaseAdapter extends BaseAdapter {
         try {
           // Extract Visa Type from Deal_Name or use Visa_Type field
           const dealName = deal.Deal_Name || deal.DealName || '';
-          const visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
+          let visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
+          visaType = normalizeSkillsInDemandTypeLabel(visaType);
           const now = new Date();
           
           // Convert deal to application format
@@ -734,7 +743,7 @@ export class FirebaseAdapter extends BaseAdapter {
     
     // Try to extract visa type from patterns like:
     // "Name - Protection Visa (Subclass 866)"
-    // "Name - Temporary Work Visa (Subclass 482)"
+    // "Name - Skills in Demand Visa (Subclass 482)" (legacy CRM may still say Temporary Work)
     // "Name - Partner Visa (Subclass 820)"
     const patterns = [
       /-\s*([^-]+?)\s*\(/i, // Match " - Visa Type ("
@@ -784,22 +793,7 @@ export class FirebaseAdapter extends BaseAdapter {
    * @returns {string} Visa type code
    */
   mapDealToVisaType(deal) {
-    // Check for custom fields that might indicate visa type
-    const dealName = (deal.Deal_Name || deal.DealName || '').toLowerCase();
-    const visaType = (deal.Visa_Type || deal.visaType || deal.Type || '').toLowerCase();
-    
-    // Check deal name for visa type keywords
-    if (dealName.includes('partner') || visaType.includes('partner')) {
-      return 'partner';
-    }
-    if (dealName.includes('protection') || visaType.includes('protection')) {
-      return 'protection';
-    }
-    if (dealName.includes('work') || dealName.includes('temporary') || visaType.includes('work')) {
-      return 'temporary-work';
-    }
-    
-    return 'partner'; // Default to partner visa
+    return mapZohoDealToVisaTypeCode(deal);
   }
 
   /**

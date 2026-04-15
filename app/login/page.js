@@ -5,10 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { useSnapshot } from "valtio";
 import { authStore } from "@/stores";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -20,10 +17,12 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+/** Brand primary — matches PlyLegal reference */
+const BRAND_GREEN = "#235D42";
+
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const snap = useSnapshot(authStore);
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -40,11 +39,10 @@ export default function LoginPage() {
 
   const onSubmit = async (data) => {
     const result = await authStore.login(data);
-    
-    if (result === true || (typeof result === 'object' && result.success)) {
+
+    if (result === true || (typeof result === "object" && result.success)) {
       toast({
-        title: "Success",
-        description: "Logged in successfully!",
+        title: "Successfully logged in",
       });
       router.push("/applications");
     } else {
@@ -56,83 +54,123 @@ export default function LoginPage() {
     }
   };
 
+  const inputClassName =
+    "h-11 rounded-lg border border-slate-200/90 bg-slate-100/90 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#235D42]/25 sm:h-10 sm:text-sm";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md rounded-2xl shadow-lg">
-        <CardHeader className="space-y-3 text-center pb-6">
-          <div className="mx-auto flex justify-center">
-            <BrandLogo className="h-12" priority variant="black" />
+    <div className="relative min-h-[100dvh] w-full max-w-full overflow-x-hidden">
+      {/* Off-white base */}
+      <div className="pointer-events-none fixed inset-0 bg-[#f4f6f3]" aria-hidden />
+
+      {/* Bottom-right waves + soft bokeh (reference layout) */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div
+          className="absolute -bottom-[18%] -right-[8%] h-[min(75vh,36rem)] w-[min(110vw,44rem)] rounded-[52%_48%_48%_52%] bg-gradient-to-br from-emerald-100/85 via-emerald-50/50 to-white/25 opacity-95"
+          style={{ filter: "blur(0.5px)" }}
+        />
+        <div className="absolute -bottom-24 right-0 h-[min(55vh,26rem)] w-[min(95vw,34rem)] rounded-tl-[55%] rounded-tr-[40%] bg-gradient-to-tl from-emerald-200/45 via-emerald-100/25 to-transparent" />
+        <div className="absolute bottom-[22%] right-[14%] h-28 w-28 rounded-full bg-white/55 blur-2xl" />
+        <div className="absolute bottom-[10%] right-[30%] h-20 w-20 rounded-full bg-white/45 blur-xl" />
+        <div className="absolute bottom-[6%] right-[8%] h-16 w-16 rounded-full bg-emerald-50/80 blur-lg" />
+      </div>
+
+      <main className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
+        <div className="login-glass-panel w-full max-w-md rounded-2xl px-6 py-9 sm:px-9 sm:py-10">
+          <div className="mb-8 flex flex-col items-center space-y-5 text-center">
+            <BrandLogo
+              variant="black"
+              priority
+              className="mx-auto h-auto max-h-[52px] w-auto max-w-[200px] object-contain sm:max-h-[56px] sm:max-w-[220px]"
+            />
+            <div className="space-y-1.5">
+              <h1 className="text-xl font-bold tracking-tight text-slate-800 sm:text-2xl">
+                Sign In to Your Visa Portal
+              </h1>
+              <p className="text-sm leading-relaxed text-slate-500">
+                Continue accessing your visa application below
+              </p>
+            </div>
           </div>
-          <CardTitle className="font-serif text-2xl">Welcome Back</CardTitle>
-          <CardDescription className="text-base">
-            Sign in to continue your application
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
+              <Label htmlFor="email" className="text-sm font-semibold text-slate-800">
                 Email Address
               </Label>
               <Input
                 id="email"
                 type="email"
                 data-testid="input-email"
+                autoComplete="email"
                 {...register("email")}
-                className="border-2 focus:ring-2 focus:ring-primary/20 h-11"
+                className={inputClassName}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-sm text-red-600" role="alert">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Password
-              </Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="password" className="text-sm font-semibold text-slate-800">
+                  Password
+                </Label>
+                <a
+                  href="mailto:admin@plylegal.com?subject=Visa%20portal%20password%20help"
+                  className="text-sm font-medium transition-opacity hover:opacity-80"
+                  style={{ color: BRAND_GREEN }}
+                >
+                  Forgot password?
+                </a>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   data-testid="input-password"
+                  autoComplete="current-password"
                   {...register("password")}
-                  className="border-2 focus:ring-2 focus:ring-primary/20 h-11 pr-10"
+                  className={`${inputClassName} pr-11`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#235D42]"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-sm text-red-600" role="alert">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
-            <Button
+            <button
               type="submit"
-              className="w-full min-h-11"
               disabled={isSubmitting}
               data-testid="button-login"
+              aria-busy={isSubmitting}
+              className="mt-2 flex w-full items-center justify-center gap-2.5 rounded-xl py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-[1.03] disabled:cursor-wait disabled:opacity-100"
+              style={{ backgroundColor: BRAND_GREEN }}
             >
-              {isSubmitting ? "Signing in..." : "Sign In"}
-            </Button>
+              {isSubmitting && (
+                <span
+                  className="inline-block h-5 w-5 shrink-0 rounded-full border-2 border-white/35 border-t-white animate-spin motion-reduce:animate-none"
+                  aria-hidden
+                />
+              )}
+              <span>{isSubmitting ? "Signing in…" : "Sign In"}</span>
+            </button>
 
-            <div className="pt-4 border-t border-border">
-              <p className="text-sm text-muted-foreground text-center">
-                Demo credentials are pre-filled
-              </p>
-            </div>
+            <p className="pt-1 text-center text-xs text-slate-400">Portal pre-filled with test data.</p>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
     </div>
   );
 }

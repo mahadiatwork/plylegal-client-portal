@@ -110,7 +110,7 @@ export const PROTECTION_VISA_ROUTES = [
   { href: "/intake/protection/submit", title: "Submit" },
 ];
 
-// Temporary Work — Skills in Demand Visa (subclass 482)
+// Skills in Demand (subclass 482) — intake routes under /intake/temporary-work/
 export const TEMPORARY_WORK_VISA_ROUTES = [
   { href: "/intake/temporary-work/start", title: "Getting Started" },
   { href: "/intake/temporary-work/profile", title: "Application Profile" },
@@ -132,7 +132,6 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     title: "Spouse/Partner",
     subpages: [
       { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
-      { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
       { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
     ],
   },
@@ -206,7 +205,13 @@ export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/language", title: "Language" },
 ];
 
-// Per-profile sub-pages for 186 spouse (adds Education + Language)
+/** Spouse/Partner — subclass 482 (Skills in Demand): Details + Identity only (mirrors main applicant structure, spouse routes). */
+export const TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES = [
+  { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
+  { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
+];
+
+// Per-profile sub-pages for 186 spouse (Other Details + Education + Language in addition to Details + Identity)
 export const EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
   { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
@@ -243,6 +248,35 @@ export const INTAKE_ROUTES = PARTNER_VISA_ROUTES;
 
 import { draftStore } from "@/stores/draftStore";
 
+function temporaryWorkPathname(href) {
+  if (!href) return "";
+  try {
+    return new URL(href, "http://localhost").pathname;
+  } catch {
+    return String(href).split("?")[0];
+  }
+}
+
+/** Index of first `/intake/temporary-work/children/:childId/details` in the dynamic route list (-1 if none). */
+function firstTemporaryWorkChildDetailsIndex(allRoutes) {
+  return allRoutes.findIndex((r) => {
+    const p = r.split("?")[0];
+    return /\/intake\/temporary-work\/children\/[^/]+\/details$/.test(p);
+  });
+}
+
+/** Merge `applicationId` and (for child subsection URLs) `profileId` so nav matches sidebar links. */
+function appendTemporaryWorkQueryParams(path, applicationId) {
+  if (!path) return path;
+  const [pathOnly, queryStr] = path.includes("?") ? path.split("?", 2) : [path, ""];
+  const params = new URLSearchParams(queryStr || undefined);
+  if (applicationId) params.set("applicationId", applicationId);
+  const childMatch = pathOnly.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)$/);
+  if (childMatch?.[1]) params.set("profileId", childMatch[1]);
+  const q = params.toString();
+  return q ? `${pathOnly}?${q}` : pathOnly;
+}
+
 export function getDynamicTemporaryWorkRoutes(visaContext) {
   const allRoutes = [];
   allRoutes.push("/intake/temporary-work/start");
@@ -254,21 +288,36 @@ export function getDynamicTemporaryWorkRoutes(visaContext) {
     return (order[a.relationship] ?? 4) - (order[b.relationship] ?? 4);
   });
 
-  sortedProfiles.forEach(profile => {
-    if (profile.relationship === 'child') {
-      TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.forEach(sub => {
-        allRoutes.push(`/intake/temporary-work/children/${profile.id}/${sub.pathSuffix}`);
+  sortedProfiles.forEach((profile) => {
+    if (profile.relationship === "child") {
+      return;
+    }
+    if (profile.relationship === "spouse" && visaContext === "186") {
+      EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.forEach((sub) => {
+        allRoutes.push(`${sub.href}?profileId=${profile.id}`);
       });
-    } else if (profile.relationship === 'spouse' && visaContext === '186') {
-      EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.forEach(sub => {
+    } else if (profile.relationship === "spouse") {
+      TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.forEach((sub) => {
         allRoutes.push(`${sub.href}?profileId=${profile.id}`);
       });
     } else {
-      PROFILE_SUBPAGES.forEach(sub => {
+      PROFILE_SUBPAGES.forEach((sub) => {
         allRoutes.push(`${sub.href}?profileId=${profile.id}`);
       });
     }
   });
+
+  // Intentionally omit `/intake/temporary-work/children` from the linear flow: after spouse Identity,
+  // Next goes straight to the first dependent child's Details. The Children list page remains
+  // reachable from the sidebar; getNextRoute/getPreviousRoute/calculateProgress handle it explicitly.
+
+  sortedProfiles
+    .filter((p) => p.relationship === "child")
+    .forEach((profile) => {
+      TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.forEach((sub) => {
+        allRoutes.push(`/intake/temporary-work/children/${profile.id}/${sub.pathSuffix}`);
+      });
+    });
 
   // Then static sections!
   const baseRoutes = visaContext === '186' ? EMPLOYER_NOMINATION_ROUTES : TEMPORARY_WORK_VISA_ROUTES;
@@ -306,7 +355,19 @@ export function getAllRoutes(visaType, visaContext = null) {
  */
 export function getNextRoute(currentHref, visaType, applicationId = null, visaContext = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
-  
+
+  if (visaType === "temporary-work" && temporaryWorkPathname(currentHref) === "/intake/temporary-work/children") {
+    const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
+    if (childIdx !== -1) {
+      return appendTemporaryWorkQueryParams(allRoutes[childIdx], applicationId);
+    }
+    const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
+    if (visasIdx !== -1) {
+      return appendTemporaryWorkQueryParams(allRoutes[visasIdx], applicationId);
+    }
+    return null;
+  }
+
   let searchHref = currentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {
@@ -323,17 +384,27 @@ export function getNextRoute(currentHref, visaType, applicationId = null, visaCo
   }
   
   let nextRoute = allRoutes[currentIndex + 1];
-
-  // Append applicationId as query parameter if provided
-  if (applicationId) {
-    nextRoute += (nextRoute.includes('?') ? '&' : '?') + `applicationId=${applicationId}`;
-  }
-  return nextRoute;
+  return appendTemporaryWorkQueryParams(nextRoute, applicationId);
 }
 
 export function getPreviousRoute(currentHref, visaType, applicationId = null, visaContext = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
-  
+
+  if (visaType === "temporary-work" && temporaryWorkPathname(currentHref) === "/intake/temporary-work/children") {
+    const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
+    const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
+    let previousRoute = null;
+    if (childIdx > 0) {
+      previousRoute = allRoutes[childIdx - 1];
+    } else if (visasIdx > 0) {
+      previousRoute = allRoutes[visasIdx - 1];
+    }
+    if (previousRoute) {
+      return appendTemporaryWorkQueryParams(previousRoute, applicationId);
+    }
+    return null;
+  }
+
   let searchHref = currentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {
@@ -350,12 +421,7 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
   }
   
   let previousRoute = allRoutes[currentIndex - 1];
-
-  // Append applicationId as query parameter if provided
-  if (applicationId) {
-    previousRoute += (previousRoute.includes('?') ? '&' : '?') + `applicationId=${applicationId}`;
-  }
-  return previousRoute;
+  return appendTemporaryWorkQueryParams(previousRoute, applicationId);
 }
 
 export function calculateProgress(currentHref, visaType, visaContext = null) {
@@ -369,6 +435,13 @@ export function calculateProgress(currentHref, visaType, visaContext = null) {
 
   if (visaType === 'temporary-work' && currentProfileId && (currentHref.includes('main-applicant') || currentHref.includes('spouse-partner'))) {
     searchHref = `${currentHref}?profileId=${currentProfileId}`;
+  }
+
+  if (visaType === "temporary-work" && temporaryWorkPathname(currentHref) === "/intake/temporary-work/children") {
+    const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
+    const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
+    const virtualIndex = childIdx > 0 ? childIdx - 1 : (visasIdx > 0 ? visasIdx - 1 : 0);
+    return Math.round(((virtualIndex + 1) / allRoutes.length) * 100);
   }
 
   const currentIndex = allRoutes.indexOf(searchHref);

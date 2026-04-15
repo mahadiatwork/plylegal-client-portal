@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FileText } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { formatVisaApplicationType } from "@/lib/visaDisplay";
 import { Riple } from "react-loading-indicators";
 
 export default function ApplicationsPage() {
@@ -124,7 +125,7 @@ export default function ApplicationsPage() {
                           <span className="text-sm font-medium text-gray-900">{app.reference || app.id}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-gray-700">{app.type || 'N/A'}</span>
+                          <span className="text-sm text-gray-700">{formatVisaApplicationType(app)}</span>
                         </td>
                         <td className="py-3 px-4">
                           <StatusBadge status={app.status || 'Draft'} />

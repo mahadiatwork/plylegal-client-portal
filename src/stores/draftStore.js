@@ -78,7 +78,9 @@ export const draftStore = proxy({
     return this.draft?.profiles_data?.[profileId]?.[section] || {};
   },
 
-  /** Save section data for a specific profile */
+  /** Save section data for a specific profile.
+   *  Follows save-first semantics: persist to DB, then update local state only on success.
+   */
   async saveProfileSectionData(profileId, section, data) {
     try {
       this.isSaving = true;
@@ -88,18 +90,21 @@ export const draftStore = proxy({
         return { success: false, error: 'Application ID required' };
       }
 
-      const newDraft = JSON.parse(JSON.stringify(this.draft));
-      if (!newDraft.profiles_data) newDraft.profiles_data = {};
-      if (!newDraft.profiles_data[profileId]) newDraft.profiles_data[profileId] = {};
-      newDraft.profiles_data[profileId][section] = data;
-      this.draft = newDraft;
+      // Build the candidate draft WITHOUT mutating `this.draft` yet
+      const candidateDraft = JSON.parse(JSON.stringify(this.draft));
+      if (!candidateDraft.profiles_data) candidateDraft.profiles_data = {};
+      if (!candidateDraft.profiles_data[profileId]) candidateDraft.profiles_data[profileId] = {};
+      candidateDraft.profiles_data[profileId][section] = data;
 
-      const result = await db.saveDraft(this.draft, appId);
+      // Persist first — only touch local state after confirmed success
+      const result = await db.saveDraft(candidateDraft, appId);
       if (result.success) {
+        this.draft = candidateDraft;
         this.lastSaved = new Date().toISOString();
         this.isSaving = false;
         return { success: true };
       }
+      // Save failed — do NOT update this.draft (preserves last-known-good state)
       this.isSaving = false;
       return { success: false, error: result.error };
     } catch (error) {
@@ -346,6 +351,7 @@ export const draftStore = proxy({
   },
 
   // Save data to a specific section (e.g., 'mainApplicant.details')
+  // Follows save-first semantics: persist to DB, then update local state only on success.
   async saveSectionData(section, data, applicationId) {
     try {
       this.isSaving = true;
@@ -357,24 +363,23 @@ export const draftStore = proxy({
         return { success: false, error: 'Application ID required' };
       }
 
-      // Create a deep copy of current draft
-      const newDraft = JSON.parse(JSON.stringify(this.draft));
+      // Build candidate draft WITHOUT mutating `this.draft` yet
+      const candidateDraft = JSON.parse(JSON.stringify(this.draft));
 
       // Set the section data using nested path
-      this.setNestedValue(newDraft, section, data);
+      this.setNestedValue(candidateDraft, section, data);
 
-      // Update local draft
-      this.draft = newDraft;
-
-      // Save entire draft to Firebase
-      const result = await db.saveDraft(this.draft, appId);
+      // Persist first — only touch local state after confirmed success
+      const result = await db.saveDraft(candidateDraft, appId);
 
       if (result.success) {
+        this.draft = candidateDraft;
         this.lastSaved = new Date().toISOString();
         this.isSaving = false;
         return { success: true };
       }
 
+      // Save failed — do NOT update this.draft
       this.isSaving = false;
       return { success: false, error: result.error };
     } catch (error) {

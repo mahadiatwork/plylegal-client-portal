@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,8 +74,8 @@ export default function Page() {
   const isSavingRef = useRef(false);
 
   // ── Profile-awareness ──────────────────────────────────────────────────────
-  const profileId = searchParams.get('profileId');
-  const appId = searchParams.get('applicationId');
+  const profileId = getProfileIdFromSearchParams(searchParams);
+  const appId = getApplicationIdFromSearchParams(searchParams);
   const activeProfile = profileId ? draftSnap.draft?.profiles?.find(p => p.id === profileId) : null;
 
   /** Profile card on `draft.profiles` (DOB lives here). When URL has no profileId, use main applicant row. */
@@ -85,6 +86,9 @@ export default function Page() {
     return profiles.find((p) => p.relationship === "main_applicant") ?? null;
   })();
   const profileDobBirthSig = `${profileForDob?.birth_day ?? ""}|${profileForDob?.birth_month ?? ""}|${profileForDob?.birth_year ?? ""}`;
+  const profileIdentitySig = profileForDob
+    ? `${profileForDob.family_name ?? ""}|${profileForDob.given_names ?? ""}|${profileForDob.gender ?? ""}`
+    : "";
 
   // Single stable serialized key so useEffect's dependency array never changes length (React 19).
   // Use profileDobBirthSig (primitives) — not the profile object — so Valtio mutations to DOB re-run populate.
@@ -97,13 +101,13 @@ export default function Page() {
       profileId != null
         ? draftSnap.draft?.profiles_data?.[profileId]?.identity ?? null
         : draftSnap.draft?.temporary_work_identity ?? null;
-    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${JSON.stringify(identity)}|${profileDobBirthSig}`;
-  }, [draftSnap.isLoading, profileId, draftSnap.draft, profileDobBirthSig]);
+    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${JSON.stringify(identity)}|${profileDobBirthSig}|${profileIdentitySig}`;
+  }, [draftSnap.isLoading, profileId, draftSnap.draft, profileDobBirthSig, profileIdentitySig]);
   // ──────────────────────────────────────────────────────────────────────────
 
   // Set application ID from URL params if available
   useEffect(() => {
-    const appIdFromUrl = searchParams.get('applicationId');
+    const appIdFromUrl = getApplicationIdFromSearchParams(searchParams);
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
@@ -201,10 +205,10 @@ export default function Page() {
         completing_birth_month: normalizeMonth(savedData.completing_birth_month),
         completing_birth_year: safeStr(savedData.completing_birth_year),
         prefix: safeStr(savedData.prefix),
-        family_name: safeStr(savedData.family_name),
-        given_names: safeStr(savedData.given_names),
+        family_name: profileForDob ? safeStr(profileForDob.family_name) : safeStr(savedData.family_name),
+        given_names: profileForDob ? safeStr(profileForDob.given_names) : safeStr(savedData.given_names),
         preferred_names: safeStr(savedData.preferred_names),
-        gender: safeStr(savedData.gender),
+        gender: profileForDob ? safeStr(profileForDob.gender) : safeStr(savedData.gender),
         birth_day: normalizeNumber(savedData.birth_day) || profileDob.birth_day,
         birth_month: normalizeMonth(savedData.birth_month) || profileDob.birth_month,
         birth_year: safeStr(savedData.birth_year) || profileDob.birth_year,

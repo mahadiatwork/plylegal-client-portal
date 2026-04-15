@@ -14,12 +14,14 @@ import {
   calculateProgress,
   PROFILE_SUBPAGES,
   EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES,
+  TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES,
   TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
   buildTemporaryWorkChildHref,
   getTemporaryWorkChildProfileCompletionKey,
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 
 
 export default function IntakeLayout({ children }) {
@@ -31,8 +33,17 @@ export default function IntakeLayout({ children }) {
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
 
-  // Active profileId from URL
-  const profileIdFromUrl = searchParams.get('profileId');
+  // Active profileId from URL (accept profileId or profileid)
+  const profileIdFromUrl = getProfileIdFromSearchParams(searchParams);
+
+  // Child flows use `/temporary-work/children/:childId/details|identity|custody` — id is in the path, not only `?profileId=`.
+  const childProfileIdFromPath =
+    typeof pathname === "string"
+      ? (pathname.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)/) || [])[1] ??
+        null
+      : null;
+
+  const effectiveProfileId = profileIdFromUrl ?? childProfileIdFromPath;
 
   // Profiles from draft
   const profiles = draftSnap.draft?.profiles || [];
@@ -44,14 +55,19 @@ export default function IntakeLayout({ children }) {
 
   // Keep draft/application context in sync with URL param
   useEffect(() => {
-    const appIdFromUrl = searchParams.get('applicationId');
+    const appIdFromUrl = getApplicationIdFromSearchParams(searchParams);
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
-
+  // Keep store "active profile" aligned when navigating via path-only child URLs (e.g. Next from spouse Identity).
+  useEffect(() => {
+    if (childProfileIdFromPath) {
+      draftStore.setActiveProfile(childProfileIdFromPath);
+    }
+  }, [childProfileIdFromPath]);
 
   // Detect visa type from URL path
   const getVisaTypeFromPath = (path) => {
@@ -309,8 +325,8 @@ export default function IntakeLayout({ children }) {
                                     ? 'Dependent'
                                     : 'Dependent';
 
-                          // Check if any subpage for this profile is currently active
-                          const isThisProfileActive = profileIdFromUrl === profileKey;
+                          // Check if any subpage for this profile is currently active (query or child path)
+                          const isThisProfileActive = effectiveProfileId === profileKey;
 
                           return (
                             <Collapsible
@@ -352,12 +368,14 @@ export default function IntakeLayout({ children }) {
                                           title: sp.title,
                                           pathSuffix: sp.pathSuffix,
                                         }))
-                                      : (profile.relationship === 'spouse' && draftSnap.visaContext === '186')
+                                      : profile.relationship === 'spouse' && draftSnap.visaContext === '186'
                                           ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                          : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                          : profile.relationship === 'spouse'
+                                            ? TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                            : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
                                     ).map((subpage) => {
                                       const isActive =
-                                        profileIdFromUrl === profileKey &&
+                                        effectiveProfileId === profileKey &&
                                         (profile.relationship === 'child' && subpage.pathSuffix
                                           ? pathname === buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix)
                                           : isRouteActive(subpage.href));

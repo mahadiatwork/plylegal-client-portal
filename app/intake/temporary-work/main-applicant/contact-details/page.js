@@ -1,9 +1,9 @@
 "use client";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +55,21 @@ const contactFormSchema = z.object({
   residential_address: residentialSchema.optional(),
 });
 
+const EMPTY_CONTACT_FORM = {
+  phone: "",
+  mobile: "",
+  email: "",
+  emergency_contact_name: "",
+  emergency_contact_phone: "",
+  residential_address: {
+    country: "",
+    address_line: "",
+    suburb: "",
+    state_territory: "",
+    postcode: "",
+  },
+};
+
 function migrateResidentialFromLegacy(contactDetails, addressesSection) {
   const existing = contactDetails?.residential_address;
   if (existing?.address_line?.trim() || existing?.country?.trim()) {
@@ -95,59 +110,68 @@ export default function Page() {
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
-  const form = useForm({
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    setValue,
+    control,
+    reset,
+    watch,
+    formState: { errors: formErrors },
+  } = useForm({
     resolver: zodResolver(contactFormSchema),
-    defaultValues: {
-      phone: "",
-      mobile: "",
-      email: "",
-      emergency_contact_name: "",
-      emergency_contact_phone: "",
-      residential_address: {
-        country: "",
-        address_line: "",
-        suburb: "",
-        state_territory: "",
-        postcode: "",
-      },
-    },
+    defaultValues: EMPTY_CONTACT_FORM,
   });
 
+  // Subscribe to nested draft slices during render (valtio) + stable key for merged contact payload
+  const profileContactDetails = profileId
+    ? draftSnap.draft?.profiles_data?.[profileId]?.contact_details
+    : undefined;
+  const legacyContactDetails = !profileId ? draftSnap.draft?.temporary_work_contact_details : undefined;
+  const temporaryWorkAddresses = draftSnap.draft?.temporary_work_addresses;
+
+  const contactHydrationKey = useMemo(() => {
+    const rawContact =
+      profileId
+        ? profileContactDetails
+        : legacyContactDetails;
+    const raw =
+      rawContact && typeof rawContact === "object" && Object.keys(rawContact).length > 0
+        ? rawContact
+        : {};
+    const merged = migrateResidentialFromLegacy(raw, temporaryWorkAddresses || {});
+    return JSON.stringify(merged);
+  }, [profileId, profileContactDetails, legacyContactDetails, temporaryWorkAddresses]);
+
   useEffect(() => {
-    const rawContact = profileId
-      ? draftSnap.draft?.profiles_data?.[profileId]?.contact_details || {}
-      : draftSnap.draft?.temporary_work_contact_details || {};
-    
-    // Check old style addresses or profile style
-    const addressesSection = draftSnap.draft?.temporary_work_addresses || {};
-    
-    const merged = migrateResidentialFromLegacy(
-      Object.keys(rawContact).length ? rawContact : {},
-      addressesSection
+    if (draftSnap.isLoading) return;
+
+    const merged = JSON.parse(contactHydrationKey);
+    if (!merged || Object.keys(merged).length === 0) return;
+
+    const ra = merged.residential_address || {};
+    reset(
+      {
+        phone: merged.phone ?? "",
+        mobile: merged.mobile ?? "",
+        email: merged.email ?? "",
+        emergency_contact_name: merged.emergency_contact_name ?? "",
+        emergency_contact_phone: merged.emergency_contact_phone ?? "",
+        residential_address: {
+          country: ra.country ?? "",
+          address_line: ra.address_line ?? "",
+          suburb: ra.suburb ?? "",
+          state_territory: ra.state_territory ?? "",
+          postcode: ra.postcode ?? "",
+        },
+      },
+      { keepDefaultValues: false, keepDirtyValues: false }
     );
-    if (Object.keys(merged).length > 0) {
-      if (merged.phone !== undefined) form.setValue("phone", merged.phone ?? "");
-      if (merged.mobile !== undefined) form.setValue("mobile", merged.mobile ?? "");
-      if (merged.email !== undefined) form.setValue("email", merged.email ?? "");
-      if (merged.emergency_contact_name !== undefined) {
-        form.setValue("emergency_contact_name", merged.emergency_contact_name ?? "");
-      }
-      if (merged.emergency_contact_phone !== undefined) {
-        form.setValue("emergency_contact_phone", merged.emergency_contact_phone ?? "");
-      }
-      const ra = merged.residential_address || {};
-      form.setValue("residential_address", {
-        country: ra.country ?? "",
-        address_line: ra.address_line ?? "",
-        suburb: ra.suburb ?? "",
-        state_territory: ra.state_territory ?? "",
-        postcode: ra.postcode ?? "",
-      });
-    }
-  }, [draftSnap.draft?.temporary_work_contact_details, draftSnap.draft?.profiles_data, draftSnap.draft?.temporary_work_addresses, profileId, form]);
+  }, [draftSnap.isLoading, contactHydrationKey, reset]);
 
   const buildPayload = () => {
-    const v = form.getValues();
+    const v = getValues();
     return {
       phone: v.phone,
       mobile: v.mobile,
@@ -218,7 +242,7 @@ export default function Page() {
     }
   };
 
-  const ra = form.watch("residential_address") || {};
+  const ra = watch("residential_address") || {};
 
   return (
     <Card className="rounded-2xl shadow-md bg-white">
@@ -229,7 +253,7 @@ export default function Page() {
         </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-foreground">Contact Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,7 +261,7 @@ export default function Page() {
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
                   id="phone"
-                  {...form.register("phone")}
+                  {...register("phone")}
                   placeholder="Enter phone number"
                   data-testid="input-phone"
                 />
@@ -246,7 +270,7 @@ export default function Page() {
                 <Label htmlFor="mobile">Mobile Number</Label>
                 <Input
                   id="mobile"
-                  {...form.register("mobile")}
+                  {...register("mobile")}
                   placeholder="Enter mobile number"
                   data-testid="input-mobile"
                 />
@@ -254,15 +278,15 @@ export default function Page() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                {...form.register("email")}
-                placeholder="Enter email address"
-                data-testid="input-email"
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register("email")}
+                  placeholder="Enter email address"
+                  data-testid="input-email"
+                />
+              {formErrors.email && (
+                <p className="text-sm text-destructive">{formErrors.email.message}</p>
               )}
             </div>
             <div className="border-t border-border pt-6 mt-6">
@@ -272,7 +296,7 @@ export default function Page() {
                   <Label htmlFor="emergency_contact_name">Name</Label>
                   <Input
                     id="emergency_contact_name"
-                    {...form.register("emergency_contact_name")}
+                    {...register("emergency_contact_name")}
                     placeholder="Enter emergency contact name"
                     data-testid="input-emergency-name"
                   />
@@ -281,7 +305,7 @@ export default function Page() {
                   <Label htmlFor="emergency_contact_phone">Phone Number</Label>
                   <Input
                     id="emergency_contact_phone"
-                    {...form.register("emergency_contact_phone")}
+                    {...register("emergency_contact_phone")}
                     placeholder="Enter emergency contact phone"
                     data-testid="input-emergency-phone"
                   />
@@ -294,28 +318,35 @@ export default function Page() {
             <h2 className="text-xl font-semibold text-foreground">Residential Address</h2>
             <div className="space-y-2">
               <Label>Country</Label>
-              <Select
-                value={ra.country || ""}
-                onValueChange={(value) => form.setValue("residential_address.country", value)}
-              >
-                <SelectTrigger data-testid="select-residential-country">
-                  <SelectValue placeholder="Choose country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country} value={country}>
-                      {country}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={control}
+                name="residential_address.country"
+                render={({ field }) => (
+                  <Select
+                    key={`${profileId ?? "main"}-${field.value || "none"}`}
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger data-testid="select-residential-country">
+                      <SelectValue placeholder="Choose country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="res_address_line">Address (including street number and name)</Label>
               <Input
                 id="res_address_line"
                 value={ra.address_line || ""}
-                onChange={(e) => form.setValue("residential_address.address_line", e.target.value)}
+                onChange={(e) => setValue("residential_address.address_line", e.target.value)}
                 data-testid="input-residential-address-line"
               />
             </div>
@@ -324,7 +355,7 @@ export default function Page() {
               <Input
                 id="res_suburb"
                 value={ra.suburb || ""}
-                onChange={(e) => form.setValue("residential_address.suburb", e.target.value)}
+                onChange={(e) => setValue("residential_address.suburb", e.target.value)}
                 data-testid="input-residential-suburb"
               />
             </div>
@@ -333,7 +364,7 @@ export default function Page() {
               <Input
                 id="res_state"
                 value={ra.state_territory || ""}
-                onChange={(e) => form.setValue("residential_address.state_territory", e.target.value)}
+                onChange={(e) => setValue("residential_address.state_territory", e.target.value)}
                 data-testid="input-residential-state"
               />
             </div>
@@ -342,7 +373,7 @@ export default function Page() {
               <Input
                 id="res_postcode"
                 value={ra.postcode || ""}
-                onChange={(e) => form.setValue("residential_address.postcode", e.target.value)}
+                onChange={(e) => setValue("residential_address.postcode", e.target.value)}
                 data-testid="input-residential-postcode"
               />
             </div>
@@ -350,7 +381,7 @@ export default function Page() {
 
           <FormNavigation
             onPrev={handlePrevious}
-            onNext={form.handleSubmit(onSubmit)}
+            onNext={handleSubmit(onSubmit)}
             onSave={handleSave}
             nextLabel="Continue"
             loading={isSaving}

@@ -25,6 +25,8 @@ function isLikely482Application(app, currentId) {
     type.includes("482") ||
     type.includes("temporary work") ||
     type.includes("skills in demand") ||
+    type.includes("skill shortage") ||
+    type.includes("temporary skill") ||
     type.includes("tss") ||
     ref.includes("482")
   );
@@ -79,7 +81,7 @@ export default function IntakeStartPage() {
 
   const handleImportFrom482 = async () => {
     if (!importSourceId) {
-      toast({ title: "Select an application", description: "Choose a Subclass 482 application to import from.", variant: "destructive" });
+      toast({ title: "Select an application", description: "Choose a Skills in Demand (subclass 482) application to import from.", variant: "destructive" });
       return;
     }
     setImporting(true);
@@ -88,7 +90,7 @@ export default function IntakeStartPage() {
       if (result.success) {
         toast({
           title: "Answers imported",
-          description: "Questionnaire data from your 482 application has been copied. Review and update each section as needed.",
+          description: "Questionnaire data from your Skills in Demand (subclass 482) application has been copied. Review and update each section as needed.",
         });
         const data = draftStore.getCompletionPercentage();
         setCompletionData(data);
@@ -178,13 +180,13 @@ export default function IntakeStartPage() {
 
             {is186 && !isSubmitted && importCandidates.length > 0 && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-3">
-                <p className="text-sm font-medium text-slate-800">Import from Subclass 482</p>
+                <p className="text-sm font-medium text-slate-800">Import from Skills in Demand (subclass 482)</p>
                 <p className="text-sm text-slate-600">
-                  If you already completed questionnaire answers on a Temporary Skill Shortage (482) application, you can copy them here to save time. You can edit everything after import.
+                  If you already completed questionnaire answers on a Skills in Demand (subclass 482) application, you can copy them here to save time. You can edit everything after import.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
                   <div className="flex-1 space-y-2">
-                    <Label htmlFor="import-482">482 application</Label>
+                    <Label htmlFor="import-482">Skills in Demand application</Label>
                     <Select value={importSourceId} onValueChange={setImportSourceId}>
                       <SelectTrigger id="import-482" data-testid="select-import-482-source">
                         <SelectValue placeholder="Select application…" />

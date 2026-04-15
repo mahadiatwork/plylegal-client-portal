@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { ZohoCRMClient } from '@/lib/zohoClient';
+import {
+  mapZohoDealToVisaTypeCode,
+  normalizeSkillsInDemandTypeLabel,
+} from '@/lib/visaDisplay';
 
 // Firebase REST API helper - uses the web API key with user's ID token for authentication
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -276,7 +280,9 @@ export async function POST(request) {
           const match = name.match(/-\s*([^-]+?)\s*\(/i) || name.match(/-\s*([^-]+?)$/i);
           return match && match[1] ? match[1].trim() : null;
         };
-        const visaType = deal.Visa_Type || extractVisaType(dealName) || 'Visa Application';
+        let visaType = deal.Visa_Type || extractVisaType(dealName) || 'Visa Application';
+        visaType = normalizeSkillsInDemandTypeLabel(visaType);
+        const visaTypeCode = mapZohoDealToVisaTypeCode(deal);
         const now = new Date();
 
         // Use Stage directly from Zoho CRM (don't map it)
@@ -316,6 +322,7 @@ export async function POST(request) {
         const applicationData = {
           reference: dealName,
           type: visaType,
+          visaTypeCode,
           status: stage, // Use Stage directly from Zoho CRM
           closingDate: deal.Closing_Date || '',
           updated: formatDate(deal.Modified_Time || deal.Last_Activity_Time),

@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,8 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SimplifiedOtherIdentityDialog } from "@/components/intake/temporary-work/SimplifiedOtherIdentityDialog";
+import { COUNTRIES } from "@/reuseable/countries";
+import { buildPassportNameOptions } from "@/lib/passportNameOptions";
 
 const nationalIdCardSchema = z.object({
   family_name: z.string().optional(),
@@ -200,10 +202,6 @@ const PASSPORT_TYPE_OPTIONS = [
   "Travel Document"
 ];
 
-const APPLICANT_NAME_OPTIONS = [
-  "Main Applicant"
-];
-
 const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified"];
 
 const DOCUMENT_STATUS_OPTIONS = [
@@ -248,9 +246,18 @@ const passportDialogSchema = z.object({
   }
 );
 
-function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
+function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptionItems = [] }) {
   const initialIsOriginal = row?.is_original_date !== undefined ? row.is_original_date : "yes";
   const [isOriginalDate, setIsOriginalDate] = useState(initialIsOriginal);
+
+  const nameSelectItems = useMemo(() => {
+    const items = [...nameOptionItems];
+    const current = row?.name;
+    if (current && !items.some((i) => i.value === current)) {
+      items.push({ value: current, label: `${current} (saved on document)` });
+    }
+    return items;
+  }, [nameOptionItems, row?.name]);
 
   const dialogForm = useForm({
     resolver: zodResolver(passportDialogSchema),
@@ -331,12 +338,19 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
 
       <div>
         <Label htmlFor="passport_country">Passport Country</Label>
-        <Input
-          id="passport_country"
-          {...dialogForm.register("passport_country")}
-          placeholder="Choose Country"
-          data-testid="input-passport-country"
-        />
+        <Select
+          value={dialogForm.watch("passport_country")}
+          onValueChange={(value) => dialogForm.setValue("passport_country", value, { shouldValidate: true })}
+        >
+          <SelectTrigger id="passport_country" data-testid="select-passport-country">
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>{country}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {dialogForm.formState.errors.passport_country && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.passport_country.message}</p>
         )}
@@ -356,12 +370,19 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
 
       <div>
         <Label htmlFor="nationality">Nationality</Label>
-        <Input
-          id="nationality"
-          {...dialogForm.register("nationality")}
-          placeholder="Choose Nationality"
-          data-testid="input-passport-nationality"
-        />
+        <Select
+          value={dialogForm.watch("nationality")}
+          onValueChange={(value) => dialogForm.setValue("nationality", value, { shouldValidate: true })}
+        >
+          <SelectTrigger id="nationality" data-testid="select-passport-nationality">
+            <SelectValue placeholder="Choose Nationality" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>{country}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {dialogForm.formState.errors.nationality && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.nationality.message}</p>
         )}
@@ -397,11 +418,11 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
           onValueChange={(value) => dialogForm.setValue("name", value, { shouldValidate: true })}
         >
           <SelectTrigger data-testid="select-passport-name">
-            <SelectValue placeholder="Choose Applicant" />
+            <SelectValue placeholder="Choose name" />
           </SelectTrigger>
           <SelectContent>
-            {APPLICANT_NAME_OPTIONS.map((opt) => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            {nameSelectItems.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -621,7 +642,6 @@ export default function IdentityPage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
 
-  const visaType = getVisaTypeFromPath(pathname);
   const [isSaving, setIsSaving] = useState(false);
   const profileId = searchParams.get("profileId");
   const appIdParam = searchParams.get("applicationId");
@@ -685,6 +705,21 @@ export default function IdentityPage() {
 
   const passports = form.watch("passports") || [];
   const otherIdentityDocuments = form.watch("other_identity_documents") || [];
+
+  const passportNameOptionItems = useMemo(
+    () =>
+      buildPassportNameOptions(draftSnap.draft, profileId, {
+        legacyOtherKey: "temporary_work_other",
+        relationshipFallback: "main_applicant",
+      }),
+    [
+      draftSnap.draft,
+      profileId,
+      draftSnap.draft?.profiles,
+      draftSnap.draft?.profiles_data,
+      draftSnap.draft?.temporary_work_other,
+    ]
+  );
 
   const nidDays = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const nidMonths = [
@@ -821,6 +856,7 @@ export default function IdentityPage() {
                     form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                   }}
                   DialogComponent={PassportDialog}
+                  dialogProps={{ nameOptionItems: passportNameOptionItems }}
                   addButtonText="Add"
                   testIdPrefix="passport"
                 />
