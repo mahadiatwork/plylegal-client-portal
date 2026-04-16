@@ -576,4 +576,23 @@ export const draftStore = proxy({
       percentage: totalPages > 0 ? Math.round((completedCount / totalPages) * 100) : 0
     };
   },
+  // Debounced auto‑save for form changes (native implementation)
+  autoSaveDebounced: (function() {
+    // Simple debounce implementation using setTimeout
+    const debounceFn = (fn, wait) => {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), wait);
+      };
+    };
+    // 500ms debounce interval
+    const saveFn = debounceFn(async (profileId, sectionKey, data) => {
+      await draftStore.saveProfileSectionData(profileId, sectionKey, data);
+    }, 500);
+    return (profileId, sectionKey, data) => {
+      if (!profileId || !sectionKey) return;
+      saveFn(profileId, sectionKey, data);
+    };
+  })(),
 });

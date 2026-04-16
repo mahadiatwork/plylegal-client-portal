@@ -173,7 +173,6 @@ export const EMPLOYER_NOMINATION_ROUTES = [
     title: "Spouse/Partner",
     subpages: [
       { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
-      { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
       { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
       { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
       { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
@@ -214,7 +213,6 @@ export const TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES = [
 // Per-profile sub-pages for 186 spouse (Other Details + Education + Language in addition to Details + Identity)
 export const EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
-  { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Details" },
   { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
   { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
   { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
