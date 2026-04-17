@@ -135,7 +135,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
       { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
     ],
   },
-  { href: "/intake/temporary-work/children", title: "Children" },
+  // { href: "/intake/temporary-work/children", title: "Children" },
   // { href: "/intake/temporary-work/relationships", title: "Relationships" },
   {
     href: "/intake/temporary-work/all-applicants/visas",
@@ -178,7 +178,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
       { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
     ],
   },
-  { href: "/intake/temporary-work/children", title: "Children" },
+  // { href: "/intake/temporary-work/children", title: "Children" },
   {
     href: "/intake/temporary-work/all-applicants/visas",
     title: "All Applicants",

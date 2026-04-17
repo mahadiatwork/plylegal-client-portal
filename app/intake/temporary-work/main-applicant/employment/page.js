@@ -533,8 +533,117 @@ export default function EmploymentPage() {
 
               {/* Current Job Fields (shown if Yes) */}
               {isCurrentlyEmployed === "yes" && (
-                <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
+                <div className="mt-6 space-y-6 p-6 bg-gray-50/50 rounded-xl border border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="current_employer" className="text-sm font-medium">
+                        Employer/Organization Name
+                      </Label>
+                      <Input
+                        id="current_employer"
+                        {...form.register("current_employer")}
+                        placeholder="Enter employer or organization name"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="current_position" className="text-sm font-medium">
+                        Position/Occupation
+                      </Label>
+                      <Input
+                        id="current_position"
+                        {...form.register("current_position")}
+                        placeholder="Enter your current position"
+                        className="bg-white"
+                      />
+                    </div>
+                  </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Country</Label>
+                      <Select
+                        value={form.watch("current_country")}
+                        onValueChange={(value) => form.setValue("current_country", value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Employment Type</Label>
+                      <Select
+                        value={form.watch("current_employment_type")}
+                        onValueChange={(value) => form.setValue("current_employment_type", value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Employment Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Date Started</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Select
+                        value={form.watch("current_start_date_day")}
+                        onValueChange={(value) => form.setValue("current_start_date_day", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DAYS.map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={form.watch("current_start_date_month")}
+                        onValueChange={(value) => form.setValue("current_start_date_month", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={form.watch("current_start_date_year")}
+                        onValueChange={(value) => form.setValue("current_start_date_year", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEARS.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_address" className="text-sm font-medium">
+                      Current Workplace Address
+                    </Label>
+                    <Input
+                      id="current_address"
+                      {...form.register("current_address")}
+                      placeholder="Street, City, State, Postcode"
+                      className="bg-white"
+                    />
+                  </div>
                 </div>
               )}
             </div>

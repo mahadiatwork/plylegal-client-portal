@@ -10,8 +10,8 @@ import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   getVisaTypeFromPath,
-  getPreviousTemporaryWorkChildRoute,
-  getAfterTemporaryWorkChildCustodyNext,
+  getPreviousRoute,
+  getNextRoute,
 } from "@/lib/routes";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -176,7 +176,7 @@ export default function ChildCustodyPage() {
         return;
       }
       await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
-      const next = getAfterTemporaryWorkChildCustodyNext(draftSnap.currentApplicationId);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
@@ -184,7 +184,7 @@ export default function ChildCustodyPage() {
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) router.push(prev);
   };
 

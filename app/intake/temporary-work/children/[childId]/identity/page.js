@@ -10,8 +10,8 @@ import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   getVisaTypeFromPath,
-  getNextTemporaryWorkChildRoute,
-  getPreviousTemporaryWorkChildRoute,
+  getNextRoute,
+  getPreviousRoute,
 } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -768,10 +768,11 @@ export default function ChildProfileIdentityPage() {
           `${visaType}/children/${childId}/identity`
         );
 
-        const nextRoute = getNextTemporaryWorkChildRoute(
+        const nextRoute = getNextRoute(
           pathname,
+          visaType,
           draftSnap.currentApplicationId,
-          childId
+          draftSnap.visaContext
         );
         if (nextRoute) {
           router.push(nextRoute);
@@ -789,10 +790,11 @@ export default function ChildProfileIdentityPage() {
   };
 
   const handlePrevious = () => {
-    const previousRoute = getPreviousTemporaryWorkChildRoute(
+    const previousRoute = getPreviousRoute(
       pathname,
+      visaType,
       draftSnap.currentApplicationId,
-      childId
+      draftSnap.visaContext
     );
     if (previousRoute) {
       router.push(previousRoute);

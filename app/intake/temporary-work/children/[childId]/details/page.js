@@ -10,9 +10,8 @@ import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   getVisaTypeFromPath,
-  getNextTemporaryWorkChildRoute,
-  getPreviousTemporaryWorkChildRoute,
-  getTemporaryWorkChildrenListHref,
+  getNextRoute,
+  getPreviousRoute,
 } from "@/lib/routes";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,7 +206,7 @@ export default function ChildDetailsPage() {
     const result = await draftStore.saveProfileSectionData(profileId, "details", values);
     if (result.success) {
       await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
-      const next = getNextTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) router.push(next);
     } else {
       toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
@@ -215,12 +214,10 @@ export default function ChildDetailsPage() {
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousTemporaryWorkChildRoute(pathname, draftSnap.currentApplicationId, childId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
       router.push(prev);
-      return;
     }
-    router.push(getTemporaryWorkChildrenListHref(draftSnap.currentApplicationId));
   };
 
   const handleSave = async () => {
