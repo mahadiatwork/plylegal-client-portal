@@ -829,9 +829,9 @@ export default function IdentityPage() {
 
             {hasPassport === "yes" && (
               <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Passports/Travel Documents</h3>
+                <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Passports/Travel Documents</h2>
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all of your current passports and any passport that you have previously used to enter Australia
+                  Enter details of all current passports.
                 </p>
                 <RepeaterTable
                   data={passports}
@@ -867,8 +867,9 @@ export default function IdentityPage() {
             )}
           </div>
 
-          {/* National Identity Card */}
-          <div className="space-y-4">
+          {/* National Identity Document */}
+          <div className="space-y-4 pt-6 border-t">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">National Identity Document</h2>
             <Label className="text-base font-medium mb-3 block">
               Do you have a National ID card?
             </Label>
@@ -894,7 +895,15 @@ export default function IdentityPage() {
 
             {hasNationalId === "yes" && (
               <div className="mt-4 space-y-4 rounded-lg border border-border p-4">
-                <h3 className="text-lg font-semibold text-gray-900">National Identity Card</h3>
+                <h3 className="text-lg font-semibold text-gray-900">National identity card</h3>
+                <p className="text-sm text-gray-600">
+                  Enter details exactly as shown on the national identity card.
+                </p>
+                <div className="bg-blue-50 p-3 rounded-md mb-4 border border-blue-100">
+                  <p className="text-sm text-blue-800 italic">
+                    Note: If the National identity card does not have a Date of issue or a Date of expiry, do not enter a date. Leave the field/s blank.
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Family name</Label>
@@ -910,7 +919,19 @@ export default function IdentityPage() {
                   </div>
                   <div>
                     <Label>Country of issue</Label>
-                    <Input {...form.register("national_id_card.country_of_issue")} placeholder="Country" />
+                    <Select
+                      value={form.watch("national_id_card.country_of_issue") || ""}
+                      onValueChange={(v) => form.setValue("national_id_card.country_of_issue", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose Country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country} value={country}>{country}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div>
@@ -973,10 +994,10 @@ export default function IdentityPage() {
           </div>
 
           {/* Other Identity Documents */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Other Identity Documents</h3>
+          <div className="space-y-4 pt-6 border-t">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Other Identity Documents</h2>
             <p className="text-sm text-gray-600 mb-2">
-              Add any other identity documents (birth certificate, driver licence, etc.).
+              Enter details of other identity documents you hold.
             </p>
             <RepeaterTable
               data={otherIdentityDocuments}

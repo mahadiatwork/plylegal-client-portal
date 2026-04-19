@@ -225,7 +225,7 @@ export default function Page() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">All Applicants&apos; Character</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Character</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

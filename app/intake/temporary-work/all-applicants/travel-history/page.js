@@ -18,6 +18,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown, Check } from "lucide-react";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -113,6 +114,73 @@ function applicantLabels(ids, profiles) {
     })
     .filter(Boolean)
     .join(", ");
+}
+
+// ─── MultiSelect Component ──────────────────────────────────────────
+function ApplicantMultiSelect({ applicants, selectedIds, onToggle, error }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedLabels = applicants
+    .filter((a) => selectedIds.includes(a.id))
+    .map((a) => a.label);
+
+  const displayText =
+    selectedLabels.length === 0
+      ? "Select Applicants"
+      : selectedLabels.length === 1
+      ? selectedLabels[0]
+      : `${selectedLabels.length} Applicants Selected`;
+
+  return (
+    <div className="relative w-full">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-between bg-white h-auto py-2 px-3 text-left font-normal"
+        onClick={() => setIsOpen(!isOpen)}
+        data-testid="multi-select-trigger"
+      >
+        <span className="truncate pr-2 text-gray-700">{displayText}</span>
+        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+      </Button>
+
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setIsOpen(false)} 
+          />
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-white shadow-lg py-1 max-h-60 overflow-auto">
+            {applicants.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">No applicants found.</p>
+            ) : (
+              applicants.map((a) => (
+                <div
+                  key={a.id}
+                  className="relative flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer group"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle(a.id, !selectedIds.includes(a.id));
+                  }}
+                >
+                  <Checkbox
+                    id={`ms-applicant-${a.id}`}
+                    checked={selectedIds.includes(a.id)}
+                    className="mr-2 border-slate-300"
+                  />
+                  <span className="text-sm text-gray-700 truncate">{a.label}</span>
+                  {selectedIds.includes(a.id) && (
+                    <Check className="ml-auto h-4 w-4 text-primary" />
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+      {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+    </div>
+  );
 }
 
 // ─── Travel Dialog ────────────────────────────────────────────────────
@@ -216,38 +284,21 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Travel History</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Add Travel Record</h3>
       <p className="text-sm text-gray-500 mb-4">
-        Enter details of their current location and of previous travel including travel for work, study, holiday, leisure,
-        business, military deployments and visits back to their own country:
+        Enter details of travel outside the usual country of residence, including travel for work, study, holiday,
+        leisure, business, military deployments and visits back to own country.
       </p>
 
       {/* Applicant(s) — multi-select (profile ids) */}
       <div>
-        <Label className="mb-2 block">Which applicant(s) does this travel apply to?</Label>
-        <p className="text-xs text-muted-foreground mb-2">Select one or more applicants.</p>
-        <div className="space-y-2 rounded-md border border-border p-3">
-          {applicants.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No applicants found. Complete Application Profile first.</p>
-          ) : (
-            applicants.map((a) => (
-              <div key={a.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`travel-applicant-${a.id}`}
-                  checked={applicantIds.includes(a.id)}
-                  onCheckedChange={(c) => toggleApplicant(a.id, !!c)}
-                  data-testid={`checkbox-travel-applicant-${a.id}`}
-                />
-                <Label htmlFor={`travel-applicant-${a.id}`} className="font-normal cursor-pointer">
-                  {a.label}
-                </Label>
-              </div>
-            ))
-          )}
-        </div>
-        {dialogForm.formState.errors.applicant_ids && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.applicant_ids.message}</p>
-        )}
+        <Label className="mb-2 block font-medium">Which applicant(s) does this travel apply to?</Label>
+        <ApplicantMultiSelect
+          applicants={applicants}
+          selectedIds={applicantIds}
+          onToggle={toggleApplicant}
+          error={dialogForm.formState.errors.applicant_ids?.message}
+        />
       </div>
 
       {/* Country */}
@@ -623,11 +674,18 @@ export default function Page() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">All Applicants&apos; Travel History</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Travel History</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Include: work, study or training; business; holiday/leisure trips; military deployment; visits back to your own
-          country.
+          In the past 10 years since turning 16 years of age, have any of the applicants travelled outside their usual
+          country of residence?
         </p>
+        <ul className="text-sm text-gray-500 mt-2 list-disc pl-5 space-y-1">
+          <li>work, study or training</li>
+          <li>business</li>
+          <li>holiday/leisure trips</li>
+          <li>military deployment</li>
+          <li>visits back to your own country</li>
+        </ul>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -656,11 +714,7 @@ export default function Page() {
             {/* Travel history table (shown if Yes) */}
             {hasTravelHistory === "yes" && (
               <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Travel History for all applicants</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Enter details of their current location and of previous travel including travel for work, study, holiday,
-                  leisure, business, military deployments and visits back to their own country:
-                </p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Travel records</h3>
                 <RepeaterTable
                   data={travelHistory}
                   columns={[

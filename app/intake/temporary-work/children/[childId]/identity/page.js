@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -77,6 +78,8 @@ const formSchema = z
     has_national_id: z.enum(["yes", "no"]),
     national_id_card: nationalIdCardSchema.optional(),
     other_identity_documents: z.array(otherIdentityRowSchema).optional(),
+    has_sole_custody: z.enum(["yes", "no"]).optional(),
+    custody_order_details: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -639,6 +642,20 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
   );
 }
 
+function getChildAgeFromProfile(profile) {
+  const { date_of_birth_day, date_of_birth_month, date_of_birth_year } = profile || {};
+  if (!date_of_birth_day || !date_of_birth_month || !date_of_birth_year) return null;
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthIndex = months.indexOf(date_of_birth_month);
+  if (monthIndex === -1) return null;
+  const dob = new Date(Number(date_of_birth_year), monthIndex, Number(date_of_birth_day));
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
 export default function ChildProfileIdentityPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -696,6 +713,8 @@ export default function ChildProfileIdentityPage() {
       has_national_id: "no",
       national_id_card: { ...emptyNational },
       other_identity_documents: [],
+      has_sole_custody: "yes",
+      custody_order_details: "",
     },
   });
 
@@ -718,6 +737,9 @@ export default function ChildProfileIdentityPage() {
 
   const passports = form.watch("passports") || [];
   const otherIdentityDocuments = form.watch("other_identity_documents") || [];
+  const hasSoleCustody = form.watch("has_sole_custody");
+
+  const childAge = getChildAgeFromProfile(profile);
 
   const nidDays = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const nidMonths = [
@@ -847,9 +869,9 @@ export default function ChildProfileIdentityPage() {
 
             {hasPassport === "yes" && (
               <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Passports/Travel Documents</h3>
+                <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Passports/Travel Documents</h2>
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all of your current passports and any passport that you have previously used to enter Australia
+                  Enter details of all current passports.
                 </p>
                 <RepeaterTable
                   data={passports}
@@ -885,8 +907,9 @@ export default function ChildProfileIdentityPage() {
             )}
           </div>
 
-          {/* National Identity Card */}
-          <div className="space-y-4">
+          {/* National Identity Document */}
+          <div className="space-y-4 pt-6 border-t">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">National Identity Document</h2>
             <Label className="text-base font-medium mb-3 block">
               Do you have a National ID card?
             </Label>
@@ -912,7 +935,15 @@ export default function ChildProfileIdentityPage() {
 
             {hasNationalId === "yes" && (
               <div className="mt-4 space-y-4 rounded-lg border border-border p-4">
-                <h3 className="text-lg font-semibold text-gray-900">National Identity Card</h3>
+                <h3 className="text-lg font-semibold text-gray-900">National identity card</h3>
+                <p className="text-sm text-gray-600">
+                  Enter details exactly as shown on the national identity card.
+                </p>
+                <div className="bg-blue-50 p-3 rounded-md mb-4 border border-blue-100">
+                  <p className="text-sm text-blue-800 italic">
+                    Note: If the National identity card does not have a Date of issue or a Date of expiry, do not enter a date. Leave the field/s blank.
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Family name</Label>
@@ -928,7 +959,19 @@ export default function ChildProfileIdentityPage() {
                   </div>
                   <div>
                     <Label>Country of issue</Label>
-                    <Input {...form.register("national_id_card.country_of_issue")} placeholder="Country" />
+                    <Select
+                      value={form.watch("national_id_card.country_of_issue") || ""}
+                      onValueChange={(v) => form.setValue("national_id_card.country_of_issue", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose Country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country} value={country}>{country}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div>
@@ -991,10 +1034,10 @@ export default function ChildProfileIdentityPage() {
           </div>
 
           {/* Other Identity Documents */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Other Identity Documents</h3>
+          <div className="space-y-4 pt-6 border-t">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Other Identity Documents</h2>
             <p className="text-sm text-gray-600 mb-2">
-              Add any other identity documents (birth certificate, driver licence, etc.).
+              Enter details of other identity documents you hold.
             </p>
             <RepeaterTable
               data={otherIdentityDocuments}
@@ -1018,12 +1061,53 @@ export default function ChildProfileIdentityPage() {
                 const updated = otherIdentityDocuments.filter((_, i) => i !== index);
                 form.setValue("other_identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
               }}
-              DialogComponent={SimplifiedOtherIdentityDialog}
-              addButtonText="Add document"
-              testIdPrefix="other-identity"
-            />
+            DialogComponent={SimplifiedOtherIdentityDialog}
+            addButtonText="Add document"
+            testIdPrefix="other-identity"
+          />
+        </div>
+
+        {/* Child Custody Details - Only for applicants under 18 */}
+        {childAge !== null && childAge < 18 && (
+          <div className="space-y-4 pt-6 border-t">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Child Custody Details</h2>
+            <h3 className="text-lg font-semibold text-gray-900">Child custody details</h3>
+            
+            <div className="space-y-4">
+              <Label className="text-base font-medium block">
+                Do you have sole custody of this child?
+              </Label>
+              <RadioGroup
+                value={hasSoleCustody}
+                onValueChange={(value) => form.setValue("has_sole_custody", value)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="custody-yes" />
+                  <Label htmlFor="custody-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="custody-no" />
+                  <Label htmlFor="custody-no" className="ml-2 cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+
+              {hasSoleCustody === "no" && (
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="custody-details">If not, please provide custody arrangement details</Label>
+                  <Textarea
+                    id="custody-details"
+                    {...form.register("custody_order_details")}
+                    placeholder="Enter details..."
+                    className="min-h-[100px]"
+                  />
+                </div>
+              )}
+            </div>
           </div>
-          {/* Desktop Navigation */}
+        )}
+
+        {/* Desktop Navigation */}
           <FormNavigation
             loading={isSaving}
             onPrev={handlePrevious}

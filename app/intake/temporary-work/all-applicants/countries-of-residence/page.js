@@ -57,36 +57,36 @@ const formatDate = (day, month, year) => {
 function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
     const dialogFormSchema = z.object({
         applicant_name: z.string().min(1, "Please select an applicant"),
-        country: z.string().min(1, "Country is required"),
-        address1: z.string().min(1, "Street address is required"),
-        address2: z.string().optional(),
-        suburb: z.string().min(1, "Suburb / Town / City is required"),
-        state: z.string().optional(),
-        postcode: z.string().optional(),
         date_from_day: z.string().min(1, "Day is required"),
         date_from_month: z.string().min(1, "Month is required"),
         date_from_year: z.string().min(1, "Year is required"),
         date_to_day: z.string().optional(),
         date_to_month: z.string().optional(),
         date_to_year: z.string().optional(),
+        country: z.string().min(1, "Country is required"),
+        address1: z.string().min(1, "Address is required"),
+        address2: z.string().optional(),
+        suburb: z.string().min(1, "Suburb / Town is required"),
+        state: z.string().optional(),
+        postcode: z.string().optional(),
     });
 
     const dialogForm = useForm({
         resolver: zodResolver(dialogFormSchema),
         defaultValues: editingRow || {
             applicant_name: "",
-            country: "",
-            address1: "",
-            address2: "",
-            suburb: "",
-            state: "",
-            postcode: "",
             date_from_day: "",
             date_from_month: "",
             date_from_year: "",
             date_to_day: "",
             date_to_month: "",
             date_to_year: "",
+            country: "",
+            address1: "",
+            address2: "",
+            suburb: "",
+            state: "",
+            postcode: "",
         },
     });
 
@@ -97,14 +97,14 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
 
     return (
         <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-            <h3 className="text-base font-bold text-gray-900 mb-2">Country of Residence</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-2">Details of country of residence</h3>
             <p className="text-sm text-gray-500 mb-4">
-                Enter details of a country where the applicant has resided for 12 months or more in the past 10 years.
+                Select the applicant that these details apply to.
             </p>
 
             {/* Applicant Name */}
             <div>
-                <Label className="mb-2 block">Applicant Name</Label>
+                <Label className="mb-2 block">Name</Label>
                 <Select
                     value={dialogForm.watch("applicant_name")}
                     onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
@@ -127,89 +127,9 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                 )}
             </div>
 
-            {/* Country */}
-            <div>
-                <Label className="mb-2 block">Country</Label>
-                <Select
-                    value={dialogForm.watch("country")}
-                    onValueChange={(value) => dialogForm.setValue("country", value)}
-                >
-                    <SelectTrigger data-testid="select-country">
-                        <SelectValue placeholder="Choose Country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {COUNTRIES.map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                {dialogForm.formState.errors.country && (
-                    <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
-                )}
-            </div>
-
-            {/* Address */}
-            <div>
-                <Label htmlFor="address1" className="mb-2 block">Street Address</Label>
-                <Input
-                    id="address1"
-                    {...dialogForm.register("address1")}
-                    placeholder="Street number and name"
-                    data-testid="input-address1"
-                />
-                {dialogForm.formState.errors.address1 && (
-                    <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.address1.message}</p>
-                )}
-            </div>
-
-            <div>
-                <Label htmlFor="address2" className="mb-2 block">
-                    Address Line 2 <span className="text-gray-400 font-normal">(optional)</span>
-                </Label>
-                <Input
-                    id="address2"
-                    {...dialogForm.register("address2")}
-                    placeholder="Apartment, suite, unit, etc."
-                    data-testid="input-address2"
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                    <Label htmlFor="suburb" className="mb-2 block">Suburb / Town / City</Label>
-                    <Input
-                        id="suburb"
-                        {...dialogForm.register("suburb")}
-                        placeholder="Suburb or city"
-                        data-testid="input-suburb"
-                    />
-                    {dialogForm.formState.errors.suburb && (
-                        <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.suburb.message}</p>
-                    )}
-                </div>
-                <div>
-                    <Label htmlFor="state" className="mb-2 block">State / Territory</Label>
-                    <Input
-                        id="state"
-                        {...dialogForm.register("state")}
-                        placeholder="State"
-                        data-testid="input-state"
-                    />
-                </div>
-                <div>
-                    <Label htmlFor="postcode" className="mb-2 block">Postcode</Label>
-                    <Input
-                        id="postcode"
-                        {...dialogForm.register("postcode")}
-                        placeholder="Postcode"
-                        data-testid="input-postcode"
-                    />
-                </div>
-            </div>
-
             {/* Date From */}
             <div>
-                <Label className="mb-2 block">Date From</Label>
+                <Label className="mb-2 block">Date from</Label>
                 <div className="grid grid-cols-3 gap-2">
                     <Select
                         value={dialogForm.watch("date_from_day")}
@@ -252,7 +172,7 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
 
             {/* Date To */}
             <div>
-                <Label className="mb-2 block">Date To <span className="text-gray-400 font-normal">(leave blank if ongoing)</span></Label>
+                <Label className="mb-2 block">Date to <span className="text-gray-400 font-normal">(&apos;Date to&apos; may be left blank if this address is current)</span></Label>
                 <div className="grid grid-cols-3 gap-2">
                     <Select
                         value={dialogForm.watch("date_to_day")}
@@ -288,6 +208,80 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                         </SelectContent>
                     </Select>
                 </div>
+            </div>
+
+            {/* Residential Address */}
+            <h4 className="text-sm font-semibold text-gray-800 pt-2">Residential address</h4>
+
+            {/* Country */}
+            <div>
+                <Label className="mb-2 block">Country</Label>
+                <Select
+                    value={dialogForm.watch("country")}
+                    onValueChange={(value) => dialogForm.setValue("country", value)}
+                >
+                    <SelectTrigger data-testid="select-country">
+                        <SelectValue placeholder="Choose Country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {COUNTRIES.map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {dialogForm.formState.errors.country && (
+                    <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
+                )}
+            </div>
+
+            {/* Address */}
+            <div>
+                <Label htmlFor="address1" className="mb-2 block">Address</Label>
+                <Input
+                    id="address1"
+                    {...dialogForm.register("address1")}
+                    placeholder="Street number and name"
+                    data-testid="input-address1"
+                />
+                {dialogForm.formState.errors.address1 && (
+                    <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.address1.message}</p>
+                )}
+            </div>
+
+            {/* Suburb / Town */}
+            <div>
+                <Label htmlFor="suburb" className="mb-2 block">Suburb / Town</Label>
+                <Input
+                    id="suburb"
+                    {...dialogForm.register("suburb")}
+                    placeholder="Suburb or town"
+                    data-testid="input-suburb"
+                />
+                {dialogForm.formState.errors.suburb && (
+                    <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.suburb.message}</p>
+                )}
+            </div>
+
+            {/* State / Territory */}
+            <div>
+                <Label htmlFor="state" className="mb-2 block">State / Territory</Label>
+                <Input
+                    id="state"
+                    {...dialogForm.register("state")}
+                    placeholder="State"
+                    data-testid="input-state"
+                />
+            </div>
+
+            {/* Postcode */}
+            <div>
+                <Label htmlFor="postcode" className="mb-2 block">Postcode</Label>
+                <Input
+                    id="postcode"
+                    {...dialogForm.register("postcode")}
+                    placeholder="Postcode"
+                    data-testid="input-postcode"
+                />
             </div>
 
             <DialogFooter>
@@ -435,7 +429,7 @@ export default function Page() {
     return (
         <Card className="rounded-2xl shadow-md bg-white">
             <CardHeader>
-                <CardTitle className="text-2xl font-semibold">All Applicants&apos; Countries of Residence</CardTitle>
+                <CardTitle className="text-2xl font-semibold">Countries of Residence</CardTitle>
                 <p className="text-sm text-gray-600 mt-2">
                     Provide details of all countries where the applicant(s) have spent a total of 12 months or more in the past
                     10 years since turning 16.
@@ -444,11 +438,7 @@ export default function Page() {
             <CardContent>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-                        <h2 className="text-xl font-semibold text-foreground">Residence Records</h2>
-                        <p className="text-sm text-muted-foreground -mt-2">
-                            Add an entry for each country where any included applicant has lived for 12 months or more cumulatively
-                            over the past 10 years.
-                        </p>
+                        <h2 className="text-xl font-semibold text-foreground">Details of country of residence</h2>
 
                         <RepeaterTable
                             data={residenceRecords}

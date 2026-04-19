@@ -122,7 +122,7 @@ export default function SubmitPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-gray-400 mt-1">•</span>
-                <span>If you have not already done so, please go to the <strong>Upload Documents</strong> tab in the portal and upload the supporting documents for your visa application.</span>
+                <span>If you have not already done so, please go to the Upload Documents tab in the portal and upload the supporting documents for your visa application.</span>
               </li>
             </ul>
           </div>
