@@ -4,7 +4,7 @@ import { Providers } from "./providers";
 import favicon from "@/assets/favicon.png";
 
 export const metadata = {
-  title: "PlyLega: Visa Portal",
+  title: "PlyLegal: Visa Portal",
   description: "Legal immigration case management portal",
   icons: {
     icon: favicon.src,
