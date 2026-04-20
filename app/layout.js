@@ -1,10 +1,14 @@
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "./providers";
+import favicon from "@/assets/favicon.png";
 
 export const metadata = {
-  title: "Ply Legal - Client Portal",
+  title: "PlyLega: Visa Portal",
   description: "Legal immigration case management portal",
+  icons: {
+    icon: favicon.src,
+  },
 };
 
 export default function RootLayout({ children }) {
