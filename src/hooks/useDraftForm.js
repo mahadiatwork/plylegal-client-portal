@@ -1,6 +1,6 @@
 // src/hooks/useDraftForm.js
 
-import { useForm, UseFormProps } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useEffect, useRef } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
@@ -11,14 +11,10 @@ import debounce from "lodash/debounce";
  * It loads saved values for a given profile and section, auto‑saves on change (debounced),
  * and provides a saveNow method for explicit Save Draft / Continue actions.
  */
-export function useDraftForm<T>(
-  profileId: string | null,
-  sectionKey: string,
-  formOptions?: UseFormProps<T>
-) {
-  const form = useForm<T>({
+export function useDraftForm(profileId, sectionKey, formOptions) {
+  const form = useForm({
     ...formOptions,
-    defaultValues: {} as T,
+    defaultValues: {},
   });
   const draftSnap = useSnapshot(draftStore);
   const isFirstLoad = useRef(true);
@@ -27,7 +23,7 @@ export function useDraftForm<T>(
   useEffect(() => {
     if (!profileId) return;
     const saved = draftSnap.draft?.profiles_data?.[profileId]?.[sectionKey] ?? {};
-    form.reset(saved as any);
+    form.reset(saved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId, draftSnap.draft?.profiles_data]);
 
