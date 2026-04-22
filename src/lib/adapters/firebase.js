@@ -58,10 +58,46 @@ export class FirebaseAdapter extends BaseAdapter {
       });
     });
   }
+
+  async verifyPortalAccess(email) {
+    try {
+      const response = await fetch('/api/auth/verify-zoho', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success || result.allowed === false) {
+        return {
+          success: false,
+          error: result.error || 'Portal access is not available for this account.',
+          errorCode: result.errorCode || 'PORTAL_ACCESS_DENIED',
+        };
+      }
+
+      return {
+        success: true,
+        zohoContact: result.zohoContact || null,
+        portalAccess: result.portalAccess || 'Active',
+        needsPasswordChange: !!result.needsPasswordChange,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Unable to verify portal access right now. Please try again.',
+        errorCode: 'ZOHO_VERIFICATION_FAILED',
+      };
+    }
+  }
   
   async login(credentials) {
     try {
       console.log('🔐 Attempting Firebase login for:', credentials.email);
+      const verification = await this.verifyPortalAccess(credentials.email);
+      if (!verification.success) {
+        return verification;
+      }
       
       // Try to sign in with existing Firebase account
       try {
@@ -73,6 +109,12 @@ export class FirebaseAdapter extends BaseAdapter {
         
         // Ensure user profile document exists in Firestore
         await this.getUserProfile(userCredential.user.uid);
+        await this.updateUserProfile(userCredential.user.uid, {
+          portalAccess: true,
+          needsPasswordChange: verification.needsPasswordChange,
+          zohoContactId: verification.zohoContact?.id || undefined,
+          updatedAt: serverTimestamp(),
+        });
         
         // Fetch deals/applications from Zoho CRM on login and save to Firebase (non-blocking)
         // This should never break login - if Zoho fails, user can still login
@@ -143,6 +185,12 @@ export class FirebaseAdapter extends BaseAdapter {
             
             // Create user profile document in Firestore
             await this.getUserProfile(userCredential.user.uid);
+            await this.updateUserProfile(userCredential.user.uid, {
+              portalAccess: true,
+              needsPasswordChange: verification.needsPasswordChange,
+              zohoContactId: verification.zohoContact?.id || undefined,
+              updatedAt: serverTimestamp(),
+            });
             
             // Try to populate profile from Zoho CRM (non-blocking)
             try {

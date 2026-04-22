@@ -24,10 +24,37 @@ export async function POST(request) {
           errorCode: 'NOT_IN_ZOHO',
         });
       }
+
+      const portalAccess = String(
+        zohoContact.Portal_Access ??
+        zohoContact.portalAccess ??
+        'Inactive'
+      ).trim();
+      const isPortalActive = portalAccess.toLowerCase() === 'active';
+      const needsPasswordChange = Boolean(
+        zohoContact.Needs_Password_Change ??
+        zohoContact.needsPasswordChange ??
+        false
+      );
+
+      if (!isPortalActive) {
+        console.log('❌ Portal access inactive for contact:', zohoContact.id);
+        return NextResponse.json({
+          success: false,
+          allowed: false,
+          portalAccess,
+          needsPasswordChange,
+          error: 'Portal access is inactive. Please contact support.',
+          errorCode: 'PORTAL_ACCESS_INACTIVE',
+        }, { status: 403 });
+      }
       
       console.log('✅ User found in Zoho CRM:', zohoContact.id);
       return NextResponse.json({
         success: true,
+        allowed: true,
+        portalAccess: 'Active',
+        needsPasswordChange,
         zohoContact,
       });
     } catch (zohoError) {

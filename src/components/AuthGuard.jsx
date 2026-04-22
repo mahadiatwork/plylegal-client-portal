@@ -35,10 +35,21 @@ export function AuthGuard({ children }) {
     
     // Check if on password change page
     const isPasswordChangePage = pathname === "/change-password";
+    const isAccessDeniedPage = pathname === "/access-denied";
     
     // Redirect to login if not authenticated and trying to access protected route
     if (isProtected && !snap.isAuthenticated) {
       router.push("/login");
+      return;
+    }
+
+    if (
+      snap.isAuthenticated &&
+      snap.userProfile &&
+      snap.userProfile.portalAccess === false &&
+      !isAccessDeniedPage
+    ) {
+      router.push("/access-denied");
       return;
     }
     
@@ -46,8 +57,8 @@ export function AuthGuard({ children }) {
     // (highest priority - must change password before doing anything else)
     if (
       snap.isAuthenticated && 
-      snap.profile && 
-      snap.profile.needsPasswordChange && 
+      snap.userProfile && 
+      snap.userProfile.needsPasswordChange && 
       !isPasswordChangePage
     ) {
       router.push("/change-password");
@@ -67,7 +78,7 @@ export function AuthGuard({ children }) {
       router.push("/profile/setup");
       return;
     }
-  }, [snap.isAuthenticated, snap.userProfile, snap.profile, pathname, router, isCheckingSession]);
+  }, [snap.isAuthenticated, snap.userProfile, pathname, router, isCheckingSession]);
   
   // Show loading while checking session
   if (isCheckingSession) {

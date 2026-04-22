@@ -462,65 +462,136 @@ class ZohoCRMClient {
     }
   }
 
+  normalizeDependentText(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  normalizeDependentDate(value) {
+    return String(value || '').trim();
+  }
+
+  buildDependentMatchKey(dependent) {
+    const firstName = this.normalizeDependentText(dependent?.firstName || dependent?.First_Name);
+    const lastName = this.normalizeDependentText(dependent?.lastName || dependent?.Last_Name || dependent?.Name);
+    const relationship = this.normalizeDependentText(
+      dependent?.relationship || dependent?.Relationship_to_Applicant || dependent?.Relationship
+    );
+    const dateOfBirth = this.normalizeDependentDate(dependent?.dateOfBirth || dependent?.Date_of_Birth);
+    return `${firstName}|${lastName}|${dateOfBirth}|${relationship}`;
+  }
+
+  mapDependentToZohoFields(dep) {
+    return {
+      First_Name: dep.firstName || '',
+      Last_Name: dep.lastName || '',
+      Relationship: dep.relationship || '',
+      Date_of_Birth: dep.dateOfBirth || '',
+      Citizenship: dep.citizenship || '',
+    };
+  }
+
+  hasDependentFieldChanges(existingDep, mappedIncomingDep) {
+    const normalize = (v) => String(v || '').trim();
+    return (
+      normalize(existingDep.First_Name) !== normalize(mappedIncomingDep.First_Name) ||
+      normalize(existingDep.Last_Name) !== normalize(mappedIncomingDep.Last_Name) ||
+      normalize(existingDep.Relationship_to_Applicant || existingDep.Relationship) !== normalize(mappedIncomingDep.Relationship) ||
+      normalize(existingDep.Date_of_Birth) !== normalize(mappedIncomingDep.Date_of_Birth) ||
+      normalize(existingDep.Citizenship) !== normalize(mappedIncomingDep.Citizenship)
+    );
+  }
+
   /**
    * Sync dependencies to Partner_Dependents related list
-   * This will replace all existing dependents with the new list
+   * This reuses existing dependents and only creates/updates when needed
    * @param {string} contactId - Contact ID
    * @param {Array} dependencies - Array of dependency objects
-   * @returns {Promise<Array>} Array of created/updated related records
+   * @returns {Promise<Object>} Sync summary and processed records
    */
   async syncDependencies(contactId, dependencies) {
     try {
       const relatedListName = 'Partner_Dependents';
-      
-      // Get existing dependents
+      const incomingDependencies = Array.isArray(dependencies) ? dependencies : [];
       const existingDependents = await this.getRelatedRecords('Contacts', contactId, relatedListName);
       console.log(`📋 Found ${existingDependents.length} existing dependents`);
 
-      // Delete all existing dependents (we'll replace them with the new list)
-      for (const dependent of existingDependents) {
-        if (dependent.id) {
-          try {
-            await this.deleteRelatedRecord('Contacts', contactId, relatedListName, dependent.id);
-            console.log(`🗑️ Deleted dependent: ${dependent.id}`);
-          } catch (error) {
-            console.error(`⚠️ Failed to delete dependent ${dependent.id}:`, error.message);
-            // Continue with other deletions even if one fails
-          }
+      const summary = {
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        existingCount: existingDependents.length,
+        incomingCount: incomingDependencies.length,
+      };
+
+      const processedDependents = [];
+      const existingByKey = new Map();
+      for (const existing of existingDependents) {
+        const existingKey = this.buildDependentMatchKey(existing);
+        if (existingKey && !existingByKey.has(existingKey)) {
+          existingByKey.set(existingKey, existing);
         }
       }
 
-      // Create new dependents
-      const createdDependents = [];
-      if (dependencies && dependencies.length > 0) {
-        for (const dep of dependencies) {
-          // Map dependency fields to Zoho Contact fields
-          const dependentData = {
-            First_Name: dep.firstName || '',
-            Last_Name: dep.lastName || '',
-            // Map relationship field - adjust field name based on your Zoho setup
-            Relationship: dep.relationship || '',
-            // Map date of birth - adjust field name based on your Zoho setup
-            Date_of_Birth: dep.dateOfBirth || '',
-            // Map citizenship - adjust field name based on your Zoho setup
-            Citizenship: dep.citizenship || '',
-          };
+      const seenIncomingKeys = new Set();
+      for (const dep of incomingDependencies) {
+        const depKey = this.buildDependentMatchKey(dep);
+        if (!depKey || depKey === '|||') {
+          summary.skipped += 1;
+          console.warn('⚠️ Skipping dependent with empty identity key');
+          continue;
+        }
+        if (seenIncomingKeys.has(depKey)) {
+          summary.skipped += 1;
+          console.log(`↩️ Skipping duplicate dependent in payload: ${dep.firstName || ''} ${dep.lastName || ''}`);
+          continue;
+        }
+        seenIncomingKeys.add(depKey);
 
+        const mappedIncomingDep = this.mapDependentToZohoFields(dep);
+        const existingMatch = existingByKey.get(depKey);
+        if (!existingMatch) {
           try {
-            const created = await this.createRelatedRecord('Contacts', contactId, relatedListName, dependentData);
+            const created = await this.createRelatedRecord('Contacts', contactId, relatedListName, mappedIncomingDep);
             if (created) {
-              createdDependents.push(created);
-              console.log(`✅ Created dependent: ${dep.firstName} ${dep.lastName}`);
+              processedDependents.push(created);
+              summary.created += 1;
+              console.log(`✅ Created dependent: ${dep.firstName || ''} ${dep.lastName || ''}`);
             }
           } catch (error) {
-            console.error(`❌ Failed to create dependent ${dep.firstName} ${dep.lastName}:`, error.message);
-            // Continue with other dependents even if one fails
+            console.error(`❌ Failed to create dependent ${dep.firstName || ''} ${dep.lastName || ''}:`, error.message);
           }
+          continue;
+        }
+
+        if (existingMatch.id && this.hasDependentFieldChanges(existingMatch, mappedIncomingDep)) {
+          try {
+            const updated = await this.updateRelatedRecord(
+              'Contacts',
+              contactId,
+              relatedListName,
+              existingMatch.id,
+              mappedIncomingDep
+            );
+            if (updated) {
+              processedDependents.push(updated);
+            }
+            summary.updated += 1;
+            console.log(`♻️ Updated existing dependent: ${dep.firstName || ''} ${dep.lastName || ''}`);
+          } catch (error) {
+            console.error(`❌ Failed to update dependent ${dep.firstName || ''} ${dep.lastName || ''}:`, error.message);
+          }
+        } else {
+          summary.skipped += 1;
+          processedDependents.push(existingMatch);
+          console.log(`✅ Reused existing dependent: ${dep.firstName || ''} ${dep.lastName || ''}`);
         }
       }
 
-      console.log(`✅ Synced ${createdDependents.length} dependents to Partner_Dependents`);
-      return createdDependents;
+      console.log('✅ Dependent sync summary:', summary);
+      return {
+        ...summary,
+        records: processedDependents,
+      };
     } catch (error) {
       console.error('❌ Error syncing dependencies:', error.message);
       throw error;

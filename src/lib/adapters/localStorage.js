@@ -54,12 +54,27 @@ export class LocalStorageAdapter extends BaseAdapter {
   }
   
   async checkSession() {
-    if (!this.isClient) return false;
+    if (!this.isClient) return { isAuthenticated: false };
     
     try {
-      return localStorage.getItem(SESSION_KEY) === "true";
+      const isAuthenticated = localStorage.getItem(SESSION_KEY) === "true";
+      if (!isAuthenticated) {
+        return { isAuthenticated: false };
+      }
+
+      const user = await this.getUser();
+      return {
+        isAuthenticated: true,
+        user,
+        profile: {
+          email: user?.email || "",
+          profileCompleted: true,
+          needsPasswordChange: false,
+          portalAccess: true,
+        },
+      };
     } catch {
-      return false;
+      return { isAuthenticated: false };
     }
   }
   

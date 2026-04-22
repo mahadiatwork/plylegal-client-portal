@@ -89,23 +89,18 @@ export async function POST(request) {
     }
 
     // Sync dependencies to Partner_Dependents related list
-    if (contactId && dependencies && dependencies.length > 0) {
+    let dependencySyncSummary = null;
+    if (contactId && Array.isArray(dependencies)) {
       try {
         console.log(`🔄 Syncing ${dependencies.length} dependencies to Partner_Dependents related list`);
-        await zohoClient.syncDependencies(contactId, dependencies);
-        console.log('✅ Dependencies synced successfully');
+        dependencySyncSummary = await zohoClient.syncDependencies(contactId, dependencies);
+        console.log('✅ Dependencies synced successfully:', dependencySyncSummary);
       } catch (depError) {
         console.error('⚠️ Failed to sync dependencies to related list (non-critical):', depError.message);
         // Don't fail the whole sync if dependencies fail - log and continue
       }
-    } else if (contactId && (!dependencies || dependencies.length === 0)) {
-      // If no dependencies provided, clear existing ones
-      try {
-        console.log('🔄 Clearing existing dependencies (none provided)');
-        await zohoClient.syncDependencies(contactId, []);
-      } catch (depError) {
-        console.error('⚠️ Failed to clear dependencies (non-critical):', depError.message);
-      }
+    } else if (contactId) {
+      console.log('ℹ️ Dependencies not provided in payload; keeping existing Zoho dependents unchanged');
     }
 
     // Store contactId in Firebase profile if userId is provided
@@ -127,6 +122,7 @@ export async function POST(request) {
       success: true,
       action: action,
       contactId: contactId,
+      dependenciesSync: dependencySyncSummary,
       message: `Contact ${action} successfully in Zoho CRM`
     });
   } catch (error) {

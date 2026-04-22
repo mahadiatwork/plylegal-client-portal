@@ -53,7 +53,7 @@ export default function ChangePasswordPage() {
       }
 
       // Check if user actually needs to change password
-      if (snap.profile && !snap.profile.needsPasswordChange) {
+      if (snap.userProfile && !snap.userProfile.needsPasswordChange) {
         // User doesn't need password change, redirect to applications
         router.push("/applications");
         return;
@@ -63,7 +63,7 @@ export default function ChangePasswordPage() {
     };
 
     checkPasswordChangeRequired();
-  }, [snap.isAuthenticated, snap.profile, router]);
+  }, [snap.isAuthenticated, snap.userProfile, router]);
 
   const onSubmit = async (data) => {
     try {
@@ -86,12 +86,23 @@ export default function ChangePasswordPage() {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, {
         needsPasswordChange: false,
+        Needs_Password_Change: false,
+        temporaryPasswordHash: "",
+        Password_Reset_Token: "",
         updatedAt: new Date().toISOString(),
       });
 
+      await fetch("/api/auth/password-changed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+
       // Update local store
-      if (authStore.profile) {
-        authStore.profile.needsPasswordChange = false;
+      if (authStore.userProfile) {
+        authStore.userProfile.needsPasswordChange = false;
+        authStore.userProfile.Needs_Password_Change = false;
+        authStore.userProfile.temporaryPasswordHash = "";
       }
 
       toast({

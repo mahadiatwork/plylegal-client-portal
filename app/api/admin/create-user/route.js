@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, db } from '@/lib/firebase-admin';
+import crypto from 'crypto';
 
 /**
  * POST /api/admin/create-user
@@ -71,6 +72,10 @@ export async function POST(request) {
     }
 
     console.log('🔐 Creating Firebase user from Zoho:', email);
+    const temporaryPasswordHash = crypto
+      .createHash('sha256')
+      .update(tempPassword)
+      .digest('hex');
 
     // Check if user already exists
     let userRecord;
@@ -78,7 +83,8 @@ export async function POST(request) {
       userRecord = await adminAuth.getUserByEmail(email);
       console.log('⚠️ User already exists:', userRecord.uid);
       
-      // User exists - update their profile with Zoho data (using Admin SDK)
+      // User exists - re-enable and update their profile with Zoho data (using Admin SDK)
+      await adminAuth.updateUser(userRecord.uid, { disabled: false });
       const userRef = db.collection('users').doc(userRecord.uid);
       await userRef.set({
         email,
@@ -93,9 +99,13 @@ export async function POST(request) {
         mailingZip: mailingZip || '',
         mailingCountry: mailingCountry || '',
         zohoContactId: zohoContactId || '',
+        Portal_Access: 'Active',
+        portalAccess: true,
+        Needs_Password_Change: true,
+        needsPasswordChange: true,
+        temporaryPasswordHash: temporaryPasswordHash,
         zohoSyncedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        // Don't set needsPasswordChange for existing users
       }, { merge: true });
 
       return NextResponse.json({
@@ -139,6 +149,11 @@ export async function POST(request) {
       
       // Metadata flags
       needsPasswordChange: true, // Force password change on first login
+      Needs_Password_Change: true,
+      temporaryPasswordHash: temporaryPasswordHash,
+      Password_Reset_Token: '',
+      Portal_Access: 'Active',
+      portalAccess: true,
       profileCompleted: false,
       zohoSyncedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),

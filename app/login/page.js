@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import Link from "next/link";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -117,13 +118,13 @@ export default function LoginPage() {
                 <Label htmlFor="password" className="text-sm font-semibold text-slate-800">
                   Password
                 </Label>
-                <a
-                  href="mailto:admin@plylegal.com?subject=Visa%20portal%20password%20help"
+                <Link
+                  href="/forgot-password"
                   className="text-sm font-medium transition-opacity hover:opacity-80"
                   style={{ color: BRAND_GREEN }}
                 >
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <Input
