@@ -6,7 +6,7 @@ import { getAdapter } from "@/lib/adapters";
 // Get database adapter (Firebase or localStorage based on env)
 const db = getAdapter();
 const SESSION_EXPIRY_KEY = "ply_session_expires_at";
-const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_MAX_AGE_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
 
 function setSessionExpiry() {
   if (typeof window === "undefined") return;

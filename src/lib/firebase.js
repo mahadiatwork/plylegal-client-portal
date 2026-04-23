@@ -6,7 +6,7 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Firebase configuration from environment variables
@@ -49,6 +49,13 @@ try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+
+  // Explicitly set persistence to local (IndexedDB) so sessions survive
+  // browser/tab closes. Without this some environments may default to
+  // session-only persistence.
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('⚠️ Could not set auth persistence:', err.message);
+  });
 } catch (error) {
   console.error('❌ Firebase initialization failed:', error);
   throw error;

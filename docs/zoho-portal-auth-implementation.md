@@ -76,15 +76,17 @@ else if(input.Portal_Access == "Inactive")
 }
 ```
 
-## Deluge Reference (Firebase-mapped)
+## Deluge Function — `Create_Portal_User`
 
-Use this as a near drop-in pattern based on your Supabase-style reference, adapted for this portal's Firebase endpoints and field names.
+> **Fixes applied:**
+> 1. Build JSON body as a **string** for `invokeurl` — passing a Map sends form-encoded data which breaks `request.json()` on the API side.
+> 2. Ensure `PORTAL_BASE_URL` domain is whitelisted in **CRM → Setup → Developer Space → Allowed Domains**.
 
 ```javascript
-void automation.provision_portal_user(Int recordId)
+void automation.Create_Portal_User(Int recordId)
 {
     // ========= 1) Generate Random Temp Password =========
-    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     password = "";
     for each n in {1,2,3,4,5,6,7,8,9,10,11,12}
     {
@@ -93,7 +95,6 @@ void automation.provision_portal_user(Int recordId)
     }
 
     // ========= 2) Load Contact =========
-    // Switch module name if your workflow is not on Contacts
     record = zoho.crm.getRecordById("Contacts", recordId);
     email = ifnull(record.get("Email"), "");
     firstName = ifnull(record.get("First_Name"), "");
@@ -108,9 +109,11 @@ void automation.provision_portal_user(Int recordId)
     }
 
     // ========= 3) Shared Secret + Base URL =========
-    // Store these in Zoho Org Variables
     secret = zoho.crm.getOrgVariable("PORTAL_WEBHOOK_SECRET");
-    portalBaseUrl = zoho.crm.getOrgVariable("PORTAL_BASE_URL"); // e.g. https://your-portal.com
+    portalBaseUrl = zoho.crm.getOrgVariable("PORTAL_BASE_URL");
+
+    info "Portal URL: " + portalBaseUrl;
+    info "Secret length: " + secret.length();
 
     if(secret == "" || portalBaseUrl == "")
     {
@@ -125,27 +128,37 @@ void automation.provision_portal_user(Int recordId)
     // ========= 4) Active -> Provision/Enable =========
     if(portalAccess == "Active")
     {
-        payload = Map();
-        payload.put("email", email);
-        payload.put("tempPassword", password);
-        payload.put("firstName", firstName);
-        payload.put("lastName", lastName);
-        payload.put("phone", ifnull(record.get("Phone"), ""));
-        payload.put("mobile", ifnull(record.get("Mobile"), ""));
-        payload.put("zohoContactId", record.get("id"));
+        phone = ifnull(record.get("Phone"), "");
+        mobile = ifnull(record.get("Mobile"), "");
+        contactId = record.get("id");
+
+        // Build JSON string — invokeurl sends Maps as form-encoded, not JSON
+        jsonBody = "{";
+        jsonBody = jsonBody + "\"email\":\"" + email + "\",";
+        jsonBody = jsonBody + "\"tempPassword\":\"" + password + "\",";
+        jsonBody = jsonBody + "\"firstName\":\"" + firstName + "\",";
+        jsonBody = jsonBody + "\"lastName\":\"" + lastName + "\",";
+        jsonBody = jsonBody + "\"phone\":\"" + phone + "\",";
+        jsonBody = jsonBody + "\"mobile\":\"" + mobile + "\",";
+        jsonBody = jsonBody + "\"zohoContactId\":\"" + contactId + "\"";
+        jsonBody = jsonBody + "}";
+
+        info "Request URL: " + portalBaseUrl + "/api/admin/create-user";
+        info "Request body: " + jsonBody;
 
         provisionResp = invokeurl
         [
             url: portalBaseUrl + "/api/admin/create-user"
             type: POST
-            parameters: payload.toString()
+            parameters: jsonBody
             headers: headers
         ];
 
-        // Store hash in CRM field (never plaintext at rest)
-        tempPwdHash = sha256(password);
+        info "Response: " + provisionResp;
+
+        // Store temporary password directly (backend handles hashing)
         updateMap = Map();
-        updateMap.put("Temporary_Password", tempPwdHash);
+        updateMap.put("Temporary_Password", password);
         updateMap.put("Needs_Password_Change", true);
         zoho.crm.updateRecord("Contacts", recordId, updateMap);
 
@@ -166,15 +179,14 @@ void automation.provision_portal_user(Int recordId)
     // ========= 5) Inactive -> Revoke =========
     else if(portalAccess == "Inactive")
     {
-        revokePayload = Map();
-        revokePayload.put("email", email);
-        revokePayload.put("zohoContactId", record.get("id"));
+        revokeContactId = record.get("id");
+        revokeJsonBody = "{\"email\":\"" + email + "\",\"zohoContactId\":\"" + revokeContactId + "\"}";
 
         revokeResp = invokeurl
         [
             url: portalBaseUrl + "/api/admin/revoke-access"
             type: POST
-            parameters: revokePayload.toString()
+            parameters: revokeJsonBody
             headers: headers
         ];
 
