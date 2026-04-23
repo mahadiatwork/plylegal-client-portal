@@ -49,7 +49,8 @@ export function StickyNav({
               ) : (
                 <Save className="w-4 h-4 mr-1" />
               )}
-              {saveLabel}
+              <span className="hidden xs:inline">{saveLabel}</span>
+              <span className="xs:hidden">Save</span>
             </Button>
           )}
 

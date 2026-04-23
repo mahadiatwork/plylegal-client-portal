@@ -157,16 +157,16 @@ export default function QuestionnairePage() {
           <PillNav appId={appId} />
         </div>
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 sm:p-6">
           <div className="max-w-4xl mx-auto">
-            <Card className="rounded-2xl shadow-sm text-center py-12">
+            <Card className="rounded-xl sm:rounded-2xl shadow-sm text-center py-8 sm:py-12 px-4 sm:px-6">
               <CardContent className="space-y-6">
                 <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                   <FileText className="w-8 h-8 text-primary" />
                 </div>
 
                 <div>
-                  <h2 className="font-serif text-2xl font-bold mb-2">
+                  <h2 className="font-serif text-xl sm:text-2xl font-bold mb-2">
                     {application.type} Questionnaire
                   </h2>
                   <p className="text-muted-foreground max-w-lg mx-auto">

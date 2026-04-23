@@ -93,61 +93,100 @@ export function RepeaterTable({
         </div>
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
+          {/* Mobile: card layout */}
+          <div className="block sm:hidden divide-y divide-border">
+            {rows.map((row, index) => (
+              <div key={index} className="p-4 space-y-3 bg-white">
                 {columns.map((col) => (
-                  <th
-                    key={col.key}
-                    className="text-left py-3 px-4 text-sm font-medium"
-                  >
-                    {col.label}
-                  </th>
-                ))}
-                <th className="w-24 py-3 px-4 text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr
-                  key={index}
-                  className="border-t border-border hover:bg-muted/30"
-                >
-                  {columns.map((col) => (
-                    <td key={col.key} className="py-3 px-4 text-sm">
+                  <div key={col.key} className="flex flex-col">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{col.label}</span>
+                    <span className="text-sm mt-0.5">
                       {col.format ? (typeof col.format === 'function' ? col.format(row) : col.format(row[col.key])) : row[col.key]}
-                    </td>
+                    </span>
+                  </div>
+                ))}
+                <div className="flex gap-4 pt-3 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(index)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-primary"
+                    data-testid={`button-edit-mobile-${index}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(index)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-destructive"
+                    data-testid={`button-delete-mobile-${index}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table layout */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full min-w-[500px]">
+              <thead className="bg-muted/50">
+                <tr>
+                  {columns.map((col) => (
+                    <th
+                      key={col.key}
+                      className="text-left py-3 px-4 text-sm font-medium"
+                    >
+                      {col.label}
+                    </th>
                   ))}
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(index)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        data-testid={`button-edit-${index}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(index)}
-                        className="text-destructive hover:text-destructive/80 transition-colors"
-                        data-testid={`button-delete-${index}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+                  <th className="w-24 py-3 px-4 text-sm font-medium text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr
+                    key={index}
+                    className="border-t border-border hover:bg-muted/30"
+                  >
+                    {columns.map((col) => (
+                      <td key={col.key} className="py-3 px-4 text-sm">
+                        {col.format ? (typeof col.format === 'function' ? col.format(row) : col.format(row[col.key])) : row[col.key]}
+                      </td>
+                    ))}
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(index)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          data-testid={`button-edit-${index}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(index)}
+                          className="text-destructive hover:text-destructive/80 transition-colors"
+                          data-testid={`button-delete-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
         <DialogContent 
-          className={dialogClassName || "max-w-2xl max-h-[90vh] bg-white overflow-y-auto"}
+          className={dialogClassName || "max-w-[95vw] sm:max-w-2xl max-h-[90vh] bg-white overflow-y-auto"}
           onInteractOutside={(e) => {
             // Prevent closing when clicking on Select dropdowns
             const target = e.target;

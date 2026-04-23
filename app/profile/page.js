@@ -418,7 +418,7 @@ export default function ProfilePage() {
             {/* Your Profile Card */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
                     <CardTitle className="text-2xl">Your Profile</CardTitle>
                     <CardDescription>

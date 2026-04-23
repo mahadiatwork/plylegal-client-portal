@@ -524,8 +524,8 @@ export default function IntakeLayout({ children }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-8 lg:p-12">
-          <div className="max-w-4xl mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-12">
+          <div className="max-w-4xl mx-auto w-full">
             {children}
           </div>
         </main>
