@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +25,17 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+
+  // Redirect to /applications if already logged in
+  useEffect(() => {
+    const check = async () => {
+      const isLoggedIn = await authStore.checkSession();
+      if (isLoggedIn) {
+        router.replace("/applications");
+      }
+    };
+    check();
+  }, [router]);
 
   const {
     register,
