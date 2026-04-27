@@ -157,8 +157,8 @@ export default function QuestionnairePage() {
           <PillNav appId={appId} />
         </div>
 
-        <main className="flex-1 p-4 sm:p-6">
-          <div className="max-w-4xl mx-auto">
+        <main className="flex-1 p-4 sm:p-6 bg-[#eaedf5]">
+          <div className="max-w-xl mx-auto">
             <Card className="rounded-xl sm:rounded-2xl shadow-sm text-center py-8 sm:py-12 px-4 sm:px-6">
               <CardContent className="space-y-6">
                 <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -199,8 +199,8 @@ export default function QuestionnairePage() {
                   size="lg"
                   type="button"
                   onClick={handleStartQuestionnaire}
-                  disabled={isNavigating} // Disable button while navigating
-                  className="mt-4 min-w-[200px]" // Add min-width to prevent resize
+                  disabled={isNavigating}
+                  className="mt-4 w-full sm:min-w-[200px] sm:w-auto"
                 >
                   {isNavigating ? (
                     <>

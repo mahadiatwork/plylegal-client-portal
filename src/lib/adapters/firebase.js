@@ -576,6 +576,7 @@ export class FirebaseAdapter extends BaseAdapter {
                   lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || new Date().toISOString(), // Last updated time
                   updatedAt: serverTimestamp(),
                   zohoId: deal.id, // Reference to deal number
+                  publicReviewAccess: true,
                 });
               } else {
                 // Create new application
@@ -607,6 +608,7 @@ export class FirebaseAdapter extends BaseAdapter {
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
                 zohoId: deal.id, // Reference to deal number in Zoho
+                publicReviewAccess: true,
               };
                 
                 await setDoc(doc(this.db, 'applications', appId), newApp);
@@ -712,6 +714,7 @@ export class FirebaseAdapter extends BaseAdapter {
             await updateDoc(doc(this.db, 'applications', appId), {
               ...applicationData,
               id: appId, // Keep existing Firebase id
+              publicReviewAccess: true,
               updatedAt: serverTimestamp(),
             });
             
@@ -734,6 +737,7 @@ export class FirebaseAdapter extends BaseAdapter {
             const newApp = {
               id: appId,
               ...applicationData,
+              publicReviewAccess: true,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             };
@@ -1144,6 +1148,7 @@ export class FirebaseAdapter extends BaseAdapter {
       const appData = {
         ...app,
         userId: uid,
+        publicReviewAccess: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -1184,6 +1189,7 @@ export class FirebaseAdapter extends BaseAdapter {
       await updateDoc(appRef, {
         ...updateData,
         userId: uid, // Ensure userId is set
+        publicReviewAccess: true,
         updatedAt: serverTimestamp()
       });
       

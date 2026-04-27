@@ -374,7 +374,7 @@ export default function ApplicationProfilePage() {
           {/* Profile list */}
           {sortedProfiles.length > 0 ? (
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-base font-semibold text-gray-900">
                 {sortedProfiles.length} person{sortedProfiles.length !== 1 ? "s" : ""} added
               </p>
               {sortedProfiles.map((profile) => {
@@ -395,17 +395,20 @@ export default function ApplicationProfilePage() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-gray-900 truncate">
-                          {profile.given_names} {profile.family_name}
-                        </p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${colorClass}`}>
-                          {getRelationshipLabel(profile.relationship)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                      <p className="font-semibold text-gray-900 text-sm leading-tight">
+                        {profile.given_names} {profile.family_name}
+                      </p>
+                      <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full border font-medium ${colorClass}`}>
+                        {getRelationshipLabel(profile.relationship)}
+                      </span>
+                      <div className="flex items-center mt-1 text-xs text-gray-500">
                         {profile.gender && <span>{profile.gender}</span>}
-                        {dob && <span>DOB: {dob}</span>}
+                        {profile.gender && (profile.birth_day || profile.birth_month || profile.birth_year) && (
+                          <span className="mx-1">•</span>
+                        )}
+                        {(profile.birth_day || profile.birth_month || profile.birth_year) && (
+                          <span>DOB: {[profile.birth_day, profile.birth_month, profile.birth_year].filter(Boolean).join(" ")}</span>
+                        )}
                       </div>
                     </div>
 
@@ -457,20 +460,16 @@ export default function ApplicationProfilePage() {
           </Button>
 
           {/* Continue */}
-          <div className="pt-2 flex justify-end">
+          <div className="pt-2">
             <Button
               type="button"
               onClick={handleContinue}
               disabled={profiles.length === 0 || isNavigating}
-              className="bg-[#285646] hover:bg-[#1f4236] text-white min-w-[200px] h-11"
+              className="w-full bg-[#285646] hover:bg-[#1f4236] text-white h-12 text-base font-semibold flex items-center justify-between px-5"
               data-testid="button-continue"
             >
-              {isNavigating ? "Loading..." : (
-                <>
-                  Continue to Forms
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </>
-              )}
+              <span>{isNavigating ? "Loading..." : "Continue to Forms"}</span>
+              {!isNavigating && <ChevronRight className="w-5 h-5" />}
             </Button>
           </div>
         </CardContent>

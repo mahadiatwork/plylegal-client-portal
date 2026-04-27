@@ -128,6 +128,7 @@ async function createApplicationServer(app, userId) {
     const appData = {
       ...app,
       userId: userId,
+      publicReviewAccess: true,
       createdAt: now,
       updatedAt: now
     };
@@ -162,6 +163,7 @@ async function updateApplicationServer(id, updates, userId) {
     const appData = {
       ...updateData,
       userId: userId,
+      publicReviewAccess: true,
       updatedAt: now
     };
     

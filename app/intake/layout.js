@@ -5,8 +5,8 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Menu, X, ArrowLeft, ChevronDown } from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Check, CheckCircle2, Menu, X, ArrowLeft, ChevronDown, PanelLeftClose, User, List } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
@@ -152,29 +152,35 @@ export default function IntakeLayout({ children }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-40 bg-card border-b border-card-border">
-        <div className="flex items-center justify-between p-4">
+      <div className="lg:hidden sticky top-0 z-40 bg-sidebar border-b border-sidebar-border">
+        {/* Top bar: logo + hamburger */}
+        <div className="flex items-center justify-between px-4 h-16">
+          <BrandLogo priority className="h-[36px] mx-0" />
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             data-testid="button-menu-toggle"
-            className="h-9 w-9"
+            className="h-9 w-9 text-sidebar-foreground/80 hover:text-white hover:bg-white/10"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <div className="flex-1 ml-4">
-            <h2 className="font-serif font-semibold text-sm truncate">
-              {currentSection?.title}
-            </h2>
-            <Progress value={progress} className="h-1 mt-1" />
+        </div>
+
+        {/* Breadcrumb / section title strip */}
+        <div className="bg-background border-t border-border px-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <span className="text-sm font-medium text-foreground">{currentSection?.title}</span>
+              <div className="absolute -bottom-2 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            </div>
           </div>
         </div>
 
         {/* Mobile Section Tabs */}
         {currentSection?.subpages && (
-          <ScrollArea className="border-t border-border">
-            <div className="flex gap-1 p-2">
+          <ScrollArea className="w-full border-t border-border bg-background" orientation="horizontal">
+            <div className="flex gap-1 p-2 min-w-full w-max">
               {currentSection.subpages.map((subpage) => {
                 const appId = draftSnap.currentApplicationId;
                 const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
@@ -184,7 +190,7 @@ export default function IntakeLayout({ children }) {
                     variant={isRouteActive(subpage.href) ? "default" : "ghost"}
                     size="sm"
                     onClick={() => router.push(href)}
-                    className="min-h-8 text-xs whitespace-nowrap"
+                    className="min-h-8 text-xs whitespace-nowrap flex-shrink-0"
                     data-testid={`tab-${subpage.href}`}
                   >
                     {subpage.title}
@@ -192,6 +198,7 @@ export default function IntakeLayout({ children }) {
                 );
               })}
             </div>
+            <ScrollBar orientation="horizontal" className="hidden" />
           </ScrollArea>
         )}
       </div>
@@ -209,30 +216,25 @@ export default function IntakeLayout({ children }) {
         <aside
           className={cn(
             "fixed lg:sticky top-0 h-screen z-30 lg:z-0",
-            "w-72 bg-sidebar border-r border-sidebar-border",
-            "transition-transform duration-300 lg:translate-x-0",
+            "w-[300px] border-r transition-transform duration-300 lg:translate-x-0",
+            "bg-card lg:bg-sidebar border-border lg:border-sidebar-border",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
           <div className="h-full flex flex-col">
-            {/* Logo */}
-            <div className="p-6 border-b border-sidebar-border">
+            {/* Logo - Desktop only */}
+            <div className="hidden lg:block p-6 border-b border-sidebar-border">
               <BrandLogo priority />
-              <p className="text-sm text-sidebar-foreground/70 mt-1">
-                Client Portal
-              </p>
+              <p className="text-sm text-sidebar-foreground/70 mt-1">Client Portal</p>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   const appId = draftSnap.currentApplicationId;
-                  if (appId) {
-                    router.push(`/applications/${appId}/questionnaire`);
-                  } else {
-                    router.push("/applications");
-                  }
+                  if (appId) router.push(`/applications/${appId}/questionnaire`);
+                  else router.push("/applications");
                 }}
-                className="mt-3 w-full justify-start text-sm"
+                className="mt-3 w-full justify-start text-sm text-sidebar-foreground"
                 data-testid="button-back-to-applications"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -240,23 +242,41 @@ export default function IntakeLayout({ children }) {
               </Button>
             </div>
 
-            {/* Progress */}
-            <div className="p-6 border-b border-sidebar-border">
+            {/* Back to Application - Mobile only */}
+            <div className="lg:hidden px-4 py-3 border-b border-border">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const appId = draftSnap.currentApplicationId;
+                  if (appId) router.push(`/applications/${appId}/questionnaire`);
+                  else router.push("/applications");
+                  setSidebarOpen(false);
+                }}
+                className="w-full justify-start text-foreground font-medium gap-2"
+                data-testid="button-back-to-applications-mobile"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Application
+              </Button>
+            </div>
+
+            {/* Completion */}
+            <div className="px-4 py-4 border-b border-border lg:border-sidebar-border">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Completion</span>
+                <span className="text-sm font-medium text-foreground lg:text-sidebar-foreground">Completion</span>
                 <span className="text-sm font-semibold text-primary">
                   {completionPercentage.percentage}%
                 </span>
               </div>
               <Progress value={completionPercentage.percentage} className="h-2" />
-              <p className="text-xs text-sidebar-foreground/60 mt-2">
+              <p className="text-xs text-muted-foreground lg:text-sidebar-foreground/60 mt-2">
                 {completionPercentage.completed} of {completionPercentage.total} sections complete
               </p>
             </div>
 
             {/* Navigation */}
             <ScrollArea className="flex-1">
-              <nav className="p-4 space-y-2">
+              <nav className="p-3 space-y-1">
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
@@ -284,9 +304,9 @@ export default function IntakeLayout({ children }) {
                             setSidebarOpen(false);
                           }}
                           className={cn(
-                            "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                            isRouteActive(route.href) && "bg-primary/20 font-semibold",
-                            isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                            "w-full justify-start min-h-10 text-foreground lg:text-sidebar-foreground hover:bg-muted lg:hover:bg-sidebar-accent",
+                            isRouteActive(route.href) && "bg-primary/10 lg:bg-primary/20 font-semibold",
+                            isRouteCompleted(route.href) && "opacity-70"
                           )}
                         >
                           {isRouteCompleted(route.href) && <Check className="w-4 h-4 mr-2" />}
@@ -313,17 +333,15 @@ export default function IntakeLayout({ children }) {
                             applicantOrdinal = nextApplicantSlot;
                             nextApplicantSlot += 1;
                           }
-                          // Type label only (name is shown on the line below). Child/others must not use full name here.
+                          // Type label used in the trigger header
                           const parenLabel =
                             profile.relationship === 'main_applicant'
-                              ? 'Main Applicant'
+                              ? 'Nominated Worker'
                               : profile.relationship === 'spouse'
-                                ? 'Spouse/Partner'
+                                ? 'Spouse / De Facto Partner'
                                 : profile.relationship === 'child'
                                   ? 'Child'
-                                  : profile.relationship === 'other'
-                                    ? 'Dependent'
-                                    : 'Dependent';
+                                  : 'Dependent';
 
                           // Check if any subpage for this profile is currently active (query or child path)
                           const isThisProfileActive = effectiveProfileId === profileKey;
@@ -339,29 +357,43 @@ export default function IntakeLayout({ children }) {
                                   <Button
                                     variant="ghost"
                                     className={cn(
-                                      "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                                      isThisProfileActive && "bg-primary/20"
+                                      "w-full justify-between min-h-12 px-3 text-foreground lg:text-sidebar-foreground hover:bg-muted lg:hover:bg-sidebar-accent",
+                                      isThisProfileActive && "bg-primary/10 lg:bg-primary/20"
                                     )}
                                     data-testid={`nav-profile-${profileKey}`}
                                   >
-                                    <span className="flex items-center gap-2 text-left">
+                                    <span className="flex items-center gap-3 text-left min-w-0">
+                                      {/* Avatar icon */}
+                                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <User className="w-4 h-4 text-primary" />
+                                      </span>
                                       <span className="flex-1 truncate">
-                                        <span className="block text-xs text-sidebar-foreground/60">
-                                          Applicant {applicantOrdinal} ({parenLabel})
-                                        </span>
-                                        <span className="font-medium">{profileName}</span>
+                                        {profile.relationship === 'main_applicant' ? (
+                                          <span className="block font-medium text-sm">
+                                            Main Applicant ({parenLabel})
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <span className="block font-medium text-sm">
+                                              Applicant {applicantOrdinal} ({parenLabel})
+                                            </span>
+                                            {profileName !== 'Unnamed' && (
+                                              <span className="block text-xs text-muted-foreground lg:text-sidebar-foreground/60">{profileName}</span>
+                                            )}
+                                          </>
+                                        )}
                                       </span>
                                     </span>
                                     <ChevronDown
                                       className={cn(
-                                        "w-4 h-4 transition-transform duration-200 flex-shrink-0",
-                                        (isProfileExpanded || isThisProfileActive) && "transform rotate-180"
+                                        "w-4 h-4 transition-transform duration-200 flex-shrink-0 text-muted-foreground",
+                                        (isProfileExpanded || isThisProfileActive) && "rotate-180"
                                       )}
                                     />
                                   </Button>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="overflow-hidden">
-                                  <ul className="ml-6 mt-1 mb-1 space-y-1">
+                                  <ul className="ml-4 mt-1 mb-2 space-y-0.5">
                                     {(profile.relationship === 'child'
                                       ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((sp) => ({
                                           href: buildTemporaryWorkChildHref(profileKey, sp.pathSuffix),
@@ -385,7 +417,7 @@ export default function IntakeLayout({ children }) {
                                           : `${visaType}/${profile.relationship === 'spouse' ? 'spouse-partner' : 'main-applicant'}/${subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1]}__${profileKey}`;
                                       const isComplete = draftSnap.completionStatus?.[completionKey] === true;
                                       return (
-                                        <li key={`${subpage.href}-${profileKey}`} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                        <li key={`${subpage.href}-${profileKey}`}>
                                           <Button
                                             variant="ghost"
                                             size="sm"
@@ -399,15 +431,19 @@ export default function IntakeLayout({ children }) {
                                               draftStore.setActiveProfile(profileKey);
                                             }}
                                             className={cn(
-                                              "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                              "w-full justify-start min-h-9 text-sm gap-2 hover:bg-muted lg:hover:bg-sidebar-accent transition-colors",
                                               isActive
-                                                ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
-                                                : "text-sidebar-foreground",
-                                              isComplete && !isActive && "text-sidebar-foreground/70"
+                                                ? "font-bold text-primary bg-primary/10"
+                                                : "text-foreground lg:text-sidebar-foreground"
                                             )}
                                             data-testid={`nav-sub-${subpage.href}-${profileKey}`}
                                           >
-                                            {isComplete && <Check className="w-3 h-3 mr-2" />}
+                                            <CheckCircle2
+                                              className={cn(
+                                                "w-4 h-4 flex-shrink-0",
+                                                isComplete ? "text-primary" : "text-muted-foreground/30"
+                                              )}
+                                            />
                                             {subpage.title}
                                           </Button>
                                         </li>
@@ -436,31 +472,31 @@ export default function IntakeLayout({ children }) {
                             <Button
                               variant="ghost"
                               className={cn(
-                                "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "bg-primary/20"
+                                "w-full justify-between min-h-10 text-foreground lg:text-sidebar-foreground hover:bg-muted lg:hover:bg-sidebar-accent",
+                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "bg-primary/10 lg:bg-primary/20"
                               )}
                               data-testid={`nav-${route.href}`}
                             >
                               <span className="flex items-center">
                                 {isRouteCompleted(route.href) && (
-                                  <Check className="w-4 h-4 mr-2" />
+                                  <Check className="w-4 h-4 mr-2 text-primary" />
                                 )}
                                 {route.title}
                               </span>
                               <ChevronDown
                                 className={cn(
-                                  "w-4 h-4 transition-transform duration-200",
-                                  isExpanded && "transform rotate-180"
+                                  "w-4 h-4 transition-transform duration-200 text-muted-foreground",
+                                  isExpanded && "rotate-180"
                                 )}
                               />
                             </Button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="overflow-hidden">
-                            <ul className="ml-6 mt-1 mb-1 space-y-1">
+                            <ul className="ml-4 mt-1 mb-2 space-y-0.5">
                               {route.subpages.map((subpage) => {
                                 const isActive = isRouteActive(subpage.href);
                                 return (
-                                  <li key={subpage.href} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                  <li key={subpage.href}>
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -471,17 +507,19 @@ export default function IntakeLayout({ children }) {
                                         setSidebarOpen(false);
                                       }}
                                       className={cn(
-                                        "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
-                                        isActive 
-                                          ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20" 
-                                          : "text-sidebar-foreground",
-                                        isRouteCompleted(subpage.href) && !isActive && "text-sidebar-foreground/70"
+                                        "w-full justify-start min-h-9 text-sm gap-2 hover:bg-muted lg:hover:bg-sidebar-accent transition-colors",
+                                        isActive
+                                          ? "font-bold text-primary bg-primary/10"
+                                          : "text-foreground lg:text-sidebar-foreground"
                                       )}
                                       data-testid={`nav-sub-${subpage.href}`}
                                     >
-                                      {isRouteCompleted(subpage.href) && (
-                                        <Check className="w-3 h-3 mr-2" />
-                                      )}
+                                      <CheckCircle2
+                                        className={cn(
+                                          "w-4 h-4 flex-shrink-0",
+                                          isRouteCompleted(subpage.href) ? "text-primary" : "text-muted-foreground/30"
+                                        )}
+                                      />
                                       {subpage.title}
                                     </Button>
                                   </li>
@@ -504,14 +542,13 @@ export default function IntakeLayout({ children }) {
                           setSidebarOpen(false);
                         }}
                         className={cn(
-                          "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                          isRouteActive(route.href) && "bg-primary/20 font-semibold",
-                          isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                          "w-full justify-start min-h-10 text-foreground lg:text-sidebar-foreground hover:bg-muted lg:hover:bg-sidebar-accent",
+                          isRouteActive(route.href) && "bg-primary/10 lg:bg-primary/20 font-semibold"
                         )}
                         data-testid={`nav-${route.href}`}
                       >
                         {isRouteCompleted(route.href) && (
-                          <Check className="w-4 h-4 mr-2" />
+                          <Check className="w-4 h-4 mr-2 text-primary" />
                         )}
                         {route.title}
                       </Button>
@@ -520,11 +557,24 @@ export default function IntakeLayout({ children }) {
                 })}
               </nav>
             </ScrollArea>
+
+            {/* Close Menu - Mobile only */}
+            <div className="lg:hidden p-4 border-t border-border">
+              <Button
+                variant="outline"
+                className="w-full h-11 text-foreground border-border gap-2"
+                onClick={() => setSidebarOpen(false)}
+                data-testid="button-close-menu"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+                Close Menu
+              </Button>
+            </div>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-12">
+        <main className="flex-1 p-4 sm:p-6 lg:p-12 bg-[#eaedf5] lg:bg-background">
           <div className="max-w-4xl mx-auto w-full">
             {children}
           </div>
