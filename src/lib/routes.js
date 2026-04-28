@@ -119,6 +119,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     title: "Main Applicant",
     subpages: [
       { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+      { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
       { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
       { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -160,6 +161,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
     title: "Main Applicant",
     subpages: [
       { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+      { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
       { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
       { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -196,6 +198,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
 // Per-profile sub-pages (shared definition used by sidebar + routing)
 export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+  { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
   { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
   { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
   { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
