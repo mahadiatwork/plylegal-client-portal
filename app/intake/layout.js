@@ -232,10 +232,10 @@ export default function IntakeLayout({ children }) {
                     router.push("/applications");
                   }
                 }}
-                className="mt-3 w-full justify-start text-sm"
+                className="mt-3 w-full justify-start text-sm text-white hover:text-white hover:bg-white/10"
                 data-testid="button-back-to-applications"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-4 h-4 mr-2 text-white" />
                 Back to Application
               </Button>
             </div>
