@@ -365,7 +365,7 @@ export default function ApplicationProfilePage() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
             <p className="font-bold mb-1" style={{ color: '#1E4034' }}>Who should be included?</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for Skills in Demand (subclass 482) (nominated worker)</li>
+              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for {draftSnap.visaContext === '186' ? 'Employer Nomination (subclass 186)' : 'Skills in Demand (subclass 482)'} (nominated worker)</li>
               <li style={{ color: '#1E4034' }} className="font-bold"><strong>Spouse / De Facto</strong> — add if migrating together</li>
               <li style={{ color: '#1E4034' }} className="font-bold"><strong>Dependent Children</strong> — add each child who will be included</li>
             </ul>
