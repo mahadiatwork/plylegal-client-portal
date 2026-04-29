@@ -127,6 +127,48 @@ export const draftStore = proxy({
 
   // ─── End Profile Helpers ───────────────────────────────────────────────────
 
+  // ─── Non-Migrating Family Member Helpers ──────────────────────────────────
+
+  /** Return all non-migrating family members, defaulting to empty array */
+  getNonMigratingMembers() {
+    return this.draft?.non_migrating_members || [];
+  },
+
+  /** Get a single non-migrating member by id */
+  getNonMigratingMember(memberId) {
+    return (this.draft?.non_migrating_members || []).find(m => m.id === memberId) || null;
+  },
+
+  /** Add a new non-migrating member and persist */
+  async addNonMigratingMember(member) {
+    const newMember = {
+      id: member.id || `nmf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      ...member,
+    };
+    const members = [...(this.draft?.non_migrating_members || []), newMember];
+    this.draft = { ...this.draft, non_migrating_members: members };
+    await db.saveDraft(this.draft, this.currentApplicationId);
+    return newMember;
+  },
+
+  /** Update an existing non-migrating member by id */
+  async updateNonMigratingMember(memberId, updates) {
+    const members = (this.draft?.non_migrating_members || []).map(m =>
+      m.id === memberId ? { ...m, ...updates } : m
+    );
+    this.draft = { ...this.draft, non_migrating_members: members };
+    await db.saveDraft(this.draft, this.currentApplicationId);
+  },
+
+  /** Delete a non-migrating member */
+  async deleteNonMigratingMember(memberId) {
+    const members = (this.draft?.non_migrating_members || []).filter(m => m.id !== memberId);
+    this.draft = { ...this.draft, non_migrating_members: members };
+    await db.saveDraft(this.draft, this.currentApplicationId);
+  },
+
+  // ─── End Non-Migrating Family Member Helpers ──────────────────────────────
+
   // Set the current application context
   setApplicationId(appId) {
     this.currentApplicationId = appId;
@@ -135,32 +177,43 @@ export const draftStore = proxy({
 
   // Actions
   async saveDraft(data, applicationId) {
+    console.log('[DEBUG draftStore] saveDraft called');
+    const startTime = performance.now();
+
     try {
       this.isSaving = true;
 
       const appId = applicationId || this.currentApplicationId;
       if (!appId) {
-        console.warn('No application ID set for draft save');
+        console.warn('[DEBUG draftStore] No application ID set for draft save');
         this.isSaving = false;
         return { success: false, error: 'Application ID required' };
       }
+      console.log(`[DEBUG draftStore] App ID: ${appId}`);
 
       // Merge with existing draft
+      console.log('[DEBUG draftStore] Merging data with existing draft...');
       this.draft = { ...this.draft, ...data };
 
       // Save to Firebase immediately (no debouncing per user request)
+      console.log('[DEBUG draftStore] Saving to database...');
+      const dbStartTime = performance.now();
       const result = await db.saveDraft(this.draft, appId);
+      const dbEndTime = performance.now();
+      console.log(`[DEBUG draftStore] Database save completed in ${(dbEndTime - dbStartTime).toFixed(2)}ms`);
 
       if (result.success) {
         this.lastSaved = new Date().toISOString();
         this.isSaving = false;
+        console.log(`[DEBUG draftStore] saveDraft total time: ${(performance.now() - startTime).toFixed(2)}ms`);
         return { success: true };
       }
 
       this.isSaving = false;
+      console.log(`[DEBUG draftStore] saveDraft failed, total time: ${(performance.now() - startTime).toFixed(2)}ms`);
       return { success: false, error: result.error };
     } catch (error) {
-      console.error("Error saving draft to Firebase:", error);
+      console.error("[DEBUG draftStore] Error saving draft to Firebase:", error);
       this.isSaving = false;
       return { success: false, error: error.message };
     }
@@ -396,18 +449,23 @@ export const draftStore = proxy({
 
   // Mark a page as complete
   async markPageComplete(pageKey, applicationId, sectionKeyToCheck = null) {
+    console.log(`[DEBUG draftStore] markPageComplete called for: ${pageKey}`);
+    const startTime = performance.now();
+
     try {
       const appId = applicationId || this.currentApplicationId;
       if (!appId) {
-        console.warn('No application ID set for marking page complete');
+        console.warn('[DEBUG draftStore] No application ID set for marking page complete');
         return { success: false };
       }
+      console.log(`[DEBUG draftStore] App ID: ${appId}`);
 
       // Validation: Check if section has meaningful data
       // If a specific section key is provided, use it. Otherwise try to guess.
       if (sectionKeyToCheck !== false) {
         const sectionKey = sectionKeyToCheck || this.getSectionKeyFromPageKey(pageKey);
         const sectionData = this.getSectionData(sectionKey);
+        console.log(`[DEBUG draftStore] Checking section data for key: ${sectionKey}`);
 
         // Check if section has meaningful data
         const hasData = Object.values(sectionData).some(value => {
@@ -419,20 +477,27 @@ export const draftStore = proxy({
         });
 
         if (!hasData) {
-          console.warn(`Cannot mark ${pageKey} as complete - no data inside section (${sectionKey})`);
+          console.warn(`[DEBUG draftStore] Cannot mark ${pageKey} as complete - no data inside section (${sectionKey})`);
           return { success: false, error: 'No data to save' };
         }
+        console.log(`[DEBUG draftStore] Section has data, proceeding...`);
       }
 
       // Update completion status
+      console.log(`[DEBUG draftStore] Updating local completion status...`);
       this.completionStatus = { ...this.completionStatus, [pageKey]: true };
 
       // Save to Firebase
+      console.log(`[DEBUG draftStore] Saving completion status to database...`);
+      const dbStartTime = performance.now();
       await db.saveCompletionStatus(this.completionStatus, appId);
+      const dbEndTime = performance.now();
+      console.log(`[DEBUG draftStore] Database save completed in ${(dbEndTime - dbStartTime).toFixed(2)}ms`);
 
+      console.log(`[DEBUG draftStore] markPageComplete total time: ${(performance.now() - startTime).toFixed(2)}ms`);
       return { success: true };
     } catch (error) {
-      console.error("Error marking page complete:", error);
+      console.error("[DEBUG draftStore] Error marking page complete:", error);
       return { success: false, error: error.message };
     }
   },

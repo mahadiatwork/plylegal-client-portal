@@ -111,11 +111,33 @@ export default function IntakeStartPage() {
       return;
     }
 
-    await draftStore.saveDraft({ started: true });
-    await draftStore.markPageComplete(`${visaType}/start`, null, false);
+    console.log("[DEBUG] Continue clicked - starting navigation process");
+    const startTime = performance.now();
 
+    console.log("[DEBUG] Step 1: Saving draft with started=true");
+    const step1Start = performance.now();
+    await draftStore.saveDraft({ started: true });
+    console.log(`[DEBUG] Step 1 complete: Saved draft in ${(performance.now() - step1Start).toFixed(2)}ms`);
+
+    console.log("[DEBUG] Step 2: Marking page as complete");
+    const step2Start = performance.now();
+    await draftStore.markPageComplete(`${visaType}/start`, null, false);
+    console.log(`[DEBUG] Step 2 complete: Marked page complete in ${(performance.now() - step2Start).toFixed(2)}ms`);
+
+    console.log("[DEBUG] Step 3: Getting next route");
+    const step3Start = performance.now();
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-    if (next) router.push(next);
+    console.log(`[DEBUG] Step 3 complete: Got next route in ${(performance.now() - step3Start).toFixed(2)}ms`);
+    console.log(`[DEBUG] Next route: ${next}`);
+
+    console.log("[DEBUG] Step 4: Navigating to next page");
+    const step4Start = performance.now();
+    if (next) {
+      router.push(next);
+      console.log(`[DEBUG] Step 4 complete: Navigation initiated in ${(performance.now() - step4Start).toFixed(2)}ms`);
+    }
+
+    console.log(`[DEBUG] Total time from click to navigation: ${(performance.now() - startTime).toFixed(2)}ms`);
   };
 
   return (

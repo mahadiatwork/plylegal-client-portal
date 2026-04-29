@@ -450,6 +450,20 @@ export function calculateProgress(currentHref, visaType, visaContext = null) {
   return Math.round(((currentIndex + 1) / allRoutes.length) * 100);
 }
 
+/** Non-migrating family member subpages — shown in sidebar but excluded from linear flow and completion % */
+export const NON_MIGRATING_MEMBER_SUBPAGES = [
+  { pathSuffix: "details",     title: "Details" },
+  { pathSuffix: "passport",    title: "Passport" },
+  { pathSuffix: "identity",    title: "Identity Documents" },
+  { pathSuffix: "other-names", title: "Other Names" },
+  { pathSuffix: "citizenship", title: "Citizenship" },
+  { pathSuffix: "health",      title: "Health" },
+];
+
+export function buildNonMigratingHref(memberId, pathSuffix) {
+  return `/intake/temporary-work/non-migrating/${memberId}/${pathSuffix}`;
+}
+
 /** Per dependent child under Application Profile — Skills in Demand (482) */
 export const TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES = [
   { pathSuffix: "details", title: "Details" },
