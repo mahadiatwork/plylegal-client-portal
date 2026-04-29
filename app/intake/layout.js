@@ -153,9 +153,9 @@ export default function IntakeLayout({ children }) {
   const isSectionExpanded = (href) => expandedSections.has(href);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen overflow-hidden bg-background flex flex-col">
       {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-40 bg-card border-b border-card-border">
+      <div className="lg:hidden flex-shrink-0 z-40 bg-card border-b border-card-border">
         <div className="flex items-center justify-between p-4">
           <Button
             variant="ghost"
@@ -207,11 +207,11 @@ export default function IntakeLayout({ children }) {
         />
       )}
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed lg:sticky top-0 h-screen z-30 lg:z-0",
+            "fixed lg:relative top-0 h-screen lg:h-full z-30 lg:z-0 flex-shrink-0",
             "w-72 bg-sidebar border-r border-sidebar-border",
             "transition-transform duration-300 lg:translate-x-0",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -668,7 +668,7 @@ export default function IntakeLayout({ children }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-8 lg:p-12">
+        <main className="flex-1 overflow-y-auto p-8 lg:p-12">
           <div className="max-w-4xl mx-auto">
             {children}
           </div>
