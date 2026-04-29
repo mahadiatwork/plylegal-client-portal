@@ -22,6 +22,7 @@ export default function TasksPage() {
   const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
+  const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const tasks = appDataSnap.cache[appId]?.tasks || [];
 
@@ -103,7 +104,7 @@ export default function TasksPage() {
         />
         
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slug} />
         </div>
         
         <main className="flex-1 px-6 py-8">

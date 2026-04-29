@@ -5,28 +5,53 @@
 
 export const SKILLS_IN_DEMAND_TYPE_LABEL = "Skills in Demand (subclass 482)";
 
+const SUBCLASS_PATTERN = /subclass\s*(\d{3})/i;
+
+export function extractSubclass(value) {
+  if (!value || typeof value !== "string") return null;
+  return value.match(SUBCLASS_PATTERN)?.[1] || null;
+}
+
 /**
  * Maps a Zoho CRM deal to the same visa code used by intake routes (`partner`, `protection`, `temporary-work`).
  */
 export function mapZohoDealToVisaTypeCode(deal) {
-  const dealName = (deal?.Deal_Name || deal?.DealName || "").toLowerCase();
-  const visaType = (deal?.Visa_Type || deal?.visaType || deal?.Type || "").toLowerCase();
+  const dealNameRaw = deal?.Deal_Name || deal?.DealName || "";
+  const visaTypeRaw = deal?.Visa_Type || deal?.visaType || deal?.Type || "";
+  const dealName = dealNameRaw.toLowerCase();
+  const visaType = visaTypeRaw.toLowerCase();
+  const combined = `${dealNameRaw} ${visaTypeRaw}`;
+  const combinedLower = combined.toLowerCase();
 
-  if (dealName.includes("partner") || visaType.includes("partner")) {
-    return "partner";
-  }
   if (dealName.includes("protection") || visaType.includes("protection")) {
     return "protection";
   }
+
+  const subclass = extractSubclass(combined);
   if (
-    dealName.includes("skills in demand") ||
-    visaType.includes("skills in demand") ||
-    dealName.includes("work") ||
-    dealName.includes("temporary") ||
-    visaType.includes("work") ||
-    dealName.includes("tss")
+    subclass === "186" ||
+    combinedLower.includes("employer nomination") ||
+    /\b186\b/.test(combinedLower)
   ) {
     return "temporary-work";
+  }
+  if (
+    subclass === "482" ||
+    combinedLower.includes("skills in demand") ||
+    combinedLower.includes("temporary work") ||
+    combinedLower.includes("temporary skill") ||
+    combinedLower.includes("tss") ||
+    (combinedLower.includes("temporary") && combinedLower.includes("work")) ||
+    (dealName.includes("work") && !combinedLower.includes("partner visa"))
+  ) {
+    return "temporary-work";
+  }
+
+  const partnerVisa =
+    /\b820\b|\b309\b|partner\s+visa|subclass\s*820|subclass\s*309/i.test(combined) ||
+    visaTypeRaw.trim().toLowerCase() === "partner";
+  if (partnerVisa) {
+    return "partner";
   }
 
   return "partner";
@@ -58,4 +83,53 @@ export function normalizeSkillsInDemandTypeLabel(typeStr) {
 export function formatVisaApplicationType(app) {
   if (!app?.type?.trim()) return "N/A";
   return normalizeSkillsInDemandTypeLabel(app.type.trim()) || "N/A";
+}
+
+export function getApplicationSlug(app) {
+  if (!app) return "partner";
+
+  const text = [
+    app.type,
+    app.reference,
+    app.visaType,
+    app.visaTypeCode,
+  ].filter(Boolean).join(" ");
+  const lower = text.toLowerCase();
+
+  if (lower.includes("protection") || app.visaTypeCode === "protection") {
+    return "protection";
+  }
+
+  const subclass = extractSubclass(text);
+  if (
+    subclass === "186" ||
+    lower.includes("employer nomination") ||
+    (/\b186\b/.test(lower) &&
+      (lower.includes("nomination") || lower.includes("employer")))
+  ) {
+    return "186";
+  }
+  if (
+    subclass === "482" ||
+    lower.includes("skills in demand") ||
+    lower.includes("temporary work") ||
+    lower.includes("temporary skill") ||
+    lower.includes("tss")
+  ) {
+    return "482";
+  }
+
+  if (app.visaTypeCode === "temporary-work") {
+    if (lower.includes("employer nomination") || /\b186\b/.test(lower)) return "186";
+    return "482";
+  }
+
+  const partnerVisa =
+    app.visaTypeCode === "partner" ||
+    /\b820\b|\b309\b|partner\s+visa|subclass\s*820|subclass\s*309/i.test(lower);
+  if (partnerVisa) {
+    return "partner";
+  }
+
+  return "partner";
 }

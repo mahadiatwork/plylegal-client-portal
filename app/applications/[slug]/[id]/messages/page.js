@@ -29,6 +29,7 @@ export default function MessagesPage() {
   const fileInputRef = useRef(null);
   
   const appId = params.id;
+  const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const dealId = application?.zohoId;
 
@@ -253,7 +254,7 @@ export default function MessagesPage() {
         />
         
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slug} />
         </div>
         
         <main className="flex-1 flex flex-col px-6 py-8 overflow-hidden">

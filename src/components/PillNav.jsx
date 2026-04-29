@@ -11,18 +11,19 @@ import {
   FileEdit
 } from "lucide-react";
 
-export function PillNav({ appId }) {
+export function PillNav({ appId, slug }) {
   const pathname = usePathname();
+  const baseHref = slug ? `/applications/${slug}/${appId}` : `/applications/${appId}`;
 
   const row1 = [
-    { href: `/applications/${appId}/questionnaire`, label: "Questionnaire", icon: FileText },
-    { href: `/applications/${appId}/uploads`, label: "Upload Documents", icon: Upload },
+    { href: `${baseHref}/questionnaire`, label: "Questionnaire", icon: FileText },
+    { href: `${baseHref}/uploads`, label: "Upload Documents", icon: Upload },
   ];
 
   const row2 = [
-    { href: `/applications/${appId}/resources`, label: "Resources", icon: BookOpen },
-    { href: `/applications/${appId}/messages`, label: "Send Message", icon: MessageSquare },
-    { href: `/applications/${appId}/corrections`, label: "Submit Corrections", icon: FileEdit },
+    { href: `${baseHref}/resources`, label: "Resources", icon: BookOpen },
+    { href: `${baseHref}/messages`, label: "Send Message", icon: MessageSquare },
+    { href: `${baseHref}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
 
   const PillButton = ({ href, label, icon: Icon }) => {

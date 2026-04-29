@@ -7,7 +7,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { useToast } from "@/hooks/use-toast";
-import { getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { buildIntakeHref, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { CheckCircle2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 
@@ -65,7 +65,12 @@ export default function SubmitPage() {
         description: "Your application has been submitted and is now under review.",
       });
 
-      router.push(`/intake/${visaType}/start`);
+      router.push(buildIntakeHref({
+        appId,
+        internalHref: `/intake/${visaType}/start`,
+        visaType,
+        visaContext: draftSnap.visaContext,
+      }));
     } catch (error) {
       console.error("Submission error:", error);
       toast({

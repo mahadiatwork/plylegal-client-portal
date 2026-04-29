@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { buildIntakeHref, getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -762,10 +762,13 @@ export default function ApplicationProfilePage() {
     console.log("[DEBUG] Step 3: Building next route URL");
     const step3Start = performance.now();
     const appId = draftSnap.currentApplicationId;
-    const nextBase = "/intake/temporary-work/main-applicant/details";
-    const next = appId
-      ? `${nextBase}?applicationId=${appId}&profileId=${mainApplicant.id}`
-      : `${nextBase}?profileId=${mainApplicant.id}`;
+    const next = buildIntakeHref({
+      appId,
+      internalHref: "/intake/temporary-work/main-applicant/details",
+      profileId: mainApplicant.id,
+      visaType,
+      visaContext: draftSnap.visaContext,
+    });
     console.log(`[DEBUG] Step 3 complete: Built URL in ${(performance.now() - step3Start).toFixed(2)}ms`);
     console.log(`[DEBUG] Next route: ${next}`);
 

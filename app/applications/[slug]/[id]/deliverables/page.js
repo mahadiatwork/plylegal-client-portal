@@ -21,6 +21,7 @@ export default function DeliverablesPage() {
   const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
+  const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const deliverables = appDataSnap.cache[appId]?.deliverables || [];
 
@@ -93,7 +94,7 @@ export default function DeliverablesPage() {
         />
         
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slug} />
         </div>
         
         <main className="flex-1 p-6">

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { User, FileText, ChevronLeft, Upload, BookOpen, MessageSquare, FileEdit } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BrandLogo } from "@/components/BrandLogo";
+import { getApplicationSlug } from "@/lib/visaDisplay";
 
 export function AppSidebar({ mode, application, onClose }) {
   const pathname = usePathname();
@@ -46,13 +47,15 @@ export function AppSidebar({ mode, application, onClose }) {
   
   // Contextual sidebar for application workspace
   if (!application) return null;
+  const slug = getApplicationSlug(application);
+  const baseHref = `/applications/${slug}/${application.id}`;
   
   const appTabs = [
-    { href: `/applications/${application.id}/questionnaire`, label: "Questionnaire", icon: FileText },
-    { href: `/applications/${application.id}/uploads`, label: "Upload Documents", icon: Upload },
-    { href: `/applications/${application.id}/resources`, label: "Resources", icon: BookOpen },
-    { href: `/applications/${application.id}/messages`, label: "Send Message", icon: MessageSquare },
-    { href: `/applications/${application.id}/corrections`, label: "Submit Corrections", icon: FileEdit },
+    { href: `${baseHref}/questionnaire`, label: "Questionnaire", icon: FileText },
+    { href: `${baseHref}/uploads`, label: "Upload Documents", icon: Upload },
+    { href: `${baseHref}/resources`, label: "Resources", icon: BookOpen },
+    { href: `${baseHref}/messages`, label: "Send Message", icon: MessageSquare },
+    { href: `${baseHref}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
   
   return (

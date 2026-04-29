@@ -10,6 +10,8 @@ import { PillNav } from "@/components/PillNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Loader2 } from "lucide-react"; // Import Loader2 icon
+import { buildIntakeHref } from "@/lib/routes";
+import { getApplicationSlug } from "@/lib/visaDisplay";
 
 export default function QuestionnairePage() {
   const params = useParams();
@@ -26,6 +28,8 @@ export default function QuestionnairePage() {
 
   const rawId = params?.id;
   const appId = Array.isArray(rawId) ? rawId[0] : rawId;
+  const rawSlug = params?.slug;
+  const slugFromUrl = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
 
   const application = applicationsSnap.applications.find(
     app => String(app.id) === String(appId)
@@ -73,36 +77,31 @@ export default function QuestionnairePage() {
     setIsNavigating(true);
 
     let visaTypeCode = application.visaTypeCode?.toLowerCase();
-    let visaContext = null;
 
     if (application.type) {
       const typeLower = application.type.toLowerCase();
       if (typeLower.includes('protection')) {
         visaTypeCode = 'protection';
-      } else if (typeLower.includes('partner')) {
-        visaTypeCode = 'partner';
       } else if (typeLower.includes('nomination') || typeLower.includes('186')) {
         visaTypeCode = 'temporary-work';
-        visaContext = '186';
+      } else if (typeLower.includes('partner')) {
+        visaTypeCode = 'partner';
       } else if (typeLower.includes('temporary') || typeLower.includes('work')) {
         visaTypeCode = 'temporary-work';
-        visaContext = '482';
       }
     }
 
-    let route;
+    const applicationSlug = slugFromUrl || getApplicationSlug(application);
+    let internalHref;
     if (visaTypeCode === 'protection') {
-      route = `/intake/protection/start?applicationId=${appId}`;
+      internalHref = '/intake/protection/start';
     } else if (visaTypeCode === 'partner') {
-      route = `/intake/partner/start?applicationId=${appId}`;
+      internalHref = '/intake/partner/start';
     } else {
-      route = `/intake/temporary-work/start?applicationId=${appId}`;
-      if (visaContext) {
-        draftStore.setVisaContext(visaContext);
-        draftStore.saveDraft({ visaContext }, appId);
-      }
+      internalHref = '/intake/temporary-work/start';
     }
 
+    const route = buildIntakeHref({ slug: applicationSlug, appId, internalHref });
     router.push(route);
     // Note: We don't set setIsNavigating(false) because the page will unmount
   };
@@ -154,7 +153,7 @@ export default function QuestionnairePage() {
         />
 
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slugFromUrl || getApplicationSlug(application)} />
         </div>
 
         <main className="flex-1 p-4 sm:p-6 bg-[#eaedf5]">

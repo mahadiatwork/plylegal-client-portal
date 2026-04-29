@@ -248,6 +248,16 @@ class ZohoCRMClient {
     }
   }
 
+  async deleteRecord(moduleName, recordId) {
+    try {
+      const response = await this.makeRequest('delete', `/${moduleName}/${recordId}`);
+      return response.data?.[0] || response || null;
+    } catch (error) {
+      console.error(`Error deleting ${moduleName} record ${recordId}:`, error.message);
+      throw error;
+    }
+  }
+
   async findContactByEmail(email) {
     try {
       // Use email as query parameter: GET /Contacts/search?email={{email}}
@@ -488,6 +498,51 @@ class ZohoCRMClient {
       Date_of_Birth: dep.dateOfBirth || '',
       Citizenship: dep.citizenship || '',
     };
+  }
+
+  mapIntakeProfileToPartnerDependentFields(profile, contactId) {
+    const monthMap = {
+      january: '01',
+      february: '02',
+      march: '03',
+      april: '04',
+      may: '05',
+      june: '06',
+      july: '07',
+      august: '08',
+      september: '09',
+      october: '10',
+      november: '11',
+      december: '12',
+    };
+    const relationshipMap = {
+      spouse: 'Spouse',
+      child: 'Children',
+    };
+
+    const fields = {
+      Contact_Name: contactId ? { id: contactId } : undefined,
+      First_Name: profile?.given_names,
+      Name: profile?.family_name,
+      Relationship_to_Applicant: relationshipMap[profile?.relationship],
+      Gender: ['Male', 'Female'].includes(profile?.gender) ? profile.gender : undefined,
+    };
+
+    const year = String(profile?.birth_year || '').trim();
+    const day = String(profile?.birth_day || '').trim().padStart(2, '0');
+    const rawMonth = String(profile?.birth_month || '').trim();
+    const month = monthMap[rawMonth.toLowerCase()] || rawMonth.padStart(2, '0');
+    if (year && month && day) {
+      fields.Date_of_Birth = `${year}-${month}-${day}`;
+    }
+
+    return Object.fromEntries(
+      Object.entries(fields).filter(([, value]) => {
+        if (value === undefined || value === null) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        return true;
+      })
+    );
   }
 
   hasDependentFieldChanges(existingDep, mappedIncomingDep) {

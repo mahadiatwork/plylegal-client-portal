@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FileText } from "lucide-react";
 import { auth } from "@/lib/firebase";
-import { formatVisaApplicationType } from "@/lib/visaDisplay";
+import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
 import { Riple } from "react-loading-indicators";
 
 export default function ApplicationsPage() {
@@ -111,7 +111,7 @@ export default function ApplicationsPage() {
                 {appsSnap.applications.map((app) => (
                   <div key={app.id}
                     className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 shadow-sm hover:border-primary/30 transition-colors active:bg-gray-50"
-                    onClick={() => router.push(`/applications/${app.id}/questionnaire`)}
+                    onClick={() => router.push(`/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-2">
@@ -158,7 +158,7 @@ export default function ApplicationsPage() {
                           </td>
                           <td className="py-3 px-4 text-right">
                               <button
-                                onClick={() => router.push(`/applications/${app.id}/questionnaire`)}
+                                onClick={() => router.push(`/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`)}
                                 className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-50 transition"
                               >
                                 Open

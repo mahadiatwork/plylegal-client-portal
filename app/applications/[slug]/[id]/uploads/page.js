@@ -49,6 +49,7 @@ export default function UploadsPage() {
   const { toast } = useToast();
   
   const appId = params.id;
+  const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const uploads = appDataSnap.cache[appId]?.uploads || [];
 
@@ -520,7 +521,7 @@ export default function UploadsPage() {
         />
         
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slug} />
         </div>
         
         <main className="flex-1 px-6 py-8">

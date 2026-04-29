@@ -111,6 +111,7 @@ export default function ResourcesPage() {
   const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
+  const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
 
   // Load applications data on mount
@@ -177,7 +178,7 @@ export default function ResourcesPage() {
         />
         
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slug} />
         </div>
         
         <main className="flex-1 p-6">

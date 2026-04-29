@@ -223,9 +223,10 @@ export const EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES = [
 
 // Extract visa type from pathname
 export function getVisaTypeFromPath(pathname) {
-  if (pathname.includes('/intake/partner/')) return 'partner';
-  if (pathname.includes('/intake/protection/')) return 'protection';
-  if (pathname.includes('/intake/temporary-work/')) return 'temporary-work';
+  const internalPathname = getInternalIntakeHref(pathname);
+  if (internalPathname.includes('/intake/partner/')) return 'partner';
+  if (internalPathname.includes('/intake/protection/')) return 'protection';
+  if (internalPathname.includes('/intake/temporary-work/')) return 'temporary-work';
   return 'partner'; // default
 }
 
@@ -249,12 +250,45 @@ export const INTAKE_ROUTES = PARTNER_VISA_ROUTES;
 
 import { draftStore } from "@/stores/draftStore";
 
+export function getIntakeSlugFromPathname(pathname) {
+  if (!pathname || typeof pathname !== "string") return null;
+  const match = pathname.match(/^\/applications\/([^/]+)\/[^/]+\/intake(?:\/|$)/);
+  return match?.[1] || null;
+}
+
+export function getApplicationIdFromPathname(pathname) {
+  if (!pathname || typeof pathname !== "string") return null;
+  const match = pathname.match(/^\/applications\/[^/]+\/([^/]+)\/intake(?:\/|$)/);
+  return match?.[1] || null;
+}
+
+export function getInternalIntakeHref(href) {
+  if (!href) return "";
+  const [rawPath, queryStr] = String(href).split("?", 2);
+  const match = rawPath.match(/^\/applications\/([^/]+)\/[^/]+\/intake(?:\/(.*))?$/);
+  if (!match) return href;
+
+  const slug = match[1];
+  const rest = match[2] || "start";
+  const prefix =
+    slug === "186" || slug === "482"
+      ? "/intake/temporary-work"
+      : `/intake/${slug}`;
+  return queryStr ? `${prefix}/${rest}?${queryStr}` : `${prefix}/${rest}`;
+}
+
+export function getIntakeSlugForContext(visaType, visaContext = null, explicitSlug = null) {
+  if (explicitSlug) return explicitSlug;
+  if (visaType === "temporary-work") return visaContext === "186" ? "186" : "482";
+  return visaType || "partner";
+}
+
 function temporaryWorkPathname(href) {
   if (!href) return "";
   try {
-    return new URL(href, "http://localhost").pathname;
+    return getInternalIntakeHref(new URL(href, "http://localhost").pathname);
   } catch {
-    return String(href).split("?")[0];
+    return getInternalIntakeHref(String(href).split("?")[0]);
   }
 }
 
@@ -266,16 +300,45 @@ function firstTemporaryWorkChildDetailsIndex(allRoutes) {
   });
 }
 
-/** Merge `applicationId` and (for child subsection URLs) `profileId` so nav matches sidebar links. */
-function appendTemporaryWorkQueryParams(path, applicationId) {
-  if (!path) return path;
-  const [pathOnly, queryStr] = path.includes("?") ? path.split("?", 2) : [path, ""];
+export function buildIntakeHref({ slug, appId, internalHref, profileId, visaType, visaContext }) {
+  if (!internalHref) return internalHref;
+  const [pathOnly, queryStr] = getInternalIntakeHref(internalHref).split("?", 2);
   const params = new URLSearchParams(queryStr || undefined);
-  if (applicationId) params.set("applicationId", applicationId);
+  if (profileId) params.set("profileId", profileId);
+
+  if (!appId) {
+    const q = params.toString();
+    return q ? `${pathOnly}?${q}` : pathOnly;
+  }
+
+  const effectiveVisaType = visaType || getVisaTypeFromPath(pathOnly);
+  const effectiveSlug = getIntakeSlugForContext(effectiveVisaType, visaContext, slug);
+  const prefix =
+    effectiveSlug === "186" || effectiveSlug === "482"
+      ? "/intake/temporary-work"
+      : `/intake/${effectiveSlug}`;
+  const rest = pathOnly.startsWith(`${prefix}/`)
+    ? pathOnly.slice(prefix.length + 1)
+    : pathOnly.replace(/^\/intake\/[^/]+\//, "");
+  const q = params.toString();
+  return `/applications/${effectiveSlug}/${encodeURIComponent(appId)}/intake/${rest}${q ? `?${q}` : ""}`;
+}
+
+/** Build intake URLs while preserving profile identity for dynamic applicant pages. */
+function appendTemporaryWorkQueryParams(path, applicationId, slug = null, visaContext = null) {
+  if (!path) return path;
+  const [pathOnly, queryStr] = getInternalIntakeHref(path).includes("?")
+    ? getInternalIntakeHref(path).split("?", 2)
+    : [getInternalIntakeHref(path), ""];
+  const params = new URLSearchParams(queryStr || undefined);
   const childMatch = pathOnly.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)$/);
   if (childMatch?.[1]) params.set("profileId", childMatch[1]);
-  const q = params.toString();
-  return q ? `${pathOnly}?${q}` : pathOnly;
+  return buildIntakeHref({
+    slug,
+    appId: applicationId,
+    internalHref: `${pathOnly}${params.toString() ? `?${params.toString()}` : ""}`,
+    visaContext,
+  });
 }
 
 export function getDynamicTemporaryWorkRoutes(visaContext) {
@@ -354,29 +417,30 @@ export function getAllRoutes(visaType, visaContext = null) {
 /**
  * @param {string|null|undefined} visaContext Pass draftStore.visaContext for Employer Nomination (186) so next step matches 186 sidebar.
  */
-export function getNextRoute(currentHref, visaType, applicationId = null, visaContext = null) {
+export function getNextRoute(currentHref, visaType, applicationId = null, visaContext = null, slug = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
+  const internalCurrentHref = getInternalIntakeHref(currentHref);
 
-  if (visaType === "temporary-work" && temporaryWorkPathname(currentHref) === "/intake/temporary-work/children") {
+  if (visaType === "temporary-work" && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/children") {
     const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
     if (childIdx !== -1) {
-      return appendTemporaryWorkQueryParams(allRoutes[childIdx], applicationId);
+      return appendTemporaryWorkQueryParams(allRoutes[childIdx], applicationId, slug, visaContext);
     }
     const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
     if (visasIdx !== -1) {
-      return appendTemporaryWorkQueryParams(allRoutes[visasIdx], applicationId);
+      return appendTemporaryWorkQueryParams(allRoutes[visasIdx], applicationId, slug, visaContext);
     }
     return null;
   }
 
-  let searchHref = currentHref;
+  let searchHref = internalCurrentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {
     currentProfileId = new URLSearchParams(window.location.search).get('profileId');
   }
 
-  if (visaType === 'temporary-work' && currentProfileId && (currentHref.includes('main-applicant') || currentHref.includes('spouse-partner'))) {
-    searchHref = `${currentHref}?profileId=${currentProfileId}`;
+  if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
+    searchHref = `${internalCurrentHref}?profileId=${currentProfileId}`;
   }
 
   const currentIndex = allRoutes.indexOf(searchHref);
@@ -385,13 +449,14 @@ export function getNextRoute(currentHref, visaType, applicationId = null, visaCo
   }
   
   let nextRoute = allRoutes[currentIndex + 1];
-  return appendTemporaryWorkQueryParams(nextRoute, applicationId);
+  return appendTemporaryWorkQueryParams(nextRoute, applicationId, slug, visaContext);
 }
 
-export function getPreviousRoute(currentHref, visaType, applicationId = null, visaContext = null) {
+export function getPreviousRoute(currentHref, visaType, applicationId = null, visaContext = null, slug = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
+  const internalCurrentHref = getInternalIntakeHref(currentHref);
 
-  if (visaType === "temporary-work" && temporaryWorkPathname(currentHref) === "/intake/temporary-work/children") {
+  if (visaType === "temporary-work" && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/children") {
     const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
     const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
     let previousRoute = null;
@@ -401,19 +466,19 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
       previousRoute = allRoutes[visasIdx - 1];
     }
     if (previousRoute) {
-      return appendTemporaryWorkQueryParams(previousRoute, applicationId);
+      return appendTemporaryWorkQueryParams(previousRoute, applicationId, slug, visaContext);
     }
     return null;
   }
 
-  let searchHref = currentHref;
+  let searchHref = internalCurrentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {
     currentProfileId = new URLSearchParams(window.location.search).get('profileId');
   }
 
-  if (visaType === 'temporary-work' && currentProfileId && (currentHref.includes('main-applicant') || currentHref.includes('spouse-partner'))) {
-    searchHref = `${currentHref}?profileId=${currentProfileId}`;
+  if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
+    searchHref = `${internalCurrentHref}?profileId=${currentProfileId}`;
   }
 
   const currentIndex = allRoutes.indexOf(searchHref);
@@ -422,23 +487,24 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
   }
   
   let previousRoute = allRoutes[currentIndex - 1];
-  return appendTemporaryWorkQueryParams(previousRoute, applicationId);
+  return appendTemporaryWorkQueryParams(previousRoute, applicationId, slug, visaContext);
 }
 
 export function calculateProgress(currentHref, visaType, visaContext = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
   
-  let searchHref = currentHref;
+  const internalCurrentHref = getInternalIntakeHref(currentHref);
+  let searchHref = internalCurrentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {
     currentProfileId = new URLSearchParams(window.location.search).get('profileId');
   }
 
-  if (visaType === 'temporary-work' && currentProfileId && (currentHref.includes('main-applicant') || currentHref.includes('spouse-partner'))) {
-    searchHref = `${currentHref}?profileId=${currentProfileId}`;
+  if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
+    searchHref = `${internalCurrentHref}?profileId=${currentProfileId}`;
   }
 
-  if (visaType === "temporary-work" && temporaryWorkPathname(currentHref) === "/intake/temporary-work/children") {
+  if (visaType === "temporary-work" && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/children") {
     const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
     const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
     const virtualIndex = childIdx > 0 ? childIdx - 1 : (visasIdx > 0 ? visasIdx - 1 : 0);
@@ -483,11 +549,13 @@ export function getTemporaryWorkChildProfileCompletionKey(childId, pathSuffix) {
 }
 
 function appendQueryParams(path, applicationId, profileId) {
-  const params = new URLSearchParams();
-  if (applicationId) params.set("applicationId", applicationId);
-  if (profileId) params.set("profileId", profileId);
-  const q = params.toString();
-  return q ? `${path}?${q}` : path;
+  return buildIntakeHref({
+    appId: applicationId,
+    internalHref: path,
+    profileId,
+    visaType: "temporary-work",
+    visaContext: draftStore.visaContext,
+  });
 }
 
 export function getNextTemporaryWorkChildRoute(pathname, applicationId, childId) {
@@ -515,13 +583,23 @@ export function getPreviousTemporaryWorkChildRoute(pathname, applicationId, chil
 /** Previous step before the first child subsection (children list page). */
 export function getTemporaryWorkChildrenListHref(applicationId) {
   const path = "/intake/temporary-work/children";
-  return applicationId ? `${path}?applicationId=${encodeURIComponent(applicationId)}` : path;
+  return buildIntakeHref({
+    appId: applicationId,
+    internalHref: path,
+    visaType: "temporary-work",
+    visaContext: draftStore.visaContext,
+  });
 }
 
 /** After last child subsection (Custody), continue to All Applicants. */
 export function getAfterTemporaryWorkChildCustodyNext(applicationId) {
   const path = "/intake/temporary-work/all-applicants/visas";
-  return applicationId ? `${path}?applicationId=${encodeURIComponent(applicationId)}` : path;
+  return buildIntakeHref({
+    appId: applicationId,
+    internalHref: path,
+    visaType: "temporary-work",
+    visaContext: draftStore.visaContext,
+  });
 }
 
 export const CHARACTER_QUESTIONS = [

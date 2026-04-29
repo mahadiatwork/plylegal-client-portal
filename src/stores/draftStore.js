@@ -3,6 +3,7 @@
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
 import { getIntakeRoutes } from "@/lib/routes";
+import { authStore } from "./authStore";
 
 // Get database adapter (Firebase or localStorage based on env)
 const db = getAdapter();
@@ -21,6 +22,49 @@ export const draftStore = proxy({
   /** Set the visa context (subclass) for the current application */
   setVisaContext(context) {
     this.visaContext = context;
+  },
+
+  isZohoSyncableProfile(profile) {
+    return ["spouse", "child", "other"].includes(profile?.relationship);
+  },
+
+  async syncDependentProfileToZoho(profile, action) {
+    try {
+      if (typeof window === "undefined") return null;
+      const userId = authStore.user?.id;
+      if (!userId || !this.currentApplicationId || !this.isZohoSyncableProfile(profile)) {
+        return null;
+      }
+
+      const response = await fetch("/api/intake/sync-dependent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          applicationId: this.currentApplicationId,
+          profile,
+          action,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        console.warn("Dependent Zoho sync skipped/failed:", result);
+        return null;
+      }
+      return result.zohoDependentId || null;
+    } catch (error) {
+      console.warn("Dependent Zoho sync failed:", error.message);
+      return null;
+    }
+  },
+
+  async persistProfileZohoDependentId(profileId, zohoDependentId) {
+    if (!profileId || !zohoDependentId) return;
+    const profiles = (this.draft?.profiles || []).map((p) =>
+      p.id === profileId ? { ...p, zohoDependentId } : p
+    );
+    this.draft = { ...this.draft, profiles };
+    await db.saveDraft(this.draft, this.currentApplicationId);
   },
 
   // ─── Profile Helpers ───────────────────────────────────────────────────────
@@ -50,27 +94,51 @@ export const draftStore = proxy({
     const newDraft = { ...this.draft, profiles };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
+    const zohoDependentId = await this.syncDependentProfileToZoho(newProfile, "create");
+    if (zohoDependentId) {
+      await this.persistProfileZohoDependentId(newProfile.id, zohoDependentId);
+      newProfile.zohoDependentId = zohoDependentId;
+    }
     return newProfile;
   },
 
   /** Update an existing profile by id */
   async updateProfile(profileId, updates) {
+    const existingProfile = (this.draft?.profiles || []).find((p) => p.id === profileId);
+    const updatedProfile = existingProfile ? { ...existingProfile, ...updates } : null;
     const profiles = (this.draft?.profiles || []).map(p =>
-      p.id === profileId ? { ...p, ...updates } : p
+      p.id === profileId ? updatedProfile : p
     );
     const newDraft = { ...this.draft, profiles };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
+
+    if (existingProfile?.zohoDependentId && !this.isZohoSyncableProfile(updatedProfile)) {
+      await this.syncDependentProfileToZoho(existingProfile, "delete");
+      return;
+    }
+
+    if (this.isZohoSyncableProfile(updatedProfile)) {
+      const action = updatedProfile.zohoDependentId ? "update" : "create";
+      const zohoDependentId = await this.syncDependentProfileToZoho(updatedProfile, action);
+      if (zohoDependentId && !updatedProfile.zohoDependentId) {
+        await this.persistProfileZohoDependentId(profileId, zohoDependentId);
+      }
+    }
   },
 
   /** Delete a profile and its data */
   async deleteProfile(profileId) {
+    const profileToDelete = (this.draft?.profiles || []).find((p) => p.id === profileId);
     const profiles = (this.draft?.profiles || []).filter(p => p.id !== profileId);
     const profiles_data = { ...(this.draft?.profiles_data || {}) };
     delete profiles_data[profileId];
     const newDraft = { ...this.draft, profiles, profiles_data };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
+    if (profileToDelete?.zohoDependentId && this.isZohoSyncableProfile(profileToDelete)) {
+      await this.syncDependentProfileToZoho(profileToDelete, "delete");
+    }
   },
 
   /** Get section data for a specific profile */

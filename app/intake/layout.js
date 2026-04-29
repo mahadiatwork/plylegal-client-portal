@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
+import { applicationsStore, authStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,10 +21,17 @@ import {
   getTemporaryWorkChildProfileCompletionKey,
   NON_MIGRATING_MEMBER_SUBPAGES,
   buildNonMigratingHref,
+  buildIntakeHref,
+  getApplicationIdFromPathname,
+  getInternalIntakeHref,
+  getIntakeSlugForContext,
+  getIntakeSlugFromPathname,
+  getVisaTypeFromPath,
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
+import { getApplicationSlug } from "@/lib/visaDisplay";
 
 
 export default function IntakeLayout({ children }) {
@@ -31,10 +39,16 @@ export default function IntakeLayout({ children }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const draftSnap = useSnapshot(draftStore);
+  const appsSnap = useSnapshot(applicationsStore);
+  const authSnap = useSnapshot(authStore);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [deletingNmfId, setDeletingNmfId] = useState(null);
+  const internalPathname = getInternalIntakeHref(pathname).split("?")[0];
+  const pathSlug = getIntakeSlugFromPathname(pathname);
+  const subclassFromQuery = searchParams.get("__subclass");
+  const appIdFromUrl = getApplicationIdFromSearchParams(searchParams) ?? getApplicationIdFromPathname(pathname);
 
   // Active profileId from URL (accept profileId or profileid)
   const profileIdFromUrl = getProfileIdFromSearchParams(searchParams);
@@ -42,7 +56,7 @@ export default function IntakeLayout({ children }) {
   // Child flows use `/temporary-work/children/:childId/details|identity|custody` — id is in the path, not only `?profileId=`.
   const childProfileIdFromPath =
     typeof pathname === "string"
-      ? (pathname.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)/) || [])[1] ??
+      ? (internalPathname.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)/) || [])[1] ??
         null
       : null;
 
@@ -58,12 +72,17 @@ export default function IntakeLayout({ children }) {
 
   // Keep draft/application context in sync with URL param
   useEffect(() => {
-    const appIdFromUrl = getApplicationIdFromSearchParams(searchParams);
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
-  }, [searchParams, draftSnap.currentApplicationId]);
+  }, [appIdFromUrl, draftSnap.currentApplicationId]);
+
+  useEffect(() => {
+    if (authSnap.user?.id && appsSnap.applications.length === 0) {
+      applicationsStore.loadApplications(authSnap.user.id);
+    }
+  }, [authSnap.user?.id, appsSnap.applications.length]);
 
   // Keep store "active profile" aligned when navigating via path-only child URLs (e.g. Next from spouse Identity).
   useEffect(() => {
@@ -72,18 +91,50 @@ export default function IntakeLayout({ children }) {
     }
   }, [childProfileIdFromPath]);
 
-  // Detect visa type from URL path
-  const getVisaTypeFromPath = (path) => {
-    if (path.includes('/intake/partner/')) return 'partner';
-    if (path.includes('/intake/protection/')) return 'protection';
-    if (path.includes('/intake/temporary-work/')) return 'temporary-work';
-    return 'partner'; // default
-  };
-
   const visaType = getVisaTypeFromPath(pathname);
+  const urlSubclass = pathSlug === "186" || pathSlug === "482"
+    ? pathSlug
+    : (subclassFromQuery === "186" || subclassFromQuery === "482" ? subclassFromQuery : null);
+  const currentApp = appIdFromUrl
+    ? appsSnap.applications.find((app) => String(app.id) === String(appIdFromUrl))
+    : null;
+  const intakeSlug = pathSlug || subclassFromQuery || (currentApp ? getApplicationSlug(currentApp) : getIntakeSlugForContext(visaType, draftSnap.visaContext));
+  const buildHref = (href, options = {}) => buildIntakeHref({
+    slug: intakeSlug,
+    appId: appIdFromUrl || draftSnap.currentApplicationId,
+    internalHref: href,
+    visaType,
+    visaContext: draftSnap.visaContext,
+    ...options,
+  });
+
+  useEffect(() => {
+    if (urlSubclass && urlSubclass !== draftSnap.visaContext) {
+      draftStore.setVisaContext(urlSubclass);
+      if (appIdFromUrl) {
+        draftStore.saveDraft({ visaContext: urlSubclass }, appIdFromUrl);
+      }
+    }
+  }, [urlSubclass, draftSnap.visaContext, appIdFromUrl]);
+
+  useEffect(() => {
+    const isLegacyIntakeUrl = typeof pathname === "string" && pathname.startsWith("/intake/");
+    if (!isLegacyIntakeUrl || !appIdFromUrl || pathSlug || subclassFromQuery) return;
+    if (visaType === "temporary-work" && !currentApp && !draftSnap.visaContext) return;
+
+    const slug = currentApp ? getApplicationSlug(currentApp) : getIntakeSlugForContext(visaType, draftSnap.visaContext);
+    router.replace(buildIntakeHref({
+      slug,
+      appId: appIdFromUrl,
+      internalHref: `${internalPathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+      visaType,
+      visaContext: draftSnap.visaContext,
+    }));
+  }, [pathname, appIdFromUrl, pathSlug, subclassFromQuery, visaType, currentApp, draftSnap.visaContext, internalPathname, searchParams, router]);
+
   const INTAKE_ROUTES = getIntakeRoutes(visaType, draftSnap.visaContext);
 
-  const progress = calculateProgress(pathname, visaType, draftSnap.visaContext);
+  const progress = calculateProgress(internalPathname, visaType, draftSnap.visaContext);
 
   // Get real completion data from draftStore
   const completionData = draftSnap.completionStatus || {};
@@ -96,7 +147,7 @@ export default function IntakeLayout({ children }) {
     }
   }, [mounted, completionData]);
 
-  const isRouteActive = (href) => pathname === href;
+  const isRouteActive = (href) => internalPathname === href;
 
   // Convert route path to completion key (e.g., /intake/partner/start -> partner/start)
   const getCompletionKey = (href) => {
@@ -109,9 +160,9 @@ export default function IntakeLayout({ children }) {
   };
 
   const currentSection = INTAKE_ROUTES.find((route) => {
-    if (route.href === pathname) return true;
+    if (route.href === internalPathname) return true;
     if (route.subpages) {
-      return route.subpages.some((sub) => sub.href === pathname);
+      return route.subpages.some((sub) => sub.href === internalPathname);
     }
     return false;
   });
@@ -121,9 +172,9 @@ export default function IntakeLayout({ children }) {
     if (mounted) {
       // Find the section containing the current route
       const activeSection = INTAKE_ROUTES.find((route) => {
-        if (route.href === pathname) return true;
+        if (route.href === internalPathname) return true;
         if (route.subpages) {
-          return route.subpages.some((sub) => sub.href === pathname);
+          return route.subpages.some((sub) => sub.href === internalPathname);
         }
         return false;
       });
@@ -136,7 +187,7 @@ export default function IntakeLayout({ children }) {
         });
       }
     }
-  }, [mounted, pathname]);
+  }, [mounted, internalPathname]);
 
   const toggleSection = (href) => {
     setExpandedSections((prev) => {
@@ -179,8 +230,7 @@ export default function IntakeLayout({ children }) {
           <ScrollArea className="border-t border-border">
             <div className="flex gap-1 p-2">
               {currentSection.subpages.map((subpage) => {
-                const appId = draftSnap.currentApplicationId;
-                const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
+                const href = buildHref(subpage.href);
                 return (
                   <Button
                     key={subpage.href}
@@ -230,7 +280,7 @@ export default function IntakeLayout({ children }) {
                 onClick={() => {
                   const appId = draftSnap.currentApplicationId;
                   if (appId) {
-                    router.push(`/applications/${appId}/questionnaire`);
+                    router.push(`/applications/${intakeSlug}/${appId}/questionnaire`);
                   } else {
                     router.push("/applications");
                   }
@@ -281,9 +331,7 @@ export default function IntakeLayout({ children }) {
                         <Button
                           variant="ghost"
                           onClick={() => {
-                            const appId = draftSnap.currentApplicationId;
-                            const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
-                            router.push(href);
+                            router.push(buildHref(route.href));
                             setSidebarOpen(false);
                           }}
                           className={cn(
@@ -380,7 +428,7 @@ export default function IntakeLayout({ children }) {
                                       const isActive =
                                         effectiveProfileId === profileKey &&
                                         (profile.relationship === 'child' && subpage.pathSuffix
-                                          ? pathname === buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix)
+                                          ? internalPathname === buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix)
                                           : isRouteActive(subpage.href));
                                       const completionKey =
                                         profile.relationship === 'child'
@@ -393,11 +441,7 @@ export default function IntakeLayout({ children }) {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                              const appId = draftSnap.currentApplicationId;
-                                              const url = new URLSearchParams();
-                                              if (appId) url.set('applicationId', appId);
-                                              url.set('profileId', profileKey);
-                                              router.push(`${subpage.href}?${url.toString()}`);
+                                              router.push(buildHref(subpage.href, { profileId: profileKey }));
                                               setSidebarOpen(false);
                                               draftStore.setActiveProfile(profileKey);
                                             }}
@@ -433,7 +477,7 @@ export default function IntakeLayout({ children }) {
                           const dob = [member.passport?.dob_day, member.passport?.dob_month, member.passport?.dob_year]
                             .filter(Boolean).join(" ");
                           const isNmfActive = NON_MIGRATING_MEMBER_SUBPAGES.some(
-                            sub => pathname === buildNonMigratingHref(member.id, sub.pathSuffix)
+                            sub => internalPathname === buildNonMigratingHref(member.id, sub.pathSuffix)
                           );
                           const isConfirmingDelete = deletingNmfId === member.id;
 
@@ -470,11 +514,7 @@ export default function IntakeLayout({ children }) {
                                         tabIndex={0}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          const appId = draftSnap.currentApplicationId;
-                                          const params = new URLSearchParams();
-                                          if (appId) params.set("applicationId", appId);
-                                          params.set("editNonMigratingId", member.id);
-                                          router.push(`/intake/temporary-work/profile?${params.toString()}`);
+                                          router.push(buildHref("/intake/temporary-work/profile", { internalHref: "/intake/temporary-work/profile", profileId: null }) + `?editNonMigratingId=${encodeURIComponent(member.id)}`);
                                           setSidebarOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
@@ -535,15 +575,14 @@ export default function IntakeLayout({ children }) {
                                   <ul className="ml-6 mt-1 mb-1 space-y-1">
                                     {NON_MIGRATING_MEMBER_SUBPAGES.map((sub) => {
                                       const href = buildNonMigratingHref(member.id, sub.pathSuffix);
-                                      const isActive = pathname === href;
-                                      const appId = draftSnap.currentApplicationId;
+                                      const isActive = internalPathname === href;
                                       return (
                                         <li key={sub.pathSuffix} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
                                           <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                              router.push(appId ? `${href}?applicationId=${appId}` : href);
+                                              router.push(buildHref(href));
                                               setSidebarOpen(false);
                                             }}
                                             className={cn(
@@ -609,9 +648,7 @@ export default function IntakeLayout({ children }) {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => {
-                                        const appId = draftSnap.currentApplicationId;
-                                        const href = appId ? `${subpage.href}?applicationId=${appId}` : subpage.href;
-                                        router.push(href);
+                                        router.push(buildHref(subpage.href));
                                         setSidebarOpen(false);
                                       }}
                                       className={cn(
@@ -642,9 +679,7 @@ export default function IntakeLayout({ children }) {
                         key={route.href}
                         variant="ghost"
                         onClick={() => {
-                          const appId = draftSnap.currentApplicationId;
-                          const href = appId ? `${route.href}?applicationId=${appId}` : route.href;
-                          router.push(href);
+                          router.push(buildHref(route.href));
                           setSidebarOpen(false);
                         }}
                         className={cn(

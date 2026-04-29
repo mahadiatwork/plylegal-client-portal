@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildNonMigratingHref, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,8 +41,14 @@ export default function NonMigratingOtherNamesPage() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  const memberId = pathname.match(/\/non-migrating\/([^/]+)\/other-names/)?.[1];
+  const memberId = getInternalIntakeHref(pathname).match(/\/non-migrating\/([^/]+)\/other-names/)?.[1];
   const appId = getApplicationIdFromSearchParams(searchParams);
+  const toIntakeHref = (href) => buildIntakeHref({
+    appId,
+    internalHref: href,
+    visaType: "temporary-work",
+    visaContext: draftSnap.visaContext,
+  });
 
   const { register, handleSubmit, control, reset, getValues } = useForm({
     resolver: zodResolver(formSchema),
@@ -78,12 +84,12 @@ export default function NonMigratingOtherNamesPage() {
   const onNext = async () => {
     await save();
     const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
-    if (next) router.push(appId ? `${next}?applicationId=${appId}` : next);
+    if (next) router.push(toIntakeHref(next));
   };
 
   const onPrev = () => {
     const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix);
-    if (prev) router.push(appId ? `${prev}?applicationId=${appId}` : prev);
+    if (prev) router.push(toIntakeHref(prev));
   };
 
   const onSave = async () => {

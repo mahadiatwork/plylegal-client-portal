@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { buildIntakeHref, getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -468,7 +468,11 @@ export default function IdentityPage() {
             await draftStore.markPageComplete(`${visaType}/spouse-partner/identity`);
 
             // Manual navigation since getNextRoute might depend on exact array order
-            router.push(`/intake/protection/children?applicationId=${draftStore.currentApplicationId}`);
+            router.push(buildIntakeHref({
+                appId: draftStore.currentApplicationId,
+                internalHref: "/intake/protection/children",
+                visaType,
+            }));
         } catch (error) {
             console.error("Error submitting:", error);
             toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
@@ -478,7 +482,11 @@ export default function IdentityPage() {
     };
 
     const handlePrevious = () => {
-        router.push(`/intake/protection/spouse-partner/other-details?applicationId=${draftStore.currentApplicationId}`);
+        router.push(buildIntakeHref({
+            appId: draftStore.currentApplicationId,
+            internalHref: "/intake/protection/spouse-partner/other-details",
+            visaType: getVisaTypeFromPath(pathname),
+        }));
     };
 
     return (

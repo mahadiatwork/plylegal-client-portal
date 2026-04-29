@@ -154,6 +154,7 @@ export default function ReviewPage() {
   const authSnap = useSnapshot(authStore);
   
   const appId = params.id;
+  const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const draft = draftSnap.draft || {};
   
@@ -368,7 +369,7 @@ export default function ReviewPage() {
         />
         
         <div className="lg:hidden">
-          <PillNav appId={appId} />
+          <PillNav appId={appId} slug={slug} />
         </div>
         
         <main className="flex-1 px-6 py-8">
@@ -444,7 +445,7 @@ export default function ReviewPage() {
                     <p className="text-gray-600">
                       No questionnaire data yet. Complete the questionnaire to see your responses here.
                     </p>
-                    <Link href={`/applications/${appId}/questionnaire`}>
+                    <Link href={`/applications/${slug}/${appId}/questionnaire`}>
                       <Button className="mt-4" data-testid="button-start-questionnaire-empty">
                         Start Questionnaire
                       </Button>

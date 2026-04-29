@@ -7,6 +7,26 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      {
+        source: '/applications/186/:appId/intake/:path*',
+        destination: '/intake/temporary-work/:path*?applicationId=:appId&__subclass=186',
+      },
+      {
+        source: '/applications/482/:appId/intake/:path*',
+        destination: '/intake/temporary-work/:path*?applicationId=:appId&__subclass=482',
+      },
+      {
+        source: '/applications/partner/:appId/intake/:path*',
+        destination: '/intake/partner/:path*?applicationId=:appId',
+      },
+      {
+        source: '/applications/protection/:appId/intake/:path*',
+        destination: '/intake/protection/:path*?applicationId=:appId',
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
