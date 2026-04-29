@@ -52,7 +52,7 @@ const COUNTRIES = [
 const OUTCOMES = ["Granted", "Pending", "Refused", "Withdrawn"];
 function VisaDialog({ editingRow, onSave, onCancel }) {
   const dialogFormSchema = z.object({
-    visa_country: z.string().min(1, "Visa Country is required"),
+    visa_country: z.string().optional(),
     visa_type: z.string().min(1, "Visa Type is required"),
     linked_passport: z.string().optional(),
     visa_conditions: z.string().optional(),
@@ -115,7 +115,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
       <h3 className="text-base font-bold text-gray-900 mb-2">Visa Application</h3>
       <p className="text-sm text-gray-500 mb-4">Enter details of the Visa applied for or held by you</p>
       {/* Visa Country */}
-      <div>
+      {/* <div>
         <Label className="mb-2 block">Visa Country</Label>
         <Select
           value={dialogForm.watch("visa_country")}
@@ -133,7 +133,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
         {dialogForm.formState.errors.visa_country && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.visa_country.message}</p>
         )}
-      </div>
+      </div> */}
       {/* Visa Type */}
       <div>
         <Label htmlFor="visa_type" className="mb-2 block">Visa Type</Label>
@@ -666,7 +666,12 @@ export default function Page() {
                         <RepeaterTable
                           data={watch(`visa_grant_entries.${index}.history`) || []}
                           columns={[
-                            { key: "visa_country", label: "Country" },
+                            { 
+                              key: "applicantId", 
+                              label: "Applicant", 
+                              format: () => applicantOptions.find(a => a.id === watch(`visa_grant_entries.${index}.applicantId`))?.label || "Unknown" 
+                            },
+                            // { key: "visa_country", label: "Country" },
                             { key: "visa_type", label: "Type" },
                             { key: "linked_passport", label: "Linked Passport" },
                             { key: "decision_date_year", label: "Decision Date" },

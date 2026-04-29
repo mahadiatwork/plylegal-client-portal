@@ -119,6 +119,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
     title: "Main Applicant",
     subpages: [
       { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+      { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
       { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
       { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -160,6 +161,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
     title: "Main Applicant",
     subpages: [
       { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+      { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
       { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
       { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
       { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -196,6 +198,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
 // Per-profile sub-pages (shared definition used by sidebar + routing)
 export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/details", title: "Details" },
+  { href: "/intake/temporary-work/main-applicant/other", title: "Other Names" },
   { href: "/intake/temporary-work/main-applicant/identity", title: "Identity" },
   { href: "/intake/temporary-work/main-applicant/contact-details", title: "Contact Details" },
   { href: "/intake/temporary-work/main-applicant/employment", title: "Employment" },
@@ -445,6 +448,20 @@ export function calculateProgress(currentHref, visaType, visaContext = null) {
   const currentIndex = allRoutes.indexOf(searchHref);
   if (currentIndex === -1) return 0;
   return Math.round(((currentIndex + 1) / allRoutes.length) * 100);
+}
+
+/** Non-migrating family member subpages — shown in sidebar but excluded from linear flow and completion % */
+export const NON_MIGRATING_MEMBER_SUBPAGES = [
+  { pathSuffix: "details",     title: "Details" },
+  { pathSuffix: "passport",    title: "Passport" },
+  { pathSuffix: "identity",    title: "Identity Documents" },
+  { pathSuffix: "other-names", title: "Other Names" },
+  { pathSuffix: "citizenship", title: "Citizenship" },
+  { pathSuffix: "health",      title: "Health" },
+];
+
+export function buildNonMigratingHref(memberId, pathSuffix) {
+  return `/intake/temporary-work/non-migrating/${memberId}/${pathSuffix}`;
 }
 
 /** Per dependent child under Application Profile — Skills in Demand (482) */

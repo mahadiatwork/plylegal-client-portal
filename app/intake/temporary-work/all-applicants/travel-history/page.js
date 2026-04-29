@@ -128,8 +128,8 @@ function ApplicantMultiSelect({ applicants, selectedIds, onToggle, error }) {
     selectedLabels.length === 0
       ? "Select Applicants"
       : selectedLabels.length === 1
-      ? selectedLabels[0]
-      : `${selectedLabels.length} Applicants Selected`;
+        ? selectedLabels[0]
+        : `${selectedLabels.length} Applicants Selected`;
 
   return (
     <div className="relative w-full">
@@ -146,9 +146,9 @@ function ApplicantMultiSelect({ applicants, selectedIds, onToggle, error }) {
 
       {isOpen && (
         <>
-          <div 
-            className="fixed inset-0 z-40" 
-            onClick={() => setIsOpen(false)} 
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
           />
           <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-white shadow-lg py-1 max-h-60 overflow-auto">
             {applicants.length === 0 ? (
@@ -686,6 +686,9 @@ export default function Page() {
           <li>military deployment</li>
           <li>visits back to your own country</li>
         </ul>
+        <p className="text-sm font-bold text-red-600 mt-4">
+          Please note if the child is under 16 years of age, this information is not required.
+        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

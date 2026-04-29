@@ -326,7 +326,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
             {...dialogForm.register("visa_held")}
             rows={2}
             data-testid="textarea-visa-held"
-            placeholder="e.g., Skills in Demand (subclass 482)"
+            placeholder={visaContext === '186' ? "e.g., Employer Nomination (subclass 186)" : "e.g., Skills in Demand (subclass 482)"}
           />
         </div>
       )}

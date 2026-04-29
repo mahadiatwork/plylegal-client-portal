@@ -6,7 +6,7 @@ import { draftStore } from "@/stores/draftStore";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Menu, X, ArrowLeft, ChevronDown } from "lucide-react";
+import { Check, Menu, X, ArrowLeft, ChevronDown, UserMinus, Pencil, Trash2 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +18,8 @@ import {
   TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
   buildTemporaryWorkChildHref,
   getTemporaryWorkChildProfileCompletionKey,
+  NON_MIGRATING_MEMBER_SUBPAGES,
+  buildNonMigratingHref,
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -32,6 +34,7 @@ export default function IntakeLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
+  const [deletingNmfId, setDeletingNmfId] = useState(null);
 
   // Active profileId from URL (accept profileId or profileid)
   const profileIdFromUrl = getProfileIdFromSearchParams(searchParams);
@@ -244,12 +247,12 @@ export default function IntakeLayout({ children }) {
             <div className="p-6 border-b border-sidebar-border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Completion</span>
-                <span className="text-sm font-semibold text-primary">
+                <span className="text-sm font-semibold text-white">
                   {completionPercentage.percentage}%
                 </span>
               </div>
               <Progress value={completionPercentage.percentage} className="h-2" />
-              <p className="text-xs text-sidebar-foreground/60 mt-2">
+              <p className="text-xs text-white mt-2">
                 {completionPercentage.completed} of {completionPercentage.total} sections complete
               </p>
             </div>
@@ -420,6 +423,147 @@ export default function IntakeLayout({ children }) {
                           );
                         });
                         })()}
+
+                        {/* Non-Migrating Family Members */}
+                        {(draftSnap.draft?.non_migrating_members || []).map((member) => {
+                          const nmfKey = `nmf-${member.id}`;
+                          const isNmfExpanded = isSectionExpanded(nmfKey);
+                          const nmfName = [member.passport?.given_names, member.passport?.family_name]
+                            .filter(Boolean).join(" ") || "Unnamed Member";
+                          const dob = [member.passport?.dob_day, member.passport?.dob_month, member.passport?.dob_year]
+                            .filter(Boolean).join(" ");
+                          const isNmfActive = NON_MIGRATING_MEMBER_SUBPAGES.some(
+                            sub => pathname === buildNonMigratingHref(member.id, sub.pathSuffix)
+                          );
+                          const isConfirmingDelete = deletingNmfId === member.id;
+
+                          return (
+                            <Collapsible
+                              key={nmfKey}
+                              open={isNmfExpanded || isNmfActive}
+                              onOpenChange={() => toggleSection(nmfKey)}
+                            >
+                              <div className="space-y-1">
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className={cn(
+                                      "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent group",
+                                      isNmfActive && "bg-amber-500/10"
+                                    )}
+                                  >
+                                    <span className="flex items-center gap-2 text-left flex-1 min-w-0">
+                                      <UserMinus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                      <span className="flex-1 truncate">
+                                        <span className="block text-xs text-sidebar-foreground/50">Non-Migrating</span>
+                                        <span className="font-medium truncate">{nmfName}</span>
+                                        {(member.passport?.sex || dob) && (
+                                          <span className="block text-xs text-sidebar-foreground/50">
+                                            {[member.passport?.sex, dob ? `DOB: ${dob}` : null].filter(Boolean).join(" · ")}
+                                          </span>
+                                        )}
+                                      </span>
+                                    </span>
+                                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const appId = draftSnap.currentApplicationId;
+                                          const params = new URLSearchParams();
+                                          if (appId) params.set("applicationId", appId);
+                                          params.set("editNonMigratingId", member.id);
+                                          router.push(`/intake/temporary-work/profile?${params.toString()}`);
+                                          setSidebarOpen(false);
+                                        }}
+                                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
+                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-amber-100 transition-opacity cursor-pointer"
+                                        title="Edit member"
+                                      >
+                                        <Pencil className="w-3 h-3 text-amber-600" />
+                                      </span>
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeletingNmfId(isConfirmingDelete ? null : member.id);
+                                        }}
+                                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
+                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity cursor-pointer"
+                                        title="Remove member"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-red-500" />
+                                      </span>
+                                      <ChevronDown
+                                        className={cn(
+                                          "w-4 h-4 transition-transform duration-200",
+                                          (isNmfExpanded || isNmfActive) && "transform rotate-180"
+                                        )}
+                                      />
+                                    </div>
+                                  </Button>
+                                </CollapsibleTrigger>
+
+                                {isConfirmingDelete && (
+                                  <div className="mx-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs space-y-2">
+                                    <p className="text-red-700 font-medium">Remove {nmfName}?</p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                                        onClick={async () => {
+                                          await draftStore.deleteNonMigratingMember(member.id);
+                                          setDeletingNmfId(null);
+                                        }}
+                                      >
+                                        Yes, remove
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="px-2 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50"
+                                        onClick={() => setDeletingNmfId(null)}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <CollapsibleContent className="overflow-hidden">
+                                  <ul className="ml-6 mt-1 mb-1 space-y-1">
+                                    {NON_MIGRATING_MEMBER_SUBPAGES.map((sub) => {
+                                      const href = buildNonMigratingHref(member.id, sub.pathSuffix);
+                                      const isActive = pathname === href;
+                                      const appId = draftSnap.currentApplicationId;
+                                      return (
+                                        <li key={sub.pathSuffix} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              router.push(appId ? `${href}?applicationId=${appId}` : href);
+                                              setSidebarOpen(false);
+                                            }}
+                                            className={cn(
+                                              "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                              isActive
+                                                ? "font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-500/15"
+                                                : "text-sidebar-foreground"
+                                            )}
+                                          >
+                                            {sub.title}
+                                          </Button>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </CollapsibleContent>
+                              </div>
+                            </Collapsible>
+                          );
+                        })}
                       </div>
                     );
                   }

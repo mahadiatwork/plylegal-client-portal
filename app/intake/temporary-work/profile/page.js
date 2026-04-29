@@ -6,7 +6,7 @@ import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,7 @@ import {
   User,
   ArrowRight,
   ChevronRight,
+  UserMinus,
 } from "lucide-react";
 
 const RELATIONSHIPS = [
@@ -51,6 +52,379 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
 
 const GENDERS = ["Male", "Female", "Other"];
+
+const NON_MIGRATING_RELATIONSHIPS = [
+  { value: "parent", label: "Parent" },
+  { value: "sibling", label: "Sibling" },
+  { value: "child", label: "Child (not migrating)" },
+  { value: "grandparent", label: "Grandparent" },
+  { value: "other_relative", label: "Other Relative" },
+];
+
+const RELATIONSHIP_STATUSES = [
+  { value: "never_married", label: "Never Married" },
+  { value: "married", label: "Married" },
+  { value: "de_facto", label: "De Facto" },
+  { value: "separated", label: "Separated" },
+  { value: "divorced", label: "Divorced" },
+  { value: "widowed", label: "Widowed" },
+];
+
+const OTHER_NAME_TYPES = [
+  { value: "alias", label: "Alias" },
+  { value: "maiden_name", label: "Maiden Name" },
+  { value: "name_at_birth", label: "Name at Birth" },
+  { value: "other_spelling", label: "Other Spelling" },
+];
+
+const nmfSchema = z.object({
+  relationship: z.string().min(1, "Relationship is required"),
+  relationship_status: z.string().optional(),
+  has_current_passport: z.enum(["yes", "no"]),
+  passport_family_name: z.string().optional(),
+  passport_given_names: z.string().optional(),
+  passport_sex: z.string().optional(),
+  passport_dob_day: z.string().optional(),
+  passport_dob_month: z.string().optional(),
+  passport_dob_year: z.string().optional(),
+  has_national_identity_card: z.enum(["yes", "no"]).optional(),
+  place_of_birth_town: z.string().optional(),
+  place_of_birth_state: z.string().optional(),
+  place_of_birth_country: z.string().optional(),
+  other_names: z.array(z.object({
+    family_name: z.string().optional(),
+    given_names: z.string().optional(),
+    type: z.string().optional(),
+  })).optional(),
+  citizenship_has_other: z.enum(["yes", "no"]).optional(),
+  citizenship_countries: z.string().optional(),
+  has_other_identity_documents: z.enum(["yes", "no"]).optional(),
+  requires_health_examination: z.enum(["yes", "no"]).optional(),
+});
+
+function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
+  const form = useForm({
+    resolver: zodResolver(nmfSchema),
+    defaultValues: {
+      relationship: "",
+      relationship_status: "",
+      has_current_passport: "no",
+      passport_family_name: "",
+      passport_given_names: "",
+      passport_sex: "",
+      passport_dob_day: "",
+      passport_dob_month: "",
+      passport_dob_year: "",
+      has_national_identity_card: "no",
+      place_of_birth_town: "",
+      place_of_birth_state: "",
+      place_of_birth_country: "",
+      other_names: [],
+      citizenship_has_other: "no",
+      citizenship_countries: "",
+      has_other_identity_documents: "no",
+      requires_health_examination: "no",
+    },
+  });
+
+  const { fields: otherNameFields, append: appendOtherName, remove: removeOtherName } = useFieldArray({
+    control: form.control,
+    name: "other_names",
+  });
+
+  useEffect(() => {
+    if (editingMember) {
+      form.reset({
+        relationship: editingMember.relationship || "",
+        relationship_status: editingMember.relationship_status || "",
+        has_current_passport: editingMember.has_current_passport || "no",
+        passport_family_name: editingMember.passport?.family_name || "",
+        passport_given_names: editingMember.passport?.given_names || "",
+        passport_sex: editingMember.passport?.sex || "",
+        passport_dob_day: editingMember.passport?.dob_day || "",
+        passport_dob_month: editingMember.passport?.dob_month || "",
+        passport_dob_year: editingMember.passport?.dob_year || "",
+        has_national_identity_card: editingMember.has_national_identity_card || "no",
+        place_of_birth_town: editingMember.place_of_birth?.town_city || "",
+        place_of_birth_state: editingMember.place_of_birth?.state_province || "",
+        place_of_birth_country: editingMember.place_of_birth?.country || "",
+        other_names: editingMember.other_names || [],
+        citizenship_has_other: editingMember.citizenship?.has_other || "no",
+        citizenship_countries: editingMember.citizenship?.countries?.join(", ") || "",
+        has_other_identity_documents: editingMember.has_other_identity_documents || "no",
+        requires_health_examination: editingMember.requires_health_examination || "no",
+      });
+    } else {
+      form.reset({
+        relationship: "",
+        relationship_status: "",
+        has_current_passport: "no",
+        passport_family_name: "",
+        passport_given_names: "",
+        passport_sex: "",
+        passport_dob_day: "",
+        passport_dob_month: "",
+        passport_dob_year: "",
+        has_national_identity_card: "no",
+        place_of_birth_town: "",
+        place_of_birth_state: "",
+        place_of_birth_country: "",
+        other_names: [],
+        citizenship_has_other: "no",
+        citizenship_countries: "",
+        has_other_identity_documents: "no",
+        requires_health_examination: "no",
+      });
+    }
+  }, [editingMember, open]);
+
+  const hasPassport = form.watch("has_current_passport") === "yes";
+  const hasCitizenshipOther = form.watch("citizenship_has_other") === "yes";
+
+  const handleSubmit = (data) => {
+    const member = {
+      relationship: data.relationship,
+      relationship_status: data.relationship_status,
+      has_current_passport: data.has_current_passport,
+      passport: data.has_current_passport === "yes" ? {
+        family_name: data.passport_family_name,
+        given_names: data.passport_given_names,
+        sex: data.passport_sex,
+        dob_day: data.passport_dob_day,
+        dob_month: data.passport_dob_month,
+        dob_year: data.passport_dob_year,
+      } : null,
+      has_national_identity_card: data.has_national_identity_card,
+      place_of_birth: {
+        town_city: data.place_of_birth_town,
+        state_province: data.place_of_birth_state,
+        country: data.place_of_birth_country,
+      },
+      other_names: data.other_names || [],
+      citizenship: {
+        has_other: data.citizenship_has_other,
+        countries: data.citizenship_has_other === "yes"
+          ? data.citizenship_countries.split(",").map(c => c.trim()).filter(Boolean)
+          : [],
+      },
+      has_other_identity_documents: data.has_other_identity_documents,
+      requires_health_examination: data.requires_health_examination,
+    };
+    onSave(member);
+    form.reset();
+  };
+
+  const YesNoRadio = ({ name, label }) => (
+    <div>
+      <Label className="mb-2 block font-medium">{label}</Label>
+      <RadioGroup
+        value={form.watch(name)}
+        onValueChange={(v) => form.setValue(name, v)}
+        className="flex gap-4"
+      >
+        {["yes", "no"].map((v) => (
+          <div key={v} className="flex items-center gap-2">
+            <RadioGroupItem value={v} id={`${name}-${v}`} />
+            <Label htmlFor={`${name}-${v}`} className="font-normal cursor-pointer capitalize">{v === "yes" ? "Yes" : "No"}</Label>
+          </div>
+        ))}
+      </RadioGroup>
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
+        <DialogHeader>
+          <DialogTitle>{editingMember ? "Edit Non-Migrating Family Member" : "Add Non-Migrating Family Member"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 py-2">
+
+          {/* Relationship */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Relationship</h3>
+            <div>
+              <Label className="mb-2 block font-medium">Relationship to Main Applicant <span className="text-red-600">*</span></Label>
+              <Select value={form.watch("relationship")} onValueChange={(v) => form.setValue("relationship", v)}>
+                <SelectTrigger><SelectValue placeholder="Select relationship..." /></SelectTrigger>
+                <SelectContent>
+                  {NON_MIGRATING_RELATIONSHIPS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.relationship && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.relationship.message}</p>
+              )}
+            </div>
+            <div>
+              <Label className="mb-2 block font-medium">Relationship Status</Label>
+              <Select value={form.watch("relationship_status")} onValueChange={(v) => form.setValue("relationship_status", v)}>
+                <SelectTrigger><SelectValue placeholder="Select status..." /></SelectTrigger>
+                <SelectContent>
+                  {RELATIONSHIP_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Passport */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Passport Details</h3>
+            <YesNoRadio name="has_current_passport" label="Does this person have a current passport?" />
+            {hasPassport && (
+              <div className="space-y-3 pl-4 border-l-2 border-gray-100">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="mb-1 block font-medium">Family Name</Label>
+                    <Input {...form.register("passport_family_name")} placeholder="Family name on passport" />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block font-medium">Given Names</Label>
+                    <Input {...form.register("passport_given_names")} placeholder="Given names on passport" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-2 block font-medium">Sex</Label>
+                  <RadioGroup
+                    value={form.watch("passport_sex")}
+                    onValueChange={(v) => form.setValue("passport_sex", v)}
+                    className="flex gap-4"
+                  >
+                    {["Male", "Female", "Other"].map((g) => (
+                      <div key={g} className="flex items-center gap-2">
+                        <RadioGroupItem value={g} id={`passport-sex-${g}`} />
+                        <Label htmlFor={`passport-sex-${g}`} className="font-normal cursor-pointer">{g}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+                <div>
+                  <Label className="mb-2 block font-medium">Date of Birth</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select value={form.watch("passport_dob_day")} onValueChange={(v) => form.setValue("passport_dob_day", v)}>
+                      <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                      <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={form.watch("passport_dob_month")} onValueChange={(v) => form.setValue("passport_dob_month", v)}>
+                      <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                      <SelectContent>{MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Select value={form.watch("passport_dob_year")} onValueChange={(v) => form.setValue("passport_dob_year", v)}>
+                      <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+                      <SelectContent>{YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Identity Documents */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Identity Documents</h3>
+            <YesNoRadio name="has_national_identity_card" label="Does this person have a national identity card?" />
+            <YesNoRadio name="has_other_identity_documents" label="Does this person have any other identity documents?" />
+          </div>
+
+          {/* Place of Birth */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Place of Birth</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block font-medium">Town or City</Label>
+                <Input {...form.register("place_of_birth_town")} placeholder="Town or city" />
+              </div>
+              <div>
+                <Label className="mb-1 block font-medium">State or Province</Label>
+                <Input {...form.register("place_of_birth_state")} placeholder="State or province" />
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1 block font-medium">Country</Label>
+              <Input {...form.register("place_of_birth_country")} placeholder="Country of birth" />
+            </div>
+          </div>
+
+          {/* Other Names */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Other Names / Spellings</h3>
+            {otherNameFields.map((field, index) => (
+              <div key={field.id} className="grid grid-cols-3 gap-2 items-end">
+                <div>
+                  <Label className="mb-1 block font-medium text-xs">Family Name</Label>
+                  <Input {...form.register(`other_names.${index}.family_name`)} placeholder="Family name" />
+                </div>
+                <div>
+                  <Label className="mb-1 block font-medium text-xs">Given Names</Label>
+                  <Input {...form.register(`other_names.${index}.given_names`)} placeholder="Given names" />
+                </div>
+                <div className="flex gap-1 items-end">
+                  <div className="flex-1">
+                    <Label className="mb-1 block font-medium text-xs">Type</Label>
+                    <Select
+                      value={form.watch(`other_names.${index}.type`)}
+                      onValueChange={(v) => form.setValue(`other_names.${index}.type`, v)}
+                    >
+                      <SelectTrigger className="text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                      <SelectContent>
+                        {OTHER_NAME_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeOtherName(index)}
+                    className="h-9 w-9 text-red-400 hover:text-red-600">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendOtherName({ family_name: "", given_names: "", type: "" })}
+              className="text-xs"
+            >
+              <Plus className="w-3 h-3 mr-1" /> Add Other Name
+            </Button>
+          </div>
+
+          {/* Citizenship */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Citizenship</h3>
+            <YesNoRadio name="citizenship_has_other" label="Does this person hold citizenship of any other country?" />
+            {hasCitizenshipOther && (
+              <div>
+                <Label className="mb-1 block font-medium">Countries (comma-separated)</Label>
+                <Input {...form.register("citizenship_countries")} placeholder="e.g. India, United Kingdom" />
+              </div>
+            )}
+          </div>
+
+          {/* Health */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Health</h3>
+            <YesNoRadio name="requires_health_examination" label="Does this person require a health examination?" />
+          </div>
+
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            type="button"
+            onClick={form.handleSubmit(handleSubmit)}
+            className="bg-[#285646] hover:bg-[#1f4236] text-white"
+          >
+            {editingMember ? "Save Changes" : "Add Member"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const profileSchema = z.object({
   given_names: z.string().min(1, "Given name is required"),
@@ -265,6 +639,9 @@ export default function ApplicationProfilePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [nmfDialogOpen, setNmfDialogOpen] = useState(false);
+  const [editingNmf, setEditingNmf] = useState(null);
+  const [deletingNmfId, setDeletingNmfId] = useState(null);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get("applicationId");
@@ -273,6 +650,18 @@ export default function ApplicationProfilePage() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
+
+  // Open NMF dialog from sidebar edit link (?editNonMigratingId=...)
+  useEffect(() => {
+    const editId = searchParams.get("editNonMigratingId");
+    if (editId) {
+      const member = draftStore.getNonMigratingMember(editId);
+      if (member) {
+        setEditingNmf(member);
+        setNmfDialogOpen(true);
+      }
+    }
+  }, [searchParams]);
 
   const profiles = draftSnap.draft?.profiles || [];
   const hasMainApplicant = profiles.some(p => p.relationship === "main_applicant");
@@ -316,24 +705,76 @@ export default function ApplicationProfilePage() {
     toast({ title: "Person removed", description: `${profile.given_names} ${profile.family_name} has been removed.` });
   };
 
+  const nonMigratingMembers = draftSnap.draft?.non_migrating_members || [];
+
+  const handleAddNmf = async (data) => {
+    if (editingNmf) {
+      await draftStore.updateNonMigratingMember(editingNmf.id, data);
+      toast({ title: "Member updated", description: "Non-migrating family member has been updated." });
+    } else {
+      await draftStore.addNonMigratingMember(data);
+      toast({ title: "Member added", description: "Non-migrating family member has been added." });
+    }
+    setNmfDialogOpen(false);
+    setEditingNmf(null);
+  };
+
+  const handleEditNmf = (member) => {
+    setEditingNmf(member);
+    setNmfDialogOpen(true);
+  };
+
+  const handleDeleteNmf = async (memberId) => {
+    await draftStore.deleteNonMigratingMember(memberId);
+    setDeletingNmfId(null);
+    toast({ title: "Member removed", description: "Non-migrating family member has been removed." });
+  };
+
+  const getNmfDisplayName = (member) => {
+    const family = member.passport?.family_name || "";
+    const given = member.passport?.given_names || "";
+    const name = [given, family].filter(Boolean).join(" ");
+    return name || "Unnamed Member";
+  };
+
+  const getNmfRelationshipLabel = (rel) =>
+    NON_MIGRATING_RELATIONSHIPS.find(r => r.value === rel)?.label || rel || "—";
+
   const handleContinue = async () => {
     if (profiles.length === 0) return;
     setIsNavigating(true);
 
-    // Mark profile page as complete
-    await draftStore.markPageComplete(`${visaType}/profile`, null, false);
+    console.log("[DEBUG] Continue clicked - starting navigation process");
+    const startTime = performance.now();
 
-    // Set active profile to main applicant (or first profile)
+    console.log("[DEBUG] Step 1: Marking profile page as complete");
+    const step1Start = performance.now();
+    await draftStore.markPageComplete(`${visaType}/profile`, null, false);
+    console.log(`[DEBUG] Step 1 complete: Marked page complete in ${(performance.now() - step1Start).toFixed(2)}ms`);
+
+    console.log("[DEBUG] Step 2: Setting active profile");
+    const step2Start = performance.now();
     const mainApplicant = profiles.find(p => p.relationship === "main_applicant") || profiles[0];
     draftStore.setActiveProfile(mainApplicant.id);
+    console.log(`[DEBUG] Step 2 complete: Set active profile in ${(performance.now() - step2Start).toFixed(2)}ms`);
+    console.log(`[DEBUG] Active profile ID: ${mainApplicant.id}`);
 
+    console.log("[DEBUG] Step 3: Building next route URL");
+    const step3Start = performance.now();
     const appId = draftSnap.currentApplicationId;
     const nextBase = "/intake/temporary-work/main-applicant/details";
     const next = appId
       ? `${nextBase}?applicationId=${appId}&profileId=${mainApplicant.id}`
       : `${nextBase}?profileId=${mainApplicant.id}`;
+    console.log(`[DEBUG] Step 3 complete: Built URL in ${(performance.now() - step3Start).toFixed(2)}ms`);
+    console.log(`[DEBUG] Next route: ${next}`);
 
+    console.log("[DEBUG] Step 4: Navigating to next page");
+    const step4Start = performance.now();
     router.push(next);
+    console.log(`[DEBUG] Step 4 complete: Navigation initiated in ${(performance.now() - step4Start).toFixed(2)}ms`);
+
+    console.log(`[DEBUG] Total time from click to navigation: ${(performance.now() - startTime).toFixed(2)}ms`);
   };
 
   return (
@@ -365,7 +806,7 @@ export default function ApplicationProfilePage() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
             <p className="font-bold mb-1" style={{ color: '#1E4034' }}>Who should be included?</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for Skills in Demand (subclass 482) (nominated worker)</li>
+              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for {draftSnap.visaContext === '186' ? 'Employer Nomination (subclass 186)' : 'Skills in Demand (subclass 482)'} (nominated worker)</li>
               <li style={{ color: '#1E4034' }} className="font-bold"><strong>Spouse / De Facto</strong> — add if migrating together</li>
               <li style={{ color: '#1E4034' }} className="font-bold"><strong>Dependent Children</strong> — add each child who will be included</li>
             </ul>
@@ -475,6 +916,118 @@ export default function ApplicationProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Non-Migrating Family Members card */}
+      <Card className="rounded-2xl shadow-md bg-white">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+              <UserMinus className="w-5 h-5 text-amber-600" />
+            </div>
+            Non-Migrating Family Members
+          </CardTitle>
+          <p className="text-sm text-gray-600 mt-1">
+            Optional. Add family members who are <strong>not</strong> migrating with the applicant but are relevant to the application (e.g. parents, siblings, children remaining overseas).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
+            <p className="font-semibold text-amber-800 mb-1">Who to include here?</p>
+            <ul className="space-y-1 list-disc list-inside text-amber-700">
+              <li>Family members who will <strong>not</strong> be migrating to Australia</li>
+              <li>Parents, siblings, or children staying overseas</li>
+              <li>These members are not counted in your completion progress</li>
+            </ul>
+          </div>
+
+          {nonMigratingMembers.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-gray-700">
+                {nonMigratingMembers.length} non-migrating member{nonMigratingMembers.length !== 1 ? "s" : ""} added
+              </p>
+              {nonMigratingMembers.map((member) => {
+                const displayName = getNmfDisplayName(member);
+                const dob = [member.passport?.dob_day, member.passport?.dob_month, member.passport?.dob_year]
+                  .filter(Boolean).join(" ") || null;
+                const isConfirmingDelete = deletingNmfId === member.id;
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-4 p-4 border border-amber-200 rounded-xl bg-white hover:border-amber-400 hover:shadow-sm transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+                      <UserMinus className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-900 truncate">{displayName}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-amber-100 text-amber-800 border-amber-200">
+                          Non-Migrating
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-gray-100 text-gray-700 border-gray-200">
+                          {getNmfRelationshipLabel(member.relationship)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                        {member.passport?.sex && <span>{member.passport.sex}</span>}
+                        {dob && <span>DOB: {dob}</span>}
+                        {member.place_of_birth?.country && <span>Born in: {member.place_of_birth.country}</span>}
+                      </div>
+                      {isConfirmingDelete && (
+                        <div className="mt-2 flex items-center gap-2 text-xs">
+                          <span className="text-red-600 font-medium">Remove this member?</span>
+                          <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-xs"
+                            onClick={() => handleDeleteNmf(member.id)}>Yes, remove</Button>
+                          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
+                            onClick={() => setDeletingNmfId(null)}>Cancel</Button>
+                        </div>
+                      )}
+                    </div>
+                    {!isConfirmingDelete && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditNmf(member)}
+                          className="h-8 w-8 text-gray-400 hover:text-amber-600 hover:bg-amber-50"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingNmfId(member.id)}
+                          className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 border-2 border-dashed border-amber-100 rounded-xl">
+              <UserMinus className="w-10 h-10 text-amber-200 mx-auto mb-2" />
+              <p className="text-gray-400 text-sm">No non-migrating family members added (optional)</p>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => { setEditingNmf(null); setNmfDialogOpen(true); }}
+            className="w-full border-dashed border-2 border-amber-300/50 text-amber-700 hover:bg-amber-50/50 hover:border-amber-400 h-11"
+            data-testid="button-add-non-migrating"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Non-Migrating Family Member
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Profile dialog */}
       <ProfileDialog
         open={dialogOpen}
@@ -482,6 +1035,14 @@ export default function ApplicationProfilePage() {
         onSave={handleAddProfile}
         editingProfile={editingProfile}
         hasMainApplicant={hasMainApplicant}
+      />
+
+      {/* Non-Migrating Member dialog */}
+      <NonMigratingMemberDialog
+        open={nmfDialogOpen}
+        onClose={() => { setNmfDialogOpen(false); setEditingNmf(null); }}
+        onSave={handleAddNmf}
+        editingMember={editingNmf}
       />
     </div>
   );
