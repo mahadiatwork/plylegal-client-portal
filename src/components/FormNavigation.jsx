@@ -22,11 +22,16 @@ export function FormNavigation({
                         type="button"
                         variant="outline"
                         onClick={onPrev}
-                        className="min-h-9"
+                        className="min-h-9 min-w-[110px]"
                         data-testid="button-previous"
                         disabled={loading || submitting}
                     >
-                        ← Previous
+                        {loading ? (
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                            <span className="mr-1">←</span>
+                        )}
+                        Previous
                     </Button>
                 ) : (
                     <div /> /* Spacer */
@@ -52,13 +57,17 @@ export function FormNavigation({
                         type="button"
                         onClick={onNext}
                         disabled={loading || submitting || disabledNext}
-                        className="min-h-9 bg-[#285646] hover:bg-[#1e4336] text-white"
+                        className="min-h-9 min-w-[120px] bg-[#285646] hover:bg-[#1e4336] text-white"
                         data-testid="button-next"
                     >
-                        {submitting && (
-                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        {submitting ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                Saving…
+                            </>
+                        ) : (
+                            <>{nextLabel} →</>
                         )}
-                        {nextLabel} →
                     </Button>
                 </div>
             </div>

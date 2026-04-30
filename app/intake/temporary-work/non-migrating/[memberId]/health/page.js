@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNextRoute, getPreviousRoute, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -27,6 +27,7 @@ export default function NonMigratingHealthPage() {
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
   const { toast } = useToast();
+  const visaType = getVisaTypeFromPath(pathname);
   const [isSaving, setIsSaving] = useState(false);
 
   const memberId = getInternalIntakeHref(pathname).match(/\/non-migrating\/([^/]+)\/health/)?.[1];
@@ -69,12 +70,13 @@ export default function NonMigratingHealthPage() {
 
   const onNext = async () => {
     await save();
-    // Health is the last subpage — navigate back to profile page
-    const profileHref = `/intake/temporary-work/profile`;
-    router.push(toIntakeHref(profileHref));
+    // Health is the last subpage — use global route to go to next in overall flow
+    const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
+    if (next) router.push(next);
   };
 
   const onPrev = () => {
+    // Go to previous subpage within this member
     const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix);
     if (prev) router.push(toIntakeHref(prev));
   };

@@ -971,8 +971,6 @@ export default function ApplicationProfilePage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-                        {member.passport?.sex && <span>{member.passport.sex}</span>}
-                        {dob && <span>DOB: {dob}</span>}
                         {member.place_of_birth?.country && <span>Born in: {member.place_of_birth.country}</span>}
                       </div>
                       {isConfirmingDelete && (

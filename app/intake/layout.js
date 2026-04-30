@@ -249,20 +249,13 @@ export default function IntakeLayout({ children }) {
         )}
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-30 bg-black/50"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed lg:relative top-0 h-screen lg:h-full z-30 lg:z-0 flex-shrink-0",
-            "w-72 bg-sidebar border-r border-sidebar-border",
+            "fixed top-0 left-0 h-screen z-30 flex-shrink-0",
+            "w-[17.5rem] bg-sidebar border-r border-sidebar-border",
             "transition-transform duration-300 lg:translate-x-0",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
@@ -308,8 +301,8 @@ export default function IntakeLayout({ children }) {
             </div>
 
             {/* Navigation */}
-            <ScrollArea className="flex-1">
-              <nav className="p-4 space-y-2">
+            <ScrollArea className="flex-1 overflow-x-visible">
+              <nav className="p-4 pr-3 space-y-2">
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
@@ -499,13 +492,10 @@ export default function IntakeLayout({ children }) {
                                     <span className="flex items-center gap-2 text-left flex-1 min-w-0">
                                       <UserMinus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                                       <span className="flex-1 truncate">
-                                        <span className="block text-xs text-sidebar-foreground/50">Non-Migrating</span>
+                                        <span className="block text-xs text-sidebar-foreground/50">
+                                          Non-Migrating{member.relationship ? ` (${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)})` : ''}
+                                        </span>
                                         <span className="font-medium truncate">{nmfName}</span>
-                                        {(member.passport?.sex || dob) && (
-                                          <span className="block text-xs text-sidebar-foreground/50">
-                                            {[member.passport?.sex, dob ? `DOB: ${dob}` : null].filter(Boolean).join(" · ")}
-                                          </span>
-                                        )}
                                       </span>
                                     </span>
                                     <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -702,8 +692,16 @@ export default function IntakeLayout({ children }) {
           </div>
         </aside>
 
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 z-20 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-8 lg:p-12">
+        <main className="flex-1 overflow-y-auto p-8 lg:p-12 lg:ml-[17.5rem]">
           <div className="max-w-4xl mx-auto">
             {children}
           </div>

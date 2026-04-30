@@ -2,7 +2,7 @@
 
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
-import { getIntakeRoutes } from "@/lib/routes";
+import { getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
 import { authStore } from "./authStore";
 
 // Get database adapter (Firebase or localStorage based on env)
@@ -729,3 +729,8 @@ export const draftStore = proxy({
     };
   })(),
 });
+// Register the profiles getter to break circular dependency with routes.js
+setProfilesGetter(() => draftStore.draft?.profiles || []);
+// Register the non-migrating members getter to include them in linear navigation flow
+setNonMigratingMembersGetter(() => draftStore.draft?.non_migrating_members || []);
+

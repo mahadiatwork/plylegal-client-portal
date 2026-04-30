@@ -248,7 +248,28 @@ export function getIntakeRoutes(visaType, visaContext) {
 // Legacy export for backward compatibility
 export const INTAKE_ROUTES = PARTNER_VISA_ROUTES;
 
-import { draftStore } from "@/stores/draftStore";
+// Use late-bound getter for profiles to avoid circular dependency with draftStore
+let profilesGetter = () => [];
+
+/**
+ * Register a function that returns the current profiles from the draft store.
+ * This is called by draftStore.js to provide its data to route calculations
+ * without creating a circular static import.
+ */
+export function setProfilesGetter(getter) {
+  profilesGetter = getter;
+}
+
+// Use late-bound getter for non-migrating members to avoid circular dependency
+let nonMigratingMembersGetter = () => [];
+
+/**
+ * Register a function that returns the current non-migrating members from the draft store.
+ */
+export function setNonMigratingMembersGetter(getter) {
+  nonMigratingMembersGetter = getter;
+}
+
 
 export function getIntakeSlugFromPathname(pathname) {
   if (!pathname || typeof pathname !== "string") return null;
@@ -346,7 +367,7 @@ export function getDynamicTemporaryWorkRoutes(visaContext) {
   allRoutes.push("/intake/temporary-work/start");
   allRoutes.push("/intake/temporary-work/profile");
 
-  const profiles = draftStore.draft?.profiles || [];
+  const profiles = profilesGetter();
   const sortedProfiles = [...profiles].sort((a, b) => {
     const order = { main_applicant: 0, spouse: 1, child: 2, other: 3 };
     return (order[a.relationship] ?? 4) - (order[b.relationship] ?? 4);
@@ -383,7 +404,16 @@ export function getDynamicTemporaryWorkRoutes(visaContext) {
       });
     });
 
-  // Then static sections!
+  // Insert non-migrating member pages AFTER all migrating applicants, BEFORE all-applicants section.
+  // Each non-migrating member gets their 6 subpages inserted in order.
+  const nonMigratingMembers = nonMigratingMembersGetter();
+  nonMigratingMembers.forEach((member) => {
+    NON_MIGRATING_MEMBER_SUBPAGES.forEach((sub) => {
+      allRoutes.push(buildNonMigratingHref(member.id, sub.pathSuffix));
+    });
+  });
+
+  // Then static all-applicants sections
   const baseRoutes = visaContext === '186' ? EMPLOYER_NOMINATION_ROUTES : TEMPORARY_WORK_VISA_ROUTES;
   const allApplicants = baseRoutes.find(r => r.title === "All Applicants");
   if (allApplicants) {

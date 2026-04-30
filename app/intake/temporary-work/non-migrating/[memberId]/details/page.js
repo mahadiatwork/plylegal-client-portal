@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNextRoute, getPreviousRoute, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +64,7 @@ export default function NonMigratingDetailsPage() {
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
   const { toast } = useToast();
+  const visaType = getVisaTypeFromPath(pathname);
   const [isSaving, setIsSaving] = useState(false);
 
   const memberId = getInternalIntakeHref(pathname).match(/\/non-migrating\/([^/]+)\/details/)?.[1];
@@ -128,16 +129,17 @@ export default function NonMigratingDetailsPage() {
 
   const onNext = async () => {
     await save();
-    const nextSuffix = NON_MIGRATING_MEMBER_SUBPAGES[1]?.pathSuffix;
-    if (nextSuffix && memberId) {
-      const next = buildNonMigratingHref(memberId, nextSuffix);
-      router.push(toIntakeHref(next));
+    // Use global route to navigate to next page in linear flow
+    const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
+    if (next) {
+      router.push(next);
     }
   };
 
   const onPrev = () => {
-    const profileHref = `/intake/temporary-work/profile`;
-    router.push(toIntakeHref(profileHref));
+    // Use global route — goes to previous migrating applicant page (or profile)
+    const prev = getPreviousRoute(pathname, visaType, appId, draftSnap.visaContext);
+    if (prev) router.push(prev);
   };
 
   const onSave = async () => {

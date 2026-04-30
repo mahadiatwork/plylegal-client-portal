@@ -28,7 +28,11 @@ export function StickyNav({
               data-testid={previousTestId || "button-previous"}
               className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
             >
-              <ChevronLeft className="w-4 h-4 mr-1" />
+              {loading ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <ChevronLeft className="w-4 h-4 mr-1" />
+              )}
               Previous
             </Button>
           ) : (
@@ -62,11 +66,16 @@ export function StickyNav({
             className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
           >
             {submitting ? (
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                Saving…
+              </>
             ) : (
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <>
+                {nextLabel}
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </>
             )}
-            {nextLabel}
           </Button>
         </div>
       </div>

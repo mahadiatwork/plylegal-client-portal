@@ -711,6 +711,9 @@ export default function Page() {
               >
                 <Plus className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
                 <span className="font-semibold text-gray-600">Add Applicant Visa Record</span>
+                <span className="ml-2 px-2 py-0.5 text-[10px] font-bold text-white bg-[#287156] rounded-full uppercase tracking-wider">
+                  New
+                </span>
               </Button>
             )}
 

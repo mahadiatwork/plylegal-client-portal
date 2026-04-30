@@ -6,7 +6,7 @@ import { useSnapshot } from "valtio";
 import { applicationsStore, authStore } from "@/stores";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
 import { Riple } from "react-loading-indicators";
@@ -19,7 +19,13 @@ export default function ApplicationsPage() {
 
   const [isSyncing, setIsSyncing] = useState(true);
   const [hasSynced, setHasSynced] = useState(false);
-  
+  const [navigatingId, setNavigatingId] = useState(null);
+
+  const openApplication = (app) => {
+    if (navigatingId) return; // prevent double-click
+    setNavigatingId(app.id);
+    router.push(`/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`);
+  };
   useEffect(() => {
     if (authSnap.user?.id && !authSnap.userProfile) {
       authStore.loadUserProfile();
@@ -110,8 +116,8 @@ export default function ApplicationsPage() {
               <div className="sm:hidden space-y-3">
                 {appsSnap.applications.map((app) => (
                   <div key={app.id}
-                    className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 shadow-sm hover:border-primary/30 transition-colors active:bg-gray-50"
-                    onClick={() => router.push(`/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`)}
+                    className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 shadow-sm hover:border-primary/30 transition-colors active:bg-gray-50 cursor-pointer"
+                    onClick={() => openApplication(app)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-2">
@@ -122,7 +128,13 @@ export default function ApplicationsPage() {
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-gray-400 border-t pt-3">
                       <span>Updated: {app.updated || 'N/A'}</span>
-                      <span className="text-primary font-bold flex items-center gap-1">Open <span className="text-xs">→</span></span>
+                      <span className="text-primary font-bold flex items-center gap-1">
+                        {navigatingId === app.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>Open <span className="text-xs">→</span></>
+                        )}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -158,10 +170,15 @@ export default function ApplicationsPage() {
                           </td>
                           <td className="py-3 px-4 text-right">
                               <button
-                                onClick={() => router.push(`/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`)}
-                                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-50 transition"
+                                onClick={() => openApplication(app)}
+                                disabled={!!navigatingId}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-50 transition disabled:opacity-60 disabled:cursor-not-allowed min-w-[60px] justify-center"
                               >
-                                Open
+                                {navigatingId === app.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  "Open"
+                                )}
                               </button>
                           </td>
                         </tr>

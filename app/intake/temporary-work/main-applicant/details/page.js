@@ -258,9 +258,29 @@ export default function Page() {
   }, [populateFormKey]);
 
   const onSubmit = async (data) => {
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-    if (next) {
-      router.push(next);
+    setIsSaving(true);
+    isSavingRef.current = true;
+    try {
+      let result;
+      if (profileId) {
+        result = await draftStore.saveProfileSectionData(profileId, "details", data);
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
+      } else {
+        result = await draftStore.saveSectionData("temporary_work_details", data);
+        await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+      }
+
+      if (result.success) {
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        if (next) {
+          router.push(next);
+        }
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
+      }
+    } finally {
+      setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 
