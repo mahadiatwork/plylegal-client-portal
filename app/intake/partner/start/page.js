@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 export default function IntakeStartPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -75,6 +77,7 @@ export default function IntakeStartPage() {
     
     // Navigate to first page using dynamic routing, preserving applicationId
     const next = getNextRoute(pathname, visaType, appId);
+    startNavigation(next);
     if (next) router.push(next);
   };
 
@@ -102,7 +105,10 @@ export default function IntakeStartPage() {
                   </p>
                   <div className="mt-4">
                     <Button
-                      onClick={() => router.push("/applications")}
+                      onClick={() => {
+                        startNavigation("/applications");
+                        router.push("/applications");
+                      }}
                       variant="outline"
                       className="border-green-600 text-green-700 hover:bg-green-100"
                       data-testid="button-back-to-applications"

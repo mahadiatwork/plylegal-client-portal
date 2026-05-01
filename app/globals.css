@@ -288,9 +288,15 @@
   /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
    * buttons/badges can remove the automatic brightness adjustment on interactions
    * and program their own. */
-  .no-default-hover-elevate {}
+  /* intentionally empty - marker class to disable default hover effects */
+  .no-default-hover-elevate {
+    /* no styles needed - presence of class is the signal */
+  }
 
-  .no-default-active-elevate {}
+  /* intentionally empty - marker class to disable default active effects */
+  .no-default-active-elevate {
+    /* no styles needed - presence of class is the signal */
+  }
 
 
   /**
@@ -361,6 +367,23 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+}
+
+/* Navigation progress bar — indeterminate sliding animation */
+@keyframes nav-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.nav-progress-bar {
+  animation: nav-progress-slide 1.5s ease-in-out infinite;
 }
 
 /* Print styles for PDF generation */

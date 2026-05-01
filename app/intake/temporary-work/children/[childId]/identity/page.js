@@ -26,6 +26,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SimplifiedOtherIdentityDialog } from "@/components/intake/temporary-work/SimplifiedOtherIdentityDialog";
 import { COUNTRIES } from "@/reuseable/countries";
 import { buildPassportNameOptions } from "@/lib/passportNameOptions";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const nationalIdCardSchema = z.object({
   family_name: z.string().optional(),
@@ -658,6 +659,7 @@ function getChildAgeFromProfile(profile) {
 
 export default function ChildProfileIdentityPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const params = useParams();
@@ -669,6 +671,7 @@ export default function ChildProfileIdentityPage() {
   const childId = typeof params?.childId === "string" ? params.childId : null;
   const profileId = childId;
   const appIdParam = searchParams.get("applicationId");
+  const profileReturnAppId = appIdParam || draftSnap.currentApplicationId;
 
   const profile = childId ? draftStore.getProfile(childId) : null;
 
@@ -685,12 +688,12 @@ export default function ChildProfileIdentityPage() {
     if (!childId) return;
     if (!profile || profile.relationship !== "child") {
       router.replace(
-        appIdParam
-          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(appIdParam)}`
+        profileReturnAppId
+          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(profileReturnAppId)}`
           : "/intake/temporary-work/profile"
       );
     }
-  }, [childId, profile, router, appIdParam]);
+  }, [childId, profile, router, profileReturnAppId]);
 
   const emptyNational = {
     family_name: "",
@@ -797,6 +800,7 @@ export default function ChildProfileIdentityPage() {
           draftSnap.visaContext
         );
         if (nextRoute) {
+          startNavigation(nextRoute);
           router.push(nextRoute);
         }
       } else {
@@ -819,6 +823,7 @@ export default function ChildProfileIdentityPage() {
       draftSnap.visaContext
     );
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

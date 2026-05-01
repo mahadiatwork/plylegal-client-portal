@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -10,6 +9,7 @@ import {
   MessageSquare,
   FileEdit
 } from "lucide-react";
+import { ProgressLink } from "@/components/ProgressLink";
 
 export function PillNav({ appId, slug }) {
   const pathname = usePathname();
@@ -29,7 +29,7 @@ export function PillNav({ appId, slug }) {
   const PillButton = ({ href, label, icon: Icon }) => {
     const isActive = pathname === href || pathname?.startsWith(href + '/');
     return (
-      <Link key={href} href={href}>
+      <ProgressLink key={href} href={href}>
         <button
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-colors",
@@ -42,7 +42,7 @@ export function PillNav({ appId, slug }) {
           <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           {label}
         </button>
-      </Link>
+      </ProgressLink>
     );
   };
 

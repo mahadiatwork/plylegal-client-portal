@@ -22,6 +22,7 @@ import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   "Employed",
@@ -341,6 +342,7 @@ const familySponsorCircumstancesSchema = z.object({
 
 export default function FamilySponsorCircumstancesPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -459,6 +461,7 @@ export default function FamilySponsorCircumstancesPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/circumstances', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -480,6 +483,7 @@ export default function FamilySponsorCircumstancesPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

@@ -21,6 +21,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
 import { COUNTRIES } from "@/reuseable/countries";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   // Question: Other Names
@@ -349,6 +350,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
 export default function FamilySponsorOtherPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -425,6 +427,7 @@ export default function FamilySponsorOtherPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/other', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -446,6 +449,7 @@ export default function FamilySponsorOtherPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

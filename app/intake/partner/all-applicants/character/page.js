@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
   "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
@@ -1748,6 +1749,7 @@ const GENERIC_DIALOG_CONFIG = {
 };
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -1867,10 +1869,12 @@ export default function Page() {
     await draftStore.saveSectionData("partner_character", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "partner_character");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(next);
     if (next) router.push(next);
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

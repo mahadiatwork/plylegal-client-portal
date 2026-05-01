@@ -12,10 +12,12 @@ import { Button } from "@/components/ui/button";
 import { FileText, Loader2 } from "lucide-react"; // Import Loader2 icon
 import { buildIntakeHref } from "@/lib/routes";
 import { getApplicationSlug } from "@/lib/visaDisplay";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 export default function QuestionnairePage() {
   const params = useParams();
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // 1. New state for navigation feedback
@@ -102,6 +104,7 @@ export default function QuestionnairePage() {
     }
 
     const route = buildIntakeHref({ slug: applicationSlug, appId, internalHref });
+    startNavigation(route);
     router.push(route);
     // Note: We don't set setIsNavigating(false) because the page will unmount
   };
@@ -121,7 +124,10 @@ export default function QuestionnairePage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="text-lg text-red-600">Application not found.</div>
-          <Button className="mt-4" onClick={() => router.push('/dashboard')}>
+          <Button className="mt-4" onClick={() => {
+            startNavigation('/dashboard');
+            router.push('/dashboard');
+          }}>
             Back to Dashboard
           </Button>
         </div>

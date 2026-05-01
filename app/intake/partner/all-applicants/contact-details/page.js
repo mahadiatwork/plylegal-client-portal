@@ -23,6 +23,7 @@ import {
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { COUNTRIES } from "@/reuseable/countries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const formSchema = z.object({
   share_contact_phone_numbers: z.enum(["Yes", "No"]),
 
@@ -51,6 +52,7 @@ const formSchema = z.object({
 });
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -140,6 +142,7 @@ export default function Page() {
       if (result.success) {
         await draftStore.markPageComplete(`${visaType}/all-applicants/contact-details`, null, "partner_contact_details");
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -161,6 +164,7 @@ export default function Page() {
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

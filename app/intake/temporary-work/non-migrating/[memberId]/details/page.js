@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_OPTIONS = [
   { value: "parent", label: "Parent" },
@@ -60,6 +61,7 @@ const EMPTY = {
 
 export default function NonMigratingDetailsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -109,7 +111,7 @@ export default function NonMigratingDetailsPage() {
   const save = async () => {
     const values = getValues();
     const existingMember = draftStore.getNonMigratingMember(memberId);
-    await draftStore.updateNonMigratingMember(memberId, {
+    return draftStore.updateNonMigratingMember(memberId, {
       relationship: values.relationship,
       relationship_status: values.relationship_status,
       passport: {
@@ -128,10 +130,19 @@ export default function NonMigratingDetailsPage() {
   };
 
   const onNext = async () => {
-    await save();
+    const ok = await save();
+    if (!ok) {
+      toast({
+        variant: "destructive",
+        title: "Could not save",
+        description: "Could not sync to your draft. Check that you are still signed in, then try again.",
+      });
+      return;
+    }
     // Use global route to navigate to next page in linear flow
     const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
     if (next) {
+      startNavigation(next);
       router.push(next);
     }
   };
@@ -139,13 +150,22 @@ export default function NonMigratingDetailsPage() {
   const onPrev = () => {
     // Use global route — goes to previous migrating applicant page (or profile)
     const prev = getPreviousRoute(pathname, visaType, appId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
   const onSave = async () => {
     setIsSaving(true);
     try {
-      await save();
+      const ok = await save();
+      if (!ok) {
+        toast({
+          variant: "destructive",
+          title: "Could not save",
+          description: "Could not sync to your draft. Check that you are still signed in, then try again.",
+        });
+        return;
+      }
       toast({ title: "Draft saved", description: "Your changes have been saved." });
     } finally {
       setIsSaving(false);

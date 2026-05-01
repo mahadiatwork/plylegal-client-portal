@@ -15,6 +15,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { familyMembersSchema } from "@/lib/validation";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 function FamilyMemberDialog({ row, onSubmit, onCancel }) {
   const { control, handleSubmit } = useForm({
@@ -97,6 +98,7 @@ function FamilyMemberDialog({ row, onSubmit, onCancel }) {
 
 export default function FamilyMembersPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const visaType = getVisaTypeFromPath(pathname);
   const draft = draftStore.draft;
@@ -130,6 +132,7 @@ export default function FamilyMembersPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family', null, false);
         const next = getNextRoute(pathname, visaType);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -151,6 +154,7 @@ export default function FamilyMembersPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

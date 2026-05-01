@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const childDetailsSchema = z.object({
   prefix: z.string().optional(),
   family_name: z.string().optional(),
@@ -39,6 +40,7 @@ const childDetailsSchema = z.object({
 
 export default function ChildDetailsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const params = useParams();
@@ -52,6 +54,7 @@ export default function ChildDetailsPage() {
   const childId = typeof params?.childId === "string" ? params.childId : null;
   const profileId = childId;
   const appId = searchParams.get("applicationId");
+  const profileReturnAppId = appId || draftSnap.currentApplicationId;
   const activeProfile =
     childId && draftSnap.draft?.profiles
       ? draftSnap.draft.profiles.find((p) => p.id === childId) ?? null
@@ -83,12 +86,12 @@ export default function ChildDetailsPage() {
     if (!childId) return;
     if (!activeProfile || activeProfile.relationship !== "child") {
       router.replace(
-        appId
-          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(appId)}`
+        profileReturnAppId
+          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(profileReturnAppId)}`
           : "/intake/temporary-work/profile"
       );
     }
-  }, [childId, activeProfile, router, appId]);
+  }, [childId, activeProfile, router, profileReturnAppId]);
 
   const form = useForm({
     resolver: zodResolver(childDetailsSchema),
@@ -207,6 +210,7 @@ export default function ChildDetailsPage() {
     if (result.success) {
       await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } else {
       toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
@@ -216,6 +220,7 @@ export default function ChildDetailsPage() {
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
+      startNavigation(prev);
       router.push(prev);
     }
   };

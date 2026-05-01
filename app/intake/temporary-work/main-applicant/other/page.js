@@ -20,6 +20,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   // Question 1: Other Names
@@ -430,6 +431,7 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -512,6 +514,7 @@ export default function Page() {
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } else {
       toast({
@@ -524,6 +527,7 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

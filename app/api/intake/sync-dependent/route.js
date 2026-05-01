@@ -3,6 +3,8 @@ import { ZohoCRMClient } from '@/lib/zohoClient';
 import { getAdapter } from '@/lib/adapters';
 
 const DEPENDENT_MODULE = 'Partner_Dependents';
+// Syncable relationships for migrating dependents (spouse, child, other)
+// Non-migrating members are also synced with relationship mapped to 'child' or 'other'
 const SYNCABLE_RELATIONSHIPS = new Set(['spouse', 'child', 'other']);
 
 function getRecordId(result) {
@@ -11,7 +13,7 @@ function getRecordId(result) {
 
 export async function POST(request) {
   try {
-    const { userId, applicationId, profile, action } = await request.json();
+    const { userId, applicationId, profile, action, zohoContactId: body_zohoContactId } = await request.json();
 
     if (!userId || !profile || !action) {
       return NextResponse.json(
@@ -20,7 +22,10 @@ export async function POST(request) {
       );
     }
 
-    if (!SYNCABLE_RELATIONSHIPS.has(profile.relationship)) {
+    // Allow syncing if relationship is syncable OR if it's a non-migrating member
+    // (non-migrating relationships like parent/sibling are mapped to 'other')
+    const isSyncable = SYNCABLE_RELATIONSHIPS.has(profile.relationship) || profile.isNonMigrating === true;
+    if (!isSyncable) {
       return NextResponse.json({
         success: true,
         skipped: true,
@@ -28,9 +33,19 @@ export async function POST(request) {
       });
     }
 
-    const db = getAdapter();
-    const userProfile = await db.getUserProfile(userId);
-    const zohoContactId = userProfile?.zohoContactId;
+    // Prefer zohoContactId passed directly from the client (avoids server-side Firestore auth issues)
+    let zohoContactId = body_zohoContactId || null;
+
+    if (!zohoContactId) {
+      // Fallback: try to read from Firestore (may fail in server context without Admin SDK)
+      try {
+        const db = getAdapter();
+        const userProfile = await db.getUserProfile(userId);
+        zohoContactId = userProfile?.zohoContactId || null;
+      } catch {
+        // Firestore read failed server-side — zohoContactId remains null
+      }
+    }
 
     if (!zohoContactId) {
       return NextResponse.json({

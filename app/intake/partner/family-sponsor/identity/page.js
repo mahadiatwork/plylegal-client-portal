@@ -24,6 +24,7 @@ import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
 import { z } from "zod";
 import { useForm as useDialogForm } from "react-hook-form";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation", "Other"];
 const PASSPORT_TYPE_OPTIONS = ["Passport", "Emergency Passport", "Travel Document"];
@@ -601,6 +602,7 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
 
 export default function FamilySponsorIdentityPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -732,6 +734,7 @@ export default function FamilySponsorIdentityPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/identity', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -753,6 +756,7 @@ export default function FamilySponsorIdentityPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

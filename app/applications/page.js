@@ -9,10 +9,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { FileText, Loader2 } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { Riple } from "react-loading-indicators";
 
 export default function ApplicationsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   
   const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
@@ -24,7 +26,9 @@ export default function ApplicationsPage() {
   const openApplication = (app) => {
     if (navigatingId) return; // prevent double-click
     setNavigatingId(app.id);
-    router.push(`/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`);
+    const href = `/applications/${getApplicationSlug(app)}/${app.id}/questionnaire`;
+    startNavigation(href);
+    router.push(href);
   };
   useEffect(() => {
     if (authSnap.user?.id && !authSnap.userProfile) {

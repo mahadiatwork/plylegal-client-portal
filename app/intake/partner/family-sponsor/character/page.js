@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { COUNTRIES } from "@/reuseable/countries";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const CHARACTER_QUESTIONS = [
   {
     key: "convicted_child_offence",
@@ -1623,6 +1624,7 @@ const GENERIC_DIALOG_CONFIG = {
 };
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -1748,10 +1750,12 @@ export default function Page() {
     await draftStore.saveSectionData("familySponsor.details", mergedData);
     await draftStore.markPageComplete('partner/family-sponsor/character', null, 'familySponsor.details');
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(next);
     if (next) router.push(next);
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

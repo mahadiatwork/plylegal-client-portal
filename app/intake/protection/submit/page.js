@@ -12,9 +12,11 @@ import { buildIntakeHref, getPreviousRoute, getVisaTypeFromPath } from "@/lib/ro
 import { CheckCircle2, AlertCircle, Send } from "lucide-react";
 
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 export default function SubmitPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
@@ -32,6 +34,7 @@ export default function SubmitPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
@@ -67,11 +70,13 @@ export default function SubmitPage() {
         description: "Your application has been submitted and is now under review.",
       });
 
-      router.push(buildIntakeHref({
+      const startHref = buildIntakeHref({
         appId,
         internalHref: `/intake/${visaType}/start`,
         visaType,
-      }));
+      });
+      startNavigation(startHref);
+      router.push(startHref);
     } catch (error) {
       console.error("Submission error:", error);
       toast({

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   citizenship_has_other: z.enum(["yes", "no"]).default("no"),
@@ -28,6 +29,7 @@ const EMPTY = {
 
 export default function NonMigratingCitizenshipPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -70,7 +72,7 @@ export default function NonMigratingCitizenshipPage() {
 
   const save = async () => {
     const values = getValues();
-    await draftStore.updateNonMigratingMember(memberId, {
+    return draftStore.updateNonMigratingMember(memberId, {
       citizenship: {
         has_other: values.citizenship_has_other,
         countries: values.citizenship_has_other === "yes"
@@ -83,20 +85,38 @@ export default function NonMigratingCitizenshipPage() {
   const subpageIndex = NON_MIGRATING_MEMBER_SUBPAGES.findIndex(s => s.pathSuffix === "citizenship");
 
   const onNext = async () => {
-    await save();
+    const ok = await save();
+    if (!ok) {
+      toast({
+        variant: "destructive",
+        title: "Could not save",
+        description: "Could not sync to your draft. Check that you are still signed in, then try again.",
+      });
+      return;
+    }
     const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
+    startNavigation(toIntakeHref(next));
     if (next) router.push(toIntakeHref(next));
   };
 
   const onPrev = () => {
     const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix);
+    startNavigation(toIntakeHref(prev));
     if (prev) router.push(toIntakeHref(prev));
   };
 
   const onSave = async () => {
     setIsSaving(true);
     try {
-      await save();
+      const ok = await save();
+      if (!ok) {
+        toast({
+          variant: "destructive",
+          title: "Could not save",
+          description: "Could not sync to your draft. Check that you are still signed in, then try again.",
+        });
+        return;
+      }
       toast({ title: "Draft saved", description: "Your changes have been saved." });
     } finally {
       setIsSaving(false);

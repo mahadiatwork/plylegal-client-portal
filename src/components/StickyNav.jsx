@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 export function StickyNav({
   onPrev,
@@ -15,6 +16,8 @@ export function StickyNav({
   nextTestId,
   saveTestId,
 }) {
+  const { isNavigating } = useNavigationLoading();
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       <div className="bg-card border-t border-border shadow-lg">
@@ -24,11 +27,13 @@ export function StickyNav({
               type="button"
               variant="outline"
               onClick={onPrev}
-              disabled={loading || submitting}
+              disabled={loading || submitting || isNavigating}
               data-testid={previousTestId || "button-previous"}
               className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
             >
-              {loading ? (
+              {isNavigating ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : loading ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               ) : (
                 <ChevronLeft className="w-4 h-4 mr-1" />
@@ -44,7 +49,7 @@ export function StickyNav({
               type="button"
               variant="secondary"
               onClick={onSave}
-              disabled={loading || submitting}
+              disabled={loading || submitting || isNavigating}
               data-testid={saveTestId || "button-save-draft"}
               className="min-h-[44px] flex-1 sm:flex-none"
             >
@@ -61,7 +66,7 @@ export function StickyNav({
           <Button
             type="button"
             onClick={onNext}
-            disabled={loading || submitting || disabledNext}
+            disabled={loading || submitting || disabledNext || isNavigating}
             data-testid={nextTestId || "button-continue"}
             className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
           >
@@ -69,6 +74,11 @@ export function StickyNav({
               <>
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                 Saving…
+              </>
+            ) : isNavigating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                Loading…
               </>
             ) : (
               <>

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const formSchema = z.object({
   family_name: z.string().optional(),
   given_names: z.string().optional(),
@@ -32,6 +33,7 @@ const formSchema = z.object({
 });
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -86,6 +88,7 @@ export default function Page() {
       await draftStore.saveSectionData("protection_spouse_details", data);
       await draftStore.markPageComplete(`${visaType}/spouse-partner/details`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } catch (error) {
       console.error("Error submitting:", error);
@@ -96,6 +99,7 @@ export default function Page() {
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

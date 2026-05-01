@@ -27,10 +27,10 @@ export default function MessagesPage() {
   const { toast } = useToast();
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  
+
   const appId = params.id;
   const slug = params.slug;
-  const application = applicationsSnap.applications.find(app => app.id === appId);
+  const application = applicationsSnap.applications.find((app) => app.id === appId);
   const dealId = application?.zohoId;
 
   // Scroll to bottom when messages change
@@ -38,7 +38,7 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load messages from Zoho CRM
+  // Load messages from Zoho CRM (reads Message_Log subform rows)
   const loadMessages = async () => {
     if (!dealId) {
       setIsLoading(false);
@@ -53,7 +53,7 @@ export default function MessagesPage() {
       if (data.success) {
         setMessages(data.messages || []);
       } else {
-        console.error('Failed to load messages:', data.error);
+        console.error("Failed to load messages:", data.error);
         toast({
           title: "Error",
           description: data.error || "Failed to load messages",
@@ -61,7 +61,7 @@ export default function MessagesPage() {
         });
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error("Error loading messages:", error);
       toast({
         title: "Error",
         description: "Failed to load messages",
@@ -77,7 +77,6 @@ export default function MessagesPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Wait for auth to be ready
         if (!authSnap.isAuthenticated && !authSnap.user) {
           await authStore.checkSession();
         }
@@ -88,15 +87,13 @@ export default function MessagesPage() {
           return;
         }
 
-        // Load applications if not already loaded
         if (applicationsSnap.applications.length === 0) {
           await applicationsStore.loadApplications(userId);
         }
 
-        // Load messages from Zoho
         await loadMessages();
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error("Error loading data:", error);
         setIsLoading(false);
       }
     };
@@ -107,21 +104,17 @@ export default function MessagesPage() {
   // Handle file attachment
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setAttachments((prev) => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Remove attachment
   const removeAttachment = (index) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Format timestamp
+  // Format a Timestamp from a Message_Log subform row
   const formatTimestamp = (timestamp) => {
-    if (!timestamp) return '';
+    if (!timestamp) return "";
     try {
       const date = new Date(timestamp);
       const now = new Date();
@@ -130,27 +123,27 @@ export default function MessagesPage() {
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-      
-      return date.toLocaleDateString('en-AU', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+      return date.toLocaleDateString("en-AU", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
-    } catch (error) {
-      return '';
+    } catch (_) {
+      return "";
     }
   };
 
-  // Send message
+  // Send a new client message (appends to Message_Log subform)
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    
+
     if (!messageText.trim() && attachments.length === 0) {
       toast({
         title: "Error",
@@ -170,36 +163,44 @@ export default function MessagesPage() {
     }
 
     setIsSending(true);
+
+    // Optimistic UI — append the new message immediately
+    const optimisticRow = {
+      Sender: "Client",
+      Message1: messageText.trim(),
+      Timestamp: new Date().toISOString(),
+      Read_By_Admin: false,
+      Read_By_Client: true,
+      _optimistic: true,
+    };
+    setMessages((prev) => [...prev, optimisticRow]);
+    setMessageText("");
+    setAttachments([]);
+
     try {
       const formData = new FormData();
-      formData.append('dealId', dealId);
-      formData.append('message', messageText.trim());
-      
-      // Add attachments
-      attachments.forEach((file) => {
-        formData.append('attachments', file);
-      });
+      formData.append("dealId", dealId);
+      formData.append("message", optimisticRow.Message1);
+      attachments.forEach((file) => formData.append("attachments", file));
 
-      const response = await fetch('/api/messages/create', {
-        method: 'POST',
+      const response = await fetch("/api/messages/create", {
+        method: "POST",
         body: formData,
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Clear input and attachments
-        setMessageText("");
-        setAttachments([]);
-        
-        // Reload messages
+        // Reload to get the canonical state from Zoho
         await loadMessages();
-        
         toast({
           title: "Message sent",
           description: "Your message has been sent to Ply Legal.",
         });
       } else {
+        // Rollback optimistic row on failure
+        setMessages((prev) => prev.filter((m) => !m._optimistic));
+        setMessageText(optimisticRow.Message1);
         toast({
           title: "Error",
           description: data.error || "Failed to send message",
@@ -207,7 +208,9 @@ export default function MessagesPage() {
         });
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
+      setMessages((prev) => prev.filter((m) => !m._optimistic));
+      setMessageText(optimisticRow.Message1);
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -218,7 +221,6 @@ export default function MessagesPage() {
     }
   };
 
-  // Show loading state while data is being loaded
   if (isLoading || !application) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -235,28 +237,30 @@ export default function MessagesPage() {
       <div className="hidden lg:block">
         <AppSidebar mode="contextual" application={application} />
       </div>
-      
+
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           <div className="absolute left-0 top-0 bottom-0">
-            <AppSidebar mode="contextual" application={application} onClose={() => setSidebarOpen(false)} />
+            <AppSidebar
+              mode="contextual"
+              application={application}
+              onClose={() => setSidebarOpen(false)}
+            />
           </div>
         </div>
       )}
-      
+
       <div className="flex-1 flex flex-col">
-        <AppHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
-        />
-        
+        <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+
         <div className="lg:hidden">
           <PillNav appId={appId} slug={slug} />
         </div>
-        
+
         <main className="flex-1 flex flex-col px-6 py-8 overflow-hidden">
           <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
             {/* Header */}
@@ -274,13 +278,13 @@ export default function MessagesPage() {
                 className="flex items-center gap-2"
                 data-testid="button-refresh-messages"
               >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
             </div>
 
-            {/* Messages Area - Scrollable */}
-            <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+            {/* Messages Area — rendered from flat Message_Log subform rows */}
+            <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
               {isRefreshing && messages.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
@@ -290,43 +294,47 @@ export default function MessagesPage() {
                   <p className="text-sm text-gray-600">No messages yet. Start a conversation!</p>
                 </div>
               ) : (
-                messages.map((msg) => {
-                  // Check if this message has a reply
-                  const hasReply = msg.Reply_Message && msg.Reply_Message.trim() !== '';
-                  const clientMessage = msg.Message_from_Client || '';
-                  
-                  return (
-                    <div key={msg.id} className="space-y-3">
-                      {/* Client Message */}
-                      {clientMessage && (
-                        <div className="flex justify-end">
-                          <div className="max-w-[80%] lg:max-w-[70%]">
-                            <div className="bg-[#285646] text-white rounded-lg px-4 py-3 shadow-sm">
-                              <p className="text-sm whitespace-pre-wrap">{clientMessage}</p>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1 text-right">
-                              {formatTimestamp(msg.Time_Sent)}
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                messages.map((msg, idx) => {
+                  const isClient = msg.Sender === "Client";
+                  const isAdmin = msg.Sender === "Admin";
 
-                      {/* Ply Legal Reply */}
-                      {hasReply && (
-                        <div className="flex justify-start">
-                          <div className="max-w-[80%] lg:max-w-[70%]">
-                            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm">
-                              <div className="flex items-center mb-1">
-                                <span className="text-sm font-medium text-gray-900">Ply Legal</span>
-                              </div>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.Reply_Message}</p>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatTimestamp(msg.Time_Replied)}
-                            </div>
-                          </div>
+                  return (
+                    <div
+                      key={`${msg.Timestamp || ""}-${idx}`}
+                      className={`flex ${isClient ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className="max-w-[80%] lg:max-w-[70%]">
+                        {/* Sender label for admin messages */}
+                        {isAdmin && (
+                          <p className="text-xs font-medium text-gray-500 mb-1 ml-1">Ply Legal</p>
+                        )}
+
+                        {/* Message bubble */}
+                        <div
+                          className={
+                            isClient
+                              ? "bg-[#285646] text-white rounded-lg px-4 py-3 shadow-sm"
+                              : "bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm"
+                          }
+                        >
+                          <p
+                            className={`text-sm whitespace-pre-wrap ${
+                              isAdmin ? "text-gray-700" : ""
+                            } ${msg._optimistic ? "opacity-60" : ""}`}
+                          >
+                            {msg.Message1 || ""}
+                          </p>
                         </div>
-                      )}
+
+                        {/* Timestamp */}
+                        <div
+                          className={`text-xs text-gray-500 mt-1 ${
+                            isClient ? "text-right" : "text-left"
+                          }`}
+                        >
+                          {msg._optimistic ? "Sending…" : formatTimestamp(msg.Timestamp)}
+                        </div>
+                      </div>
                     </div>
                   );
                 })
@@ -334,7 +342,7 @@ export default function MessagesPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area - Fixed at Bottom */}
+            {/* Input Area */}
             <div className="border-t border-gray-200 pt-4">
               {/* Attachment Preview */}
               {attachments.length > 0 && (
@@ -378,7 +386,7 @@ export default function MessagesPage() {
                 >
                   <Paperclip className="w-5 h-5" />
                 </Button>
-                
+
                 <Textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
@@ -387,13 +395,13 @@ export default function MessagesPage() {
                   className="flex-1 resize-none"
                   data-testid="input-message-text"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleSendMessage(e);
                     }
                   }}
                 />
-                
+
                 <Button
                   type="submit"
                   disabled={isSending || (!messageText.trim() && attachments.length === 0)}

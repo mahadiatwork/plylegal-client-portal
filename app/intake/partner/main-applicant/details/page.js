@@ -17,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   // Main applicant details
@@ -39,6 +40,7 @@ const formSchema = z.object({
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -195,6 +197,7 @@ export default function Page() {
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -216,6 +219,7 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
@@ -44,6 +45,7 @@ const spousePartnerPersonalDetailsSchema = z.object({
 
 export default function SpousePartnerPersonalDetailsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -133,6 +135,7 @@ export default function SpousePartnerPersonalDetailsPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/spouse-partner/personal-details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -154,6 +157,7 @@ export default function SpousePartnerPersonalDetailsPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

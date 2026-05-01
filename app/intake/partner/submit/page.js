@@ -11,9 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { buildIntakeHref, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 export default function SubmitPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
@@ -31,6 +33,7 @@ export default function SubmitPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
@@ -68,11 +71,13 @@ export default function SubmitPage() {
       });
 
       // Navigate back to the intake start page using dynamic routing
-      router.push(buildIntakeHref({
+      const startHref = buildIntakeHref({
         appId,
         internalHref: `/intake/${visaType}/start`,
         visaType,
-      }));
+      });
+      startNavigation(startHref);
+      router.push(startHref);
     } catch (error) {
       console.error("Submission error:", error);
       toast({

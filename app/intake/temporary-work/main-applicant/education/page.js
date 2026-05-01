@@ -18,6 +18,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const QUALIFICATION_LEVELS = [
   "Secondary",
@@ -440,6 +441,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
 export default function EducationPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -511,6 +513,7 @@ export default function EducationPage() {
 
       const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (nextRoute) {
+        startNavigation(nextRoute);
         router.push(nextRoute);
       }
     } else {
@@ -525,6 +528,7 @@ export default function EducationPage() {
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

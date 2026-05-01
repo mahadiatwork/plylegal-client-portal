@@ -18,6 +18,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -439,6 +440,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
 }
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -483,6 +485,7 @@ export default function Page() {
       await draftStore.saveSectionData("partner_visas", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/visas`, null, "partner_visas");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
@@ -490,6 +493,7 @@ export default function Page() {
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

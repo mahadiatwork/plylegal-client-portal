@@ -30,8 +30,10 @@ import {
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { getApplicationSlug } from "@/lib/visaDisplay";
+import { useToast } from "@/hooks/use-toast";
 
 
 export default function IntakeLayout({ children }) {
@@ -39,6 +41,14 @@ export default function IntakeLayout({ children }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const draftSnap = useSnapshot(draftStore);
+  const { toast } = useToast();
+  const { startNavigation } = useNavigationLoading();
+
+  // Wrapper that triggers the navigation progress indicator before every router.push
+  const navPush = (href) => {
+    startNavigation(href);
+    router.push(href);
+  };
   const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -236,7 +246,7 @@ export default function IntakeLayout({ children }) {
                     key={subpage.href}
                     variant={isRouteActive(subpage.href) ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => router.push(href)}
+                    onClick={() => navPush(href)}
                     className="min-h-8 text-xs whitespace-nowrap"
                     data-testid={`tab-${subpage.href}`}
                   >
@@ -273,9 +283,9 @@ export default function IntakeLayout({ children }) {
                 onClick={() => {
                   const appId = draftSnap.currentApplicationId;
                   if (appId) {
-                    router.push(`/applications/${intakeSlug}/${appId}/questionnaire`);
+                    navPush(`/applications/${intakeSlug}/${appId}/questionnaire`);
                   } else {
-                    router.push("/applications");
+                    navPush("/applications");
                   }
                 }}
                 className="mt-3 w-full justify-start text-sm text-white hover:text-white hover:bg-white/10"
@@ -324,7 +334,7 @@ export default function IntakeLayout({ children }) {
                         <Button
                           variant="ghost"
                           onClick={() => {
-                            router.push(buildHref(route.href));
+                            navPush(buildHref(route.href));
                             setSidebarOpen(false);
                           }}
                           className={cn(
@@ -434,7 +444,7 @@ export default function IntakeLayout({ children }) {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                              router.push(buildHref(subpage.href, { profileId: profileKey }));
+                                              navPush(buildHref(subpage.href, { profileId: profileKey }));
                                               setSidebarOpen(false);
                                               draftStore.setActiveProfile(profileKey);
                                             }}
@@ -504,7 +514,12 @@ export default function IntakeLayout({ children }) {
                                         tabIndex={0}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          router.push(buildHref("/intake/temporary-work/profile", { internalHref: "/intake/temporary-work/profile", profileId: null }) + `?editNonMigratingId=${encodeURIComponent(member.id)}`);
+                                          const base = buildHref("/intake/temporary-work/profile", {
+                                            internalHref: "/intake/temporary-work/profile",
+                                            profileId: null,
+                                          });
+                                          const sep = base.includes("?") ? "&" : "?";
+                                          navPush(`${base}${sep}editNonMigratingId=${encodeURIComponent(member.id)}`);
                                           setSidebarOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
@@ -544,7 +559,16 @@ export default function IntakeLayout({ children }) {
                                         type="button"
                                         className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
                                         onClick={async () => {
-                                          await draftStore.deleteNonMigratingMember(member.id);
+                                          const ok = await draftStore.deleteNonMigratingMember(member.id);
+                                          if (!ok) {
+                                            toast({
+                                              variant: "destructive",
+                                              title: "Could not remove",
+                                              description:
+                                                "We could not sync the change to your draft. Check that you are signed in and try again.",
+                                            });
+                                            return;
+                                          }
                                           setDeletingNmfId(null);
                                         }}
                                       >
@@ -572,7 +596,7 @@ export default function IntakeLayout({ children }) {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                              router.push(buildHref(href));
+                                              navPush(buildHref(href));
                                               setSidebarOpen(false);
                                             }}
                                             className={cn(
@@ -638,7 +662,7 @@ export default function IntakeLayout({ children }) {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => {
-                                        router.push(buildHref(subpage.href));
+                                        navPush(buildHref(subpage.href));
                                         setSidebarOpen(false);
                                       }}
                                       className={cn(
@@ -669,7 +693,7 @@ export default function IntakeLayout({ children }) {
                         key={route.href}
                         variant="ghost"
                         onClick={() => {
-                          router.push(buildHref(route.href));
+                          navPush(buildHref(route.href));
                           setSidebarOpen(false);
                         }}
                         className={cn(

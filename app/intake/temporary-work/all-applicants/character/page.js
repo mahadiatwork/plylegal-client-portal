@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const CHARACTER_QUESTIONS = [
   {
@@ -122,6 +123,7 @@ const defaultFormValues = CHARACTER_QUESTIONS.reduce((acc, q) => {
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -197,11 +199,13 @@ export default function Page() {
     await draftStore.saveSectionData("temporary_work_character", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "temporary_work_character");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(next);
     if (next) router.push(next);
   };
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

@@ -18,6 +18,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
@@ -259,6 +260,7 @@ const formSchema = z.object({
 });
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -305,6 +307,7 @@ export default function Page() {
       await draftStore.saveSectionData("protection_children", submitData);
       await draftStore.markPageComplete(`${visaType}/children`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } catch (error) {
       console.error("Error submitting:", error);
@@ -315,6 +318,7 @@ export default function Page() {
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

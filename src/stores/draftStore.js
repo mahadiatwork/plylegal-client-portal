@@ -36,6 +36,7 @@ export const draftStore = proxy({
         return null;
       }
 
+      const zohoContactId = authStore.userProfile?.zohoContactId || null;
       const response = await fetch("/api/intake/sync-dependent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -44,6 +45,7 @@ export const draftStore = proxy({
           applicationId: this.currentApplicationId,
           profile,
           action,
+          zohoContactId,
         }),
       });
       const result = await response.json();
@@ -56,6 +58,60 @@ export const draftStore = proxy({
       console.warn("Dependent Zoho sync failed:", error.message);
       return null;
     }
+  },
+
+  async syncNonMigratingMemberToZoho(member, action) {
+    try {
+      if (typeof window === "undefined") return null;
+      const userId = authStore.user?.id;
+      if (!userId || !this.currentApplicationId) return null;
+
+      const zohoContactId = authStore.userProfile?.zohoContactId || null;
+      if (!zohoContactId) return null;
+
+      // Map non-migrating member to Partner_Dependents format with isNonMigrating: true
+      const profile = {
+        given_names: member.passport?.given_names || "",
+        family_name: member.passport?.family_name || "",
+        relationship: member.relationship === "child" ? "child" : "other",
+        gender: member.passport?.sex || "",
+        birth_day: member.passport?.dob_day || "",
+        birth_month: member.passport?.dob_month || "",
+        birth_year: member.passport?.dob_year || "",
+        isNonMigrating: true,
+        zohoDependentId: member.zohoDependentId,
+      };
+
+      const response = await fetch("/api/intake/sync-dependent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          applicationId: this.currentApplicationId,
+          profile,
+          action,
+          zohoContactId,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        console.warn("Non-migrating member Zoho sync skipped/failed:", result);
+        return null;
+      }
+      return result.zohoDependentId || null;
+    } catch (error) {
+      console.warn("Non-migrating member Zoho sync failed:", error.message);
+      return null;
+    }
+  },
+
+  async persistNonMigratingZohoDependentId(memberId, zohoDependentId) {
+    if (!memberId || !zohoDependentId) return;
+    const members = (this.draft?.non_migrating_members || []).map((m) =>
+      m.id === memberId ? { ...m, zohoDependentId } : m
+    );
+    this.draft = { ...this.draft, non_migrating_members: members };
+    await db.saveDraft(this.draft, this.currentApplicationId);
   },
 
   async persistProfileZohoDependentId(profileId, zohoDependentId) {
@@ -209,30 +265,99 @@ export const draftStore = proxy({
 
   /** Add a new non-migrating member and persist */
   async addNonMigratingMember(member) {
+    const appId = this.currentApplicationId;
+    if (!appId) {
+      console.warn("[draftStore] addNonMigratingMember: Application ID required");
+      return null;
+    }
+
+    const previousDraft = JSON.parse(JSON.stringify(this.draft));
     const newMember = {
       id: member.id || `nmf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       ...member,
     };
     const members = [...(this.draft?.non_migrating_members || []), newMember];
     this.draft = { ...this.draft, non_migrating_members: members };
-    await db.saveDraft(this.draft, this.currentApplicationId);
+
+    const result = await db.saveDraft(this.draft, appId);
+    if (!result.success) {
+      console.warn("[draftStore] addNonMigratingMember: save failed", result.error);
+      this.draft = previousDraft;
+      return null;
+    }
+
+    // Sync to Zoho CRM as non-migrating dependent
+    const zohoDependentId = await this.syncNonMigratingMemberToZoho(newMember, "create");
+    if (zohoDependentId) {
+      await this.persistNonMigratingZohoDependentId(newMember.id, zohoDependentId);
+      newMember.zohoDependentId = zohoDependentId;
+    }
+
     return newMember;
   },
 
   /** Update an existing non-migrating member by id */
   async updateNonMigratingMember(memberId, updates) {
+    const appId = this.currentApplicationId;
+    if (!appId) {
+      console.warn("[draftStore] updateNonMigratingMember: Application ID required");
+      return false;
+    }
+
+    const previousDraft = JSON.parse(JSON.stringify(this.draft));
+    const existingMember = (this.draft?.non_migrating_members || []).find(m => m.id === memberId);
+    const updatedMember = existingMember ? { ...existingMember, ...updates } : null;
+
     const members = (this.draft?.non_migrating_members || []).map(m =>
       m.id === memberId ? { ...m, ...updates } : m
     );
     this.draft = { ...this.draft, non_migrating_members: members };
-    await db.saveDraft(this.draft, this.currentApplicationId);
+
+    const result = await db.saveDraft(this.draft, appId);
+    if (!result.success) {
+      console.warn("[draftStore] updateNonMigratingMember: save failed", result.error);
+      this.draft = previousDraft;
+      return false;
+    }
+
+    // Sync to Zoho CRM
+    if (updatedMember) {
+      const action = updatedMember.zohoDependentId ? "update" : "create";
+      const zohoDependentId = await this.syncNonMigratingMemberToZoho(updatedMember, action);
+      if (zohoDependentId && !updatedMember.zohoDependentId) {
+        await this.persistNonMigratingZohoDependentId(memberId, zohoDependentId);
+      }
+    }
+
+    return true;
   },
 
   /** Delete a non-migrating member */
   async deleteNonMigratingMember(memberId) {
+    const appId = this.currentApplicationId;
+    if (!appId) {
+      console.warn("[draftStore] deleteNonMigratingMember: Application ID required");
+      return false;
+    }
+
+    const previousDraft = JSON.parse(JSON.stringify(this.draft));
+    const memberToDelete = (this.draft?.non_migrating_members || []).find(m => m.id === memberId);
     const members = (this.draft?.non_migrating_members || []).filter(m => m.id !== memberId);
     this.draft = { ...this.draft, non_migrating_members: members };
-    await db.saveDraft(this.draft, this.currentApplicationId);
+
+    const result = await db.saveDraft(this.draft, appId);
+    if (!result.success) {
+      console.warn("[draftStore] deleteNonMigratingMember: save failed", result.error);
+      this.draft = previousDraft;
+      return false;
+    }
+
+    // Delete from Zoho CRM if synced
+    if (memberToDelete?.zohoDependentId) {
+      await this.syncNonMigratingMemberToZoho(memberToDelete, "delete");
+    }
+
+    return true;
   },
 
   // ─── End Non-Migrating Family Member Helpers ──────────────────────────────
@@ -393,6 +518,7 @@ export const draftStore = proxy({
           k.startsWith('temporary_work_') ||
           k === 'profiles' ||
           k === 'profiles_data' ||
+          k === 'non_migrating_members' ||
           k === 'started'
         ) {
           merged[k] = sourceData[k];
@@ -709,6 +835,33 @@ export const draftStore = proxy({
       percentage: totalPages > 0 ? Math.round((completedCount / totalPages) * 100) : 0
     };
   },
+  // ─── Dependent Selection Helpers ───────────────────────────────────────────
+
+  /** Get selected dependent IDs for the current application */
+  getSelectedDependentIds() {
+    return this.draft?.selectedDependentIds || [];
+  },
+
+  /** Get excluded dependent IDs for the current application */
+  getExcludedDependentIds() {
+    return this.draft?.excludedDependentIds || [];
+  },
+
+  /** Save dependent selection (selected + excluded IDs) to draft and persist */
+  async saveDependentSelection(selectedIds, excludedIds) {
+    const newDraft = {
+      ...this.draft,
+      selectedDependentIds: Array.isArray(selectedIds) ? selectedIds : [],
+      excludedDependentIds: Array.isArray(excludedIds) ? excludedIds : [],
+    };
+    this.draft = newDraft;
+    if (this.currentApplicationId) {
+      await db.saveDraft(this.draft, this.currentApplicationId);
+    }
+  },
+
+  // ─── End Dependent Selection Helpers ───────────────────────────────────────
+
   // Debounced auto‑save for form changes (native implementation)
   autoSaveDebounced: (function() {
     // Simple debounce implementation using setTimeout

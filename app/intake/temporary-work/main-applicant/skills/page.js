@@ -19,6 +19,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Unexpected", "Pending", "Other"];
 const ASSESSMENT_TYPES = ["Full Skills Assessment", "Provisional Skills Assessment", "Job Ready Program", "Points Test Advice", "Other"];
@@ -576,6 +577,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
 export default function SkillsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -651,6 +653,7 @@ export default function SkillsPage() {
 
       const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (nextRoute) {
+        startNavigation(nextRoute);
         router.push(nextRoute);
       }
     } else {
@@ -665,6 +668,7 @@ export default function SkillsPage() {
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

@@ -38,6 +38,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { COUNTRIES } from "@/reuseable/countries";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }) {
   const dialogSchema = z.object({
@@ -397,6 +398,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
 
 export default function ContactsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -475,6 +477,7 @@ export default function ContactsPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
@@ -506,6 +509,7 @@ export default function ContactsPage() {
       await draftStore.saveSectionData("partner_contacts", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/contacts`, null, "partner_contacts");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSubmitting(false);

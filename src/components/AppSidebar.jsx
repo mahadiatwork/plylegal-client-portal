@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -9,6 +8,7 @@ import { User, FileText, ChevronLeft, Upload, BookOpen, MessageSquare, FileEdit 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BrandLogo } from "@/components/BrandLogo";
 import { getApplicationSlug } from "@/lib/visaDisplay";
+import { ProgressLink } from "@/components/ProgressLink";
 
 export function AppSidebar({ mode, application, onClose }) {
   const pathname = usePathname();
@@ -61,7 +61,7 @@ export function AppSidebar({ mode, application, onClose }) {
   return (
     <aside className="w-64 border-r border-sidebar-border bg-sidebar flex flex-col h-screen sticky top-0">
       <div className="p-6 border-b border-sidebar-border">
-        <Link href="/applications">
+        <ProgressLink href="/applications">
           <button
             className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors mb-4"
             onClick={onClose}
@@ -70,7 +70,7 @@ export function AppSidebar({ mode, application, onClose }) {
             <ChevronLeft className="w-4 h-4" />
             Back to Visa Applications
           </button>
-        </Link>
+        </ProgressLink>
         
         <div>
           <h2 className="font-serif text-lg font-semibold text-sidebar-foreground">{application.type}</h2>
@@ -97,7 +97,7 @@ export function AppSidebar({ mode, application, onClose }) {
 
 function NavLink({ href, icon: Icon, label, badge, isActive, onClick }) {
   return (
-    <Link href={href}>
+    <ProgressLink href={href}>
       <button
         onClick={onClick}
         className={cn(
@@ -121,6 +121,6 @@ function NavLink({ href, icon: Icon, label, badge, isActive, onClick }) {
           </span>
         )}
       </button>
-    </Link>
+    </ProgressLink>
   );
 }

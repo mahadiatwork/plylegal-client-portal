@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const familySponsorContactDetailsSchema = z.object({
   after_hours_phone_country_code: z.string().optional(),
@@ -37,6 +38,7 @@ const familySponsorContactDetailsSchema = z.object({
 
 export default function FamilySponsorContactDetailsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -170,6 +172,7 @@ export default function FamilySponsorContactDetailsPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/contact', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -191,6 +194,7 @@ export default function FamilySponsorContactDetailsPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

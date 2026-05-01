@@ -19,6 +19,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_OPTIONS = [
   "Child",
@@ -193,6 +194,7 @@ function ChildDialog({ editingRow, onSave, onCancel }) {
 
 export default function ChildrenStartPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -321,6 +323,7 @@ export default function ChildrenStartPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/children/start');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -342,6 +345,7 @@ export default function ChildrenStartPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

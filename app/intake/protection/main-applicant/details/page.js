@@ -17,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Removed StickyNav import as we use FormNavigation
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
@@ -51,6 +52,7 @@ const formSchema = z.object({
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -144,6 +146,7 @@ export default function Page() {
       await draftStore.saveSectionData("protection_details", data);
       await draftStore.markPageComplete(`${visaType}/main-applicant/details`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } catch (error) {
       console.error("Error submitting:", error);
@@ -155,6 +158,7 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

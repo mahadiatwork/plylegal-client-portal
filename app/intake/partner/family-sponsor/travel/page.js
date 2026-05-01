@@ -22,6 +22,7 @@ import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const VISA_STATUS_OPTIONS = [
   "Australian Citizen By Birth",
@@ -603,6 +604,7 @@ const familySponsorTravelSchema = z.object({
 
 export default function FamilySponsorTravelPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -738,6 +740,7 @@ export default function FamilySponsorTravelPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/travel', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -759,6 +762,7 @@ export default function FamilySponsorTravelPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

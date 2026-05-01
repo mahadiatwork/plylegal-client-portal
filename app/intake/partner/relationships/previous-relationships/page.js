@@ -22,6 +22,7 @@ import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_TYPES = [
   "De Facto Relationship",
@@ -350,6 +351,7 @@ const previousRelationshipsSchema = z.object({
 
 export default function PreviousRelationshipsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -458,6 +460,7 @@ export default function PreviousRelationshipsPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/relationships/previous-relationships', null, 'relationships.previousRelationships');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -479,6 +482,7 @@ export default function PreviousRelationshipsPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

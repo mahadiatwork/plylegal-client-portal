@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { DateSelector } from "@/components/DateSelecters";
 import { COUNTRIES } from "@/reuseable/countries";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const countryOptions = COUNTRIES.map((c) => ({ value: c, label: c }));
 const reasonOptions = [
@@ -165,6 +166,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel, applicantName }) {
 
 export default function FutureTravelPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -236,6 +238,7 @@ export default function FutureTravelPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
@@ -267,6 +270,7 @@ export default function FutureTravelPage() {
       await draftStore.saveSectionData("partner_future_travel", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/future-travel`, null, "partner_future_travel");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);

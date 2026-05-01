@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { ProgressLink } from "@/components/ProgressLink";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { draftStore } from "@/stores/draftStore";
 import { authStore } from "@/stores/authStore";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -64,6 +66,7 @@ function QuestionAnswer({ question, answer, type }) {
 
 function SectionCard({ section, expanded, onToggle, searchQuery }) {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const hasQuestions = section.questions.length > 0;
   
   const filteredQuestions = section.questions.filter(q => {
@@ -83,6 +86,7 @@ function SectionCard({ section, expanded, onToggle, searchQuery }) {
   const handleEdit = (e) => {
     e.stopPropagation();
     if (section.editHref) {
+      startNavigation(section.editHref);
       router.push(section.editHref);
     }
   };
@@ -445,11 +449,11 @@ export default function ReviewPage() {
                     <p className="text-gray-600">
                       No questionnaire data yet. Complete the questionnaire to see your responses here.
                     </p>
-                    <Link href={`/applications/${slug}/${appId}/questionnaire`}>
+                    <ProgressLink href={`/applications/${slug}/${appId}/questionnaire`}>
                       <Button className="mt-4" data-testid="button-start-questionnaire-empty">
                         Start Questionnaire
                       </Button>
-                    </Link>
+                    </ProgressLink>
                   </Card>
                 )}
               </>

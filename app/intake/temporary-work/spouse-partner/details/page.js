@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { COUNTRIES } from "@/reuseable/countries";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   prefix: z.string().optional(),
@@ -152,6 +153,7 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -253,6 +255,7 @@ export default function Page() {
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) {
+        startNavigation(next);
         router.push(next);
       }
     } else {
@@ -263,6 +266,7 @@ export default function Page() {
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
+      startNavigation(prev);
       router.push(prev);
     }
   };

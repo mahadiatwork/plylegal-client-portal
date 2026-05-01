@@ -18,6 +18,7 @@ import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -160,6 +161,7 @@ const formSchema = z.object({
 });
 export default function EmploymentPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -305,6 +307,7 @@ export default function EmploymentPage() {
       await draftStore.saveSectionData("protection_employment_offer", data);
       await draftStore.markPageComplete(`${visaType}/employment`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } catch (error) {
       console.error("Error submitting:", error);
@@ -316,6 +319,7 @@ export default function EmploymentPage() {
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

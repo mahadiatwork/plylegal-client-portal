@@ -6,7 +6,7 @@ export async function POST(request) {
     const formData = await request.formData();
     const dealId = formData.get('dealId');
     const message = formData.get('message');
-    const attachments = formData.getAll('attachments'); // Get all attachment files
+    const attachments = formData.getAll('attachments');
 
     if (!dealId || !message) {
       return NextResponse.json(
@@ -15,76 +15,84 @@ export async function POST(request) {
       );
     }
 
-    console.log(`📤 Creating message for Deal ${dealId}...`);
+    console.log(`📤 Sending client message for Deal ${dealId}...`);
     const zohoClient = new ZohoCRMClient();
-    
-    // First, get the Deal to get the matter name
-    const deal = await zohoClient.getRecord('Deals', dealId);
-    if (!deal) {
-      return NextResponse.json(
-        { success: false, error: 'Deal not found' },
-        { status: 404 }
-      );
+
+    // 1. Find the existing Client_Messages record for this Deal
+    const records = await zohoClient.coqlQuery(
+      `SELECT id, Message_Log, Unread_for_Admin
+       FROM Client_Messages
+       WHERE Matter = '${dealId}' LIMIT 1`
+    );
+
+    let chatRecord = records?.[0] || null;
+
+    // 2. Create the chat record if one doesn't exist yet
+    if (!chatRecord) {
+      console.log('ℹ️ No chat record found — creating one...');
+      const created = await zohoClient.createRecord('Client_Messages', {
+        Matter: { id: dealId },
+        Status: 'Active',
+        Unread_for_Admin: 0,
+        Unread_for_Client: 0,
+      });
+
+      if (!created?.id) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to create chat record' },
+          { status: 500 }
+        );
+      }
+
+      chatRecord = { id: created.id, Message_Log: [], Unread_for_Admin: 0 };
+      console.log(`✅ Created chat record ${chatRecord.id}`);
     }
 
-    // Generate record name: {matter_name} - {date_time}
-    const matterName = deal.Deal_Name || deal.DealName || 'Unknown Matter';
+    // 3. Build the new subform row
     const now = new Date();
-    const dateTime = now.toISOString().replace('T', ' ').substring(0, 19);
-    const recordName = `${matterName} - ${dateTime}`;
-
-    // Prepare message data - create directly in Client_Messages module
-    // Link to Matter using {id: dealId}
-    const messageData = {
-      Name: recordName,
-      Matter: {
-        id: dealId
-      },
-      Message_from_Client: message,
-      Time_Sent: now.toISOString(),
-      Reply_Message: '',
-      Time_Replied: null,
+    const newRow = {
+      Sender: 'Client',
+      Message1: message.trim(),
+      Timestamp: now.toISOString(),
+      Read_By_Admin: false,
+      Read_By_Client: true,
     };
 
-    console.log('📝 Creating message record in Client_Messages module:', recordName);
-    const created = await zohoClient.createRecord('Client_Messages', messageData);
+    const existingLog = chatRecord.Message_Log || [];
+    const updatedLog = [...existingLog, newRow];
 
-    if (!created) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to create message record' },
-        { status: 500 }
-      );
-    }
+    // 4. Update the record — append the new row to Message_Log
+    console.log(`📝 Appending message to Message_Log (${updatedLog.length} total rows)...`);
+    await zohoClient.updateRecord('Client_Messages', chatRecord.id, {
+      Message_Log: updatedLog,
+      Last_Message_At: now.toISOString(),
+      Unread_for_Admin: (chatRecord.Unread_for_Admin || 0) + 1,
+    });
 
-    console.log(`✅ Message created with ID: ${created.id}`);
+    console.log('✅ Message appended successfully');
 
-    // Upload attachments if provided
+    // 5. Upload attachments if provided (linked to the chat record)
     const uploadedAttachments = [];
     if (attachments && attachments.length > 0) {
       for (const file of attachments) {
         if (file && file.size > 0) {
           try {
-            // Convert File to Buffer for server-side upload
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            
+
             console.log(`📎 Uploading attachment: ${file.name} (${file.size} bytes)`);
-            const uploadResult = await zohoClient.uploadAttachment(
+            await zohoClient.uploadAttachment(
               'Client_Messages',
-              created.id,
+              chatRecord.id,
               buffer,
               file.name,
               file.type
             );
-            uploadedAttachments.push({
-              name: file.name,
-              size: file.size,
-              type: file.type,
-            });
+            uploadedAttachments.push({ name: file.name, size: file.size, type: file.type });
             console.log(`✅ Attachment uploaded: ${file.name}`);
-          } catch (error) {
-            console.error(`❌ Failed to upload attachment ${file.name}:`, error);
-            // Continue with other attachments even if one fails
+          } catch (attachErr) {
+            console.error(`❌ Failed to upload attachment ${file.name}:`, attachErr);
+            // Continue — don't fail the whole request for an attachment error
           }
         }
       }
@@ -92,18 +100,18 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: created,
+      chatRecordId: chatRecord.id,
+      totalMessages: updatedLog.length,
       attachments: uploadedAttachments,
     });
   } catch (error) {
-    console.error('❌ Error creating message:', error);
+    console.error('❌ Error sending message:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to create message'
+      {
+        success: false,
+        error: error.message || 'Failed to send message',
       },
       { status: 500 }
     );
   }
 }
-

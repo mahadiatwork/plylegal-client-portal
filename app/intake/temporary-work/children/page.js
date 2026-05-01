@@ -18,6 +18,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { buildTemporaryWorkChildHref } from "@/lib/routes";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const childSchema = z.object({
   family_name: z.string().min(1, "Family name is required"),
   given_names: z.string().min(1, "Given names are required"),
@@ -256,6 +257,7 @@ const formSchema = z.object({
 });
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -300,10 +302,12 @@ export default function Page() {
     await draftStore.saveSectionData("temporary_work_children", submitData);
     await draftStore.markPageComplete(`${visaType}/children`, null, "temporary_work_children");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(next);
     if (next) router.push(next);
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

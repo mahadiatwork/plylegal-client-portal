@@ -16,6 +16,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 // ─── Constants ────────────────────────────────────────────────────────
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
@@ -304,6 +305,7 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
 // ─── Main Page ────────────────────────────────────────────────────────
 export default function Page() {
     const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const visaType = getVisaTypeFromPath(pathname);
@@ -400,6 +402,7 @@ export default function Page() {
                 "temporary_work_countries_of_residence"
             );
             const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+            startNavigation(next);
             if (next) router.push(next);
         } finally {
             setIsSaving(false);
@@ -408,6 +411,7 @@ export default function Page() {
 
     const handlePrevious = () => {
         const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        startNavigation(prev);
         if (prev) router.push(prev);
     };
 

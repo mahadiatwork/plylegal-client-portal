@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -347,6 +348,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -394,6 +396,7 @@ export default function Page() {
       await draftStore.saveSectionData("temporary_work_addresses", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/addresses`, null, "temporary_work_addresses");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
@@ -402,6 +405,7 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

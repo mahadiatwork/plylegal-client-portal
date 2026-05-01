@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const REGISTRATION_TYPES = ["Registration", "Licence", "Professional Membership", "Other"];
 const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Pending", "Other"];
@@ -376,6 +377,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
 export default function SkillsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -472,6 +474,7 @@ export default function SkillsPage() {
       await draftStore.markPageComplete(`${visaType}/main-applicant/skills`);
       const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
       if (nextRoute) {
+        startNavigation(nextRoute);
         router.push(nextRoute);
       }
     } catch (error) {
@@ -486,6 +489,7 @@ export default function SkillsPage() {
     const visaType = getVisaTypeFromPath(pathname);
     const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

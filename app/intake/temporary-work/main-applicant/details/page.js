@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
@@ -64,6 +65,7 @@ const formSchema = z.object({
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -273,6 +275,7 @@ export default function Page() {
       if (result.success) {
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         if (next) {
+          startNavigation(next);
           router.push(next);
         }
       } else {
@@ -287,6 +290,7 @@ export default function Page() {
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
+      startNavigation(prev);
       router.push(prev);
     }
   };

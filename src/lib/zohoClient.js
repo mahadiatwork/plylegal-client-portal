@@ -326,7 +326,7 @@ class ZohoCRMClient {
       if (!fields) {
         if (relatedListName === 'Partner_Dependents') {
           // Fields we actually need from the response
-          fields = 'id,First_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship';
+          fields = 'id,First_Name,Name,Last_Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating';
         } else if (relatedListName === 'Deals') {
           // Fields for Deals/Applications
           fields = 'id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time';
@@ -497,6 +497,8 @@ class ZohoCRMClient {
       Relationship: dep.relationship || '',
       Date_of_Birth: dep.dateOfBirth || '',
       Citizenship: dep.citizenship || '',
+      Is_Applicant: dep.isApplicant || false,
+      Non_Migrating: dep.isNonMigrating || false,
     };
   }
 
@@ -524,9 +526,15 @@ class ZohoCRMClient {
       Contact_Name: contactId ? { id: contactId } : undefined,
       First_Name: profile?.given_names,
       Name: profile?.family_name,
-      Relationship_to_Applicant: relationshipMap[profile?.relationship],
+      Relationship_to_Applicant: relationshipMap[profile?.relationship] || (profile?.relationship === 'other' ? 'Other' : undefined),
       Gender: ['Male', 'Female'].includes(profile?.gender) ? profile.gender : undefined,
+      Is_Applicant: profile?.isApplicant === true,
     };
+
+    // Only set Non_Migrating if explicitly true (for non-migrating members)
+    if (profile?.isNonMigrating === true) {
+      fields.Non_Migrating = true;
+    }
 
     const year = String(profile?.birth_year || '').trim();
     const day = String(profile?.birth_day || '').trim().padStart(2, '0');
@@ -552,8 +560,49 @@ class ZohoCRMClient {
       normalize(existingDep.Last_Name) !== normalize(mappedIncomingDep.Last_Name) ||
       normalize(existingDep.Relationship_to_Applicant || existingDep.Relationship) !== normalize(mappedIncomingDep.Relationship) ||
       normalize(existingDep.Date_of_Birth) !== normalize(mappedIncomingDep.Date_of_Birth) ||
-      normalize(existingDep.Citizenship) !== normalize(mappedIncomingDep.Citizenship)
+      normalize(existingDep.Citizenship) !== normalize(mappedIncomingDep.Citizenship) ||
+      Boolean(existingDep.Is_Applicant) !== Boolean(mappedIncomingDep.Is_Applicant) ||
+      Boolean(existingDep.Non_Migrating ?? existingDep.Is_Non_Migrating) !==
+        Boolean(mappedIncomingDep.Non_Migrating ?? mappedIncomingDep.Is_Non_Migrating)
     );
+  }
+
+  /**
+   * Reverse-map a Zoho Partner_Dependents record to application-friendly format.
+   * Used by the GET /api/intake/dependents endpoint.
+   * @param {Object} zohoRecord — raw CRM record from getRelatedRecords
+   * @returns {Object} Application-friendly dependent object
+   */
+  mapZohoDependentToAppFields(zohoRecord) {
+    const relationshipReverseMap = {
+      'spouse': 'spouse',
+      'children': 'child',
+      'child': 'child',
+      'other': 'other',
+    };
+    const dobParts = (zohoRecord.Date_of_Birth || '').split('-');
+    const relationship = relationshipReverseMap[
+      String(zohoRecord.Relationship_to_Applicant || '').trim().toLowerCase()
+    ] || 'other';
+
+    return {
+      zohoDependentId: zohoRecord.id,
+      given_names: zohoRecord.First_Name || '',
+      family_name: zohoRecord.Last_Name || zohoRecord.Name || '',
+      relationship,
+      birth_year: dobParts[0] || '',
+      birth_month: dobParts[1] || '',
+      birth_day: dobParts[2] || '',
+      gender: zohoRecord.Gender || '',
+      citizenship: zohoRecord.Citizenship || '',
+      email: zohoRecord.Email || '',
+      isApplicant: zohoRecord.Is_Applicant === true || zohoRecord.Is_Applicant === 'true',
+      isNonMigrating:
+        zohoRecord.Non_Migrating === true ||
+        zohoRecord.Non_Migrating === 'true' ||
+        zohoRecord.Is_Non_Migrating === true ||
+        zohoRecord.Is_Non_Migrating === 'true',
+    };
   }
 
   /**

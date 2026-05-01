@@ -19,6 +19,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -336,6 +337,7 @@ const formSchema = z.object({
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const profileId = searchParams.get('profileId');
@@ -393,6 +395,7 @@ export default function Page() {
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } else {
       toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
@@ -401,6 +404,7 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { monthNames } from "@/reuseable/months";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const VISA_SUBCLASS_OPTIONS = [
   "100", "101", "102", "103", "104", "105", "106", "108", "109", "110",
@@ -626,6 +627,7 @@ const familySponsorPreviousSponsorshipSchema = z.object({
 
 export default function FamilySponsorPreviousSponsorshipPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -750,6 +752,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/previous-sponsorship', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -771,6 +774,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

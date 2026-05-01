@@ -25,6 +25,7 @@ import { Pencil, Trash2, Plus } from "lucide-react";
 import { monthNames } from "@/reuseable/months";
 import { COUNTRIES } from "@/reuseable/countries";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 
 
@@ -748,6 +749,7 @@ function CountryDialog({ editingRow, onSave, onCancel }) {
 
 export default function MainApplicantIdentityPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -896,6 +898,7 @@ export default function MainApplicantIdentityPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/identity');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -917,6 +920,7 @@ export default function MainApplicantIdentityPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

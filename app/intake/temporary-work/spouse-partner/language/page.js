@@ -18,6 +18,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const PROFICIENCY_LEVELS = ["Basic", "Intermediate", "Proficient", "Fluent/Native"];
 const TEST_TYPES = ["IELTS Academic", "IELTS General", "PTE Academic", "TOEFL iBT", "OET", "Other"];
@@ -345,6 +346,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
 
 export default function LanguagePage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -434,6 +436,7 @@ export default function LanguagePage() {
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } else {
       toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
@@ -444,6 +447,7 @@ export default function LanguagePage() {
     const visaType = getVisaTypeFromPath(pathname);
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
+      startNavigation(prev);
       router.push(prev);
     }
   };

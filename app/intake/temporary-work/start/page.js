@@ -11,9 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 function isLikely482Application(app, currentId) {
   if (!app?.id || app.id === currentId) return false;
@@ -46,6 +47,8 @@ export default function IntakeStartPage() {
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
   const [importSourceId, setImportSourceId] = useState("");
   const [importing, setImporting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { startNavigation } = useNavigationLoading();
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -111,33 +114,19 @@ export default function IntakeStartPage() {
       return;
     }
 
-    console.log("[DEBUG] Continue clicked - starting navigation process");
-    const startTime = performance.now();
+    setSubmitting(true);
+    try {
+      await draftStore.saveDraft({ started: true });
+      await draftStore.markPageComplete(`${visaType}/start`, null, false);
 
-    console.log("[DEBUG] Step 1: Saving draft with started=true");
-    const step1Start = performance.now();
-    await draftStore.saveDraft({ started: true });
-    console.log(`[DEBUG] Step 1 complete: Saved draft in ${(performance.now() - step1Start).toFixed(2)}ms`);
-
-    console.log("[DEBUG] Step 2: Marking page as complete");
-    const step2Start = performance.now();
-    await draftStore.markPageComplete(`${visaType}/start`, null, false);
-    console.log(`[DEBUG] Step 2 complete: Marked page complete in ${(performance.now() - step2Start).toFixed(2)}ms`);
-
-    console.log("[DEBUG] Step 3: Getting next route");
-    const step3Start = performance.now();
-    const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-    console.log(`[DEBUG] Step 3 complete: Got next route in ${(performance.now() - step3Start).toFixed(2)}ms`);
-    console.log(`[DEBUG] Next route: ${next}`);
-
-    console.log("[DEBUG] Step 4: Navigating to next page");
-    const step4Start = performance.now();
-    if (next) {
-      router.push(next);
-      console.log(`[DEBUG] Step 4 complete: Navigation initiated in ${(performance.now() - step4Start).toFixed(2)}ms`);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (next) {
+        startNavigation(next);
+        router.push(next);
+      }
+    } finally {
+      setSubmitting(false);
     }
-
-    console.log(`[DEBUG] Total time from click to navigation: ${(performance.now() - startTime).toFixed(2)}ms`);
   };
 
   return (
@@ -163,7 +152,10 @@ export default function IntakeStartPage() {
                   </p>
                   <div className="mt-4">
                     <Button
-                      onClick={() => router.push("/applications")}
+                      onClick={() => {
+                        startNavigation("/applications");
+                        router.push("/applications");
+                      }}
                       variant="outline"
                       className="border-green-600 text-green-700 hover:bg-green-100"
                       data-testid="button-back-to-applications"
@@ -262,11 +254,20 @@ export default function IntakeStartPage() {
               <Button
                 type="submit"
                 size="lg"
-                disabled={!started || isSubmitted}
+                disabled={!started || isSubmitted || submitting}
                 data-testid="button-begin"
                 className="min-h-11 px-8 bg-[#285646] hover:bg-[#1f4236]"
               >
-                {isSubmitted ? "Application Submitted" : "Continue"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving…
+                  </>
+                ) : isSubmitted ? (
+                  "Application Submitted"
+                ) : (
+                  "Continue"
+                )}
               </Button>
             </div>
           </form>

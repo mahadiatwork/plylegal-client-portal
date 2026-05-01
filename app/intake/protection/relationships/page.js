@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 // StickyNav import removed
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const formSchema = z.object({
   marriage_day: z.string().optional(),
   marriage_month: z.string().optional(),
@@ -30,6 +31,7 @@ const formSchema = z.object({
 });
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -78,6 +80,7 @@ export default function Page() {
       await draftStore.saveSectionData("protection_relationships", data);
       await draftStore.markPageComplete(`${visaType}/relationships`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } catch (error) {
       console.error("Error submitting:", error);
@@ -88,6 +91,7 @@ export default function Page() {
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

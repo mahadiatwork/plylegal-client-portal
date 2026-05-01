@@ -18,6 +18,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const formSchema = z.object({
   has_health_examinations: z.enum(["yes", "no"]).optional(),
   health_examinations: z.array(z.any()).optional(),
@@ -905,6 +906,7 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
 // ─── Main Page Component ──────────────────────────────────────────────
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -1039,6 +1041,7 @@ export default function Page() {
       await draftStore.saveSectionData("temporary_work_health", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/health`, null, "temporary_work_health");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
@@ -1046,6 +1049,7 @@ export default function Page() {
   };
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
   const handleSave = async () => {

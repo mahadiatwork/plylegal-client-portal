@@ -16,6 +16,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_OPTIONS = [
   "Parent",
@@ -52,6 +53,7 @@ const familySponsorDetailsSchema = z.object({
 
 export default function FamilySponsorDetailsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -190,6 +192,7 @@ export default function FamilySponsorDetailsPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/family-sponsor/details', null, 'familySponsor.details');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -211,6 +214,7 @@ export default function FamilySponsorDetailsPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

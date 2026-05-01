@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { StickyNav } from "@/components/StickyNav";
 import { Loader2 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 export function FormNavigation({
     onPrev,
@@ -13,6 +14,8 @@ export function FormNavigation({
     nextLabel = "Next",
     saveLabel = "Save Draft",
 }) {
+    const { isNavigating } = useNavigationLoading();
+
     return (
         <>
             {/* Desktop Navigation */}
@@ -24,9 +27,11 @@ export function FormNavigation({
                         onClick={onPrev}
                         className="min-h-9 min-w-[110px]"
                         data-testid="button-previous"
-                        disabled={loading || submitting}
+                        disabled={loading || submitting || isNavigating}
                     >
-                        {loading ? (
+                        {isNavigating ? (
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : loading ? (
                             <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                         ) : (
                             <span className="mr-1">←</span>
@@ -43,7 +48,7 @@ export function FormNavigation({
                             type="button"
                             variant="outline"
                             onClick={onSave}
-                            disabled={loading || submitting}
+                            disabled={loading || submitting || isNavigating}
                             className="min-h-9"
                             data-testid="button-save"
                         >
@@ -56,7 +61,7 @@ export function FormNavigation({
                     <Button
                         type="button"
                         onClick={onNext}
-                        disabled={loading || submitting || disabledNext}
+                        disabled={loading || submitting || disabledNext || isNavigating}
                         className="min-h-9 min-w-[120px] bg-[#285646] hover:bg-[#1e4336] text-white"
                         data-testid="button-next"
                     >
@@ -64,6 +69,11 @@ export function FormNavigation({
                             <>
                                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                                 Saving…
+                            </>
+                        ) : isNavigating ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                Loading…
                             </>
                         ) : (
                             <>{nextLabel} →</>

@@ -22,6 +22,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 // ----- Schemas -----
 // Details schema (original)
@@ -368,6 +369,7 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -467,6 +469,7 @@ export default function Page() {
           await draftStore.markPageComplete(`${visaType}/main-applicant/details-other`, null, "temporary_work_details");
         }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({ title: "Error", description: resultDetails.error || resultOther.error || "Failed to save draft", variant: "destructive" });
@@ -479,6 +482,7 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

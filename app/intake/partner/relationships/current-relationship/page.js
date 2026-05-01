@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { DateSelector } from "@/components/DateSelecters";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const currentRelationshipSchema = z.object({
   related_by_blood_marriage_adoption: z.enum(["Yes", "No"]).optional(),
@@ -68,6 +69,7 @@ const currentRelationshipSchema = z.object({
 
 export default function CurrentRelationshipPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -200,6 +202,7 @@ export default function CurrentRelationshipPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/relationships/current-relationship', null, 'relationships.currentRelationship');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -221,6 +224,7 @@ export default function CurrentRelationshipPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

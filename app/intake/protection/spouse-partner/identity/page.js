@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -386,6 +387,7 @@ function ResidencyDialog({ editingRow, onSave, onCancel }) {
 
 export default function IdentityPage() {
     const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -468,11 +470,13 @@ export default function IdentityPage() {
             await draftStore.markPageComplete(`${visaType}/spouse-partner/identity`);
 
             // Manual navigation since getNextRoute might depend on exact array order
-            router.push(buildIntakeHref({
+            const nextHref = buildIntakeHref({
                 appId: draftStore.currentApplicationId,
                 internalHref: "/intake/protection/children",
                 visaType,
-            }));
+            });
+            startNavigation(nextHref);
+            router.push(nextHref);
         } catch (error) {
             console.error("Error submitting:", error);
             toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
@@ -482,11 +486,13 @@ export default function IdentityPage() {
     };
 
     const handlePrevious = () => {
-        router.push(buildIntakeHref({
+        const prevHref = buildIntakeHref({
             appId: draftStore.currentApplicationId,
             internalHref: "/intake/protection/spouse-partner/other-details",
             visaType: getVisaTypeFromPath(pathname),
-        }));
+        });
+        startNavigation(prevHref);
+        router.push(prevHref);
     };
 
     return (

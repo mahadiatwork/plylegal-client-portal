@@ -20,6 +20,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Loader2 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -214,6 +215,7 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel, mainApplicantName })
 
 export default function FamilyPage() {
     const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -279,6 +281,7 @@ export default function FamilyPage() {
             await draftStore.markPageComplete(`${visaType}/main-applicant/family`);
             const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
             if (nextRoute) {
+                startNavigation(nextRoute);
                 router.push(nextRoute);
             }
         } catch (error) {
@@ -293,6 +296,7 @@ export default function FamilyPage() {
         const visaType = getVisaTypeFromPath(pathname);
         const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
         if (previousRoute) {
+            startNavigation(previousRoute);
             router.push(previousRoute);
         }
     };

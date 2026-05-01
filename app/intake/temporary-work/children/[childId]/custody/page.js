@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const custodySchema = z
   .object({
@@ -113,6 +114,7 @@ function formToCustodyPayload(data) {
 
 export default function ChildCustodyPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -123,6 +125,7 @@ export default function ChildCustodyPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const appIdParam = searchParams.get("applicationId");
+  const profileReturnAppId = appIdParam || draftSnap.currentApplicationId;
 
   const profile = typeof childId === "string" ? draftStore.getProfile(childId) : null;
 
@@ -138,12 +141,12 @@ export default function ChildCustodyPage() {
     if (!childId || typeof childId !== "string") return;
     if (!profile || profile.relationship !== "child") {
       router.replace(
-        appIdParam
-          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(appIdParam)}`
+        profileReturnAppId
+          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(profileReturnAppId)}`
           : "/intake/temporary-work/profile"
       );
     }
-  }, [childId, profile, router, appIdParam]);
+  }, [childId, profile, router, profileReturnAppId]);
 
   const form = useForm({
     resolver: zodResolver(custodySchema),
@@ -177,6 +180,7 @@ export default function ChildCustodyPage() {
       }
       await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);
@@ -185,6 +189,7 @@ export default function ChildCustodyPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

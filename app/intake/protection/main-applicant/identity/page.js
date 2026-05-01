@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
@@ -1183,6 +1184,7 @@ function PermanentResidencyDialog({ editingRow, onSave, onCancel }) {
 
 export default function IdentityPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -1303,6 +1305,7 @@ export default function IdentityPage() {
         await draftStore.markPageComplete(`${visaType}/main-applicant/identity`);
         const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
         if (nextRoute) {
+          startNavigation(nextRoute);
           router.push(nextRoute);
         }
       } else {
@@ -1323,6 +1326,7 @@ export default function IdentityPage() {
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftStore.currentApplicationId);
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

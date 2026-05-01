@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { LogOut, Menu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authStore } from "@/stores";
@@ -8,6 +7,7 @@ import { useSnapshot } from "valtio";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useState } from "react";
+import { ProgressLink } from "@/components/ProgressLink";
 
 export function AppHeader({ onMenuClick }) {
   const router = useRouter();
@@ -32,9 +32,9 @@ export function AppHeader({ onMenuClick }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/applications" className="flex-shrink-0">
+          <ProgressLink href="/applications" className="flex-shrink-0">
             <BrandLogo priority className="h-[40px] mx-0" />
-          </Link>
+          </ProgressLink>
 
           {/* Right side */}
           <div className="flex items-center gap-3">

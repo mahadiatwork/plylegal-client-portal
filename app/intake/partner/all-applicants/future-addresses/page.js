@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { z } from "zod";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -465,6 +466,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
 
 export default function FutureAddressesPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -535,6 +537,7 @@ export default function FutureAddressesPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
@@ -566,6 +569,7 @@ export default function FutureAddressesPage() {
       await draftStore.saveSectionData("partner_future_addresses", data);
       await draftStore.markPageComplete(`${visaType}/all-applicants/future-addresses`, null, "partner_future_addresses");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      startNavigation(next);
       if (next) router.push(next);
     } finally {
       setIsSaving(false);

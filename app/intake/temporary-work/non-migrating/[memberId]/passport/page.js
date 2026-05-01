@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -44,6 +45,7 @@ const EMPTY = {
 
 export default function NonMigratingPassportPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -92,7 +94,7 @@ export default function NonMigratingPassportPage() {
   const save = async () => {
     const values = getValues();
     const existingMember = draftStore.getNonMigratingMember(memberId);
-    await draftStore.updateNonMigratingMember(memberId, {
+    return draftStore.updateNonMigratingMember(memberId, {
       has_current_passport: values.has_current_passport,
       passport: values.has_current_passport === "yes" ? {
         ...(existingMember?.passport || {}),
@@ -109,20 +111,38 @@ export default function NonMigratingPassportPage() {
   const subpageIndex = NON_MIGRATING_MEMBER_SUBPAGES.findIndex(s => s.pathSuffix === "passport");
 
   const onNext = async () => {
-    await save();
+    const ok = await save();
+    if (!ok) {
+      toast({
+        variant: "destructive",
+        title: "Could not save",
+        description: "Could not sync to your draft. Check that you are still signed in, then try again.",
+      });
+      return;
+    }
     const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
+    startNavigation(toIntakeHref());
     if (next) router.push(toIntakeHref(next));
   };
 
   const onPrev = () => {
     const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix);
+    startNavigation(toIntakeHref());
     if (prev) router.push(toIntakeHref(prev));
   };
 
   const onSave = async () => {
     setIsSaving(true);
     try {
-      await save();
+      const ok = await save();
+      if (!ok) {
+        toast({
+          variant: "destructive",
+          title: "Could not save",
+          description: "Could not sync to your draft. Check that you are still signed in, then try again.",
+        });
+        return;
+      }
       toast({ title: "Draft saved", description: "Your changes have been saved." });
     } finally {
       setIsSaving(false);

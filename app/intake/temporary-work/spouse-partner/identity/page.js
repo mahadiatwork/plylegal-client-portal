@@ -21,6 +21,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SimplifiedOtherIdentityDialog } from "@/components/intake/temporary-work/SimplifiedOtherIdentityDialog";
 import { COUNTRIES } from "@/reuseable/countries";
 import { buildPassportNameOptions } from "@/lib/passportNameOptions";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const nationalIdCardSchema = z.object({
   family_name: z.string().optional(),
@@ -637,6 +638,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
 
 export default function IdentityPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -770,6 +772,7 @@ export default function IdentityPage() {
 
         const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         if (nextRoute) {
+          startNavigation(nextRoute);
           router.push(nextRoute);
         }
       } else {
@@ -787,6 +790,7 @@ export default function IdentityPage() {
   const handlePrevious = () => {
     const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (previousRoute) {
+      startNavigation(previousRoute);
       router.push(previousRoute);
     }
   };

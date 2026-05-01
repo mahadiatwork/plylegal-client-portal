@@ -12,6 +12,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormNavigation } from "@/components/FormNavigation";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
   phone: z.string().optional(),
@@ -23,6 +24,7 @@ const formSchema = z.object({
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
@@ -63,11 +65,13 @@ export default function Page() {
     await draftStore.saveSectionData("temporary_work_contact_details", data);
     await draftStore.markPageComplete(`${visaType}/all-applicants/contact-details`, null, "temporary_work_contact_details");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(next);
     if (next) router.push(next);
   };
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

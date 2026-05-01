@@ -24,6 +24,7 @@ import { z } from "zod";
 import { monthNames } from "@/reuseable/months";
 import { DateSelector } from "@/components/DateSelecters";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const CHILD_RELATIONSHIP_OPTIONS = [
   "Adopted Child",
@@ -254,6 +255,7 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel, hasChildren }) {
 
 export default function MainApplicantFamilyPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -364,6 +366,7 @@ export default function MainApplicantFamilyPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/main-applicant/family');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -385,6 +388,7 @@ export default function MainApplicantFamilyPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

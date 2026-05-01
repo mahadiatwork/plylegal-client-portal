@@ -3,9 +3,11 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
+import { authStore } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useState, useEffect } from "react";
+import { buildIntakeHref, getApplicationIdFromPathname, getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
+import { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,10 +33,12 @@ import {
   Baby,
   UserCheck,
   User,
-  ArrowRight,
   ChevronRight,
   UserMinus,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIPS = [
   { value: "main_applicant", label: "Main Applicant (Nominated Worker)" },
@@ -102,7 +106,16 @@ const nmfSchema = z.object({
   requires_health_examination: z.enum(["yes", "no"]).optional(),
 });
 
-function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
+// Map zero-padded month number → full month name expected by the form
+const MONTH_NUM_TO_NAME_NMF = {
+  "01": "January", "02": "February", "03": "March", "04": "April",
+  "05": "May", "06": "June", "07": "July", "08": "August",
+  "09": "September", "10": "October", "11": "November", "12": "December",
+};
+
+function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availableCrmNonMigrating = [], isSaving = false }) {
+  const [selectedCrmId, setSelectedCrmId] = useState(null);
+
   const form = useForm({
     resolver: zodResolver(nmfSchema),
     defaultValues: {
@@ -133,6 +146,10 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
   });
 
   useEffect(() => {
+    if (!open) {
+      setSelectedCrmId(null);
+      return;
+    }
     if (editingMember) {
       form.reset({
         relationship: editingMember.relationship || "",
@@ -154,6 +171,9 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
         has_other_identity_documents: editingMember.has_other_identity_documents || "no",
         requires_health_examination: editingMember.requires_health_examination || "no",
       });
+      if (editingMember.zohoDependentId) {
+        setSelectedCrmId(editingMember.zohoDependentId);
+      }
     } else {
       form.reset({
         relationship: "",
@@ -175,11 +195,60 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
         has_other_identity_documents: "no",
         requires_health_examination: "no",
       });
+      setSelectedCrmId(null);
     }
   }, [editingMember, open]);
 
   const hasPassport = form.watch("has_current_passport") === "yes";
   const hasCitizenshipOther = form.watch("citizenship_has_other") === "yes";
+
+  const handleSelectCrm = (dep) => {
+    setSelectedCrmId(dep.zohoDependentId);
+    form.reset({
+      relationship: dep.relationship === "child" ? "child" : "other_relative",
+      relationship_status: "",
+      has_current_passport: "yes",
+      passport_family_name: dep.family_name || "",
+      passport_given_names: dep.given_names || "",
+      passport_sex: dep.gender || "",
+      passport_dob_day: dep.birth_day ? String(parseInt(dep.birth_day, 10)) : "",
+      passport_dob_month: MONTH_NUM_TO_NAME_NMF[dep.birth_month] || dep.birth_month || "",
+      passport_dob_year: dep.birth_year || "",
+      has_national_identity_card: "no",
+      place_of_birth_town: "",
+      place_of_birth_state: "",
+      place_of_birth_country: dep.citizenship || "",
+      other_names: [],
+      citizenship_has_other: dep.citizenship ? "yes" : "no",
+      citizenship_countries: dep.citizenship || "",
+      has_other_identity_documents: "no",
+      requires_health_examination: "no",
+    });
+  };
+
+  const handleClearCrm = () => {
+    setSelectedCrmId(null);
+    form.reset({
+      relationship: "",
+      relationship_status: "",
+      has_current_passport: "no",
+      passport_family_name: "",
+      passport_given_names: "",
+      passport_sex: "",
+      passport_dob_day: "",
+      passport_dob_month: "",
+      passport_dob_year: "",
+      has_national_identity_card: "no",
+      place_of_birth_town: "",
+      place_of_birth_state: "",
+      place_of_birth_country: "",
+      other_names: [],
+      citizenship_has_other: "no",
+      citizenship_countries: "",
+      has_other_identity_documents: "no",
+      requires_health_examination: "no",
+    });
+  };
 
   const handleSubmit = (data) => {
     const member = {
@@ -209,10 +278,14 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
       },
       has_other_identity_documents: data.has_other_identity_documents,
       requires_health_examination: data.requires_health_examination,
+      zohoDependentId: selectedCrmId || undefined,
     };
     onSave(member);
     form.reset();
+    setSelectedCrmId(null);
   };
+
+  const showCrmSection = !editingMember && availableCrmNonMigrating.length > 0;
 
   const YesNoRadio = ({ name, label }) => (
     <div>
@@ -239,6 +312,60 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
           <DialogTitle>{editingMember ? "Edit Non-Migrating Family Member" : "Add Non-Migrating Family Member"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-6 py-2">
+
+          {/* CRM non-migrating members quick-select */}
+          {showCrmSection && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">From your CRM profile</p>
+              <div className="space-y-1.5">
+                {availableCrmNonMigrating.map((dep) => {
+                  const isSelected = selectedCrmId === dep.zohoDependentId;
+                  const initials =
+                    (dep.given_names?.[0] || "").toUpperCase() +
+                    (dep.family_name?.[0] || "").toUpperCase();
+                  const relLabel =
+                    dep.relationship === "child" ? "Child" :
+                    dep.relationship === "spouse" ? "Spouse / Partner" : "Other";
+                  const dob = dep.birth_year
+                    ? [dep.birth_day ? String(parseInt(dep.birth_day, 10)) : "", MONTH_NUM_TO_NAME_NMF[dep.birth_month] || dep.birth_month || "", dep.birth_year].filter(Boolean).join(" ")
+                    : null;
+
+                  return (
+                    <button
+                      key={dep.zohoDependentId}
+                      type="button"
+                      onClick={() => isSelected ? handleClearCrm() : handleSelectCrm(dep)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? "border-[#285646] bg-[#285646]/5 ring-1 ring-[#285646]"
+                          : "border-gray-200 hover:border-[#285646]/50 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        isSelected ? "bg-[#285646] text-white" : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {initials || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {dep.given_names} {dep.family_name}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {relLabel}{dob ? ` · DOB: ${dob}` : ""}{dep.citizenship ? ` · ${dep.citizenship}` : ""}
+                        </p>
+                      </div>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#285646] shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <div className="flex-1 border-t border-gray-200" />
+                <span className="text-xs text-gray-400">or add new person manually</span>
+                <div className="flex-1 border-t border-gray-200" />
+              </div>
+            </div>
+          )}
 
           {/* Relationship */}
           <div className="space-y-4">
@@ -412,13 +539,18 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember }) {
 
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
           <Button
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
-            className="bg-[#285646] hover:bg-[#1f4236] text-white"
+            disabled={isSaving}
+            className="bg-[#285646] hover:bg-[#1f4236] text-white min-w-[120px]"
           >
-            {editingMember ? "Save Changes" : "Add Member"}
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              editingMember ? "Save Changes" : "Add Member"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -458,7 +590,22 @@ function getRelationshipColor(rel) {
   }
 }
 
-function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant }) {
+// Map zero-padded month number → full month name expected by the form
+const MONTH_NUM_TO_NAME = {
+  "01": "January", "02": "February", "03": "March", "04": "April",
+  "05": "May", "06": "June", "07": "July", "08": "August",
+  "09": "September", "10": "October", "11": "November", "12": "December",
+};
+
+function crmRelToProfileRel(rel) {
+  if (rel === "spouse") return "spouse";
+  if (rel === "child") return "child";
+  return "other";
+}
+
+function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant, availableCrmDependents = [], isSaving = false }) {
+  const [selectedCrmId, setSelectedCrmId] = useState(null);
+
   const form = useForm({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -472,8 +619,12 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
     },
   });
 
-  // Pre-fill when editing
+  // Reset form + CRM selection when dialog opens/closes
   useEffect(() => {
+    if (!open) {
+      setSelectedCrmId(null);
+      return;
+    }
     if (editingProfile) {
       form.reset({
         given_names: editingProfile.given_names || "",
@@ -494,13 +645,43 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
         birth_month: "",
         birth_year: "",
       });
+      setSelectedCrmId(null);
     }
   }, [editingProfile, open, hasMainApplicant]);
 
-  const handleSubmit = (data) => {
-    onSave(data);
-    form.reset();
+  const handleSelectCrm = (dep) => {
+    setSelectedCrmId(dep.zohoDependentId);
+    form.reset({
+      given_names: dep.given_names || "",
+      family_name: dep.family_name || "",
+      relationship: crmRelToProfileRel(dep.relationship),
+      gender: dep.gender || "",
+      birth_day: dep.birth_day ? String(parseInt(dep.birth_day, 10)) : "",
+      birth_month: MONTH_NUM_TO_NAME[dep.birth_month] || dep.birth_month || "",
+      birth_year: dep.birth_year || "",
+    });
   };
+
+  const handleClearCrm = () => {
+    setSelectedCrmId(null);
+    form.reset({
+      given_names: "",
+      family_name: "",
+      relationship: hasMainApplicant ? "" : "main_applicant",
+      gender: "",
+      birth_day: "",
+      birth_month: "",
+      birth_year: "",
+    });
+  };
+
+  const handleSubmit = (data) => {
+    onSave({ ...data, zohoDependentId: selectedCrmId || undefined });
+    form.reset();
+    setSelectedCrmId(null);
+  };
+
+  const showCrmSection = !editingProfile && availableCrmDependents.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -509,6 +690,61 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
           <DialogTitle>{editingProfile ? "Edit Person" : "Add Person"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+
+          {/* CRM dependents quick-select */}
+          {showCrmSection && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">From your CRM profile</p>
+              <div className="space-y-1.5">
+                {availableCrmDependents.map((dep) => {
+                  const isSelected = selectedCrmId === dep.zohoDependentId;
+                  const initials =
+                    (dep.given_names?.[0] || "").toUpperCase() +
+                    (dep.family_name?.[0] || "").toUpperCase();
+                  const relLabel =
+                    dep.relationship === "spouse" ? "Spouse / Partner" :
+                    dep.relationship === "child" ? "Dependent Child" : "Other Dependent";
+                  const dob = dep.birth_year
+                    ? [dep.birth_day ? String(parseInt(dep.birth_day, 10)) : "", MONTH_NUM_TO_NAME[dep.birth_month] || dep.birth_month || "", dep.birth_year].filter(Boolean).join(" ")
+                    : null;
+
+                  return (
+                    <button
+                      key={dep.zohoDependentId}
+                      type="button"
+                      onClick={() => isSelected ? handleClearCrm() : handleSelectCrm(dep)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? "border-[#285646] bg-[#285646]/5 ring-1 ring-[#285646]"
+                          : "border-gray-200 hover:border-[#285646]/50 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        isSelected ? "bg-[#285646] text-white" : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {initials || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {dep.given_names} {dep.family_name}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {relLabel}{dob ? ` · DOB: ${dob}` : ""}{dep.citizenship ? ` · ${dep.citizenship}` : ""}
+                        </p>
+                      </div>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#285646] shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <div className="flex-1 border-t border-gray-200" />
+                <span className="text-xs text-gray-400">or add new person manually</span>
+                <div className="flex-1 border-t border-gray-200" />
+              </div>
+            </div>
+          )}
+
           {/* Relationship */}
           <div>
             <Label className="mb-2 block font-medium">
@@ -613,14 +849,19 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
           <Button
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
-            className="bg-[#285646] hover:bg-[#1f4236] text-white"
+            disabled={isSaving}
+            className="bg-[#285646] hover:bg-[#1f4236] text-white min-w-[120px]"
             data-testid="button-save-profile"
           >
-            {editingProfile ? "Save Changes" : "Add Person"}
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              editingProfile ? "Save Changes" : "Add Person"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -630,26 +871,36 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
 
 export default function ApplicationProfilePage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
   const draftSnap = useSnapshot(draftStore);
+  const authSnap = useSnapshot(authStore);
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [nmfDialogOpen, setNmfDialogOpen] = useState(false);
   const [editingNmf, setEditingNmf] = useState(null);
   const [deletingNmfId, setDeletingNmfId] = useState(null);
+  const [isNmfSaving, setIsNmfSaving] = useState(false);
+
+  // CRM dependents state
+  const [crmDependents, setCrmDependents] = useState([]);
+  const [crmLoading, setCrmLoading] = useState(false);
+  const [crmError, setCrmError] = useState(null);
 
   useEffect(() => {
-    const appIdFromUrl = searchParams.get("applicationId");
+    const appIdFromUrl =
+      getApplicationIdFromSearchParams(searchParams) ?? getApplicationIdFromPathname(pathname);
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
-  }, [searchParams, draftSnap.currentApplicationId]);
+  }, [searchParams, pathname, draftSnap.currentApplicationId]);
 
   // Open NMF dialog from sidebar edit link (?editNonMigratingId=...)
   useEffect(() => {
@@ -663,6 +914,34 @@ export default function ApplicationProfilePage() {
     }
   }, [searchParams]);
 
+  // Fetch CRM dependents when userId/zohoContactId are available
+  const fetchCrmDependents = useCallback(async () => {
+    const userId = authSnap.user?.id;
+    const zohoContactId = authSnap.userProfile?.zohoContactId;
+    if (!userId) return;
+    setCrmLoading(true);
+    setCrmError(null);
+    try {
+      const params = new URLSearchParams({ userId });
+      if (zohoContactId) params.set("zohoContactId", zohoContactId);
+      const res = await fetch(`/api/intake/dependents?${params.toString()}`);
+      const data = await res.json();
+      if (data.success) {
+        setCrmDependents(data.dependents || []);
+      } else if (data.reason !== "no_zoho_contact") {
+        setCrmError(data.error || "Failed to load");
+      }
+    } catch {
+      setCrmError("Network error");
+    } finally {
+      setCrmLoading(false);
+    }
+  }, [authSnap.user?.id, authSnap.userProfile?.zohoContactId]);
+
+  useEffect(() => {
+    fetchCrmDependents();
+  }, [fetchCrmDependents]);
+
   const profiles = draftSnap.draft?.profiles || [];
   const hasMainApplicant = profiles.some(p => p.relationship === "main_applicant");
   // Sort: main applicant first, then spouse, then children, then others
@@ -672,19 +951,24 @@ export default function ApplicationProfilePage() {
   });
 
   const handleAddProfile = async (data) => {
-    if (editingProfile) {
-      await draftStore.updateProfile(editingProfile.id, data);
-      toast({ title: "Person updated", description: `${data.given_names} ${data.family_name} has been updated.` });
-    } else {
-      const newProfile = await draftStore.addProfile(data);
-      // Auto-set as active if first profile
-      if (profiles.length === 0) {
-        draftStore.setActiveProfile(newProfile.id);
+    setIsProfileSaving(true);
+    try {
+      if (editingProfile) {
+        await draftStore.updateProfile(editingProfile.id, data);
+        toast({ title: "Person updated", description: `${data.given_names} ${data.family_name} has been updated.` });
+      } else {
+        const newProfile = await draftStore.addProfile(data);
+        // Auto-set as active if first profile
+        if (profiles.length === 0) {
+          draftStore.setActiveProfile(newProfile.id);
+        }
+        toast({ title: "Person added", description: `${data.given_names} ${data.family_name} has been added to the application.` });
       }
-      toast({ title: "Person added", description: `${data.given_names} ${data.family_name} has been added to the application.` });
+      setDialogOpen(false);
+      setEditingProfile(null);
+    } finally {
+      setIsProfileSaving(false);
     }
-    setDialogOpen(false);
-    setEditingProfile(null);
   };
 
   const handleEdit = (profile) => {
@@ -708,15 +992,48 @@ export default function ApplicationProfilePage() {
   const nonMigratingMembers = draftSnap.draft?.non_migrating_members || [];
 
   const handleAddNmf = async (data) => {
-    if (editingNmf) {
-      await draftStore.updateNonMigratingMember(editingNmf.id, data);
-      toast({ title: "Member updated", description: "Non-migrating family member has been updated." });
-    } else {
-      await draftStore.addNonMigratingMember(data);
-      toast({ title: "Member added", description: "Non-migrating family member has been added." });
+    if (!draftSnap.currentApplicationId) {
+      toast({
+        title: "Could not save",
+        description:
+          "This page is missing the application reference. Go back via your applications list and open the questionnaire again.",
+        variant: "destructive",
+      });
+      return;
     }
-    setNmfDialogOpen(false);
-    setEditingNmf(null);
+
+    setIsNmfSaving(true);
+    try {
+      if (editingNmf) {
+        const ok = await draftStore.updateNonMigratingMember(editingNmf.id, data);
+        if (!ok) {
+          toast({
+            title: "Could not save",
+            description:
+              "We could not sync this member to your draft. Check that you are signed in and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        toast({ title: "Member updated", description: "Non-migrating family member has been updated." });
+      } else {
+        const saved = await draftStore.addNonMigratingMember(data);
+        if (!saved) {
+          toast({
+            title: "Could not save",
+            description:
+              "We could not sync this member to your draft. Check that you are signed in and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        toast({ title: "Member added", description: "Non-migrating family member has been added." });
+      }
+      setNmfDialogOpen(false);
+      setEditingNmf(null);
+    } finally {
+      setIsNmfSaving(false);
+    }
   };
 
   const handleEditNmf = (member) => {
@@ -725,8 +1042,17 @@ export default function ApplicationProfilePage() {
   };
 
   const handleDeleteNmf = async (memberId) => {
-    await draftStore.deleteNonMigratingMember(memberId);
+    const ok = await draftStore.deleteNonMigratingMember(memberId);
     setDeletingNmfId(null);
+    if (!ok) {
+      toast({
+        title: "Could not remove",
+        description:
+          "We could not sync the change to your draft. Check that you are signed in and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
     toast({ title: "Member removed", description: "Non-migrating family member has been removed." });
   };
 
@@ -739,6 +1065,30 @@ export default function ApplicationProfilePage() {
 
   const getNmfRelationshipLabel = (rel) =>
     NON_MIGRATING_RELATIONSHIPS.find(r => r.value === rel)?.label || rel || "—";
+
+  // CRM dependents not yet added to the profiles list (migrating only)
+  const availableCrmDependents = crmDependents.filter(
+    (dep) =>
+      !dep.isNonMigrating &&
+      !profiles.some(
+        (p) =>
+          (p.zohoDependentId && p.zohoDependentId === dep.zohoDependentId) ||
+          (p.given_names?.toLowerCase() === dep.given_names?.toLowerCase() &&
+            p.family_name?.toLowerCase() === dep.family_name?.toLowerCase())
+      )
+  );
+
+  // CRM non-migrating dependents not yet added to non_migrating_members list
+  const availableCrmNonMigrating = crmDependents.filter(
+    (dep) =>
+      dep.isNonMigrating &&
+      !nonMigratingMembers.some(
+        (m) =>
+          (m.zohoDependentId && m.zohoDependentId === dep.zohoDependentId) ||
+          (m.passport?.given_names?.toLowerCase() === dep.given_names?.toLowerCase() &&
+            m.passport?.family_name?.toLowerCase() === dep.family_name?.toLowerCase())
+      )
+  );
 
   const handleContinue = async () => {
     if (profiles.length === 0) return;
@@ -774,6 +1124,7 @@ export default function ApplicationProfilePage() {
 
     console.log("[DEBUG] Step 4: Navigating to next page");
     const step4Start = performance.now();
+    startNavigation(next);
     router.push(next);
     console.log(`[DEBUG] Step 4 complete: Navigation initiated in ${(performance.now() - step4Start).toFixed(2)}ms`);
 
@@ -1036,6 +1387,8 @@ export default function ApplicationProfilePage() {
         onSave={handleAddProfile}
         editingProfile={editingProfile}
         hasMainApplicant={hasMainApplicant}
+        availableCrmDependents={availableCrmDependents}
+        isSaving={isProfileSaving}
       />
 
       {/* Non-Migrating Member dialog */}
@@ -1044,6 +1397,8 @@ export default function ApplicationProfilePage() {
         onClose={() => { setNmfDialogOpen(false); setEditingNmf(null); }}
         onSave={handleAddNmf}
         editingMember={editingNmf}
+        availableCrmNonMigrating={availableCrmNonMigrating}
+        isSaving={isNmfSaving}
       />
     </div>
   );

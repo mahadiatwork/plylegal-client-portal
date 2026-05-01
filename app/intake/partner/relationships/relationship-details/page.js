@@ -14,6 +14,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const relationshipDetailsSchema = z.object({
   genuine_ongoing_de_facto: z.enum(["Yes", "No"]).optional(),
@@ -44,6 +45,7 @@ const relationshipDetailsSchema = z.object({
 
 export default function RelationshipDetailsPage() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
@@ -153,6 +155,7 @@ export default function RelationshipDetailsPage() {
       if (result.success) {
         await draftStore.markPageComplete('partner/relationships/relationship-details', null, 'relationships.relationshipDetails');
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        startNavigation(next);
         if (next) router.push(next);
       } else {
         toast({
@@ -174,6 +177,7 @@ export default function RelationshipDetailsPage() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 

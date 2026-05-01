@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 // Use Remote's updated Country List
 const COUNTRIES = [
@@ -966,6 +967,7 @@ const GENERIC_DIALOG_CONFIG = {
 
 export default function Page() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = "protection";
@@ -1087,11 +1089,13 @@ export default function Page() {
     await draftStore.saveSectionData("protection_character", data);
     // await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "protection_character");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(next);
     if (next) router.push(next);
   };
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    startNavigation(prev);
     if (prev) router.push(prev);
   };
 
