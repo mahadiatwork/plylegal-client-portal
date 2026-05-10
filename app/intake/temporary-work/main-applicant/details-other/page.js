@@ -227,7 +227,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
         <div className="mb-4">
-          <Label className="text-sm font-normal mb-2 block">Do you have evidence of this Other Name?</Label>
+          <Label className="text-sm font-normal mb-2 block">Do you have identity documents for this name?</Label>
           <RadioGroup
             value={hasEvidence}
             onValueChange={(value) => { setHasEvidence(value); dialogForm.setValue("has_evidence", value); }}

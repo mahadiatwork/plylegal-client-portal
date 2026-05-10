@@ -84,5 +84,29 @@ function initializeAdminSDK() {
 // Initialize on module load
 const initResult = initializeAdminSDK();
 
+/**
+ * Safely get the Firestore db instance.
+ * Returns { ok: true, db } or { ok: false, error: string }
+ * so API routes can return a clean JSON 500 instead of crashing.
+ */
+export function getDb() {
+  if (db) return { ok: true, db };
+  return {
+    ok: false,
+    error: initResult.error || 'Firebase Admin SDK Firestore not initialized. Ensure FIREBASE_SERVICE_ACCOUNT_KEY is set.',
+  };
+}
+
+/**
+ * Safely get the Firebase Admin Auth instance.
+ */
+export function getAdminAuth() {
+  if (adminAuth) return { ok: true, adminAuth };
+  return {
+    ok: false,
+    error: initResult.error || 'Firebase Admin SDK Auth not initialized. Ensure FIREBASE_SERVICE_ACCOUNT_KEY is set.',
+  };
+}
+
 export { adminApp, adminAuth, db, initResult };
 export default admin;

@@ -1,20 +1,23 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import {
+  getVisaTypeFromPath,
+  getNextRoute,
+  getPreviousRoute,
+} from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -331,69 +334,89 @@ const formSchema = z.object({
     issuing_state: z.string().optional(),
     place_of_issue: z.string().optional(),
   })).optional(),
-  use_chinese_code: z.enum(["yes", "no"]).optional(),
-  chinese_code: z.string().optional(),
 });
 
-export default function Page() {
+export default function ChildOtherNamesPage() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const profileId = searchParams.get('profileId');
+  const params = useParams();
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
 
+  const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
+
+  const childId = typeof params?.childId === "string" ? params.childId : null;
+  const profileId = childId;
+  const appId = searchParams.get("applicationId");
+  const profileReturnAppId = appId || draftSnap.currentApplicationId;
+  const activeProfile =
+    childId && draftSnap.draft?.profiles
+      ? draftSnap.draft.profiles.find((p) => p.id === childId) ?? null
+      : null;
+
+  const populateFormKey = useMemo(() => {
+    const otherData =
+      profileId != null ? draftSnap.draft?.profiles_data?.[profileId]?.other ?? null : null;
+    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(otherData)}`;
+  }, [draftSnap.isLoading, profileId, draftSnap.draft]);
+
   useEffect(() => {
-    const appIdFromUrl = searchParams.get('applicationId');
+    const appIdFromUrl = searchParams.get("applicationId");
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
 
+  useEffect(() => {
+    if (!childId) return;
+    if (!activeProfile || activeProfile.relationship !== "child") {
+      router.replace(
+        profileReturnAppId
+          ? `/intake/temporary-work/profile?applicationId=${encodeURIComponent(profileReturnAppId)}`
+          : "/intake/temporary-work/profile"
+      );
+    }
+  }, [childId, activeProfile, router, profileReturnAppId]);
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       has_other_names: "no",
       other_names: [],
-      use_chinese_code: "no",
-      chinese_code: "",
     },
   });
 
-  // Watch form values
   const hasOtherNames = form.watch("has_other_names");
   const otherNames = form.watch("other_names") || [];
-  const useChineseCode = form.watch("use_chinese_code");
 
   useEffect(() => {
-    const savedData = profileId
-      ? draftSnap.draft?.profiles_data?.[profileId]?.other || {}
-      : draftSnap.draft?.temporary_work_spouse_other || {};
+    if (isSavingRef.current) return;
+    if (draftSnap.isLoading) return;
+    if (!profileId) return;
 
-    if (Object.keys(savedData).length > 0) {
-      Object.keys(savedData).forEach((key) => {
-        if (savedData[key] !== undefined && savedData[key] !== null) {
-          form.setValue(key, savedData[key]);
-        }
-      });
+    const savedData = draftSnap.draft?.profiles_data?.[profileId]?.other || {};
+
+    if (savedData && Object.keys(savedData).length > 0) {
+      const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+      const formData = {
+        has_other_names: safeStr(savedData.has_other_names) || "no",
+        other_names: savedData.other_names || [],
+      };
+
+      form.reset(formData);
     }
-  }, [draftSnap.draft?.temporary_work_spouse_other, draftSnap.draft?.profiles_data, profileId, form]);
+  }, [populateFormKey]);
 
   const onSubmit = async (data) => {
-    const result = profileId
-      ? await draftStore.saveProfileSectionData(profileId, "other", data)
-      : await draftStore.saveSectionData("temporary_work_spouse_other", data);
-
+    const result = await draftStore.saveProfileSectionData(profileId, "other", data);
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`, null, "temporary_work_spouse_other");
-      }
-
+      await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/other`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
       if (next) router.push(next);
@@ -404,44 +427,34 @@ export default function Page() {
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-    startNavigation(prev);
-    if (prev) router.push(prev);
+    if (prev) {
+      startNavigation(prev);
+      router.push(prev);
+    }
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    const result = profileId
-      ? await draftStore.saveProfileSectionData(profileId, "other", values)
-      : await draftStore.saveSectionData("temporary_work_spouse_other", values);
-
-    if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
+    setIsSaving(true);
+    isSavingRef.current = true;
+    try {
+      const values = form.getValues();
+      const result = await draftStore.saveProfileSectionData(profileId, "other", values);
+      if (result.success) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/other`);
+        toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
-        await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`);
+        toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
       }
-      toast({
-        title: "Draft saved",
-        description: "Your changes have been saved successfully",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to save draft",
-        variant: "destructive",
-      });
+    } finally {
+      setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 
   const updateOtherNames = async (newNames) => {
     const currentValues = form.getValues();
     form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-
-    if (profileId) {
-      await draftStore.saveProfileSectionData(profileId, "other", { ...currentValues, other_names: newNames });
-    } else {
-      await draftStore.saveSectionData("temporary_work_spouse_other", { ...currentValues, other_names: newNames });
-    }
+    await draftStore.saveProfileSectionData(profileId, "other", { ...currentValues, other_names: newNames });
   };
 
   const otherNameColumns = [
@@ -450,12 +463,18 @@ export default function Page() {
     { key: "reason_for_change", label: "Reason for Change" },
   ];
 
+  if (!activeProfile || activeProfile.relationship !== "child") {
+    return null;
+  }
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Other Personal Details</CardTitle>
+        <CardTitle className="text-2xl font-semibold">
+          Other Names — {activeProfile.given_names} {activeProfile.family_name}
+        </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          In this section, provide additional details about the main applicant's spouse/partner.
+          Provide other name details for this dependent child included in the application.
         </p>
       </CardHeader>
       <CardContent>
@@ -467,7 +486,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
+                  Has this child ever had or been known by any other Name or Alias, or had a different name spelling?
                 </Label>
                 <RadioGroup
                   value={form.watch("has_other_names")}
@@ -496,7 +515,7 @@ export default function Page() {
               {hasOtherNames === "yes" && (
                 <div className="pl-0 mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of the other names your Spouse/Partner has been known by, including names before marriage
+                    Enter details of the other names this child has been known by, including names before adoption
                   </p>
                   <RepeaterTable
                     data={otherNames}
@@ -520,47 +539,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
-            {/* Question 2: Chinese Commercial Code */}
-            <div className="space-y-4">
-              <div>
-                <Label className="text-base font-normal text-gray-900">
-                  Does your Spouse/Partner use a Chinese Commercial Code for their name?
-                </Label>
-                <RadioGroup
-                  value={form.watch("use_chinese_code")}
-                  onValueChange={(value) => form.setValue("use_chinese_code", value)}
-                  className="flex gap-4 mt-2"
-                  data-testid="radio-use-chinese-code"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="chinese-code-yes" data-testid="radio-chinese-code-yes" />
-                    <Label htmlFor="chinese-code-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="chinese-code-no" data-testid="radio-chinese-code-no" />
-                    <Label htmlFor="chinese-code-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {useChineseCode === "yes" && (
-                <div className="pl-0 mt-4">
-                  <Label htmlFor="chinese_code">Chinese Commercial Code</Label>
-                  <Input
-                    id="chinese_code"
-                    {...form.register("chinese_code")}
-                    className="max-w-md mt-1"
-                    data-testid="input-chinese-code"
-                    placeholder="Enter your Chinese Commercial Code"
-                  />
-                </div>
-              )}
-            </div>
           </div>
 
           <FormNavigation
@@ -568,7 +546,7 @@ export default function Page() {
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}
             nextLabel="Continue"
-            loading={draftSnap.isSaving}
+            loading={isSaving}
           />
         </form>
       </CardContent>

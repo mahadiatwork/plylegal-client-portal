@@ -127,16 +127,19 @@ class ZohoCRMClient {
       }
       
       // Extract detailed error information
-      const zohoError = error.response?.data;
+      const zohoBody = error.response?.data;
       const statusCode = error.response?.status;
       
+      // Zoho bulk API returns: { data: [{ code, message, details, status: 'error' }] }
+      const zohoError = zohoBody?.data?.[0] || zohoBody;
+      
       // Log detailed error information
-      console.error('Zoho API Error:', {
+      console.error('Zoho API Error:', JSON.stringify({
         status: statusCode,
         code: zohoError?.code,
         message: zohoError?.message || error.message,
-        details: zohoError?.details || zohoError,
-      });
+        details: zohoError?.details || zohoBody,
+      }, null, 2));
       
       // Create a more informative error
       if (zohoError) {
@@ -144,7 +147,7 @@ class ZohoCRMClient {
         const enhancedError = new Error(errorMessage);
         enhancedError.code = zohoError.code;
         enhancedError.status = statusCode;
-        enhancedError.details = zohoError.details || zohoError;
+        enhancedError.details = zohoError.details || zohoBody;
         throw enhancedError;
       }
       
@@ -225,7 +228,20 @@ class ZohoCRMClient {
         data: [recordData],
       });
       // v7 API returns { data: [{...}] } - get first element
-      return response.data?.[0] || null;
+      const created = response.data?.[0] || null;
+
+      if (created?.status === 'error') {
+        console.error(`Zoho ${moduleName} create failed:`, JSON.stringify(created, null, 2));
+        const errorMessage = created.message || `Zoho ${moduleName} create failed`;
+        const enhancedError = new Error(errorMessage);
+        enhancedError.code = created.code;
+        enhancedError.status = 400;
+        enhancedError.details = created.details || created;
+        throw enhancedError;
+      }
+
+      console.log(`Zoho ${moduleName} create response:`, JSON.stringify(created, null, 2));
+      return created;
     } catch (error) {
       console.error(`Error creating ${moduleName} record:`, error.message);
       throw error;
@@ -303,6 +319,9 @@ class ZohoCRMClient {
         return [];
       }
       console.error('COQL query error:', error.message);
+      if (error.response?.data) {
+        console.error('COQL error details:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }

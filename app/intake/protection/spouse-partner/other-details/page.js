@@ -166,7 +166,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
-            Do you have evidence of this Other Name? <span className="text-red-500">*</span>
+            Do you have identity documents for this name? <span className="text-red-500">*</span>
           </Label>
           <RadioGroup
             value={hasEvidence}

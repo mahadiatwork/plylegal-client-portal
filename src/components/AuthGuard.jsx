@@ -29,6 +29,9 @@ export function AuthGuard({ children }) {
     const protectedRoutes = ["/applications", "/profile", "/intake"];
     const isProtected = protectedRoutes.some(route => pathname?.startsWith(route));
     
+    // Admin routes require both auth and admin role
+    const isAdminRoute = pathname?.startsWith("/admin");
+    
     // Routes that don't require profile completion
     const profileSetupRoutes = ["/profile/setup", "/profile"];
     const isProfileRoute = profileSetupRoutes.some(route => pathname?.startsWith(route));
@@ -40,6 +43,24 @@ export function AuthGuard({ children }) {
     // Redirect to login if not authenticated and trying to access protected route
     if (isProtected && !snap.isAuthenticated) {
       router.push("/login");
+      return;
+    }
+    
+    // Redirect to login if not authenticated and trying to access admin route
+    if (isAdminRoute && !snap.isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    
+    // Redirect non-admin users trying to access admin routes
+    if (
+      isAdminRoute &&
+      snap.isAuthenticated &&
+      snap.userProfile &&
+      snap.userProfile.role !== "admin" &&
+      !isAccessDeniedPage
+    ) {
+      router.push("/access-denied");
       return;
     }
 
@@ -87,12 +108,22 @@ export function AuthGuard({ children }) {
   
   // Don't render children until auth check is complete
   if (pathname !== "/login" && !snap.isAuthenticated) {
-    const protectedRoutes = ["/applications", "/profile", "/intake"];
+    const protectedRoutes = ["/applications", "/profile", "/intake", "/admin"];
     const isProtected = protectedRoutes.some(route => pathname?.startsWith(route));
     
     if (isProtected) {
       return null; // or a loading spinner
     }
+  }
+  
+  // Don't render admin pages for non-admin users
+  if (
+    pathname?.startsWith("/admin") &&
+    snap.isAuthenticated &&
+    snap.userProfile &&
+    snap.userProfile.role !== "admin"
+  ) {
+    return null;
   }
   
   return <>{children}</>;

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore, authStore } from "@/stores";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, ClipboardList, AlertCircle } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
@@ -22,6 +22,60 @@ export default function ApplicationsPage() {
   const [isSyncing, setIsSyncing] = useState(true);
   const [hasSynced, setHasSynced] = useState(false);
   const [navigatingId, setNavigatingId] = useState(null);
+
+  const [questionnaireCount, setQuestionnaireCount] = useState(null);
+  const [questionnaireLoading, setQuestionnaireLoading] = useState(false);
+  const [questionnaireError, setQuestionnaireError] = useState(null);
+
+  const fetchQuestionnaireCount = useCallback(async () => {
+    const uid = authSnap.user?.id;
+    if (!uid) return;
+    const user = auth.currentUser;
+    if (!user) {
+      setQuestionnaireError("Please sign in again to load your questionnaire summary.");
+      setQuestionnaireCount(null);
+      return;
+    }
+    setQuestionnaireLoading(true);
+    setQuestionnaireError(null);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/questionnaires/count", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) {
+          setQuestionnaireError("You need to be signed in to see how many questionnaires you have saved.");
+        } else {
+          setQuestionnaireError(data.error || "Could not load your questionnaire count.");
+        }
+        setQuestionnaireCount(null);
+        return;
+      }
+      if (data.success && typeof data.count === "number") {
+        setQuestionnaireCount(data.count);
+      } else {
+        setQuestionnaireError("Unexpected response from server.");
+        setQuestionnaireCount(null);
+      }
+    } catch (err) {
+      setQuestionnaireError(err.message || "Something went wrong. Please try again.");
+      setQuestionnaireCount(null);
+    } finally {
+      setQuestionnaireLoading(false);
+    }
+  }, [authSnap.user?.id]);
+
+  useEffect(() => {
+    if (!authSnap.isAuthenticated || !authSnap.user?.id) {
+      setQuestionnaireCount(null);
+      setQuestionnaireError(null);
+      setQuestionnaireLoading(false);
+      return;
+    }
+    fetchQuestionnaireCount();
+  }, [authSnap.isAuthenticated, authSnap.user?.id, fetchQuestionnaireCount]);
 
   const openApplication = (app) => {
     if (navigatingId) return; // prevent double-click
@@ -88,6 +142,42 @@ export default function ApplicationsPage() {
             <h1 className="font-semibold text-gray-900 text-2xl">Visa Applications</h1>
             <p className="text-sm text-gray-700 mt-1">Manage your visa applications</p>
           </div>
+
+          {authSnap.user?.id && (
+            <div className="mb-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4 flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-primary/10 p-2">
+                <ClipboardList className="h-5 w-5 text-primary shrink-0" aria-hidden />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-medium text-gray-900">Saved questionnaires</h2>
+                {questionnaireLoading ? (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
+                    <span>Loading your questionnaire summary…</span>
+                  </div>
+                ) : questionnaireError ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-start gap-2 text-sm text-red-700">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+                      <span>{questionnaireError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fetchQuestionnaireCount()}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : questionnaireCount !== null ? (
+                  <p className="mt-2 text-sm text-gray-700">
+                    You have {questionnaireCount} saved questionnaire
+                    {questionnaireCount === 1 ? "" : "s"}.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )}
           
           {isLoading ? (
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-12 sm:p-32 flex flex-col items-center justify-center min-h-[300px] sm:min-h-[450px]">

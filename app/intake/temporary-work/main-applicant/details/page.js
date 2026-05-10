@@ -8,8 +8,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
+import { getNextRoute, getPreviousRoute, getVisaTypeFromPath, getApplicationIdFromPathname } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,6 @@ const formSchema = z.object({
   prefix: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
-  preferred_names: z.string().optional(),
   gender: z.string().optional(),
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
@@ -51,7 +50,7 @@ const formSchema = z.object({
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
 
-  citizenship_other_than_birth: z.enum(["yes", "no"]).optional(),
+  citizenship_other_than_birth: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
   citizenships: z.array(citizenshipRowSchema).optional(),
 }).refine(
   (data) => {
@@ -77,7 +76,7 @@ export default function Page() {
 
   // ── Profile-awareness ──────────────────────────────────────────────────────
   const profileId = getProfileIdFromSearchParams(searchParams);
-  const appId = getApplicationIdFromSearchParams(searchParams);
+  const appId = getApplicationIdFromPathname(pathname);
   const activeProfile = profileId ? draftSnap.draft?.profiles?.find(p => p.id === profileId) : null;
 
   /** Profile card on `draft.profiles` (DOB lives here). When URL has no profileId, use main applicant row. */
@@ -109,12 +108,12 @@ export default function Page() {
 
   // Set application ID from URL params if available
   useEffect(() => {
-    const appIdFromUrl = getApplicationIdFromSearchParams(searchParams);
+    const appIdFromUrl = getApplicationIdFromPathname(pathname);
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     }
-  }, [searchParams, draftSnap.currentApplicationId]);
+  }, [pathname, draftSnap.currentApplicationId]);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -130,7 +129,6 @@ export default function Page() {
       prefix: "",
       family_name: "",
       given_names: "",
-      preferred_names: "",
       gender: "",
       birth_day: "",
       birth_month: "",
@@ -209,7 +207,6 @@ export default function Page() {
         prefix: safeStr(savedData.prefix),
         family_name: profileForDob ? safeStr(profileForDob.family_name) : safeStr(savedData.family_name),
         given_names: profileForDob ? safeStr(profileForDob.given_names) : safeStr(savedData.given_names),
-        preferred_names: safeStr(savedData.preferred_names),
         gender: profileForDob ? safeStr(profileForDob.gender) : safeStr(savedData.gender),
         birth_day: normalizeNumber(savedData.birth_day) || profileDob.birth_day,
         birth_month: normalizeMonth(savedData.birth_month) || profileDob.birth_month,
@@ -246,7 +243,7 @@ export default function Page() {
         birth_year: profileDob.birth_year,
         completing_family_name: "", completing_given_names: "", completing_preferred_names: "",
         completing_gender: "", completing_birth_day: "", completing_birth_month: "", completing_birth_year: "",
-        prefix: "", preferred_names: "", country_of_birth: "", city_of_birth: "", state_of_birth: "",
+        prefix: "", country_of_birth: "", city_of_birth: "", state_of_birth: "",
         marital_status: "", marital_status_date_day: "", marital_status_date_month: "", marital_status_date_year: "",
         citizenship_other_than_birth: identityLegacy?.citizenships?.length ? "yes" : "",
         citizenships: identityLegacy?.citizenships?.length ? identityLegacy.citizenships : [],
@@ -573,18 +570,6 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Other names/spellings */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium border-b pb-2">Other names/spellings</h3>
-            <div>
-              <Label>Preferred Names</Label>
-              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
-              {form.formState.errors.preferred_names?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
-              )}
-            </div>
-          </div>
-
           {/* Citizenships */}
           <div className="space-y-6">
             <h3 className="text-lg font-medium border-b pb-2">Citizenships</h3>
@@ -611,6 +596,9 @@ export default function Page() {
                   <Label htmlFor="cotb-no" className="ml-2 cursor-pointer font-normal">No</Label>
                 </div>
               </RadioGroup>
+              {form.formState.errors.citizenship_other_than_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.citizenship_other_than_birth.message}</p>
+              )}
             </div>
             {citizenshipOther === "yes" && (
               <div className="mt-4">
@@ -659,6 +647,7 @@ export default function Page() {
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}
             loading={isSaving}
+            submitting={isSaving}
             saveLabel="Save Draft"
             nextLabel="Continue"
           />

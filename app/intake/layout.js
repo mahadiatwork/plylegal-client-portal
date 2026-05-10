@@ -29,6 +29,7 @@ import {
   getVisaTypeFromPath,
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
+import React from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
@@ -214,7 +215,7 @@ export default function IntakeLayout({ children }) {
   const isSectionExpanded = (href) => expandedSections.has(href);
 
   return (
-    <div className="h-screen overflow-hidden bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Mobile Header */}
       <div className="lg:hidden flex-shrink-0 z-40 bg-card border-b border-card-border">
         <div className="flex items-center justify-between p-4">
@@ -427,7 +428,7 @@ export default function IntakeLayout({ children }) {
                                           : profile.relationship === 'spouse'
                                             ? TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
                                             : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                    ).map((subpage) => {
+                                    ).map((subpage, index) => {
                                       const isActive =
                                         effectiveProfileId === profileKey &&
                                         (profile.relationship === 'child' && subpage.pathSuffix
@@ -439,28 +440,50 @@ export default function IntakeLayout({ children }) {
                                           : `${visaType}/${profile.relationship === 'spouse' ? 'spouse-partner' : 'main-applicant'}/${subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1]}__${profileKey}`;
                                       const isComplete = draftSnap.completionStatus?.[completionKey] === true;
                                       return (
-                                        <li key={`${subpage.href}-${profileKey}`} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                              navPush(buildHref(subpage.href, { profileId: profileKey }));
-                                              setSidebarOpen(false);
-                                              draftStore.setActiveProfile(profileKey);
-                                            }}
-                                            className={cn(
-                                              "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
-                                              isActive
-                                                ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
-                                                : "text-sidebar-foreground",
-                                              isComplete && !isActive && "text-sidebar-foreground/70"
-                                            )}
-                                            data-testid={`nav-sub-${subpage.href}-${profileKey}`}
-                                          >
-                                            {isComplete && <Check className="w-3 h-3 mr-2" />}
-                                            {subpage.title}
-                                          </Button>
-                                        </li>
+                                        <React.Fragment key={`${subpage.href}-${profileKey}`}>
+                                          <li className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                navPush(buildHref(subpage.href, { profileId: profileKey }));
+                                                setSidebarOpen(false);
+                                                draftStore.setActiveProfile(profileKey);
+                                              }}
+                                              className={cn(
+                                                "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                                isActive
+                                                  ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
+                                                  : "text-sidebar-foreground",
+                                                isComplete && !isActive && "text-sidebar-foreground/70"
+                                              )}
+                                              data-testid={`nav-sub-${subpage.href}-${profileKey}`}
+                                            >
+                                              {isComplete && <Check className="w-3 h-3 mr-2" />}
+                                              {subpage.title}
+                                            </Button>
+                                          </li>
+                                          {draftSnap.visaContext === '186' && profile.relationship === 'main_applicant' && subpage.title === 'Contact Details' && (
+                                            <li className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  navPush("/intake/temporary-work/non-migrating");
+                                                  setSidebarOpen(false);
+                                                }}
+                                                className={cn(
+                                                  "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                                  internalPathname === '/intake/temporary-work/non-migrating'
+                                                    ? "font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-500/15"
+                                                    : "text-sidebar-foreground"
+                                                )}
+                                              >
+                                                Other Family
+                                              </Button>
+                                            </li>
+                                          )}
+                                        </React.Fragment>
                                       );
                                     })}
                                   </ul>
@@ -471,8 +494,8 @@ export default function IntakeLayout({ children }) {
                         });
                         })()}
 
-                        {/* Non-Migrating Family Members */}
-                        {(draftSnap.draft?.non_migrating_members || []).map((member) => {
+                        {/* Other Family — 186 only */}
+                        {draftSnap.visaContext === '186' && (draftSnap.draft?.non_migrating_members || []).map((member) => {
                           const nmfKey = `nmf-${member.id}`;
                           const isNmfExpanded = isSectionExpanded(nmfKey);
                           const nmfName = [member.passport?.given_names, member.passport?.family_name]
@@ -503,7 +526,7 @@ export default function IntakeLayout({ children }) {
                                       <UserMinus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                                       <span className="flex-1 truncate">
                                         <span className="block text-xs text-sidebar-foreground/50">
-                                          Non-Migrating{member.relationship ? ` (${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)})` : ''}
+                                          Other Family{member.relationship ? ` (${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)})` : ''}
                                         </span>
                                         <span className="font-medium truncate">{nmfName}</span>
                                       </span>
@@ -514,12 +537,7 @@ export default function IntakeLayout({ children }) {
                                         tabIndex={0}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          const base = buildHref("/intake/temporary-work/profile", {
-                                            internalHref: "/intake/temporary-work/profile",
-                                            profileId: null,
-                                          });
-                                          const sep = base.includes("?") ? "&" : "?";
-                                          navPush(`${base}${sep}editNonMigratingId=${encodeURIComponent(member.id)}`);
+                                          navPush(`/intake/temporary-work/non-migrating?editNonMigratingId=${encodeURIComponent(member.id)}`);
                                           setSidebarOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
@@ -725,7 +743,7 @@ export default function IntakeLayout({ children }) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-8 lg:p-12 lg:ml-[17.5rem]">
+        <main className="flex-1 p-8 lg:p-12 lg:ml-[17.5rem]">
           <div className="max-w-4xl mx-auto">
             {children}
           </div>

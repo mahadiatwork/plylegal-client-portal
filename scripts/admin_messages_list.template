@@ -1,0 +1,173 @@
+﻿&quot;use client&quot;;
+
+import { useState, useEffect } from &quot;react&quot;;
+import { useRouter } from &quot;next/navigation&quot;;
+import { useSnapshot } from &quot;valtio&quot;;
+import { authStore } from &quot;@/stores/authStore&quot;;
+import { AppSidebar } from &quot;@/components/AppSidebar&quot;;
+import { AppHeader } from &quot;@/components/AppHeader&quot;;
+import { Button } from &quot;@/components/ui/button&quot;;
+import { useToast } from &quot;@/hooks/use-toast&quot;;
+import { Loader2, MessageSquare, ChevronRight } from &quot;lucide-react&quot;;
+import { auth } from &quot;@/lib/firebase&quot;;
+
+export default function AdminMessagesPage() {
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [conversations, setConversations] = useState([]);
+  const [filter, setFilter] = useState(&quot;all&quot;);
+  const authSnap = useSnapshot(authStore);
+  const { toast } = useToast();
+
+  useEffect(() =&gt; {
+    const loadData = async () =&gt; {
+      try {
+        if (!authSnap.isAuthenticated) {
+          await authStore.checkSession();
+        }
+        if (authSnap.userProfile?.role !== &quot;admin&quot;) {
+          router.push(&quot;/access-denied&quot;);
+          return;
+        }
+        await loadConversations();
+      } catch (error) {
+        console.error(&quot;Error loading admin data:&quot;, error);
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [authSnap.isAuthenticated]);
+
+  const loadConversations = async () =&gt; {
+    try {
+      setIsLoading(true);
+      const idToken = await auth.currentUser?.getIdToken();
+      const url = filter === &quot;unread&quot;
+        ? &quot;/api/chat/admin/conversations?filter=unread&quot;
+        : &quot;/api/chat/admin/conversations&quot;;
+      const response = await fetch(url, {
+        headers: { Authorization: &quot;Bearer &quot; + idToken },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setConversations(data.conversations || []);
+      } else {
+        toast({ title: &quot;Error&quot;, description: data.error || &quot;Failed to load conversations&quot;, variant: &quot;destructive&quot; });
+      }
+    } catch (error) {
+      console.error(&quot;Error loading conversations:&quot;, error);
+      toast({ title: &quot;Error&quot;, description: &quot;Failed to load conversations&quot;, variant: &quot;destructive&quot; });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() =&gt; {
+    if (authSnap.isAuthenticated) {
+      loadConversations();
+    }
+  }, [filter]);
+
+  const formatTime = (timestamp) =&gt; {
+    if (!timestamp) return &quot;&quot;;
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      if (diffMins &lt; 1) return &quot;Just now&quot;;
+      if (diffMins &lt; 60) return diffMins + &quot;m ago&quot;;
+      if (diffHours &lt; 24) return diffHours + &quot;h ago&quot;;
+      if (diffDays &lt; 7) return diffDays + &quot;d ago&quot;;
+      return date.toLocaleDateString(&quot;en-AU&quot;, { month: &quot;short&quot;, day: &quot;numeric&quot; });
+    } catch (_) {
+      return &quot;&quot;;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      &lt;div className=&quot;min-h-screen bg-background flex items-center justify-center&quot;&gt;
+        &lt;Loader2 className=&quot;w-8 h-8 animate-spin text-gray-600&quot; /&gt;
+      &lt;/div&gt;
+    );
+  }
+
+  return (
+    &lt;div className=&quot;min-h-screen bg-background flex&quot;&gt;
+      &lt;div className=&quot;hidden lg:block&quot;&gt;
+        &lt;AppSidebar mode=&quot;admin&quot; /&gt;
+      &lt;/div&gt;
+      &lt;div className=&quot;flex-1 flex flex-col&quot;&gt;
+        &lt;AppHeader onMenuClick={() =&gt; setSidebarOpen(true)} /&gt;
+        &lt;main className=&quot;flex-1 px-6 py-8&quot;&gt;
+          &lt;div className=&quot;max-w-4xl mx-auto&quot;&gt;
+            &lt;div className=&quot;mb-8&quot;&gt;
+              &lt;h1 className=&quot;font-semibold text-gray-900 text-2xl mb-2&quot;&gt;Client Messages&lt;/h1&gt;
+              &lt;p className=&quot;text-sm text-gray-700&quot;&gt;View and respond to client conversations&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;div className=&quot;flex gap-2 mb-6&quot;&gt;
+              &lt;Button
+                variant={filter === &quot;all&quot; ? &quot;default&quot; : &quot;outline&quot;}
+                size=&quot;sm&quot;
+                onClick={() =&gt; setFilter(&quot;all&quot;)}
+                className={filter === &quot;all&quot; ? &quot;bg-[#285646] hover:bg-[#1f4236]&quot; : &quot;&quot;}
+              &gt;
+                All
+              &lt;/Button&gt;
+              &lt;Button
+                variant={filter === &quot;unread&quot; ? &quot;default&quot; : &quot;outline&quot;}
+                size=&quot;sm&quot;
+                onClick={() =&gt; setFilter(&quot;unread&quot;)}
+                className={filter === &quot;unread&quot; ? &quot;bg-[#285646] hover:bg-[#1f4236]&quot; : &quot;&quot;}
+              &gt;
+                Unread
+              &lt;/Button&gt;
+            &lt;/div&gt;
+
+            {conversations.length === 0 ? (
+              &lt;div className=&quot;text-center py-16 bg-white rounded-lg border border-gray-200&quot;&gt;
+                &lt;MessageSquare className=&quot;w-12 h-12 text-gray-400 mx-auto mb-4&quot; /&gt;
+                &lt;p className=&quot;text-gray-600 text-lg mb-1&quot;&gt;No conversations&lt;/p&gt;
+                &lt;p className=&quot;text-sm text-gray-500&quot;&gt;
+                  {filter === &quot;unread&quot; ? &quot;All messages have been read.&quot; : &quot;No client conversations yet.&quot;}
+                &lt;/p&gt;
+              &lt;/div&gt;
+            ) : (
+              &lt;div className=&quot;space-y-2&quot;&gt;
+                {conversations.map((conv) =&gt; (
+                  &lt;div
+                    key={conv.conversationId}
+                    onClick={() =&gt; router.push(&quot;/admin/messages/&quot; + conv.conversationId)}
+                    className=&quot;bg-white rounded-lg border border-gray-200 p-4 hover:border-[#285646] hover:shadow-sm cursor-pointer transition-all flex items-center justify-between&quot;
+                  &gt;
+                    &lt;div className=&quot;flex-1 min-w-0&quot;&gt;
+                      &lt;div className=&quot;flex items-center gap-3 mb-1&quot;&gt;
+                        &lt;span className=&quot;font-medium text-gray-900 truncate&quot;&gt;{conv.clientName || &quot;Client&quot;}&lt;/span&gt;
+                        {conv.applicationType &amp;&amp; (
+                          &lt;span className=&quot;text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex-shrink-0&quot;&gt;
+                            {conv.applicationType}
+                          &lt;/span&gt;
+                        )}
+                        {conv.unreadForAdmin &amp;&amp; (
+                          &lt;span className=&quot;w-2 h-2 bg-[#285646] rounded-full flex-shrink-0&quot; title=&quot;Unread&quot; /&gt;
+                        )}
+                      &lt;/div&gt;
+                      &lt;p className=&quot;text-sm text-gray-600 truncate&quot;&gt;{conv.latestMessagePreview || &quot;No messages&quot;}&lt;/p&gt;
+                      &lt;p className=&quot;text-xs text-gray-400 mt-1&quot;&gt;{formatTime(conv.latestMessageAt)}&lt;/p&gt;
+                    &lt;/div&gt;
+                    &lt;ChevronRight className=&quot;w-5 h-5 text-gray-400 flex-shrink-0 ml-4&quot; /&gt;
+                  &lt;/div&gt;
+                ))}
+              &lt;/div&gt;
+            )}
+          &lt;/div&gt;
+        &lt;/main&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}

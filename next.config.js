@@ -31,6 +31,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+    serverComponentsExternalPackages: ['firebase-admin', 'firebase-admin/firestore', 'firebase-admin/auth'],
   },
   env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -66,7 +67,11 @@ const nextConfig = {
     
     return config;
   },
-  turbopack: {},
+  turbopack: {
+    resolveAlias: {
+      'firebase-admin': 'firebase-admin',
+    },
+  },
 };
 
 export default nextConfig;

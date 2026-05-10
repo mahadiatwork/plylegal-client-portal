@@ -11,7 +11,8 @@ import { PillNav } from "@/components/PillNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Paperclip, Send, Loader2, X, RefreshCw } from "lucide-react";
+import { Send, Loader2, RefreshCw } from "lucide-react";
+import { auth } from "@/lib/firebase";
 
 export default function MessagesPage() {
   const params = useParams();
@@ -19,35 +20,34 @@ export default function MessagesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");
-  const [attachments, setAttachments] = useState([]);
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const applicationsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
   const { toast } = useToast();
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   const appId = params.id;
   const slug = params.slug;
   const application = applicationsSnap.applications.find((app) => app.id === appId);
-  const dealId = application?.zohoId;
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load messages from Zoho CRM (reads Message_Log subform rows)
   const loadMessages = async () => {
-    if (!dealId) {
+    if (!appId) {
       setIsLoading(false);
       return;
     }
 
     try {
       setIsRefreshing(true);
-      const response = await fetch(`/api/messages/fetch?dealId=${dealId}`);
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch(`/api/chat/messages?applicationId=${appId}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -99,20 +99,8 @@ export default function MessagesPage() {
     };
 
     loadData();
-  }, [appId, dealId, authSnap.isAuthenticated, authSnap.user?.id]);
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id]);
 
-  // Handle file attachment
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments((prev) => [...prev, ...files]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removeAttachment = (index) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Format a Timestamp from a Message_Log subform row
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "";
     try {
@@ -140,20 +128,19 @@ export default function MessagesPage() {
     }
   };
 
-  // Send a new client message (appends to Message_Log subform)
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
-    if (!messageText.trim() && attachments.length === 0) {
+    if (!messageText.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a message or attach a file",
+        description: "Please enter a message",
         variant: "destructive",
       });
       return;
     }
 
-    if (!dealId) {
+    if (!appId) {
       toast({
         title: "Error",
         description: "Application not found",
@@ -164,43 +151,45 @@ export default function MessagesPage() {
 
     setIsSending(true);
 
-    // Optimistic UI — append the new message immediately
-    const optimisticRow = {
-      Sender: "Client",
-      Message1: messageText.trim(),
-      Timestamp: new Date().toISOString(),
-      Read_By_Admin: false,
-      Read_By_Client: true,
-      _optimistic: true,
+    // Optimistic UI — append the new message immediately as a chat bubble
+    const optimisticBubble = {
+      id: `temp-${Date.now()}`,
+      senderRole: "client",
+      senderUid: authSnap.user?.id,
+      body: messageText.trim(),
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
     };
-    setMessages((prev) => [...prev, optimisticRow]);
+    setMessages((prev) => [...prev, optimisticBubble]);
     setMessageText("");
-    setAttachments([]);
 
     try {
-      const formData = new FormData();
-      formData.append("dealId", dealId);
-      formData.append("message", optimisticRow.Message1);
-      attachments.forEach((file) => formData.append("attachments", file));
-
-      const response = await fetch("/api/messages/create", {
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/chat/send", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          applicationId: appId,
+          body: optimisticBubble.body,
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Reload to get the canonical state from Zoho
+        // Reload to get canonical state from Firebase
         await loadMessages();
         toast({
           title: "Message sent",
           description: "Your message has been sent to Ply Legal.",
         });
       } else {
-        // Rollback optimistic row on failure
-        setMessages((prev) => prev.filter((m) => !m._optimistic));
-        setMessageText(optimisticRow.Message1);
+        // Rollback optimistic bubble on failure
+        setMessages((prev) => prev.filter((m) => !m.isOptimistic));
+        setMessageText(optimisticBubble.body);
         toast({
           title: "Error",
           description: data.error || "Failed to send message",
@@ -209,8 +198,8 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages((prev) => prev.filter((m) => !m._optimistic));
-      setMessageText(optimisticRow.Message1);
+      setMessages((prev) => prev.filter((m) => !m.isOptimistic));
+      setMessageText(optimisticBubble.body);
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -283,7 +272,7 @@ export default function MessagesPage() {
               </Button>
             </div>
 
-            {/* Messages Area — rendered from flat Message_Log subform rows */}
+            {/* Messages Area — rendered from Client_Messages related list records */}
             <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
               {isRefreshing && messages.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
@@ -294,13 +283,13 @@ export default function MessagesPage() {
                   <p className="text-sm text-gray-600">No messages yet. Start a conversation!</p>
                 </div>
               ) : (
-                messages.map((msg, idx) => {
-                  const isClient = msg.Sender === "Client";
-                  const isAdmin = msg.Sender === "Admin";
+                messages.map((msg) => {
+                  const isClient = msg.senderRole === "client";
+                  const isAdmin = msg.senderRole === "admin";
 
                   return (
                     <div
-                      key={`${msg.Timestamp || ""}-${idx}`}
+                      key={msg.id}
                       className={`flex ${isClient ? "justify-end" : "justify-start"}`}
                     >
                       <div className="max-w-[80%] lg:max-w-[70%]">
@@ -320,9 +309,9 @@ export default function MessagesPage() {
                           <p
                             className={`text-sm whitespace-pre-wrap ${
                               isAdmin ? "text-gray-700" : ""
-                            } ${msg._optimistic ? "opacity-60" : ""}`}
+                            } ${msg.isOptimistic ? "opacity-60" : ""}`}
                           >
-                            {msg.Message1 || ""}
+                            {msg.body || ""}
                           </p>
                         </div>
 
@@ -332,7 +321,7 @@ export default function MessagesPage() {
                             isClient ? "text-right" : "text-left"
                           }`}
                         >
-                          {msg._optimistic ? "Sending…" : formatTimestamp(msg.Timestamp)}
+                          {msg.isOptimistic ? "Sending..." : formatTimestamp(msg.createdAt)}
                         </div>
                       </div>
                     </div>
@@ -344,49 +333,7 @@ export default function MessagesPage() {
 
             {/* Input Area */}
             <div className="border-t border-gray-200 pt-4">
-              {/* Attachment Preview */}
-              {attachments.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 text-sm"
-                    >
-                      <Paperclip className="w-4 h-4 text-gray-600" />
-                      <span className="text-gray-700 truncate max-w-[200px]">{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeAttachment(index)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Message Input Form */}
               <form onSubmit={handleSendMessage} className="flex gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="file-input"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-shrink-0"
-                  data-testid="button-attach-file"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </Button>
-
                 <Textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
@@ -404,7 +351,7 @@ export default function MessagesPage() {
 
                 <Button
                   type="submit"
-                  disabled={isSending || (!messageText.trim() && attachments.length === 0)}
+                  disabled={isSending || !messageText.trim()}
                   className="flex-shrink-0 bg-[#285646] hover:bg-[#1f4236] text-white"
                   data-testid="button-send-message"
                 >
