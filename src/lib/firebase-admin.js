@@ -19,33 +19,59 @@ let initError = null;
 
 function initializeAdminSDK() {
   if (isInitialized) return { success: !!db, error: initError };
-  
+
   isInitialized = true;
-  
+
   try {
     // Check if already initialized
     if (!admin.apps.length) {
       console.log('🔧 Initializing Firebase Admin SDK...');
-      
+
       const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-      
+
       if (!projectId) {
         throw new Error('NEXT_PUBLIC_FIREBASE_PROJECT_ID is required for Admin SDK');
       }
-      
+
       // Try to use service account JSON if available
       let serviceAccount = null;
       const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-      
+
       if (serviceAccountKey) {
+        console.log('🔑 Raw service account key length:', serviceAccountKey.length);
+        console.log('🔑 Raw service account key starts with:', serviceAccountKey.substring(0, 50));
         try {
           serviceAccount = JSON.parse(serviceAccountKey);
+          // Fix for escaped newlines in private key
+          if (serviceAccount && serviceAccount.private_key) {
+            let key = serviceAccount.private_key;
+            
+            // 1. Replace literal \n string with actual newline
+            key = key.replace(/\\n/g, '\n');
+            
+            // 2. If it's still missing newlines in the body, add them (every 64 chars)
+            // But first, normalize by removing existing internal newlines if any
+            const header = '-----BEGIN PRIVATE KEY-----';
+            const footer = '-----END PRIVATE KEY-----';
+            
+            if (key.includes(header) && key.includes(footer)) {
+              let body = key.split(header)[1].split(footer)[0].replace(/\s+/g, '');
+              let formattedBody = '';
+              for (let i = 0; i < body.length; i += 64) {
+                formattedBody += body.substring(i, i + 64) + '\n';
+              }
+              key = `${header}\n${formattedBody}${footer}\n`;
+            }
+            
+            serviceAccount.private_key = key;
+            console.log('🔑 Fixed private key length:', serviceAccount.private_key.length);
+          }
           console.log('✅ Found Firebase service account credentials');
         } catch (parseError) {
           console.warn('⚠️ Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', parseError.message);
         }
       }
-      
+
       // Initialize with service account credentials (REQUIRED for Firestore operations)
       if (serviceAccount) {
         adminApp = admin.initializeApp({
@@ -53,7 +79,7 @@ function initializeAdminSDK() {
           projectId: projectId,
         });
         console.log('✅ Firebase Admin SDK initialized with service account');
-        
+
         // Get services only if we have proper credentials
         adminAuth = getAuth(adminApp);
         db = getFirestore(adminApp);
@@ -72,7 +98,7 @@ function initializeAdminSDK() {
       db = getFirestore(adminApp);
       console.log('✅ Using existing Firebase Admin app');
     }
-    
+
     return { success: true, error: null };
   } catch (error) {
     console.error('❌ Firebase Admin initialization failed:', error.message);

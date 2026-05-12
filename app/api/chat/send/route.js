@@ -90,9 +90,11 @@ export async function POST(request) {
 
     await convRef.set(conversationData, { merge: true });
 
-    try {
+    // Fire-and-forget the Zoho update to keep the portal responsive.
+    // Zoho API is slow (often 5-10s), and this update is non-critical for the user.
+    if (appData.zohoId) {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
-      await upsertZohoReference(
+      upsertZohoReference(
         appData.zohoId,
         conversationId,
         trimmedBody,
@@ -100,9 +102,9 @@ export async function POST(request) {
         now,
         auth.profile?.zohoContactId || null,
         baseUrl
-      );
-    } catch (zohoError) {
-      console.warn('Zoho reference update failed (non-critical):', zohoError.message);
+      ).catch(zohoError => {
+        console.warn('Zoho reference update failed in background:', zohoError.message);
+      });
     }
 
     return NextResponse.json({

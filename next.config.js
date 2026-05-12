@@ -27,6 +27,19 @@ const nextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        // Allow Zoho CRM widget iframe to call widget-specific API routes
+        source: '/api/chat/widget/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type,X-Admin-Key' },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
