@@ -16,10 +16,8 @@ import { nanoid } from 'nanoid';
 import { applicationsStore } from '@/stores/applicationsStore';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
 } from 'firebase/auth';
 import {
   doc,
@@ -162,116 +160,44 @@ export class FirebaseAdapter extends BaseAdapter {
         return { success: true, user };
       } catch (signInError) {
         console.log('❌ Sign in error:', signInError.code);
-        
-        // If user doesn't exist, auto-create account
-        if (signInError.code === 'auth/user-not-found' || 
-            signInError.code === 'auth/invalid-credential' ||
-            signInError.code === 'auth/configuration-not-found') {
-          try {
-            console.log('🔐 Creating new account for:', credentials.email);
-            const userCredential = await createUserWithEmailAndPassword(
-              this.auth,
-              credentials.email,
-              credentials.password
-            );
-            
-            
-            // Set display name from email
-            const displayName = credentials.email.split('@')[0];
-            
-            await updateProfile(userCredential.user, {
-              displayName
-            });
-            
-            // Create user profile document in Firestore
-            await this.getUserProfile(userCredential.user.uid);
-            await this.updateUserProfile(userCredential.user.uid, {
-              portalAccess: true,
-              needsPasswordChange: verification.needsPasswordChange,
-              zohoContactId: verification.zohoContact?.id || undefined,
-              updatedAt: serverTimestamp(),
-            });
-            
-            // Try to populate profile from Zoho CRM (non-blocking)
-            try {
-              const populateResult = await this.populateFromZoho(
-                userCredential.user.uid,
-                userCredential.user.email
-              );
-              
-              if (populateResult.populated) {
-                // Reload profile to get updated data
-                await this.getUserProfile(userCredential.user.uid);
-                
-                // Reload applications to get any new deals/applications from Zoho
-                try {
-                  await applicationsStore.loadApplications(userCredential.user.uid);
-                } catch (appError) {
-                  console.error('⚠️ Failed to reload applications (non-critical):', appError.message);
-                }
-              }
-            } catch (zohoError) {
-              // Log error but don't fail registration
-              console.error('⚠️ Failed to populate from Zoho (non-critical):', zohoError.message);
-            }
-            
-            const user = {
-              id: userCredential.user.uid,
-              email: userCredential.user.email,
-              name: displayName,
-            };
-            
-            return { success: true, user };
-          } catch (createError) {
-            console.error('❌ Error creating user:', createError.code, createError.message);
-            
-            // Handle specific errors
-            if (createError.code === 'auth/email-already-in-use') {
-              return { 
-                success: false, 
-                error: 'This email is already registered. Please check your password.',
-                errorCode: 'EMAIL_EXISTS'
-              };
-            }
-            
-            if (createError.code === 'auth/weak-password') {
-              return { 
-                success: false, 
-                error: 'Password is too weak. Please use at least 6 characters.',
-                errorCode: 'WEAK_PASSWORD'
-              };
-            }
-            
-            if (createError.code === 'auth/configuration-not-found') {
-              return { 
-                success: false, 
-                error: 'Firebase Email/Password authentication is not enabled. Please enable it in Firebase Console.',
-                errorCode: 'CONFIG_NOT_FOUND'
-              };
-            }
-            
-            return { success: false, error: createError.message };
-          }
-        }
-        
-        // Handle wrong password
-        if (signInError.code === 'auth/wrong-password') {
-          return { 
-            success: false, 
-            error: 'Incorrect password. Please try again.',
-            errorCode: 'WRONG_PASSWORD'
+
+        // Handle invalid credential (wrong password or user not found)
+        if (signInError.code === 'auth/invalid-credential' ||
+            signInError.code === 'auth/wrong-password') {
+          return {
+            success: false,
+            error: 'Incorrect email or password. Please try again.',
+            errorCode: 'INVALID_CREDENTIAL'
           };
         }
-        
+
+        // Handle user not found
+        if (signInError.code === 'auth/user-not-found') {
+          return {
+            success: false,
+            error: 'No account found with this email.',
+            errorCode: 'USER_NOT_FOUND'
+          };
+        }
+
         // Handle invalid email
         if (signInError.code === 'auth/invalid-email') {
-          return { 
-            success: false, 
+          return {
+            success: false,
             error: 'Invalid email address format.',
             errorCode: 'INVALID_EMAIL'
           };
         }
-        
+
+        // Handle configuration not found
+        if (signInError.code === 'auth/configuration-not-found') {
+          return {
+            success: false,
+            error: 'Firebase Email/Password authentication is not enabled. Please enable it in Firebase Console.',
+            errorCode: 'CONFIG_NOT_FOUND'
+          };
+        }
+
         // Generic error
         return { success: false, error: signInError.message };
       }
