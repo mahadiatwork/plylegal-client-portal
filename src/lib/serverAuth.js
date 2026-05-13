@@ -62,3 +62,19 @@ export function requireAdmin(auth) {
   }
   return { authorized: true };
 }
+
+export function verifyAdminKey(request) {
+  const adminKey = request.headers.get('x-admin-key') || request.headers.get('X-Admin-Key');
+  const expectedKey = process.env.PORTAL_ADMIN_KEY;
+
+  if (!expectedKey) {
+    console.error('verifyAdminKey: PORTAL_ADMIN_KEY not configured');
+    return { authenticated: false, error: 'Server configuration error' };
+  }
+
+  if (!adminKey || adminKey !== expectedKey) {
+    return { authenticated: false, error: 'Invalid admin key' };
+  }
+
+  return { authenticated: true };
+}
