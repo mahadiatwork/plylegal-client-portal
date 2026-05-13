@@ -65,7 +65,7 @@ export function FormNavigation({
                         className="min-h-9 min-w-[120px] bg-[#285646] hover:bg-[#1e4336] text-white"
                         data-testid="button-next"
                     >
-                        {submitting ? (
+                        {submitting || loading ? (
                             <>
                                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                                 Saving…

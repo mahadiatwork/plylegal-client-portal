@@ -23,42 +23,42 @@ import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const custodySchema = z
   .object({
     under_18: z.enum(["yes", "no"]),
-    primary_custody_has: z.enum(["yes", "no"]).optional(),
+    primary_custody_has: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
     primary_custody_details: z.string().optional(),
-    other_person_rights_has: z.enum(["yes", "no"]).optional(),
+    other_person_rights_has: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
     other_person_rights_details: z.string().optional(),
-    travel_impediments_has: z.enum(["yes", "no"]).optional(),
+    travel_impediments_has: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
     travel_impediments_details: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.under_18 !== "yes") return;
-    if (!data.primary_custody_has) {
+    if (!data.primary_custody_has || data.primary_custody_has === "") {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["primary_custody_has"] });
     }
     if (data.primary_custody_has === "no" && !(data.primary_custody_details || "").trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Please give details",
+        message: "Required",
         path: ["primary_custody_details"],
       });
     }
-    if (!data.other_person_rights_has) {
+    if (!data.other_person_rights_has || data.other_person_rights_has === "") {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["other_person_rights_has"] });
     }
     if (data.other_person_rights_has === "yes" && !(data.other_person_rights_details || "").trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Please give details",
+        message: "Required",
         path: ["other_person_rights_details"],
       });
     }
-    if (!data.travel_impediments_has) {
+    if (!data.travel_impediments_has || data.travel_impediments_has === "") {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["travel_impediments_has"] });
     }
     if (data.travel_impediments_has === "yes" && !(data.travel_impediments_details || "").trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Please give details",
+        message: "Required",
         path: ["travel_impediments_details"],
       });
     }
@@ -170,21 +170,40 @@ export default function ChildCustodyPage() {
   }, [childId, draftSnap.draft?.profiles_data, form]);
 
   const onSubmit = async (data) => {
+    console.log("[CUSTODY] Continue clicked, data:", data);
     const payload = formToCustodyPayload(data);
+    console.log("[CUSTODY] payload:", payload);
     setIsSaving(true);
     try {
       const result = await draftStore.saveProfileSectionData(childId, "custody", payload);
+      console.log("[CUSTODY] save result:", result);
       if (!result.success) {
         toast({ title: "Error", description: "Failed to save", variant: "destructive" });
         return;
       }
       await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-      startNavigation(next);
-      if (next) router.push(next);
+      console.log("[CUSTODY] next route:", next);
+      if (next) {
+        startNavigation(next);
+        router.push(next);
+      } else {
+        toast({ title: "Saved", description: "Your changes have been saved." });
+      }
+    } catch (err) {
+      console.error("[CUSTODY] onSubmit error:", err);
+      toast({ title: "Error", description: err?.message || "Unknown error", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleContinueClick = () => {
+    console.log("[CUSTODY] Continue button clicked");
+    console.log("[CUSTODY] Form values:", form.getValues());
+    console.log("[CUSTODY] Form errors:", form.formState.errors);
+    console.log("[CUSTODY] Form isValid:", form.formState.isValid);
+    form.handleSubmit(onSubmit)();
   };
 
   const handlePrevious = () => {
@@ -194,18 +213,25 @@ export default function ChildCustodyPage() {
   };
 
   const handleSave = async () => {
+    console.log("[CUSTODY] Save clicked");
     const ok = await form.trigger();
+    console.log("[CUSTODY] trigger result:", ok, "errors:", form.formState.errors);
     if (!ok) return;
     const payload = formToCustodyPayload(form.getValues());
+    console.log("[CUSTODY] save payload:", payload);
     setIsSaving(true);
     try {
       const result = await draftStore.saveProfileSectionData(childId, "custody", payload);
+      console.log("[CUSTODY] save result:", result);
       if (result.success) {
         await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
         toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
       }
+    } catch (err) {
+      console.error("[CUSTODY] handleSave error:", err);
+      toast({ title: "Error", description: err?.message || "Unknown error", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -229,7 +255,7 @@ export default function ChildCustodyPage() {
               <RadioGroup
                 value={under18}
                 onValueChange={(v) => {
-                  form.setValue("under_18", v);
+                  form.setValue("under_18", v, { shouldValidate: true });
                   if (v === "no") {
                     form.setValue("primary_custody_has", "");
                     form.setValue("primary_custody_details", "");
@@ -249,6 +275,9 @@ export default function ChildCustodyPage() {
                   ))}
                 </div>
               </RadioGroup>
+              {form.formState.errors.under_18?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.under_18.message}</p>
+              )}
             </div>
 
             {under18 === "yes" && (
@@ -257,7 +286,7 @@ export default function ChildCustodyPage() {
                   <Label>Is this child in the primary applicant&apos;s care and legal custody?</Label>
                   <RadioGroup
                     value={form.watch("primary_custody_has") || ""}
-                    onValueChange={(v) => form.setValue("primary_custody_has", v)}
+                    onValueChange={(v) => form.setValue("primary_custody_has", v, { shouldValidate: true })}
                   >
                     <div className="flex gap-4">
                       {["yes", "no"].map((option) => (
@@ -268,6 +297,9 @@ export default function ChildCustodyPage() {
                       ))}
                     </div>
                   </RadioGroup>
+                  {form.formState.errors.primary_custody_has?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.primary_custody_has.message}</p>
+                  )}
                   {form.watch("primary_custody_has") === "no" && (
                     <div className="mt-2">
                       <Label>Give details</Label>
@@ -276,6 +308,9 @@ export default function ChildCustodyPage() {
                         rows={4}
                         {...form.register("primary_custody_details")}
                       />
+                      {form.formState.errors.primary_custody_details?.message && (
+                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.primary_custody_details.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -286,7 +321,7 @@ export default function ChildCustodyPage() {
                   </Label>
                   <RadioGroup
                     value={form.watch("other_person_rights_has") || ""}
-                    onValueChange={(v) => form.setValue("other_person_rights_has", v)}
+                    onValueChange={(v) => form.setValue("other_person_rights_has", v, { shouldValidate: true })}
                   >
                     <div className="flex gap-4">
                       {["yes", "no"].map((option) => (
@@ -297,6 +332,9 @@ export default function ChildCustodyPage() {
                       ))}
                     </div>
                   </RadioGroup>
+                  {form.formState.errors.other_person_rights_has?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.other_person_rights_has.message}</p>
+                  )}
                   {form.watch("other_person_rights_has") === "yes" && (
                     <div className="mt-2">
                       <Label>Give details</Label>
@@ -305,6 +343,9 @@ export default function ChildCustodyPage() {
                         rows={4}
                         {...form.register("other_person_rights_details")}
                       />
+                      {form.formState.errors.other_person_rights_details?.message && (
+                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.other_person_rights_details.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -313,7 +354,7 @@ export default function ChildCustodyPage() {
                   <Label>Are there any legal impediments to this child&apos;s travel?</Label>
                   <RadioGroup
                     value={form.watch("travel_impediments_has") || ""}
-                    onValueChange={(v) => form.setValue("travel_impediments_has", v)}
+                    onValueChange={(v) => form.setValue("travel_impediments_has", v, { shouldValidate: true })}
                   >
                     <div className="flex gap-4">
                       {["yes", "no"].map((option) => (
@@ -324,6 +365,9 @@ export default function ChildCustodyPage() {
                       ))}
                     </div>
                   </RadioGroup>
+                  {form.formState.errors.travel_impediments_has?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.travel_impediments_has.message}</p>
+                  )}
                   {form.watch("travel_impediments_has") === "yes" && (
                     <div className="mt-2">
                       <Label>Give details</Label>
@@ -332,6 +376,9 @@ export default function ChildCustodyPage() {
                         rows={4}
                         {...form.register("travel_impediments_details")}
                       />
+                      {form.formState.errors.travel_impediments_details?.message && (
+                        <p className="text-sm text-red-600 mt-1">{form.formState.errors.travel_impediments_details.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -340,7 +387,7 @@ export default function ChildCustodyPage() {
 
             <FormNavigation
               onPrev={handlePrevious}
-              onNext={form.handleSubmit(onSubmit)}
+              onNext={handleContinueClick}
               onSave={handleSave}
               nextLabel="Continue"
               loading={isSaving}

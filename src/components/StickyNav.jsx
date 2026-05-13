@@ -70,7 +70,7 @@ export function StickyNav({
             data-testid={nextTestId || "button-continue"}
             className="min-h-[44px] flex-1 sm:flex-none sm:min-w-[120px]"
           >
-            {submitting ? (
+            {submitting || loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                 Saving…

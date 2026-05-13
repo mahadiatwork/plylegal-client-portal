@@ -354,7 +354,7 @@ function appendTemporaryWorkQueryParams(path, applicationId, slug = null, visaCo
     ? getInternalIntakeHref(path).split("?", 2)
     : [getInternalIntakeHref(path), ""];
   const params = new URLSearchParams(queryStr || undefined);
-  const childMatch = pathOnly.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)$/);
+  const childMatch = pathOnly.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|other|identity|custody)$/);
   if (childMatch?.[1]) params.set("profileId", childMatch[1]);
   return buildIntakeHref({
     slug,
@@ -474,7 +474,10 @@ export function getNextRoute(currentHref, visaType, applicationId = null, visaCo
     currentProfileId = new URLSearchParams(window.location.search).get('profileId');
   }
 
-  if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
+  // Child routes embed the profileId in the path, so allRoutes has no query params for them
+  if (visaType === 'temporary-work' && internalCurrentHref.includes('/children/')) {
+    searchHref = internalCurrentHref.split('?')[0];
+  } else if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
     const existingProfileId = new URLSearchParams(internalCurrentHref.split('?')[1] || '').get('profileId');
     if (!existingProfileId) {
       const separator = internalCurrentHref.includes('?') ? '&' : '?';
@@ -483,11 +486,13 @@ export function getNextRoute(currentHref, visaType, applicationId = null, visaCo
   }
 
   const currentIndex = allRoutes.indexOf(searchHref);
+  console.log("[ROUTES] getNextRoute searchHref:", searchHref, "currentIndex:", currentIndex, "allRoutes.length:", allRoutes.length);
   if (currentIndex === -1 || currentIndex === allRoutes.length - 1) {
     return null;
   }
   
   let nextRoute = allRoutes[currentIndex + 1];
+  console.log("[ROUTES] nextRoute:", nextRoute);
   return appendTemporaryWorkQueryParams(nextRoute, applicationId, slug, visaContext);
 }
 
@@ -516,7 +521,10 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
     currentProfileId = new URLSearchParams(window.location.search).get('profileId');
   }
 
-  if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
+  // Child routes embed the profileId in the path, so allRoutes has no query params for them
+  if (visaType === 'temporary-work' && internalCurrentHref.includes('/children/')) {
+    searchHref = internalCurrentHref.split('?')[0];
+  } else if (visaType === 'temporary-work' && currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
     const existingProfileId = new URLSearchParams(internalCurrentHref.split('?')[1] || '').get('profileId');
     if (!existingProfileId) {
       const separator = internalCurrentHref.includes('?') ? '&' : '?';

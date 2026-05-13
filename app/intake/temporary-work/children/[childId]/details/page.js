@@ -24,7 +24,6 @@ const childDetailsSchema = z.object({
   prefix: z.string().optional(),
   family_name: z.string().optional(),
   given_names: z.string().optional(),
-  preferred_names: z.string().optional(),
   gender: z.string().optional(),
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
@@ -99,7 +98,6 @@ export default function ChildDetailsPage() {
       prefix: "",
       family_name: "",
       given_names: "",
-      preferred_names: "",
       gender: "",
       birth_day: "",
       birth_month: "",
@@ -155,7 +153,6 @@ export default function ChildDetailsPage() {
         prefix: safeStr(savedData.prefix),
         family_name: safeStr(savedData.family_name),
         given_names: safeStr(savedData.given_names),
-        preferred_names: safeStr(savedData.preferred_names),
         gender: safeStr(savedData.gender),
         birth_day: normalizeNumber(savedData.birth_day) || profileDob.birth_day,
         birth_month: normalizeMonth(savedData.birth_month) || profileDob.birth_month,
@@ -187,7 +184,6 @@ export default function ChildDetailsPage() {
         birth_month: profileDob.birth_month,
         birth_year: profileDob.birth_year,
         prefix: "",
-        preferred_names: "",
         country_of_birth: "",
         city_of_birth: "",
         state_of_birth: "",
@@ -463,18 +459,6 @@ export default function ChildDetailsPage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Other names/spellings */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium border-b pb-2">Other names/spellings</h3>
-            <div>
-              <Label>Preferred Names</Label>
-              <Input {...form.register("preferred_names")} data-testid="input-preferred-names" />
-              {form.formState.errors.preferred_names?.message && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
-              )}
-            </div>
           </div>
 
           {/* Birthplace Information */}

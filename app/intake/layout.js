@@ -67,7 +67,7 @@ export default function IntakeLayout({ children }) {
   // Child flows use `/temporary-work/children/:childId/details|identity|custody` — id is in the path, not only `?profileId=`.
   const childProfileIdFromPath =
     typeof pathname === "string"
-      ? (internalPathname.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|identity|custody)/) || [])[1] ??
+      ? (internalPathname.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|other|identity|custody)/) || [])[1] ??
         null
       : null;
 
@@ -354,20 +354,10 @@ export default function IntakeLayout({ children }) {
                             const order = { main_applicant: 0, spouse: 1, child: 2, other: 3 };
                             return (order[a.relationship] ?? 4) - (order[b.relationship] ?? 4);
                           });
-                          let nextApplicantSlot = 3;
                           return sortedProfiles.map((profile) => {
                           const profileKey = profile.id;
                           const isProfileExpanded = isSectionExpanded(`profile-${profileKey}`);
                           const profileName = `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Unnamed';
-                          let applicantOrdinal;
-                          if (profile.relationship === 'main_applicant') {
-                            applicantOrdinal = 1;
-                          } else if (profile.relationship === 'spouse') {
-                            applicantOrdinal = 2;
-                          } else {
-                            applicantOrdinal = nextApplicantSlot;
-                            nextApplicantSlot += 1;
-                          }
                           // Type label only (name is shown on the line below). Child/others must not use full name here.
                           const parenLabel =
                             profile.relationship === 'main_applicant'
@@ -401,10 +391,8 @@ export default function IntakeLayout({ children }) {
                                   >
                                     <span className="flex items-center gap-2 text-left">
                                       <span className="flex-1 truncate">
-                                        <span className="block text-xs text-sidebar-foreground/60">
-                                          Applicant {applicantOrdinal} ({parenLabel})
-                                        </span>
                                         <span className="font-medium">{profileName}</span>
+                                        <span className="block text-xs text-sidebar-foreground/60">({parenLabel})</span>
                                       </span>
                                     </span>
                                     <ChevronDown
@@ -743,7 +731,7 @@ export default function IntakeLayout({ children }) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-8 lg:p-12 lg:ml-[17.5rem]">
+        <main className="flex-1 p-8 pb-24 lg:p-12 lg:pb-12 lg:ml-[17.5rem]">
           <div className="max-w-4xl mx-auto">
             {children}
           </div>
