@@ -109,6 +109,7 @@ export default function NonMigratingIdentityPage() {
       });
       return;
     }
+    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/identity`, null, false);
     const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
     startNavigation(toIntakeHref());
     if (next) router.push(toIntakeHref(next));

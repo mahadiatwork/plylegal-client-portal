@@ -217,14 +217,14 @@ export default function IntakeLayout({ children }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Mobile Header */}
-      <div className="lg:hidden flex-shrink-0 z-40 bg-card border-b border-card-border">
+      <div className="lg:hidden flex-shrink-0 z-40 bg-sidebar text-sidebar-foreground border-b border-sidebar-border">
         <div className="flex items-center justify-between p-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             data-testid="button-menu-toggle"
-            className="h-9 w-9"
+            className="h-9 w-9 text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -238,17 +238,22 @@ export default function IntakeLayout({ children }) {
 
         {/* Mobile Section Tabs */}
         {currentSection?.subpages && (
-          <ScrollArea className="border-t border-border">
+          <ScrollArea className="border-t border-sidebar-border">
             <div className="flex gap-1 p-2">
               {currentSection.subpages.map((subpage) => {
                 const href = buildHref(subpage.href);
                 return (
                   <Button
                     key={subpage.href}
-                    variant={isRouteActive(subpage.href) ? "default" : "ghost"}
+                    variant="ghost"
                     size="sm"
                     onClick={() => navPush(href)}
-                    className="min-h-8 text-xs whitespace-nowrap"
+                    className={cn(
+                      "min-h-8 text-xs whitespace-nowrap",
+                      isRouteActive(subpage.href)
+                        ? "bg-white text-sidebar hover:bg-white/90"
+                        : "text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground"
+                    )}
                     data-testid={`tab-${subpage.href}`}
                   >
                     {subpage.title}
@@ -463,7 +468,7 @@ export default function IntakeLayout({ children }) {
                                                 className={cn(
                                                   "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
                                                   internalPathname === '/intake/temporary-work/non-migrating'
-                                                    ? "font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-500/15"
+                                                    ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
                                                     : "text-sidebar-foreground"
                                                 )}
                                               >
@@ -507,11 +512,11 @@ export default function IntakeLayout({ children }) {
                                     variant="ghost"
                                     className={cn(
                                       "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent group",
-                                      isNmfActive && "bg-amber-500/10"
+                                      isNmfActive && "bg-primary/20"
                                     )}
                                   >
                                     <span className="flex items-center gap-2 text-left flex-1 min-w-0">
-                                      <UserMinus className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                      <UserMinus className="w-3.5 h-3.5 text-sidebar-foreground/70 flex-shrink-0" />
                                       <span className="flex-1 truncate">
                                         <span className="block text-xs text-sidebar-foreground/50">
                                           Other Family{member.relationship ? ` (${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)})` : ''}
@@ -529,10 +534,10 @@ export default function IntakeLayout({ children }) {
                                           setSidebarOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
-                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-amber-100 transition-opacity cursor-pointer"
+                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-sidebar-accent transition-opacity cursor-pointer"
                                         title="Edit member"
                                       >
-                                        <Pencil className="w-3 h-3 text-amber-600" />
+                                        <Pencil className="w-3 h-3 text-sidebar-foreground/70" />
                                       </span>
                                       <span
                                         role="button"
@@ -608,7 +613,7 @@ export default function IntakeLayout({ children }) {
                                             className={cn(
                                               "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
                                               isActive
-                                                ? "font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-500/15"
+                                                ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
                                                 : "text-sidebar-foreground"
                                             )}
                                           >

@@ -5,7 +5,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { authStore } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, getApplicationIdFromPathname } from "@/lib/routes";
+import { buildIntakeHref, getApplicationIdFromPathname, getNextRoute, getPreviousRoute } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -29,10 +29,10 @@ import {
   Pencil,
   Trash2,
   UserMinus,
-  ChevronLeft,
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import { FormNavigation } from "@/components/FormNavigation";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
@@ -559,15 +559,20 @@ export default function NonMigratingMembersPage() {
   const draftSnap = useSnapshot(draftStore);
   const authSnap = useSnapshot(authStore);
   const { toast } = useToast();
-  const { setLoading } = useNavigationLoading();
+  const { startNavigation } = useNavigationLoading();
 
   const [nmfDialogOpen, setNmfDialogOpen] = useState(false);
   const [editingNmf, setEditingNmf] = useState(null);
   const [deletingNmfId, setDeletingNmfId] = useState(null);
   const [isNmfSaving, setIsNmfSaving] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const nonMigratingMembers = draftSnap.draft?.non_migrating_members || [];
-  const [hasOtherFamily, setHasOtherFamily] = useState(nonMigratingMembers.length > 0 ? "yes" : null);
+  const [hasOtherFamily, setHasOtherFamily] = useState(() => {
+    const saved = draftSnap.draft?.temporary_work_non_migrating?.has_other_family;
+    if (saved === "yes" || saved === "no") return saved;
+    return nonMigratingMembers.length > 0 ? "yes" : null;
+  });
 
   // CRM dependents state
   const [crmDependents, setCrmDependents] = useState([]);
@@ -687,157 +692,189 @@ export default function NonMigratingMembersPage() {
     toast({ title: "Member removed", description: "Other family member has been removed." });
   };
 
-  const handleBack = () => {
-    setLoading(true);
-    const appId = draftSnap.currentApplicationId;
-    const back = buildIntakeHref({
-      appId,
-      internalHref: "/intake/temporary-work/profile",
-      visaType: "temporary-work",
-      visaContext: draftSnap.visaContext,
-    });
-    router.push(back);
+  const handlePrevious = () => {
+    setIsNavigating(true);
+    const prev = getPreviousRoute(pathname, "temporary-work", draftSnap.currentApplicationId, draftSnap.visaContext);
+    if (prev) {
+      startNavigation(prev);
+      router.push(prev);
+    }
+  };
+
+  const handleContinue = async () => {
+    if (!hasOtherFamily) {
+      toast({ variant: "destructive", title: "Please answer the question above before continuing" });
+      return;
+    }
+    if (hasOtherFamily === "yes" && nonMigratingMembers.length === 0) {
+      toast({ variant: "destructive", title: "Please add at least one other family member" });
+      return;
+    }
+
+    setIsNavigating(true);
+    try {
+      await draftStore.saveSectionData("temporary_work_non_migrating", { has_other_family: hasOtherFamily });
+      await draftStore.markPageComplete("temporary-work/non-migrating", null, false);
+
+      const next = getNextRoute(pathname, "temporary-work", draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (next) {
+        startNavigation(next);
+        router.push(next);
+      }
+    } finally {
+      setIsNavigating(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (hasOtherFamily === null) {
+      toast({ title: "Nothing to save", description: "Please answer the question first." });
+      return;
+    }
+    setIsNavigating(true);
+    try {
+      const result = await draftStore.saveSectionData("temporary_work_non_migrating", { has_other_family: hasOtherFamily });
+      if (result.success) {
+        toast({ title: "Draft saved", description: "Your changes have been saved." });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.error || "Failed to save draft" });
+      }
+    } finally {
+      setIsNavigating(false);
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 p-4">
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={handleBack}
-        className="text-gray-500 hover:text-gray-900 -ml-2"
-      >
-        <ChevronLeft className="w-4 h-4 mr-1" />
-        Back to Application Profile
-      </Button>
-
-      <Card className="rounded-2xl shadow-md bg-white">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
-              <UserMinus className="w-5 h-5 text-amber-600" />
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Other Family</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Add any members of your family unit who are not included in this visa application.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-gray-900">
+            Do you have members of your family unit not included in the application who are not Australian citizens or Australian permanent residents?
+          </Label>
+          <RadioGroup
+            value={hasOtherFamily || ""}
+            onValueChange={(v) => setHasOtherFamily(v)}
+            className="flex items-center gap-6"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="yes" id="other-family-yes" />
+              <Label htmlFor="other-family-yes" className="text-sm font-normal cursor-pointer">Yes</Label>
             </div>
-            Other Family
-          </CardTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            Add any members of your family unit who are not included in this visa application.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <Label className="text-sm font-medium text-gray-900">
-              Do you have members of your family unit not included in the application who are not Australian citizens or Australian permanent residents?
-            </Label>
-            <RadioGroup
-              value={hasOtherFamily || ""}
-              onValueChange={(v) => setHasOtherFamily(v)}
-              className="flex items-center gap-6"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id="other-family-yes" />
-                <Label htmlFor="other-family-yes" className="text-sm font-normal cursor-pointer">Yes</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no" id="other-family-no" />
-                <Label htmlFor="other-family-no" className="text-sm font-normal cursor-pointer">No</Label>
-              </div>
-            </RadioGroup>
-          </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="no" id="other-family-no" />
+              <Label htmlFor="other-family-no" className="text-sm font-normal cursor-pointer">No</Label>
+            </div>
+          </RadioGroup>
+        </div>
 
-          {hasOtherFamily === "yes" && (
-            <>
-              {nonMigratingMembers.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">
-                    {nonMigratingMembers.length} other family member{nonMigratingMembers.length !== 1 ? "s" : ""} added
-                  </p>
-                  {nonMigratingMembers.map((member) => {
-                    const displayName = getNmfDisplayName(member);
-                    const isConfirmingDelete = deletingNmfId === member.id;
-                    return (
-                      <div
-                        key={member.id}
-                        className="flex items-center gap-4 p-4 border border-amber-200 rounded-xl bg-white hover:border-amber-400 hover:shadow-sm transition-all"
-                      >
-                        <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-                          <UserMinus className="w-6 h-6 text-amber-500" />
+        {hasOtherFamily === "yes" && (
+          <>
+            {nonMigratingMembers.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-gray-700">
+                  {nonMigratingMembers.length} other family member{nonMigratingMembers.length !== 1 ? "s" : ""} added
+                </p>
+                {nonMigratingMembers.map((member) => {
+                  const displayName = getNmfDisplayName(member);
+                  const isConfirmingDelete = deletingNmfId === member.id;
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white hover:border-gray-400 hover:shadow-sm transition-all"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+                        <UserMinus className="w-6 h-6 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900 truncate">{displayName}</p>
+                          <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-gray-100 text-gray-700 border-gray-200">
+                            Other Family
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-gray-100 text-gray-700 border-gray-200">
+                            {getNmfRelationshipLabel(member.relationship)}
+                          </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-gray-900 truncate">{displayName}</p>
-                            <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-amber-100 text-amber-800 border-amber-200">
-                              Other Family
-                            </span>
-                            <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-gray-100 text-gray-700 border-gray-200">
-                              {getNmfRelationshipLabel(member.relationship)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-                            {member.place_of_birth?.country && <span>Born in: {member.place_of_birth.country}</span>}
-                          </div>
-                          {isConfirmingDelete && (
-                            <div className="mt-2 flex items-center gap-2 text-xs">
-                              <span className="text-red-600 font-medium">Remove this member?</span>
-                              <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-xs"
-                                onClick={() => handleDeleteNmf(member.id)}>Yes, remove</Button>
-                              <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
-                                onClick={() => setDeletingNmfId(null)}>Cancel</Button>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                          {member.place_of_birth?.country && <span>Born in: {member.place_of_birth.country}</span>}
                         </div>
-                        {!isConfirmingDelete && (
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditNmf(member)}
-                              className="h-8 w-8 text-gray-400 hover:text-amber-600 hover:bg-amber-50"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeletingNmfId(member.id)}
-                              className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                        {isConfirmingDelete && (
+                          <div className="mt-2 flex items-center gap-2 text-xs">
+                            <span className="text-red-600 font-medium">Remove this member?</span>
+                            <Button type="button" size="sm" variant="destructive" className="h-6 px-2 text-xs"
+                              onClick={() => handleDeleteNmf(member.id)}>Yes, remove</Button>
+                            <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
+                              onClick={() => setDeletingNmfId(null)}>Cancel</Button>
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 border-2 border-dashed border-amber-100 rounded-xl">
-                  <UserMinus className="w-10 h-10 text-amber-200 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">No other family members added</p>
-                </div>
-              )}
+                      {!isConfirmingDelete && (
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditNmf(member)}
+                            className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingNmfId(member.id)}
+                            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
+                <UserMinus className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm">No other family members added</p>
+              </div>
+            )}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => { setEditingNmf(null); setNmfDialogOpen(true); }}
-                className="w-full border-dashed border-2 border-amber-300/50 text-amber-700 hover:bg-amber-50/50 hover:border-amber-400 h-11"
-                data-testid="button-add-non-migrating"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Other Family Member
-              </Button>
-            </>
-          )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setEditingNmf(null); setNmfDialogOpen(true); }}
+              className="w-full border-dashed border-2 border-gray-300/50 text-gray-700 hover:bg-gray-50/50 hover:border-gray-400 h-11"
+              data-testid="button-add-non-migrating"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Other Family Member
+            </Button>
+          </>
+        )}
 
-          {hasOtherFamily === "no" && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
-              No other family members to declare.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {hasOtherFamily === "no" && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
+            No other family members to declare.
+          </div>
+        )}
+
+        <FormNavigation
+          onPrev={handlePrevious}
+          onNext={handleContinue}
+          onSave={handleSaveDraft}
+          loading={isNavigating}
+          saveLabel="Save draft"
+          nextLabel="Continue"
+        />
+      </CardContent>
 
       <NonMigratingMemberDialog
         open={nmfDialogOpen}
@@ -847,6 +884,6 @@ export default function NonMigratingMembersPage() {
         availableCrmNonMigrating={availableCrmNonMigrating}
         isSaving={isNmfSaving}
       />
-    </div>
+    </Card>
   );
 }

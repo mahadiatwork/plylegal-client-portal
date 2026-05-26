@@ -77,11 +77,11 @@ export async function POST(request) {
 
     const mapped = zohoClient.mapIntakeProfileToPartnerDependentFields(profile, zohoContactId);
 
-    if (action === 'update' && profile.zohoDependentId) {
+    if ((action === 'update' || action === 'create') && profile.zohoDependentId) {
       const updated = await zohoClient.updateRecord(DEPENDENT_MODULE, profile.zohoDependentId, mapped);
       return NextResponse.json({
         success: true,
-        action,
+        action: 'update',
         applicationId,
         zohoDependentId: getRecordId(updated) || profile.zohoDependentId,
         result: updated,

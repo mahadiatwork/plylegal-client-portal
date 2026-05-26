@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { cn } from "@/lib/utils";
-import { User, FileText, ChevronLeft, Upload, BookOpen, MessageSquare, FileEdit } from "lucide-react";
+import { User, FileText, ChevronLeft, Upload, BookOpen, FileEdit } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BrandLogo } from "@/components/BrandLogo";
 import { getApplicationSlug } from "@/lib/visaDisplay";
@@ -54,7 +54,6 @@ export function AppSidebar({ mode, application, onClose }) {
     { href: `${baseHref}/questionnaire`, label: "Questionnaire", icon: FileText },
     { href: `${baseHref}/uploads`, label: "Upload Documents", icon: Upload },
     { href: `${baseHref}/resources`, label: "Resources", icon: BookOpen },
-    { href: `${baseHref}/messages`, label: "Send Message", icon: MessageSquare },
     { href: `${baseHref}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
   

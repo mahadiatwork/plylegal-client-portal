@@ -274,20 +274,31 @@ class ZohoCRMClient {
     }
   }
 
-  async findContactByEmail(email) {
+  async findContactsByEmail(email) {
     try {
-      // Use email as query parameter: GET /Contacts/search?email={{email}}
       console.log(`🔍 Searching for contact with email: ${email}`);
       const contacts = await this.searchByEmail('Contacts', email);
       console.log(`📋 Search returned ${contacts.length} contact(s)`);
-      
+      if (contacts.length > 0) {
+        console.log('📦 Contact search data:', JSON.stringify(contacts, null, 2));
+      } else {
+        console.log('📭 No contacts found');
+      }
+      return contacts;
+    } catch (error) {
+      console.error(`❌ Error finding contacts by email ${email}:`, error.message);
+      console.error('Error details:', error.response?.data || error);
+      return [];
+    }
+  }
+
+  async findContactByEmail(email) {
+    try {
+      const contacts = await this.findContactsByEmail(email);
       if (contacts.length > 0) {
         console.log('✅ Contact found:', contacts[0].id);
-        console.log('📦 Contact data:', JSON.stringify(contacts[0], null, 2));
         return contacts[0];
       }
-      
-      console.log('📭 No contacts found');
       return null;
     } catch (error) {
       console.error(`❌ Error finding contact by email ${email}:`, error.message);

@@ -129,6 +129,7 @@ export class FirebaseAdapter extends BaseAdapter {
                 userId: userCredential.user.uid,
                 zohoContactId: userProfile.zohoContactId,
                 idToken: idToken,
+                source: 'login',
               }),
             })
               .then(async (response) => {

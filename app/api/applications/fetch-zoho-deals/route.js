@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { ZohoCRMClient } from '@/lib/zohoClient';
 import {
   mapZohoDealToVisaTypeCode,
@@ -9,19 +10,31 @@ import {
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
-// Store for ID token (passed from client)
-let currentIdToken = null;
+const inFlightSyncs = new Map();
 
-function setIdToken(token) {
-  currentIdToken = token;
-}
-
-function getAuthHeaders() {
+function getAuthHeaders(idToken) {
   const headers = { 'Content-Type': 'application/json' };
-  if (currentIdToken) {
-    headers['Authorization'] = `Bearer ${currentIdToken}`;
+  if (idToken) {
+    headers['Authorization'] = `Bearer ${idToken}`;
   }
   return headers;
+}
+
+function buildRequestMeta({ userId, zohoContactId, source }) {
+  return {
+    requestId: randomUUID().slice(0, 8),
+    requestKey: `${userId}:${zohoContactId}`,
+    source: source || 'unknown',
+    userId,
+    zohoContactId,
+  };
+}
+
+function logSync(meta, message, ...args) {
+  console.log(
+    `[fetch-zoho-deals:${meta.requestId}] [source:${meta.source}] [key:${meta.requestKey}] ${message}`,
+    ...args
+  );
 }
 
 // Convert Firestore document to plain object
@@ -71,13 +84,13 @@ function objectToFirestoreDoc(obj) {
 }
 
 // Load applications from Firestore via REST API
-async function loadApplicationsServer(userId) {
+async function loadApplicationsServer(userId, idToken, requestMeta = null) {
   try {
     // Use structured query to filter by userId
     const queryUrl = `${FIRESTORE_BASE_URL}:runQuery`;
     const response = await fetch(queryUrl, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(idToken),
       body: JSON.stringify({
         structuredQuery: {
           from: [{ collectionId: 'applications' }],
@@ -119,8 +132,73 @@ async function loadApplicationsServer(userId) {
   }
 }
 
+async function loadApplicationByZohoIdServer(userId, zohoId, idToken, requestMeta = null) {
+  try {
+    const queryUrl = `${FIRESTORE_BASE_URL}:runQuery`;
+    const response = await fetch(queryUrl, {
+      method: 'POST',
+      headers: getAuthHeaders(idToken),
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'applications' }],
+          where: {
+            compositeFilter: {
+              op: 'AND',
+              filters: [
+                {
+                  fieldFilter: {
+                    field: { fieldPath: 'userId' },
+                    op: 'EQUAL',
+                    value: { stringValue: userId },
+                  },
+                },
+                {
+                  fieldFilter: {
+                    field: { fieldPath: 'zohoId' },
+                    op: 'EQUAL',
+                    value: { stringValue: zohoId },
+                  },
+                },
+              ],
+            },
+          },
+          limit: 1,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Firestore zohoId query failed:', errorText);
+      if (requestMeta) {
+        logSync(requestMeta, `Falling back to local scan for zohoId ${zohoId}`);
+      }
+      const fallbackApps = await loadApplicationsServer(userId, idToken, requestMeta);
+      return fallbackApps.find((app) => app.zohoId === zohoId) || null;
+    }
+
+    const results = await response.json();
+    const match = results.find((r) => r.document);
+    if (!match?.document) return null;
+
+    const docPath = match.document.name;
+    const id = docPath.split('/').pop();
+    return {
+      id,
+      ...firestoreDocToObject(match.document),
+    };
+  } catch (error) {
+    console.error('❌ Error loading application by zohoId:', error.message);
+    if (requestMeta) {
+      logSync(requestMeta, `Falling back to local scan after zohoId query error for ${zohoId}`);
+    }
+    const fallbackApps = await loadApplicationsServer(userId, idToken, requestMeta);
+    return fallbackApps.find((app) => app.zohoId === zohoId) || null;
+  }
+}
+
 // Create application in Firestore via REST API
-async function createApplicationServer(app, userId) {
+async function createApplicationServer(app, userId, idToken) {
   try {
     const docUrl = `${FIRESTORE_BASE_URL}/applications/${app.id}`;
     const now = new Date().toISOString();
@@ -135,7 +213,7 @@ async function createApplicationServer(app, userId) {
     
     const response = await fetch(docUrl, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(idToken),
       body: JSON.stringify(objectToFirestoreDoc(appData))
     });
     
@@ -154,7 +232,7 @@ async function createApplicationServer(app, userId) {
 }
 
 // Update application in Firestore via REST API
-async function updateApplicationServer(id, updates, userId) {
+async function updateApplicationServer(id, updates, userId, idToken) {
   try {
     const docUrl = `${FIRESTORE_BASE_URL}/applications/${id}`;
     const now = new Date().toISOString();
@@ -172,7 +250,7 @@ async function updateApplicationServer(id, updates, userId) {
     
     const response = await fetch(`${docUrl}?${updateMask}`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(idToken),
       body: JSON.stringify(objectToFirestoreDoc(appData))
     });
     
@@ -193,13 +271,13 @@ async function updateApplicationServer(id, updates, userId) {
 }
 
 // Delete application from Firestore via REST API
-async function deleteApplicationServer(id) {
+async function deleteApplicationServer(id, idToken) {
   try {
     const docUrl = `${FIRESTORE_BASE_URL}/applications/${id}`;
     
     const response = await fetch(docUrl, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(idToken)
     });
     
     if (!response.ok) {
@@ -216,175 +294,200 @@ async function deleteApplicationServer(id) {
   }
 }
 
-export async function POST(request) {
+function buildLegacyApplicationKey(reference, type) {
+  return `${reference || ''}::${type || ''}`;
+}
+
+function formatApplicationDate(dateString, fallbackDate) {
+  if (!dateString) {
+    return fallbackDate.toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+
   try {
-    const body = await request.json();
-    const { userId, zohoContactId, idToken } = body;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid date');
+    }
+    return date.toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch (error) {
+    console.warn('Failed to parse date:', dateString, error);
+    return fallbackDate.toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+}
 
-    if (!userId || !zohoContactId) {
-      return NextResponse.json(
-        { success: false, error: 'userId and zohoContactId are required' },
-        { status: 400 }
-      );
+async function runDealSync({ userId, zohoContactId, idToken, source, requestMeta }) {
+  logSync(requestMeta, `Executing sync for contact ${zohoContactId}`);
+  const zohoClient = new ZohoCRMClient();
+  const deals = await zohoClient.getRelatedRecords('Contacts', zohoContactId, 'Deals');
+
+  if (!deals || deals.length === 0) {
+    logSync(requestMeta, 'No deals found in related list; pruning stale CRM-linked applications');
+    const existingWhenEmpty = await loadApplicationsServer(userId, idToken, requestMeta);
+    let staleRemoved = 0;
+    for (const app of existingWhenEmpty || []) {
+      if (!app.zohoId) continue;
+      try {
+        logSync(requestMeta, `Deleting stale CRM application ${app.id} (zohoId: ${app.zohoId})`);
+        const del = await deleteApplicationServer(app.id, idToken);
+        if (del.success) staleRemoved++;
+      } catch (error) {
+        console.error(`❌ Failed to remove stale app ${app.id}:`, error.message);
+      }
     }
 
-    // Set the ID token for authenticated Firestore requests
-    if (idToken) {
-      setIdToken(idToken);
-    }
+    return {
+      success: true,
+      deals: [],
+      rawDealsData: [],
+      message: 'No deals found',
+      staleRemoved,
+      source,
+      requestId: requestMeta.requestId,
+      coalesced: false,
+    };
+  }
 
-    console.log(`🔍 Fetching deals for contact ${zohoContactId} from Zoho CRM...`);
-    const zohoClient = new ZohoCRMClient();
-    
-    // Fetch Deals from related list (same way as Partner_Dependents)
-    const deals = await zohoClient.getRelatedRecords('Contacts', zohoContactId, 'Deals');
-    
-    if (!deals || deals.length === 0) {
-      console.log('📋 No deals found in Deals related list — removing stale CRM-linked applications (Zoho is source of truth)');
-      const existingWhenEmpty = await loadApplicationsServer(userId);
-      let staleRemoved = 0;
-      for (const app of existingWhenEmpty || []) {
-        if (!app.zohoId) continue;
-        try {
-          console.log(`🗑️ Removing stale CRM application (no deals returned): ${app.id} (zohoId: ${app.zohoId})`);
-          const del = await deleteApplicationServer(app.id);
-          if (del.success) staleRemoved++;
-        } catch (e) {
-          console.error(`❌ Failed to remove stale app ${app.id}:`, e.message);
+  logSync(requestMeta, `Found ${deals.length} deals in related list`);
+  console.log('📦 Raw deals JSON data:', JSON.stringify(deals, null, 2));
+
+  const applicationsFromZoho = [];
+  logSync(requestMeta, 'Loading existing applications from Firebase');
+  const existingApps = await loadApplicationsServer(userId, idToken, requestMeta);
+  logSync(requestMeta, `Found ${existingApps?.length || 0} existing applications in Firebase`);
+
+  const existingById = new Map();
+  const existingByZohoId = new Map();
+  const legacyByReferenceType = new Map();
+
+  const cacheApplication = (app) => {
+    if (!app?.id) return;
+    existingById.set(app.id, app);
+    if (app.zohoId) {
+      existingByZohoId.set(app.zohoId, app);
+    } else {
+      legacyByReferenceType.set(buildLegacyApplicationKey(app.reference, app.type), app);
+    }
+  };
+
+  for (const app of existingApps) {
+    cacheApplication(app);
+  }
+
+  for (const deal of deals) {
+    try {
+      const dealName = deal.Deal_Name || deal.DealName || '';
+      const extractVisaType = (name) => {
+        if (!name) return null;
+        const match = name.match(/-\s*([^-]+?)\s*\(/i) || name.match(/-\s*([^-]+?)$/i);
+        return match && match[1] ? match[1].trim() : null;
+      };
+
+      let visaType = deal.Visa_Type || extractVisaType(dealName) || 'Visa Application';
+      visaType = normalizeSkillsInDemandTypeLabel(visaType);
+      const visaTypeCode = mapZohoDealToVisaTypeCode(deal);
+      const now = new Date();
+      const stage = deal.Stage || deal.Deal_Stage || 'Draft';
+      const dealId = String(deal.id);
+
+      const applicationData = {
+        reference: dealName,
+        type: visaType,
+        visaTypeCode,
+        status: stage,
+        closingDate: deal.Closing_Date || '',
+        updated: formatApplicationDate(deal.Modified_Time || deal.Last_Activity_Time, now),
+        lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || now.toISOString(),
+        zohoId: dealId,
+        userId,
+      };
+
+      let existingApp = existingByZohoId.get(dealId) || null;
+      if (!existingApp) {
+        existingApp = await loadApplicationByZohoIdServer(userId, dealId, idToken, requestMeta);
+        if (existingApp) {
+          logSync(requestMeta, `Found live existing application by zohoId ${dealId}: ${existingApp.id}`);
+          cacheApplication(existingApp);
         }
       }
-      return NextResponse.json({
-        success: true,
-        deals: [],
-        rawDealsData: [],
-        message: 'No deals found',
-        staleRemoved,
-      });
-    }
 
-    console.log(`📋 Found ${deals.length} deals in Deals related list`);
-    console.log('📦 Raw deals JSON data:', JSON.stringify(deals, null, 2));
+      if (!existingApp) {
+        const legacyKey = buildLegacyApplicationKey(dealName, visaType);
+        existingApp = legacyByReferenceType.get(legacyKey) || null;
+        if (existingApp) {
+          logSync(requestMeta, `Found legacy application by reference/type match: ${existingApp.id}`);
+        }
+      }
 
-    // Save deals to Firebase as applications
-    const applicationsFromZoho = [];
+      let appId;
+      let isNew = false;
+      let syncedApp;
 
-    // Load all existing applications ONCE before the loop to avoid duplicates
-    console.log('📋 Loading existing applications from Firebase...');
-    const existingApps = await loadApplicationsServer(userId);
-    console.log(`📋 Found ${existingApps?.length || 0} existing applications in Firebase`);
+      if (existingApp) {
+        appId = existingApp.id;
+        logSync(
+          requestMeta,
+          `Updating existing application ${appId} for deal ${dealId} (zohoId: ${existingApp.zohoId || 'none'})`
+        );
+        const updateResult = await updateApplicationServer(
+          appId,
+          { ...applicationData, id: appId },
+          userId,
+          idToken
+        );
+        console.log('💾 Update result:', updateResult);
 
-    for (const deal of deals) {
-      try {
-        // Extract Visa Type from Deal_Name or use Visa_Type field
-        const dealName = deal.Deal_Name || deal.DealName || '';
-        const extractVisaType = (name) => {
-          if (!name) return null;
-          const match = name.match(/-\s*([^-]+?)\s*\(/i) || name.match(/-\s*([^-]+?)$/i);
-          return match && match[1] ? match[1].trim() : null;
-        };
-        let visaType = deal.Visa_Type || extractVisaType(dealName) || 'Visa Application';
-        visaType = normalizeSkillsInDemandTypeLabel(visaType);
-        const visaTypeCode = mapZohoDealToVisaTypeCode(deal);
-        const now = new Date();
-
-        // Use Stage directly from Zoho CRM (don't map it)
-        const stage = deal.Stage || deal.Deal_Stage || 'Draft';
-
-        // Format date from Modified_Time or Last_Activity_Time (format: "26 Sep 2025")
-        const formatDate = (dateString) => {
-          if (!dateString) {
-            return now.toLocaleDateString('en-AU', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            });
-          }
-          try {
-            // Parse ISO date string (e.g., "2025-09-26T19:54:20+10:00")
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-              throw new Error('Invalid date');
-            }
-            return date.toLocaleDateString('en-AU', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            });
-          } catch (e) {
-            console.warn('Failed to parse date:', dateString, e);
-            return now.toLocaleDateString('en-AU', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            });
-          }
-        };
-
-        // Convert deal to application format
-        const applicationData = {
-          reference: dealName,
-          type: visaType,
-          visaTypeCode,
-          status: stage, // Use Stage directly from Zoho CRM
-          closingDate: deal.Closing_Date || '',
-          updated: formatDate(deal.Modified_Time || deal.Last_Activity_Time),
-          lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || now.toISOString(),
-          zohoId: deal.id,
-          userId: userId,
-        };
-
-        // Check if application already exists in Firebase by zohoId first, then by reference/type as fallback
-        let existingApp = existingApps?.find(app => app.zohoId === deal.id);
-        
-        // Fallback: If no match by zohoId, try matching by reference and type (for old apps without zohoId)
-        if (!existingApp) {
-          existingApp = existingApps?.find(app => 
-            app.reference === dealName && 
-            app.type === visaType &&
-            !app.zohoId // Only match old apps that don't have zohoId yet
-          );
-          if (existingApp) {
-            console.log(`🔄 Found existing app by reference/type match (old app without zohoId), will update and add zohoId`);
-          }
+        if (!updateResult.success) {
+          throw new Error(`Failed to update application: ${updateResult.error}`);
         }
 
-        let appId;
-        let isNew = false;
+        syncedApp = {
+          ...existingApp,
+          ...applicationData,
+          id: appId,
+          createdAt: existingApp.createdAt || now.toISOString(),
+          updatedAt: updateResult.application?.updatedAt || now.toISOString(),
+        };
+      } else {
+        const liveApp = await loadApplicationByZohoIdServer(userId, dealId, idToken, requestMeta);
+        if (liveApp) {
+          logSync(requestMeta, `Detected application created concurrently for zohoId ${dealId}; updating ${liveApp.id}`);
+          const updateResult = await updateApplicationServer(
+            liveApp.id,
+            { ...applicationData, id: liveApp.id },
+            userId,
+            idToken
+          );
+          console.log('💾 Update result:', updateResult);
 
-        if (existingApp) {
-          // Application exists - keep the existing Firebase id and preserve Firebase-only fields
-          appId = existingApp.id;
-          console.log(`🔄 Application already exists in Firebase with id ${appId} (zohoId: ${existingApp.zohoId || 'none'}), updating...`);
-
-          // Update only Zoho-related fields, preserve Firebase-only fields (questionnaire data, notes, etc.)
-          // Also ensure zohoId is set (for old apps that don't have it yet)
-          console.log(`💾 Updating existing application in Firebase:`, appId);
-          const updateResult = await updateApplicationServer(appId, {
-            ...applicationData,
-            id: appId,
-            // Preserve any existing questionnaire data or other Firebase-only fields
-            // The updateApplication method should merge these updates with existing data
-          }, userId);
-          console.log(`💾 Update result:`, updateResult);
-          
           if (!updateResult.success) {
             throw new Error(`Failed to update application: ${updateResult.error}`);
           }
 
-          // Update the existing app in our local array so we don't match it again
-          const existingIndex = existingApps.findIndex(app => app.id === appId);
-          if (existingIndex !== -1) {
-            existingApps[existingIndex] = { ...existingApp, ...applicationData, id: appId };
-          }
-
-          applicationData.id = appId;
-          applicationData.createdAt = existingApp.createdAt || now.toISOString();
+          appId = liveApp.id;
+          syncedApp = {
+            ...liveApp,
+            ...applicationData,
+            id: appId,
+            createdAt: liveApp.createdAt || now.toISOString(),
+            updatedAt: updateResult.application?.updatedAt || now.toISOString(),
+          };
         } else {
-          // Application doesn't exist - create new one in Firebase
           const { nanoid } = await import('nanoid');
           appId = nanoid(12);
           isNew = true;
-          console.log(`➕ Creating new application in Firebase with id ${appId} from Deal ${deal.id}`);
+          logSync(requestMeta, `Creating new application ${appId} from deal ${dealId}`);
 
           const newApp = {
             id: appId,
@@ -393,123 +496,173 @@ export async function POST(request) {
             updatedAt: now.toISOString(),
           };
 
-          console.log(`💾 Saving new application to Firebase:`, JSON.stringify(newApp, null, 2));
-          const createResult = await createApplicationServer(newApp, userId);
-          console.log(`💾 Create result:`, createResult);
-          
+          console.log('💾 Saving new application to Firebase:', JSON.stringify(newApp, null, 2));
+          const createResult = await createApplicationServer(newApp, userId, idToken);
+          console.log('💾 Create result:', createResult);
+
           if (!createResult.success) {
             throw new Error(`Failed to create application: ${createResult.error}`);
           }
 
-          applicationData.id = appId;
-          applicationData.createdAt = now.toISOString();
-          
-          // Add to our local array so we don't create duplicates in the same sync
-          existingApps.push({
-            id: appId,
-            ...applicationData
-          });
-        }
-
-        applicationsFromZoho.push(applicationData);
-        console.log(`✅ ${isNew ? 'Created' : 'Updated'} application ${appId} from Deal ${deal.id} (zohoId: ${deal.id})`);
-      } catch (dealError) {
-        console.error(`❌ Failed to process Deal ${deal.id}:`, dealError);
-        console.error(`❌ Error stack:`, dealError.stack);
-        // Continue with other deals even if one fails
-      }
-    }
-
-    console.log(`✅ Processed ${applicationsFromZoho.length} applications from Zoho CRM`);
-    console.log(`📋 Applications saved to Firebase:`, applicationsFromZoho.map(app => ({ id: app.id, reference: app.reference, type: app.type, zohoId: app.zohoId })));
-
-    // Verify final count in Firebase to ensure no duplicates
-    const finalApps = await loadApplicationsServer(userId);
-    console.log(`📊 Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
-    
-    // Find duplicates by zohoId and remove them (keep the first one)
-    const duplicatesByZohoId = [];
-    const seenZohoIds = new Map();
-    
-    if (finalApps && finalApps.length > 0) {
-      for (const app of finalApps) {
-        if (app.zohoId) {
-          if (seenZohoIds.has(app.zohoId)) {
-            // This is a duplicate - mark for deletion
-            duplicatesByZohoId.push(app);
-          } else {
-            // First occurrence - keep it
-            seenZohoIds.set(app.zohoId, app);
-          }
+          syncedApp = {
+            ...newApp,
+            publicReviewAccess: true,
+          };
         }
       }
-    }
-    
-    // Remove duplicates from Firebase
-    let removedCount = 0;
-    if (duplicatesByZohoId.length > 0) {
-      console.warn(`⚠️ Found ${duplicatesByZohoId.length} duplicate applications by zohoId. Removing duplicates...`);
-      
-      for (const duplicate of duplicatesByZohoId) {
-        try {
-          console.log(`🗑️ Deleting duplicate application ${duplicate.id} (zohoId: ${duplicate.zohoId}, reference: ${duplicate.reference})`);
-          await deleteApplicationServer(duplicate.id);
-          removedCount++;
-        } catch (deleteError) {
-          console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteError.message);
-        }
-      }
-      
-      console.log(`✅ Removed ${removedCount} duplicate applications`);
-    }
 
-    // Zoho CRM is source of truth: remove Firebase applications that are not in this sync
-    const syncedAppIds = new Set(
-      applicationsFromZoho.map((a) => a.id).filter(Boolean)
-    );
-    let orphansRemoved = 0;
-    const appsAfterDupes = await loadApplicationsServer(userId);
-    for (const app of appsAfterDupes || []) {
-      if (syncedAppIds.has(app.id)) continue;
+      cacheApplication(syncedApp);
+      applicationsFromZoho.push({
+        id: syncedApp.id,
+        reference: syncedApp.reference,
+        type: syncedApp.type,
+        visaTypeCode: syncedApp.visaTypeCode,
+        status: syncedApp.status,
+        closingDate: syncedApp.closingDate,
+        updated: syncedApp.updated,
+        lastUpdated: syncedApp.lastUpdated,
+        zohoId: syncedApp.zohoId,
+        userId: syncedApp.userId,
+        createdAt: syncedApp.createdAt,
+        updatedAt: syncedApp.updatedAt,
+      });
+      logSync(
+        requestMeta,
+        `${isNew ? 'Created' : 'Updated'} application ${syncedApp.id} from deal ${dealId} (zohoId: ${dealId})`
+      );
+    } catch (dealError) {
+      console.error(`❌ Failed to process Deal ${deal.id}:`, dealError);
+      console.error(`❌ Error stack:`, dealError.stack);
+    }
+  }
+
+  logSync(requestMeta, `Processed ${applicationsFromZoho.length} applications from Zoho CRM`);
+  console.log(
+    '📋 Applications saved to Firebase:',
+    applicationsFromZoho.map((app) => ({
+      id: app.id,
+      reference: app.reference,
+      type: app.type,
+      zohoId: app.zohoId,
+    }))
+  );
+
+  const finalApps = await loadApplicationsServer(userId, idToken, requestMeta);
+  logSync(requestMeta, `Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
+
+  const duplicatesByZohoId = [];
+  const seenZohoIds = new Map();
+  for (const app of finalApps || []) {
+    if (!app.zohoId) continue;
+    if (seenZohoIds.has(app.zohoId)) {
+      duplicatesByZohoId.push(app);
+    } else {
+      seenZohoIds.set(app.zohoId, app);
+    }
+  }
+
+  let removedCount = 0;
+  if (duplicatesByZohoId.length > 0) {
+    logSync(requestMeta, `Found ${duplicatesByZohoId.length} duplicate applications by zohoId. Removing duplicates...`);
+    for (const duplicate of duplicatesByZohoId) {
       try {
-        console.log(
-          `🗑️ Removing application not in current Zoho CRM deal list: ${app.id} (zohoId: ${app.zohoId || 'none'}, reference: ${app.reference || ''})`
+        logSync(
+          requestMeta,
+          `Deleting duplicate application ${duplicate.id} (zohoId: ${duplicate.zohoId}, reference: ${duplicate.reference})`
         );
-        const del = await deleteApplicationServer(app.id);
-        if (del.success) orphansRemoved++;
-      } catch (e) {
-        console.error(`❌ Failed to remove orphan application ${app.id}:`, e.message);
+        const deleteResult = await deleteApplicationServer(duplicate.id, idToken);
+        if (deleteResult.success) removedCount++;
+      } catch (deleteError) {
+        console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteError.message);
       }
     }
-    if (orphansRemoved > 0) {
-      console.log(`✅ Removed ${orphansRemoved} application(s) not present in current CRM deals`);
-    }
-    
-    // Reload to get final count after cleanup
-    const finalAppsAfterCleanup = await loadApplicationsServer(userId);
-    console.log(`📊 Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
+    logSync(requestMeta, `Removed ${removedCount} duplicate applications`);
+  }
 
-    return NextResponse.json({
-      success: true,
-      deals: applicationsFromZoho,
-      rawDealsData: deals, // Return raw deals JSON for display
-      applicationsCount: applicationsFromZoho.length,
-      finalCount: finalAppsAfterCleanup?.length || 0,
-      duplicatesFound: duplicatesByZohoId.length,
-      duplicatesRemoved: removedCount,
-      orphansRemoved,
-      message: `Fetched ${deals.length} deals from Zoho CRM, synced ${applicationsFromZoho.length} applications, removed ${removedCount} duplicate(s) and ${orphansRemoved} stale application(s) (final count: ${finalAppsAfterCleanup?.length || 0})`
-    });
+  const currentDealZohoIds = new Set(deals.map((deal) => String(deal.id)));
+  let orphansRemoved = 0;
+  const appsAfterDupes = await loadApplicationsServer(userId, idToken, requestMeta);
+  for (const app of appsAfterDupes || []) {
+    if (!app.zohoId || currentDealZohoIds.has(app.zohoId)) continue;
+    try {
+      logSync(
+        requestMeta,
+        `Removing application not in current Zoho CRM deal list: ${app.id} (zohoId: ${app.zohoId}, reference: ${app.reference || ''})`
+      );
+      const deleteResult = await deleteApplicationServer(app.id, idToken);
+      if (deleteResult.success) orphansRemoved++;
+    } catch (error) {
+      console.error(`❌ Failed to remove orphan application ${app.id}:`, error.message);
+    }
+  }
+
+  if (orphansRemoved > 0) {
+    logSync(requestMeta, `Removed ${orphansRemoved} application(s) not present in current CRM deals`);
+  }
+
+  const finalAppsAfterCleanup = await loadApplicationsServer(userId, idToken, requestMeta);
+  logSync(requestMeta, `Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
+
+  return {
+    success: true,
+    deals: applicationsFromZoho,
+    rawDealsData: deals,
+    applicationsCount: applicationsFromZoho.length,
+    finalCount: finalAppsAfterCleanup?.length || 0,
+    duplicatesFound: duplicatesByZohoId.length,
+    duplicatesRemoved: removedCount,
+    orphansRemoved,
+    source,
+    requestId: requestMeta.requestId,
+    coalesced: false,
+    message: `Fetched ${deals.length} deals from Zoho CRM, synced ${applicationsFromZoho.length} applications, removed ${removedCount} duplicate(s) and ${orphansRemoved} stale application(s) (final count: ${finalAppsAfterCleanup?.length || 0})`,
+  };
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { userId, zohoContactId, idToken, source = 'unknown' } = body;
+
+    if (!userId || !zohoContactId) {
+      return NextResponse.json(
+        { success: false, error: 'userId and zohoContactId are required' },
+        { status: 400 }
+      );
+    }
+
+    const requestMeta = buildRequestMeta({ userId, zohoContactId, source });
+    const inFlight = inFlightSyncs.get(requestMeta.requestKey);
+    if (inFlight) {
+      logSync(requestMeta, 'Coalescing onto existing in-flight sync');
+      const sharedResult = await inFlight;
+      return NextResponse.json({
+        ...sharedResult,
+        coalesced: true,
+        requestId: requestMeta.requestId,
+      });
+    }
+
+    const syncPromise = runDealSync({ userId, zohoContactId, idToken, source, requestMeta });
+    inFlightSyncs.set(requestMeta.requestKey, syncPromise);
+
+    try {
+      const result = await syncPromise;
+      return NextResponse.json(result);
+    } finally {
+      if (inFlightSyncs.get(requestMeta.requestKey) === syncPromise) {
+        inFlightSyncs.delete(requestMeta.requestKey);
+      }
+    }
   } catch (error) {
     console.error('❌ Error fetching deals from Zoho CRM:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error.message || 'Failed to fetch deals from Zoho CRM',
-        rawDealsData: null
+        rawDealsData: null,
       },
       { status: 500 }
     );
   }
 }
-

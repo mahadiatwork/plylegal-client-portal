@@ -2,7 +2,7 @@
 
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
-import { getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
+import { getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { authStore } from "./authStore";
 
 // Get database adapter (Firebase or localStorage based on env)
@@ -150,7 +150,8 @@ export const draftStore = proxy({
     const newDraft = { ...this.draft, profiles };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
-    const zohoDependentId = await this.syncDependentProfileToZoho(newProfile, "create");
+    const action = newProfile.zohoDependentId ? "update" : "create";
+    const zohoDependentId = await this.syncDependentProfileToZoho(newProfile, action);
     if (zohoDependentId) {
       await this.persistProfileZohoDependentId(newProfile.id, zohoDependentId);
       newProfile.zohoDependentId = zohoDependentId;
@@ -825,9 +826,25 @@ export const draftStore = proxy({
       });
     }
 
+    // Employer Nomination (186): non-migrating index + per-member subpages
+    let nmfExtraTotal = 0;
+    let nmfExtraCompleted = 0;
+    if (visaType === 'temporary-work' && (this.visaContext ?? this.draft?.visaContext) === '186') {
+      nmfExtraTotal += 1;
+      if (this.completionStatus['temporary-work/non-migrating'] === true) nmfExtraCompleted += 1;
+
+      (this.getNonMigratingMembers() || []).forEach((member) => {
+        NON_MIGRATING_MEMBER_SUBPAGES.forEach((sub) => {
+          nmfExtraTotal += 1;
+          const key = `temporary-work/non-migrating/${member.id}/${sub.pathSuffix}__${member.id}`;
+          if (this.completionStatus[key] === true) nmfExtraCompleted += 1;
+        });
+      });
+    }
+
     // Count completed pages
-    const completedCount = allPages.filter(page => this.isPageComplete(page)).length + childExtraCompleted;
-    const totalPages = allPages.length + childExtraTotal;
+    const completedCount = allPages.filter(page => this.isPageComplete(page)).length + childExtraCompleted + nmfExtraCompleted;
+    const totalPages = allPages.length + childExtraTotal + nmfExtraTotal;
 
     return {
       completed: completedCount,
@@ -886,4 +903,3 @@ export const draftStore = proxy({
 setProfilesGetter(() => draftStore.draft?.profiles || []);
 // Register the non-migrating members getter to include them in linear navigation flow
 setNonMigratingMembersGetter(() => draftStore.draft?.non_migrating_members || []);
-

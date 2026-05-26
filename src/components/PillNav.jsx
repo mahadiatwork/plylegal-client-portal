@@ -6,7 +6,6 @@ import {
   FileText,
   Upload,
   BookOpen,
-  MessageSquare,
   FileEdit
 } from "lucide-react";
 import { ProgressLink } from "@/components/ProgressLink";
@@ -22,7 +21,6 @@ export function PillNav({ appId, slug }) {
 
   const row2 = [
     { href: `${baseHref}/resources`, label: "Resources", icon: BookOpen },
-    { href: `${baseHref}/messages`, label: "Send Message", icon: MessageSquare },
     { href: `${baseHref}/corrections`, label: "Submit Corrections", icon: FileEdit },
   ];
 
@@ -34,8 +32,8 @@ export function PillNav({ appId, slug }) {
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-colors",
             isActive
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-white text-sidebar"
+              : "bg-white/10 text-sidebar-foreground hover:bg-white/15"
           )}
           data-testid={`tab-${label.toLowerCase().replace(/\s+/g, '-')}`}
         >
@@ -47,7 +45,7 @@ export function PillNav({ appId, slug }) {
   };
 
   return (
-    <div className="border-b border-border bg-card px-3 sm:px-6 py-2 space-y-2">
+    <div className="border-b border-sidebar-border bg-sidebar px-3 sm:px-6 py-2 space-y-2 text-sidebar-foreground">
       {/* Row 1 */}
       <div className="flex gap-2">
         {row1.map((tab) => (

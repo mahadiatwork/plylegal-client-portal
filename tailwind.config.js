@@ -89,8 +89,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Segoe UI", "-apple-system", "BlinkMacSystemFont", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-        serif: ["Segoe UI", "-apple-system", "BlinkMacSystemFont", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        sans: ["var(--font-sans)"],
+        serif: ["var(--font-serif)"],
         mono: ["Menlo", "Monaco", "Courier New", "monospace"],
       },
       keyframes: {

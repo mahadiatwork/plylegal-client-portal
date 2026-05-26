@@ -167,3 +167,85 @@ const result = getPreviousRoute(currentPath, visaType);
 ✅ All `markPageComplete()` calls write keys with `partner/` prefix
 ✅ No remaining hardcoded Partner routes lacking `/partner/`
 ✅ Pattern scales cleanly to other visa types by switching visaType
+
+---
+
+## 186 Other Family Navigation Regression Tests
+
+### Test Suite: getNextRoute() for 186 with Other Family
+
+**Setup:** `visaContext = '186'`, mock `profilesGetter` to return one main applicant profile with `id = 'main-1'`, mock `nonMigratingMembersGetter` appropriately.
+
+**Test 1: Contact Details → Other Family index (no members)**
+```javascript
+const currentPath = "/intake/temporary-work/main-applicant/contact-details?profileId=main-1";
+const result = getNextRoute(currentPath, "temporary-work", null, "186");
+// Expected: '/intake/temporary-work/non-migrating'
+```
+
+**Test 2: Other Family index → Employment (no members, answered "no")**
+```javascript
+const currentPath = "/intake/temporary-work/non-migrating";
+const result = getNextRoute(currentPath, "temporary-work", null, "186");
+// Expected: '/intake/temporary-work/main-applicant/employment?profileId=main-1'
+```
+
+**Test 3: Other Family index → first member details (with members)**
+```javascript
+// mock nonMigratingMembersGetter returns [{ id: 'nmf-1' }]
+const currentPath = "/intake/temporary-work/non-migrating";
+const result = getNextRoute(currentPath, "temporary-work", null, "186");
+// Expected: '/intake/temporary-work/non-migrating/nmf-1/details'
+```
+
+**Test 4: Last member health → Employment**
+```javascript
+// mock nonMigratingMembersGetter returns [{ id: 'nmf-1' }]
+const currentPath = "/intake/temporary-work/non-migrating/nmf-1/health";
+const result = getNextRoute(currentPath, "temporary-work", null, "186");
+// Expected: '/intake/temporary-work/main-applicant/employment?profileId=main-1'
+```
+
+---
+
+### Test Suite: getPreviousRoute() for 186 with Other Family
+
+**Test 1: Other Family index → Contact Details**
+```javascript
+const currentPath = "/intake/temporary-work/non-migrating";
+const result = getPreviousRoute(currentPath, "temporary-work", null, "186");
+// Expected: '/intake/temporary-work/main-applicant/contact-details?profileId=main-1'
+```
+
+**Test 2: First member details → Other Family index**
+```javascript
+const currentPath = "/intake/temporary-work/non-migrating/nmf-1/details";
+const result = getPreviousRoute(currentPath, "temporary-work", null, "186");
+// Expected: '/intake/temporary-work/non-migrating'
+```
+
+---
+
+### Test Suite: calculateProgress() for 186 with Other Family
+
+**Test 1: Progress includes Other Family index**
+```javascript
+const currentPath = "/intake/temporary-work/non-migrating";
+const result = calculateProgress(currentPath, "temporary-work", "186");
+// Expected: > 0 and reflects position after Contact Details in the 186 linear flow
+```
+
+---
+
+### Manual Verification Checklist: 186 Other Family
+
+- [ ] Navigate from Contact Details via Continue → lands on Other Family index
+- [ ] Other Family index shows Previous / Save draft / Continue buttons
+- [ ] Continue disabled until "yes/no" is answered
+- [ ] Answering "yes" with 0 members shows validation error on Continue
+- [ ] Answering "no" → Continue goes to Employment
+- [ ] Answering "yes" with members → Continue goes to first member Details
+- [ ] After last member Health → Continue goes to Employment
+- [ ] Sidebar Other Family entries use teal active style (no amber/red)
+- [ ] Per-member subpages in sidebar use teal active style
+- [ ] Completion percentage includes Other Family index and subpages

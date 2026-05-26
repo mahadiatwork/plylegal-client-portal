@@ -972,17 +972,39 @@ export default function ApplicationProfilePage() {
     toast({ title: "Person removed", description: `${profile.given_names} ${profile.family_name} has been removed.` });
   };
 
-  // CRM dependents not yet added to the profiles list (migrating only)
-  const availableCrmDependents = crmDependents.filter(
-    (dep) =>
-      !dep.isNonMigrating &&
-      !profiles.some(
-        (p) =>
-          (p.zohoDependentId && p.zohoDependentId === dep.zohoDependentId) ||
-          (p.given_names?.toLowerCase() === dep.given_names?.toLowerCase() &&
-            p.family_name?.toLowerCase() === dep.family_name?.toLowerCase())
-      )
-  );
+  // CRM dependents not yet added to the profiles list (migrating only),
+  // de-duplicated by identity so duplicate CRM rows don't appear twice.
+  const availableCrmDependents = (() => {
+    const candidates = crmDependents.filter(
+      (dep) =>
+        !dep.isNonMigrating &&
+        !profiles.some(
+          (p) =>
+            (p.zohoDependentId && p.zohoDependentId === dep.zohoDependentId) ||
+            (p.given_names?.toLowerCase() === dep.given_names?.toLowerCase() &&
+              p.family_name?.toLowerCase() === dep.family_name?.toLowerCase())
+        )
+    );
+
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const seen = new Set();
+
+    return candidates.filter((dep) => {
+      const identityKey = [
+        normalize(dep.given_names),
+        normalize(dep.family_name),
+        normalize(dep.birth_year),
+        normalize(dep.birth_month),
+        normalize(dep.birth_day),
+        normalize(dep.relationship),
+      ].join("|");
+
+      const key = identityKey === "|||||" ? `id:${dep.zohoDependentId}` : identityKey;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
 
   const handleContinue = async () => {
     if (profiles.length === 0) return;
