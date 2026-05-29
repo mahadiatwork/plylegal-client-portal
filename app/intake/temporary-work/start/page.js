@@ -5,8 +5,6 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { authStore } from "@/stores";
-import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,23 +14,6 @@ import { useState, useEffect } from "react";
 import { getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
-function isLikely482Application(app, currentId) {
-  if (!app?.id || app.id === currentId) return false;
-  const type = (app.type || "").toLowerCase();
-  const ref = (app.reference || "").toLowerCase();
-  if (type.includes("186") || ref.includes("186")) return false;
-  if (type.includes("employer") && type.includes("nomination")) return false;
-  return (
-    type.includes("482") ||
-    type.includes("temporary work") ||
-    type.includes("skills in demand") ||
-    type.includes("skill shortage") ||
-    type.includes("temporary skill") ||
-    type.includes("tss") ||
-    ref.includes("482")
-  );
-}
-
 export default function IntakeStartPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,12 +22,9 @@ export default function IntakeStartPage() {
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
-  const { toast } = useToast();
   const [started, setStarted] = useState(false);
   const [error, setError] = useState("");
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
-  const [importSourceId, setImportSourceId] = useState("");
-  const [importing, setImporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { startNavigation } = useNavigationLoading();
 
@@ -77,34 +55,6 @@ export default function IntakeStartPage() {
   const currentApp = appsSnap.applications.find(app => app.id === draftSnap.currentApplicationId);
   const isSubmitted = currentApp?.status === "submitted";
   const completionPercentage = completionData.percentage;
-  const is186 = draftSnap.visaContext === "186";
-  const importCandidates = appsSnap.applications.filter((app) =>
-    isLikely482Application(app, draftSnap.currentApplicationId)
-  );
-
-  const handleImportFrom482 = async () => {
-    if (!importSourceId) {
-      toast({ title: "Select an application", description: "Choose a Skills in Demand (subclass 482) application to import from.", variant: "destructive" });
-      return;
-    }
-    setImporting(true);
-    try {
-      const result = await draftStore.importQuestionnaireFrom482Application(importSourceId);
-      if (result.success) {
-        toast({
-          title: "Answers imported",
-          description: "Questionnaire data from your Skills in Demand (subclass 482) application has been copied. Review and update each section as needed.",
-        });
-        const data = draftStore.getCompletionPercentage();
-        setCompletionData(data);
-        if (draftStore.draft.started) setStarted(true);
-      } else {
-        toast({ title: "Import failed", description: result.error || "Could not import data.", variant: "destructive" });
-      }
-    } finally {
-      setImporting(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -191,41 +141,6 @@ export default function IntakeStartPage() {
                 <span className="font-semibold">Accuracy matters.</span> Incomplete or incorrect information can lead to delays, refusal, or visa cancellation. If you're unsure about anything, let us know.
               </p>
             </div>
-
-            {is186 && !isSubmitted && importCandidates.length > 0 && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-3">
-                <p className="text-sm font-medium text-slate-800">Import from Skills in Demand (subclass 482)</p>
-                <p className="text-sm text-slate-600">
-                  If you already completed questionnaire answers on a Skills in Demand (subclass 482) application, you can copy them here to save time. You can edit everything after import.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="import-482">Skills in Demand application</Label>
-                    <Select value={importSourceId} onValueChange={setImportSourceId}>
-                      <SelectTrigger id="import-482" data-testid="select-import-482-source">
-                        <SelectValue placeholder="Select application…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {importCandidates.map((app) => (
-                          <SelectItem key={app.id} value={app.id}>
-                            {app.reference || app.type || app.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={importing || !importSourceId}
-                    onClick={handleImportFrom482}
-                    data-testid="button-import-from-482"
-                  >
-                    {importing ? "Importing…" : "Import answers"}
-                  </Button>
-                </div>
-              </div>
-            )}
 
             <div className="flex items-start space-x-3 p-6 bg-white rounded-xl border-2">
               <Checkbox

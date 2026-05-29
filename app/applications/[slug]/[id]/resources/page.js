@@ -9,96 +9,94 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, ExternalLink, FileText, Heart, Shield, Globe, Info } from "lucide-react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { BookOpen, ExternalLink, FileText, Link as LinkIcon, StickyNote, Video } from "lucide-react";
 
-const resources = [
-  {
-    title: "Preparing your relationship evidence",
-    description: "Guide on documenting your relationship for visa applications",
-    url: "https://immi.homeaffairs.gov.au/visas/supporting/relationship",
-    type: "Guide",
-    icon: Heart,
-  },
-  {
-    title: "Organise your health examination",
-    description: "Information about health requirements and approved panel physicians",
-    url: "https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/health",
-    type: "Official Link",
-    icon: Shield,
-  },
-  {
-    title: "Organise your police clearances",
-    description: "Character requirements and how to obtain police certificates",
-    url: "https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/character",
-    type: "Official Link",
-    icon: Shield,
-  },
-  {
-    title: "Applying for Medicare",
-    description: "How to apply for Medicare while your visa is being processed",
-    url: "https://www.servicesaustralia.gov.au/medicare",
-    type: "Guide",
-    icon: Heart,
-  },
-  {
-    title: "Global visa processing times",
-    description: "Check current processing times for different visa types",
-    url: "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-processing-times",
-    type: "Link",
-    icon: Globe,
-  },
-  {
-    title: "Australian Values Statement",
-    description: "Information about Australian values and the values statement",
-    url: "https://immi.homeaffairs.gov.au/help-support/values/statement",
-    type: "Document",
-    icon: FileText,
-  },
-  {
-    title: "Arranging biometrics",
-    description: "How to provide biometric information for your visa application",
-    url: "https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/biometrics",
-    type: "Guide",
-    icon: Info,
-  },
-];
+function toMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeResource(docSnap) {
+  const data = docSnap.data() || {};
+  const type = String(data.type || "link").toLowerCase();
+
+  return {
+    id: docSnap.id,
+    title: data.title || "Untitled resource",
+    description: data.description || "",
+    noteText: data.noteText || data.content || data.description || "",
+    url: data.publicUrl || data.url || "",
+    type,
+    status: String(data.status || "active").toLowerCase(),
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+  };
+}
+
+function getResourceIcon(type) {
+  if (type === "document" || type === "file") return FileText;
+  if (type === "guide") return BookOpen;
+  if (type === "video") return Video;
+  if (type === "note") return StickyNote;
+  return LinkIcon;
+}
+
+function getResourceTypeLabel(type) {
+  if (!type) return "Resource";
+  return type.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 function ResourceCard({ resource }) {
-  const Icon = resource.icon;
-  
+  const Icon = getResourceIcon(resource.type);
+  const isLinkable = Boolean(resource.url);
+  const content = (
+    <CardHeader className="pb-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1">
+          <div className="p-2 rounded-lg bg-[#DEE3FF]">
+            <Icon className="w-5 h-5 text-[#285646]" />
+          </div>
+          <div className="flex-1">
+            <CardTitle className="text-base font-semibold mb-1">
+              {resource.title}
+            </CardTitle>
+            <CardDescription className="text-sm whitespace-pre-wrap">
+              {resource.noteText || resource.description}
+            </CardDescription>
+            <div className="mt-2">
+              <span className="inline-flex items-center text-xs text-muted-foreground">
+                {getResourceTypeLabel(resource.type)}
+              </span>
+            </div>
+          </div>
+        </div>
+        {isLinkable && <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />}
+      </div>
+    </CardHeader>
+  );
+
   return (
     <Card className="rounded-xl shadow-sm hover-elevate transition-all duration-200">
-      <a 
-        href={resource.url} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="block"
-        data-testid={`link-resource-${resource.title.toLowerCase().replace(/\s+/g, '-')}`}
-      >
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 flex-1">
-              <div className="p-2 rounded-lg bg-[#DEE3FF]">
-                <Icon className="w-5 h-5 text-[#285646]" />
-              </div>
-              <div className="flex-1">
-                <CardTitle className="text-base font-semibold mb-1">
-                  {resource.title}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {resource.description}
-                </CardDescription>
-                <div className="mt-2">
-                  <span className="inline-flex items-center text-xs text-muted-foreground">
-                    {resource.type}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
-          </div>
-        </CardHeader>
+      {isLinkable ? (
+        <a 
+          href={resource.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block"
+          data-testid={`link-resource-${resource.title.toLowerCase().replace(/\s+/g, '-')}`}
+        >
+          {content}
       </a>
+      ) : (
+        <div className="block">
+          {content}
+        </div>
+      )}
     </Card>
   );
 }
@@ -107,6 +105,9 @@ export default function ResourcesPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [resources, setResources] = useState([]);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
+  const [resourcesError, setResourcesError] = useState("");
   const applicationsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
   
@@ -142,6 +143,32 @@ export default function ResourcesPage() {
 
     loadData();
   }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
+
+  useEffect(() => {
+    const loadResources = async () => {
+      if (!appId) return;
+      setResourcesLoading(true);
+      setResourcesError("");
+
+      try {
+        const resourcesRef = collection(db, "applications", appId, "resources");
+        const resourcesSnap = await getDocs(resourcesRef);
+        const loadedResources = resourcesSnap.docs
+          .map(normalizeResource)
+          .filter((resource) => resource.status !== "inactive" && resource.status !== "archived")
+          .sort((a, b) => toMillis(b.createdAt || b.updatedAt) - toMillis(a.createdAt || a.updatedAt));
+
+        setResources(loadedResources);
+      } catch (error) {
+        console.error("Error loading resources:", error);
+        setResourcesError("We could not load your resources. Please refresh the page or contact Ply Legal.");
+      } finally {
+        setResourcesLoading(false);
+      }
+    };
+
+    loadResources();
+  }, [appId]);
   
   // Show loading state while data is being loaded
   if (isLoading || !application) {
@@ -186,45 +213,40 @@ export default function ResourcesPage() {
             <div className="mb-8">
               <h1 className="font-serif text-3xl font-bold mb-3">Resources</h1>
               <p className="text-base text-muted-foreground leading-relaxed">
-                These resources provide official guidance and helpful references for your visa journey.
-                Always verify details on official government websites before taking any action.
+                View helpful links, documents, and videos shared by Ply Legal for this application.
               </p>
             </div>
 
             <div className="mb-8">
-              <h2 className="font-serif text-xl font-semibold mb-4">Documents & Evidence</h2>
+              <h2 className="font-serif text-xl font-semibold mb-4">Application Resources</h2>
+              {resourcesLoading ? (
+                <Card className="rounded-xl shadow-sm">
+                  <CardHeader>
+                    <CardDescription>Loading resources...</CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : resourcesError ? (
+                <Card className="rounded-xl shadow-sm border-red-200 bg-red-50">
+                  <CardHeader>
+                    <CardDescription className="text-red-700">{resourcesError}</CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : resources.length === 0 ? (
+                <Card className="rounded-xl shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base font-semibold">No resources available yet</CardTitle>
+                    <CardDescription>
+                      Ply Legal has not shared any resources for this application yet.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : (
               <div className="space-y-3">
-                {resources.slice(0, 1).map((resource, index) => (
-                  <ResourceCard key={index} resource={resource} />
+                {resources.map((resource) => (
+                  <ResourceCard key={resource.id} resource={resource} />
                 ))}
               </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="font-serif text-xl font-semibold mb-4">Health & Police Checks</h2>
-              <div className="space-y-3">
-                {resources.slice(1, 3).map((resource, index) => (
-                  <ResourceCard key={index} resource={resource} />
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="font-serif text-xl font-semibold mb-4">Lodgement & Status</h2>
-              <div className="space-y-3">
-                {resources.slice(3, 5).map((resource, index) => (
-                  <ResourceCard key={index} resource={resource} />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h2 className="font-serif text-xl font-semibold mb-4">Other Guides</h2>
-              <div className="space-y-3">
-                {resources.slice(5).map((resource, index) => (
-                  <ResourceCard key={index} resource={resource} />
-                ))}
-              </div>
+              )}
             </div>
           </div>
         </main>

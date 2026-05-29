@@ -4,10 +4,11 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { authStore } from "@/stores";
+import { applicationsStore } from "@/stores/applicationsStore";
 import { useToast } from "@/hooks/use-toast";
 import { buildIntakeHref, getApplicationIdFromPathname, getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,6 +47,27 @@ const RELATIONSHIPS = [
   { value: "child", label: "Dependent Child" },
   { value: "other", label: "Other Dependent" },
 ];
+
+function isLikelyQuestionnaireImportSource(app, currentId) {
+  if (!app?.id || app.id === currentId) return false;
+  const type = String(app.type || "").toLowerCase();
+  const reference = String(app.reference || "").toLowerCase();
+  const combined = `${type} ${reference}`;
+  return (
+    combined.includes("482") ||
+    combined.includes("186") ||
+    combined.includes("temporary work") ||
+    combined.includes("skills in demand") ||
+    combined.includes("skill shortage") ||
+    combined.includes("temporary skill") ||
+    combined.includes("tss") ||
+    combined.includes("employer nomination")
+  );
+}
+
+function getApplicationImportLabel(app) {
+  return [app?.reference, app?.type].filter(Boolean).join(" · ") || app?.id || "Previous application";
+}
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -597,26 +619,152 @@ const MONTH_NUM_TO_NAME = {
   "09": "September", "10": "October", "11": "November", "12": "December",
 };
 
+const blankProfileDefaults = {
+  given_names: "",
+  family_name: "",
+  relationship: "",
+  gender: "",
+  birth_day: "",
+  birth_month: "",
+  birth_year: "",
+};
+
+const firstText = (...values) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+};
+
+const normalizeBirthDay = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const number = Number(text);
+  if (!Number.isFinite(number)) return text;
+  return String(number).padStart(2, "0");
+};
+
+const normalizeBirthMonth = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const number = Number(text);
+  if (Number.isFinite(number)) {
+    return MONTH_NUM_TO_NAME[String(number).padStart(2, "0")] || "";
+  }
+  return MONTHS.find((month) => month.toLowerCase() === text.toLowerCase()) || "";
+};
+
+const normalizeGender = (value) => {
+  const text = firstText(value);
+  return GENDERS.find((gender) => gender.toLowerCase() === text.toLowerCase()) || "";
+};
+
+const parseDateOfBirth = (value) => {
+  if (!value) return {};
+
+  const rawValue = typeof value?.toDate === "function" ? value.toDate() : value;
+  if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
+    return {
+      birth_day: normalizeBirthDay(rawValue.getDate()),
+      birth_month: normalizeBirthMonth(rawValue.getMonth() + 1),
+      birth_year: String(rawValue.getFullYear()),
+    };
+  }
+
+  const text = firstText(rawValue);
+  if (!text) return {};
+
+  const isoMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (isoMatch) {
+    return {
+      birth_day: normalizeBirthDay(isoMatch[3]),
+      birth_month: normalizeBirthMonth(isoMatch[2]),
+      birth_year: isoMatch[1],
+    };
+  }
+
+  const dateMatch = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (dateMatch) {
+    const first = Number(dateMatch[1]);
+    const second = Number(dateMatch[2]);
+    const day = first > 12 ? dateMatch[1] : second > 12 ? dateMatch[2] : dateMatch[1];
+    const month = first > 12 ? dateMatch[2] : second > 12 ? dateMatch[1] : dateMatch[2];
+    return {
+      birth_day: normalizeBirthDay(day),
+      birth_month: normalizeBirthMonth(month),
+      birth_year: dateMatch[3],
+    };
+  }
+
+  return {};
+};
+
+function buildMainApplicantPrefill(draft, userProfile, crmContact) {
+  const details = draft?.temporary_work_details || {};
+  const userDob = parseDateOfBirth(
+    firstText(
+      crmContact?.dateOfBirth,
+      crmContact?.Date_of_Birth,
+      userProfile?.dateOfBirth,
+      userProfile?.Date_of_Birth,
+      userProfile?.dob,
+      userProfile?.birthDate
+    )
+  );
+
+  return {
+    given_names: firstText(
+      details.given_names,
+      crmContact?.firstName,
+      crmContact?.First_Name,
+      userProfile?.firstName,
+      userProfile?.given_names,
+      userProfile?.givenName
+    ),
+    family_name: firstText(
+      details.family_name,
+      crmContact?.lastName,
+      crmContact?.Last_Name,
+      userProfile?.lastName,
+      userProfile?.family_name,
+      userProfile?.familyName
+    ),
+    relationship: "main_applicant",
+    gender: normalizeGender(
+      firstText(details.gender, crmContact?.gender, crmContact?.Gender, userProfile?.gender, userProfile?.Gender, userProfile?.sex)
+    ),
+    birth_day: normalizeBirthDay(firstText(details.birth_day, userProfile?.birth_day, userProfile?.birthDay, userDob.birth_day)),
+    birth_month: normalizeBirthMonth(firstText(details.birth_month, userProfile?.birth_month, userProfile?.birthMonth, userDob.birth_month)),
+    birth_year: firstText(details.birth_year, userProfile?.birth_year, userProfile?.birthYear, userDob.birth_year),
+  };
+}
+
+function getProfileDefaults(hasMainApplicant, mainApplicantPrefill) {
+  if (!hasMainApplicant) {
+    return {
+      ...blankProfileDefaults,
+      ...mainApplicantPrefill,
+      relationship: "main_applicant",
+    };
+  }
+
+  return blankProfileDefaults;
+}
+
 function crmRelToProfileRel(rel) {
   if (rel === "spouse") return "spouse";
   if (rel === "child") return "child";
   return "other";
 }
 
-function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant, availableCrmDependents = [], isSaving = false }) {
+function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant, mainApplicantPrefill, availableCrmDependents = [], isSaving = false }) {
   const [selectedCrmId, setSelectedCrmId] = useState(null);
 
   const form = useForm({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      given_names: "",
-      family_name: "",
-      relationship: hasMainApplicant ? "" : "main_applicant",
-      gender: "",
-      birth_day: "",
-      birth_month: "",
-      birth_year: "",
-    },
+    defaultValues: getProfileDefaults(hasMainApplicant, mainApplicantPrefill),
   });
 
   // Reset form + CRM selection when dialog opens/closes
@@ -636,18 +784,10 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
         birth_year: editingProfile.birth_year || "",
       });
     } else {
-      form.reset({
-        given_names: "",
-        family_name: "",
-        relationship: hasMainApplicant ? "" : "main_applicant",
-        gender: "",
-        birth_day: "",
-        birth_month: "",
-        birth_year: "",
-      });
+      form.reset(getProfileDefaults(hasMainApplicant, mainApplicantPrefill));
       setSelectedCrmId(null);
     }
-  }, [editingProfile, open, hasMainApplicant]);
+  }, [editingProfile, open, hasMainApplicant, mainApplicantPrefill]);
 
   const handleSelectCrm = (dep) => {
     setSelectedCrmId(dep.zohoDependentId);
@@ -656,23 +796,15 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
       family_name: dep.family_name || "",
       relationship: crmRelToProfileRel(dep.relationship),
       gender: dep.gender || "",
-      birth_day: dep.birth_day ? String(parseInt(dep.birth_day, 10)) : "",
-      birth_month: MONTH_NUM_TO_NAME[dep.birth_month] || dep.birth_month || "",
+      birth_day: normalizeBirthDay(dep.birth_day),
+      birth_month: normalizeBirthMonth(dep.birth_month),
       birth_year: dep.birth_year || "",
     });
   };
 
   const handleClearCrm = () => {
     setSelectedCrmId(null);
-    form.reset({
-      given_names: "",
-      family_name: "",
-      relationship: hasMainApplicant ? "" : "main_applicant",
-      gender: "",
-      birth_day: "",
-      birth_month: "",
-      birth_year: "",
-    });
+    form.reset(getProfileDefaults(hasMainApplicant, mainApplicantPrefill));
   };
 
   const handleSubmit = (data) => {
@@ -877,14 +1009,20 @@ export default function ApplicationProfilePage() {
   const visaType = getVisaTypeFromPath(pathname);
   const draftSnap = useSnapshot(draftStore);
   const authSnap = useSnapshot(authStore);
+  const appsSnap = useSnapshot(applicationsStore);
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [settingPrimaryId, setSettingPrimaryId] = useState(null);
+  const [importSourceId, setImportSourceId] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState(null);
   // CRM dependents state
   const [crmDependents, setCrmDependents] = useState([]);
+  const [crmContact, setCrmContact] = useState(null);
   const [crmLoading, setCrmLoading] = useState(false);
   const [crmError, setCrmError] = useState(null);
 
@@ -896,6 +1034,12 @@ export default function ApplicationProfilePage() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, pathname, draftSnap.currentApplicationId]);
+
+  useEffect(() => {
+    if (authSnap.user?.id && appsSnap.applications.length === 0) {
+      applicationsStore.loadApplications(authSnap.user.id);
+    }
+  }, [authSnap.user?.id, appsSnap.applications.length]);
 
   // Fetch CRM dependents when userId/zohoContactId are available
   const fetchCrmDependents = useCallback(async () => {
@@ -911,6 +1055,7 @@ export default function ApplicationProfilePage() {
       const data = await res.json();
       if (data.success) {
         setCrmDependents(data.dependents || []);
+        setCrmContact(data.contact || null);
       } else if (data.reason !== "no_zoho_contact") {
         setCrmError(data.error || "Failed to load");
       }
@@ -927,6 +1072,16 @@ export default function ApplicationProfilePage() {
 
   const profiles = draftSnap.draft?.profiles || [];
   const hasMainApplicant = profiles.some(p => p.relationship === "main_applicant");
+  const is186 = draftSnap.visaContext === "186";
+  const currentApp = appsSnap.applications.find((app) => String(app.id) === String(draftSnap.currentApplicationId));
+  const isSubmitted = currentApp?.status === "submitted";
+  const importCandidates = appsSnap.applications.filter((app) =>
+    isLikelyQuestionnaireImportSource(app, draftSnap.currentApplicationId)
+  );
+  const mainApplicantPrefill = useMemo(
+    () => buildMainApplicantPrefill(draftSnap.draft, authSnap.userProfile, crmContact),
+    [draftSnap.draft?.temporary_work_details, authSnap.userProfile, crmContact]
+  );
   // Sort: main applicant first, then spouse, then children, then others
   const sortedProfiles = [...profiles].sort((a, b) => {
     const order = { main_applicant: 0, spouse: 1, child: 2, other: 3 };
@@ -947,6 +1102,7 @@ export default function ApplicationProfilePage() {
         }
         toast({ title: "Person added", description: `${data.given_names} ${data.family_name} has been added to the application.` });
       }
+      setImportSummary(null);
       setDialogOpen(false);
       setEditingProfile(null);
     } finally {
@@ -969,7 +1125,87 @@ export default function ApplicationProfilePage() {
       return;
     }
     await draftStore.deleteProfile(profile.id);
+    setImportSummary(null);
     toast({ title: "Person removed", description: `${profile.given_names} ${profile.family_name} has been removed.` });
+  };
+
+  const handleSetPrimary = async (profile) => {
+    const currentPrimary = profiles.find((person) => person.relationship === "main_applicant");
+    const profileName = `${profile.given_names} ${profile.family_name}`.trim() || "this person";
+    const currentPrimaryName = currentPrimary
+      ? `${currentPrimary.given_names} ${currentPrimary.family_name}`.trim() || "the current primary applicant"
+      : "the current primary applicant";
+
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm(
+        `Make ${profileName} the primary applicant? ${currentPrimaryName} will become the spouse/partner and both applicants' role-based sections will need review.`
+      );
+      if (!confirmed) return;
+    }
+
+    setSettingPrimaryId(profile.id);
+    try {
+      const result = await draftStore.setPrimaryApplicant(profile.id);
+      if (result.success) {
+        setImportSummary(null);
+        toast({
+          title: "Primary applicant updated",
+          description: `${profileName} is now the primary applicant. Please review the affected sections.`,
+        });
+      } else {
+        toast({
+          title: "Could not update primary applicant",
+          description: result.error || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSettingPrimaryId(null);
+    }
+  };
+
+  const handleImportQuestionnaire = async () => {
+    if (!importSourceId) {
+      toast({
+        title: "Select an application",
+        description: "Choose a previous 482 or 186 matter to import from.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!hasMainApplicant) {
+      toast({
+        title: "Add the primary applicant first",
+        description: "Complete the Included Applicants list before importing answers.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const result = await draftStore.importQuestionnaireFromApplication(importSourceId, {
+        targetProfiles: profiles,
+        targetVisaContext: "186",
+      });
+      if (result.success) {
+        setImportSummary(result.summary || null);
+        const matchedCount = result.summary?.matchedApplicants?.length || 0;
+        const unmatchedCount = result.summary?.unmatchedTargetApplicants?.length || 0;
+        toast({
+          title: "Answers imported",
+          description: `${matchedCount} applicant${matchedCount === 1 ? "" : "s"} matched.${unmatchedCount ? ` ${unmatchedCount} applicant${unmatchedCount === 1 ? "" : "s"} still need completion.` : " Review each section before submitting."}`,
+        });
+      } else {
+        toast({
+          title: "Import failed",
+          description: result.error || "Could not import questionnaire data.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // CRM dependents not yet added to the profiles list (migrating only),
@@ -1007,7 +1243,14 @@ export default function ApplicationProfilePage() {
   })();
 
   const handleContinue = async () => {
-    if (profiles.length === 0) return;
+    if (!hasMainApplicant) {
+      toast({
+        title: "Add the main applicant",
+        description: "You need one primary applicant before continuing.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsNavigating(true);
 
     console.log("[DEBUG] Continue clicked - starting navigation process");
@@ -1056,29 +1299,28 @@ export default function ApplicationProfilePage() {
             <div className="w-10 h-10 rounded-full bg-[#285646]/10 flex items-center justify-center">
               <Users className="w-5 h-5 text-[#285646]" />
             </div>
-            Application Profile
+            Included Applicants
           </CardTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Add all persons who will be included in this visa application. Start with the main applicant (nominated worker),
-            then add any family members who will be migrating together.
+            Add everyone included in this application. Start with the main applicant, then add any family members included in the application.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Main Applicant Profile</h3>
-            <p className="text-sm text-gray-600 mt-1">Add the nominated worker (main applicant) first.</p>
+            <h3 className="text-base font-semibold text-gray-900">Main Applicant</h3>
+            <p className="text-sm text-gray-600 mt-1">Add the primary applicant first.</p>
           </div>
           <div>
-            <h3 className="text-base font-semibold text-gray-900 mt-4">Family Unit Profile</h3>
-            <p className="text-sm text-gray-600 mt-1">Then add a spouse or partner and each dependent child who will be included.</p>
+            <h3 className="text-base font-semibold text-gray-900 mt-4">Family Members</h3>
+            <p className="text-sm text-gray-600 mt-1">Next add any spouse or partner, followed by each dependent child included in the application.</p>
           </div>
           {/* Info banner */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-            <p className="font-bold mb-1" style={{ color: '#1E4034' }}>Who should be included?</p>
+            <p className="font-bold mb-1" style={{ color: '#1E4034' }}>Who should be added?</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Main Applicant</strong> — the person applying for {draftSnap.visaContext === '186' ? 'Employer Nomination (subclass 186)' : 'Skills in Demand (subclass 482)'} (nominated worker)</li>
-              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Spouse / De Facto</strong> — add if migrating together</li>
-              <li style={{ color: '#1E4034' }} className="font-bold"><strong>Dependent Children</strong> — add each child who will be included</li>
+              <li style={{ color: '#1E4034' }} className="font-bold">Main applicant</li>
+              <li style={{ color: '#1E4034' }} className="font-bold">Spouse or de facto partner</li>
+              <li style={{ color: '#1E4034' }} className="font-bold">Dependent children</li>
             </ul>
           </div>
 
@@ -1125,6 +1367,26 @@ export default function ApplicationProfilePage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {profile.relationship === "spouse" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSetPrimary(profile)}
+                          disabled={settingPrimaryId === profile.id || isSubmitted}
+                          className="h-8 px-2 text-xs border-[#285646]/30 text-[#285646] hover:bg-[#285646]/5"
+                          data-testid={`button-set-primary-${profile.id}`}
+                        >
+                          {settingPrimaryId === profile.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <UserCheck className="w-3.5 h-3.5 mr-1" />
+                              Set primary
+                            </>
+                          )}
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -1170,12 +1432,75 @@ export default function ApplicationProfilePage() {
             Add Person
           </Button>
 
+          {is186 && hasMainApplicant && !isSubmitted && importCandidates.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-800">Import Existing Information</p>
+                <p className="text-sm text-slate-600">
+                  If you have previously completed a Ply Legal questionnaire for another visa application, you may be able to import your information to save time. All details can be reviewed and edited after import.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="import-questionnaire-source">Previous visa application</Label>
+                  <Select value={importSourceId} onValueChange={setImportSourceId}>
+                    <SelectTrigger id="import-questionnaire-source" data-testid="select-import-questionnaire-source">
+                      <SelectValue placeholder="Select previous application…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {importCandidates.map((app) => (
+                        <SelectItem key={app.id} value={app.id}>
+                          {getApplicationImportLabel(app)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isImporting || !importSourceId}
+                  onClick={handleImportQuestionnaire}
+                  data-testid="button-import-questionnaire"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importing…
+                    </>
+                  ) : (
+                    "Import information"
+                  )}
+                </Button>
+              </div>
+
+              {importSummary && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Import summary</p>
+                      <p>
+                        {importSummary.matchedApplicants?.length || 0} matched · {importSummary.skippedSourceApplicants?.length || 0} skipped · {importSummary.unmatchedTargetApplicants?.length || 0} need completion
+                      </p>
+                    </div>
+                  </div>
+                  {importSummary.unmatchedTargetApplicants?.length > 0 && (
+                    <p className="text-xs text-emerald-800">
+                      Needs completion: {importSummary.unmatchedTargetApplicants.map((person) => person.name).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Continue */}
           <div className="pt-2">
             <Button
               type="button"
               onClick={handleContinue}
-              disabled={profiles.length === 0 || isNavigating}
+              disabled={!hasMainApplicant || isNavigating}
               className="w-full bg-[#285646] hover:bg-[#1f4236] text-white h-12 text-base font-semibold flex items-center justify-between px-5"
               data-testid="button-continue"
             >
@@ -1193,6 +1518,7 @@ export default function ApplicationProfilePage() {
         onSave={handleAddProfile}
         editingProfile={editingProfile}
         hasMainApplicant={hasMainApplicant}
+        mainApplicantPrefill={mainApplicantPrefill}
         availableCrmDependents={availableCrmDependents}
         isSaving={isProfileSaving}
       />

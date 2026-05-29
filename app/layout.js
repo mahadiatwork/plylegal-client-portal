@@ -1,13 +1,16 @@
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "./providers";
-import favicon from "@/assets/favicon.png";
+
+const FAVICON_URL =
+  "https://cdn.prod.website-files.com/68df275416b515842035785c/68f9a3861f1f134bb950ee93_Favicon.svg";
 
 export const metadata = {
   title: "PlyLegal: Visa Portal",
   description: "Legal immigration case management portal",
   icons: {
-    icon: favicon.src,
+    icon: FAVICON_URL,
+    shortcut: FAVICON_URL,
   },
 };
 

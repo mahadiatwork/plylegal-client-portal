@@ -41,6 +41,8 @@ export async function POST(request) {
     const profileData = {
       firstName: contact.First_Name || '',
       lastName: contact.Last_Name || '',
+      gender: contact.Gender || '',
+      dateOfBirth: contact.Date_of_Birth || '',
       phone: contact.Phone || contact.Mobile || '',
       mobile: contact.Mobile || '',
       streetAddress: contact.Mailing_Street || '',
@@ -346,4 +348,3 @@ export async function POST(request) {
     );
   }
 }
-

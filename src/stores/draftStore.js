@@ -8,6 +8,477 @@ import { authStore } from "./authStore";
 // Get database adapter (Firebase or localStorage based on env)
 const db = getAdapter();
 
+const TEMPORARY_WORK_PROFILE_SECTIONS = {
+  main_applicant: ["details", "other", "identity", "contact_details", "employment", "education", "skills", "language"],
+  spouse: ["details", "other", "identity", "education", "language"],
+  child: ["details", "other", "identity", "custody"],
+  other: ["details", "other", "identity", "contact_details", "employment", "education", "skills", "language"],
+};
+
+const TEMPORARY_WORK_LEGACY_SECTION_KEYS = {
+  main_applicant: {
+    details: "temporary_work_details",
+    other: "temporary_work_other",
+    identity: "temporary_work_identity",
+    contact_details: "temporary_work_contact_details",
+    employment: "temporary_work_employment",
+    education: "temporary_work_education",
+    skills: "temporary_work_skills",
+    language: "temporary_work_language",
+  },
+  spouse: {
+    details: "temporary_work_spouse_details",
+    other: "temporary_work_spouse_other",
+    identity: "temporary_work_spouse_identity",
+    education: "temporary_work_spouse_education",
+    language: "temporary_work_spouse_language",
+  },
+};
+
+const TEMPORARY_WORK_SHARED_IMPORTERS = {
+  temporary_work_visas: remapTemporaryWorkVisasSection,
+  temporary_work_travel: remapTemporaryWorkTravelSection,
+  temporary_work_countries_of_residence: remapTemporaryWorkResidenceSection,
+  temporary_work_health: remapTemporaryWorkHealthSection,
+  temporary_work_character: remapTemporaryWorkCharacterSection,
+};
+
+const HEALTH_REPEATER_FLAG_BY_KEY = {
+  health_examinations: "has_health_examinations",
+  visited_outside_details: "visited_outside_passport_country",
+  hospital_details: "intends_hospital_entry",
+  healthcare_work_details: "intends_healthcare_work",
+  aged_care_work_details: "intends_aged_care",
+  childcare_work_details: "intends_childcare",
+  classroom_work_details: "intends_classroom",
+  tuberculosis_details: "had_tuberculosis",
+  health_conditions_details: "medical_condition",
+  medical_assistance_details: "requires_assistance",
+  tuberculosis_exposure_details: "close_contact_tb",
+  health_insurance_details: "health_insurance",
+};
+
+function cloneDraftValue(value) {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function hasMeaningfulValue(value) {
+  if (typeof value === "string") return value.trim() !== "";
+  if (typeof value === "boolean") return true;
+  if (Array.isArray(value)) return value.length > 0;
+  if (value && typeof value === "object") {
+    return Object.values(value).some((nestedValue) => hasMeaningfulValue(nestedValue));
+  }
+  return value !== null && value !== undefined;
+}
+
+function firstTextValue(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function normalizeTextValue(value) {
+  return firstTextValue(value).toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeMonthValue(value) {
+  const text = normalizeTextValue(value);
+  if (!text) return "";
+  const monthMap = {
+    january: "01",
+    february: "02",
+    march: "03",
+    april: "04",
+    may: "05",
+    june: "06",
+    july: "07",
+    august: "08",
+    september: "09",
+    october: "10",
+    november: "11",
+    december: "12",
+  };
+  if (monthMap[text]) return monthMap[text];
+  const number = Number(text);
+  return Number.isFinite(number) && number > 0 ? String(number).padStart(2, "0") : "";
+}
+
+function normalizeDayValue(value) {
+  const text = firstTextValue(value);
+  if (!text) return "";
+  const number = Number(text);
+  return Number.isFinite(number) && number > 0 ? String(number).padStart(2, "0") : text;
+}
+
+function normalizeProfileDob(profile) {
+  return {
+    day: normalizeDayValue(profile?.birth_day ?? profile?.dob_day),
+    month: normalizeMonthValue(profile?.birth_month ?? profile?.dob_month),
+    year: firstTextValue(profile?.birth_year ?? profile?.dob_year),
+  };
+}
+
+function profileHasCompleteDob(profile) {
+  const dob = normalizeProfileDob(profile);
+  return Boolean(dob.day && dob.month && dob.year);
+}
+
+function getProfileFullName(profile) {
+  return [profile?.given_names, profile?.family_name]
+    .map((value) => firstTextValue(value))
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function getProfileDisplayName(profile) {
+  return getProfileFullName(profile) || "Unnamed applicant";
+}
+
+function getProfileHealthLabel(profile) {
+  const name = getProfileDisplayName(profile);
+  const dobParts = [profile?.birth_day, profile?.birth_month, profile?.birth_year]
+    .map((value) => firstTextValue(value))
+    .filter(Boolean);
+  return dobParts.length > 0 ? `${name} (DOB: ${dobParts.join(" ")})` : name;
+}
+
+function getProfileIdentityKey(profile) {
+  if (!profileHasCompleteDob(profile)) return "";
+  const familyName = normalizeTextValue(profile?.family_name);
+  const givenNames = normalizeTextValue(profile?.given_names);
+  if (!familyName || !givenNames) return "";
+  const dob = normalizeProfileDob(profile);
+  return `${givenNames}|${familyName}|${dob.year}-${dob.month}-${dob.day}`;
+}
+
+function getApplicantNameVariants(profile) {
+  const name = getProfileFullName(profile);
+  if (!name) return [];
+  const dob = [profile?.birth_day, profile?.birth_month, profile?.birth_year]
+    .map((value) => firstTextValue(value))
+    .filter(Boolean)
+    .join(" ");
+  return [
+    name,
+    dob ? `${name} (DOB: ${dob})` : "",
+    `${name} (Main Applicant)`,
+    `${name} (Spouse/Partner)`,
+    `${name} (Spouse / Partner)`,
+    `${name} (Child)`,
+    `${name} (Dependent)`,
+  ].filter(Boolean);
+}
+
+function buildLegacyProfileFromSection(id, relationship, sectionData) {
+  if (!hasMeaningfulValue(sectionData)) return null;
+  return {
+    id,
+    relationship,
+    given_names: sectionData?.given_names || "",
+    family_name: sectionData?.family_name || "",
+    gender: sectionData?.gender || "",
+    birth_day: sectionData?.birth_day || "",
+    birth_month: sectionData?.birth_month || "",
+    birth_year: sectionData?.birth_year || "",
+  };
+}
+
+function getImportableSourceProfiles(sourceDraft) {
+  if (Array.isArray(sourceDraft?.profiles) && sourceDraft.profiles.length > 0) {
+    return sourceDraft.profiles;
+  }
+
+  const profiles = [];
+  const mainApplicant = buildLegacyProfileFromSection("legacy_main", "main_applicant", sourceDraft?.temporary_work_details);
+  const spouse = buildLegacyProfileFromSection("legacy_spouse", "spouse", sourceDraft?.temporary_work_spouse_details);
+  if (mainApplicant) profiles.push(mainApplicant);
+  if (spouse) profiles.push(spouse);
+
+  const legacyChildren = sourceDraft?.temporary_work_children?.children;
+  if (Array.isArray(legacyChildren)) {
+    legacyChildren.forEach((child, index) => {
+      const included = String(child?.included_in_application || "").toLowerCase();
+      if (included && included !== "yes" && included !== "true") return;
+      const profile = buildLegacyProfileFromSection(`legacy_child_${index}`, "child", child);
+      if (profile) profiles.push(profile);
+    });
+  }
+
+  return profiles;
+}
+
+function getProfileSectionsFromDraft(sourceDraft, sourceProfile) {
+  const profileSections = cloneDraftValue(sourceDraft?.profiles_data?.[sourceProfile?.id] || {}) || {};
+  const legacySectionKeys = TEMPORARY_WORK_LEGACY_SECTION_KEYS[sourceProfile?.relationship] || {};
+
+  Object.entries(legacySectionKeys).forEach(([sectionName, legacyKey]) => {
+    if (profileSections[sectionName] !== undefined) return;
+    if (hasMeaningfulValue(sourceDraft?.[legacyKey])) {
+      profileSections[sectionName] = cloneDraftValue(sourceDraft[legacyKey]);
+    }
+  });
+
+  return profileSections;
+}
+
+function findMatchingSourceProfile(targetProfile, sourceProfiles, usedSourceIds) {
+  const targetZohoId = firstTextValue(targetProfile?.zohoDependentId);
+  if (targetZohoId) {
+    const zohoMatch = sourceProfiles.find((sourceProfile) => (
+      !usedSourceIds.has(sourceProfile.id) &&
+      firstTextValue(sourceProfile?.zohoDependentId) === targetZohoId
+    ));
+    if (zohoMatch) return zohoMatch;
+  }
+
+  const targetIdentityKey = getProfileIdentityKey(targetProfile);
+  if (!targetIdentityKey) return null;
+
+  return sourceProfiles.find((sourceProfile) => (
+    !usedSourceIds.has(sourceProfile.id) &&
+    getProfileIdentityKey(sourceProfile) === targetIdentityKey
+  )) || null;
+}
+
+function buildProfileImportMatches(sourceProfiles, targetProfiles) {
+  const usedSourceIds = new Set();
+  const matchedApplicants = [];
+  const unmatchedTargetApplicants = [];
+
+  targetProfiles.forEach((targetProfile) => {
+    const sourceProfile = findMatchingSourceProfile(targetProfile, sourceProfiles, usedSourceIds);
+    if (!sourceProfile) {
+      unmatchedTargetApplicants.push({
+        id: targetProfile.id,
+        name: getProfileDisplayName(targetProfile),
+        relationship: targetProfile.relationship,
+      });
+      return;
+    }
+
+    usedSourceIds.add(sourceProfile.id);
+    matchedApplicants.push({
+      sourceProfile,
+      targetProfile,
+      sourceName: getProfileDisplayName(sourceProfile),
+      targetName: getProfileDisplayName(targetProfile),
+      sourceRelationship: sourceProfile.relationship,
+      targetRelationship: targetProfile.relationship,
+    });
+  });
+
+  const skippedSourceApplicants = sourceProfiles
+    .filter((sourceProfile) => !usedSourceIds.has(sourceProfile.id))
+    .map((sourceProfile) => ({
+      id: sourceProfile.id,
+      name: getProfileDisplayName(sourceProfile),
+      relationship: sourceProfile.relationship,
+    }));
+
+  return { matchedApplicants, unmatchedTargetApplicants, skippedSourceApplicants };
+}
+
+function buildApplicantRemap(matchedApplicants) {
+  const sourceIdToTargetId = new Map();
+  const sourceNameToTargetId = new Map();
+  const sourceNameToTargetName = new Map();
+  const sourceNameToTargetHealthLabel = new Map();
+
+  matchedApplicants.forEach(({ sourceProfile, targetProfile }) => {
+    sourceIdToTargetId.set(String(sourceProfile.id), targetProfile.id);
+    getApplicantNameVariants(sourceProfile).forEach((variant) => {
+      const normalizedVariant = normalizeTextValue(variant);
+      if (!normalizedVariant) return;
+      sourceNameToTargetId.set(normalizedVariant, targetProfile.id);
+      sourceNameToTargetName.set(normalizedVariant, getProfileDisplayName(targetProfile));
+      sourceNameToTargetHealthLabel.set(normalizedVariant, getProfileHealthLabel(targetProfile));
+    });
+  });
+
+  return {
+    remapApplicantId(value) {
+      const direct = sourceIdToTargetId.get(String(value || ""));
+      if (direct) return direct;
+      return sourceNameToTargetId.get(normalizeTextValue(value)) || null;
+    },
+    remapApplicantName(value) {
+      return sourceNameToTargetName.get(normalizeTextValue(value)) || null;
+    },
+    remapHealthApplicantName(value) {
+      return sourceNameToTargetHealthLabel.get(normalizeTextValue(value)) || null;
+    },
+  };
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function remapTemporaryWorkVisasSection(sourceSection, applicantRemap) {
+  const nextSection = cloneDraftValue(sourceSection) || {};
+  const sourceEntries = Array.isArray(sourceSection?.visa_grant_entries) ? sourceSection.visa_grant_entries : [];
+  nextSection.visa_grant_entries = sourceEntries
+    .map((entry) => {
+      const targetApplicantId = applicantRemap.remapApplicantId(entry?.applicantId);
+      if (!targetApplicantId) return null;
+      return { ...cloneDraftValue(entry), applicantId: targetApplicantId };
+    })
+    .filter(Boolean);
+  return nextSection;
+}
+
+function remapTemporaryWorkTravelSection(sourceSection, applicantRemap) {
+  const nextSection = cloneDraftValue(sourceSection) || {};
+  const sourceRows = Array.isArray(sourceSection?.travel_history) ? sourceSection.travel_history : [];
+  nextSection.travel_history = sourceRows
+    .map((row) => {
+      const sourceApplicantIds = Array.isArray(row?.applicant_ids)
+        ? row.applicant_ids
+        : row?.applicant_name
+          ? [row.applicant_name]
+          : [];
+      const targetApplicantIds = uniqueValues(sourceApplicantIds.map((sourceApplicantId) =>
+        applicantRemap.remapApplicantId(sourceApplicantId)
+      ));
+      if (targetApplicantIds.length === 0) return null;
+      const nextRow = { ...cloneDraftValue(row), applicant_ids: targetApplicantIds };
+      delete nextRow.applicant_name;
+      return nextRow;
+    })
+    .filter(Boolean);
+  if (sourceRows.length > 0 && nextSection.travel_history.length === 0) {
+    nextSection.has_travel_history = "no";
+  }
+  return nextSection;
+}
+
+function remapTemporaryWorkResidenceSection(sourceSection, applicantRemap) {
+  const nextSection = cloneDraftValue(sourceSection) || {};
+  const sourceRows = Array.isArray(sourceSection?.residence_records) ? sourceSection.residence_records : [];
+  nextSection.residence_records = sourceRows
+    .map((row) => {
+      const targetApplicantName = applicantRemap.remapApplicantName(row?.applicant_name);
+      if (!targetApplicantName) return null;
+      return { ...cloneDraftValue(row), applicant_name: targetApplicantName };
+    })
+    .filter(Boolean);
+  return nextSection;
+}
+
+function remapTemporaryWorkHealthSection(sourceSection, applicantRemap) {
+  const nextSection = cloneDraftValue(sourceSection) || {};
+
+  Object.entries(HEALTH_REPEATER_FLAG_BY_KEY).forEach(([arrayKey, flagKey]) => {
+    const sourceRows = Array.isArray(sourceSection?.[arrayKey]) ? sourceSection[arrayKey] : [];
+    if (!Array.isArray(sourceSection?.[arrayKey])) return;
+    nextSection[arrayKey] = sourceRows
+      .map((row) => {
+        const targetApplicantName = applicantRemap.remapHealthApplicantName(row?.applicant_name);
+        if (!targetApplicantName) return null;
+        return { ...cloneDraftValue(row), applicant_name: targetApplicantName };
+      })
+      .filter(Boolean);
+    if (sourceRows.length > 0 && nextSection[arrayKey].length === 0 && nextSection[flagKey] === "yes") {
+      nextSection[flagKey] = "no";
+    }
+  });
+
+  return nextSection;
+}
+
+function remapTemporaryWorkCharacterSection(sourceSection, applicantRemap) {
+  const nextSection = cloneDraftValue(sourceSection) || {};
+
+  Object.keys(nextSection).forEach((key) => {
+    if (!key.endsWith("_applicant_name")) return;
+    const sourceApplicantName = nextSection[key];
+    if (!sourceApplicantName) return;
+    const targetApplicantName = applicantRemap.remapApplicantName(sourceApplicantName);
+    if (targetApplicantName) {
+      nextSection[key] = targetApplicantName;
+      return;
+    }
+
+    const baseKey = key.slice(0, -"_applicant_name".length);
+    nextSection[key] = "";
+    if (`${baseKey}_details` in nextSection) nextSection[`${baseKey}_details`] = "";
+    if (baseKey in nextSection) nextSection[baseKey] = "";
+  });
+
+  return nextSection;
+}
+
+function copyMatchedProfileSections(sourceDraft, candidateDraft, matchedApplicants) {
+  const copiedSections = [];
+  const nextProfilesData = cloneDraftValue(candidateDraft.profiles_data || {}) || {};
+
+  matchedApplicants.forEach(({ sourceProfile, targetProfile }) => {
+    const sourceSections = getProfileSectionsFromDraft(sourceDraft, sourceProfile);
+    const targetSections = cloneDraftValue(nextProfilesData[targetProfile.id] || {}) || {};
+    const targetAllowedSections = TEMPORARY_WORK_PROFILE_SECTIONS[targetProfile.relationship] || TEMPORARY_WORK_PROFILE_SECTIONS.other;
+    const sourceAllowedSections = TEMPORARY_WORK_PROFILE_SECTIONS[sourceProfile.relationship] || TEMPORARY_WORK_PROFILE_SECTIONS.other;
+    const importableSections = targetAllowedSections.filter((sectionName) =>
+      sourceAllowedSections.includes(sectionName) && hasMeaningfulValue(sourceSections[sectionName])
+    );
+
+    importableSections.forEach((sectionName) => {
+      targetSections[sectionName] = cloneDraftValue(sourceSections[sectionName]);
+    });
+
+    nextProfilesData[targetProfile.id] = targetSections;
+
+    if (importableSections.length > 0) {
+      copiedSections.push({
+        applicantId: targetProfile.id,
+        applicantName: getProfileDisplayName(targetProfile),
+        sections: importableSections,
+      });
+    }
+  });
+
+  candidateDraft.profiles_data = nextProfilesData;
+  return copiedSections;
+}
+
+function copySharedTemporaryWorkSections(sourceDraft, candidateDraft, applicantRemap) {
+  const copiedSharedSections = [];
+
+  Object.entries(TEMPORARY_WORK_SHARED_IMPORTERS).forEach(([sectionKey, remapSection]) => {
+    if (!hasMeaningfulValue(sourceDraft?.[sectionKey])) return;
+    const remappedSection = remapSection(sourceDraft[sectionKey], applicantRemap);
+    candidateDraft[sectionKey] = remappedSection;
+    copiedSharedSections.push(sectionKey);
+  });
+
+  return copiedSharedSections;
+}
+
+function clearProfileCompletionKeys(completionStatus, profileIds) {
+  const profileIdSet = new Set(profileIds.filter(Boolean));
+  const nextCompletionStatus = {};
+
+  Object.entries(completionStatus || {}).forEach(([key, value]) => {
+    const profileId = String(key).split("__")[1];
+    const isProfileScopedTemporaryWorkKey =
+      profileIdSet.has(profileId) &&
+      (
+        key.startsWith("temporary-work/main-applicant/") ||
+        key.startsWith("temporary-work/spouse-partner/") ||
+        key.startsWith("temporary-work/children/")
+      );
+
+    nextCompletionStatus[key] = isProfileScopedTemporaryWorkKey ? false : value;
+  });
+
+  return nextCompletionStatus;
+}
+
 export const draftStore = proxy({
   draft: {},
   completionStatus: {}, // Track which pages are completed: { "start": true, "main-applicant/details": true, ... }
@@ -26,6 +497,80 @@ export const draftStore = proxy({
 
   isZohoSyncableProfile(profile) {
     return ["spouse", "child", "other"].includes(profile?.relationship);
+  },
+
+  formatProfileDateOfBirth(profile) {
+    const year = String(profile?.birth_year || "").trim();
+    const day = String(profile?.birth_day || "").trim().padStart(2, "0");
+    const rawMonth = String(profile?.birth_month || "").trim();
+    if (!year || !day || !rawMonth) return "";
+
+    const monthMap = {
+      january: "01",
+      february: "02",
+      march: "03",
+      april: "04",
+      may: "05",
+      june: "06",
+      july: "07",
+      august: "08",
+      september: "09",
+      october: "10",
+      november: "11",
+      december: "12",
+    };
+
+    const month =
+      monthMap[rawMonth.toLowerCase()] ||
+      (Number.isFinite(Number(rawMonth)) ? String(Number(rawMonth)).padStart(2, "0") : "");
+
+    if (!month) return "";
+    return `${year}-${month}-${day}`;
+  },
+
+  async syncMainApplicantProfileToZoho(profile) {
+    try {
+      if (typeof window === "undefined") return null;
+      if (profile?.relationship !== "main_applicant") return null;
+
+      const userId = authStore.user?.id;
+      const email = authStore.user?.email;
+      const zohoContactId = authStore.userProfile?.zohoContactId || null;
+      if (!userId || (!zohoContactId && !email)) return null;
+
+      const payload = { userId };
+      if (zohoContactId) payload.contactId = zohoContactId;
+      if (email) payload.email = email;
+
+      if (String(profile?.given_names || "").trim()) payload.firstName = profile.given_names;
+      if (String(profile?.family_name || "").trim()) payload.lastName = profile.family_name;
+      if (String(profile?.gender || "").trim()) payload.gender = profile.gender;
+
+      const dateOfBirth = this.formatProfileDateOfBirth(profile);
+      if (dateOfBirth) payload.dateOfBirth = dateOfBirth;
+
+      const response = await fetch("/api/profile/sync-zoho", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        console.warn("Main applicant Zoho sync skipped/failed:", result);
+        return null;
+      }
+
+      try {
+        await authStore.loadUserProfile();
+      } catch (reloadErr) {
+        console.warn("Could not refresh user profile after main applicant sync:", reloadErr?.message);
+      }
+
+      return result;
+    } catch (error) {
+      console.warn("Main applicant Zoho sync failed:", error.message);
+      return null;
+    }
   },
 
   async syncDependentProfileToZoho(profile, action) {
@@ -156,6 +701,9 @@ export const draftStore = proxy({
       await this.persistProfileZohoDependentId(newProfile.id, zohoDependentId);
       newProfile.zohoDependentId = zohoDependentId;
     }
+    if (newProfile.relationship === "main_applicant") {
+      await this.syncMainApplicantProfileToZoho(newProfile);
+    }
     return newProfile;
   },
 
@@ -182,6 +730,68 @@ export const draftStore = proxy({
         await this.persistProfileZohoDependentId(profileId, zohoDependentId);
       }
     }
+
+    if (updatedProfile?.relationship === "main_applicant") {
+      await this.syncMainApplicantProfileToZoho(updatedProfile);
+    }
+  },
+
+  /** Promote a spouse/partner profile to the primary applicant for this application */
+  async setPrimaryApplicant(profileId) {
+    const appId = this.currentApplicationId;
+    if (!appId) {
+      return { success: false, error: "Application ID required" };
+    }
+
+    const profiles = this.draft?.profiles || [];
+    const selectedProfile = profiles.find((profile) => profile.id === profileId);
+    if (!selectedProfile) {
+      return { success: false, error: "Applicant not found" };
+    }
+    if (selectedProfile.relationship === "main_applicant") {
+      return { success: true };
+    }
+
+    const currentPrimary = profiles.find((profile) => profile.relationship === "main_applicant");
+    const selectedPreviousRelationship = selectedProfile.relationship;
+    const updatedProfiles = profiles.map((profile) => {
+      if (profile.id === profileId) {
+        return { ...profile, relationship: "main_applicant" };
+      }
+      if (currentPrimary && profile.id === currentPrimary.id) {
+        return {
+          ...profile,
+          relationship: selectedPreviousRelationship === "spouse" ? "spouse" : "other",
+        };
+      }
+      return profile;
+    });
+
+    const previousDraft = cloneDraftValue(this.draft);
+    const previousCompletionStatus = cloneDraftValue(this.completionStatus);
+    const profileIdsToReview = [profileId, currentPrimary?.id].filter(Boolean);
+    const nextCompletionStatus = clearProfileCompletionKeys(this.completionStatus, profileIdsToReview);
+    const nextDraft = { ...this.draft, profiles: updatedProfiles };
+
+    this.draft = nextDraft;
+    this.completionStatus = nextCompletionStatus;
+
+    const draftResult = await db.saveDraft(this.draft, appId);
+    if (!draftResult.success) {
+      this.draft = previousDraft;
+      this.completionStatus = previousCompletionStatus;
+      return { success: false, error: draftResult.error || "Failed to update primary applicant" };
+    }
+
+    await db.saveCompletionStatus(this.completionStatus, appId);
+    this.activeProfileId = profileId;
+
+    const newPrimary = updatedProfiles.find((profile) => profile.id === profileId);
+    if (newPrimary) {
+      await this.syncMainApplicantProfileToZoho(newPrimary);
+    }
+
+    return { success: true };
   },
 
   /** Delete a profile and its data */
@@ -490,20 +1100,29 @@ export const draftStore = proxy({
   },
 
   /**
-   * Copy questionnaire answers from another application (intended: Subclass 482 → 186).
-   * Preserves visaContext as 186 on the current application. Does not copy completion status.
+   * Copy questionnaire answers from another application into the current one.
+   * The target application's profile list is authoritative: source applicants are matched by
+   * Zoho dependent id first, then normalized name + DOB, and only matched people are copied.
+   * Completion status is intentionally not copied.
    */
-  async importQuestionnaireFrom482Application(sourceApplicationId) {
+  async importQuestionnaireFromApplication(sourceApplicationId, options = {}) {
     const targetId = this.currentApplicationId;
     if (!targetId) {
       return { success: false, error: 'No application selected' };
     }
-    const ctx = this.visaContext ?? this.draft?.visaContext;
-    if (ctx !== '186') {
+    const targetVisaContext = options.targetVisaContext ?? this.visaContext ?? this.draft?.visaContext;
+    if (targetVisaContext !== '186') {
       return { success: false, error: 'Import is only available for Employer Nomination (subclass 186) applications' };
     }
     if (!sourceApplicationId || sourceApplicationId === targetId) {
       return { success: false, error: 'Choose a different application to import from' };
+    }
+
+    const targetProfiles = Array.isArray(options.targetProfiles)
+      ? options.targetProfiles
+      : (this.draft?.profiles || []);
+    if (targetProfiles.length === 0) {
+      return { success: false, error: 'Add the applicants included in this application before importing answers' };
     }
 
     try {
@@ -512,36 +1131,63 @@ export const draftStore = proxy({
         return { success: false, error: 'The selected application has no saved questionnaire data' };
       }
 
-      const merged = { ...this.draft };
-      Object.keys(sourceData).forEach((k) => {
-        if (k === 'visaContext') return;
-        if (
-          k.startsWith('temporary_work_') ||
-          k === 'profiles' ||
-          k === 'profiles_data' ||
-          k === 'non_migrating_members' ||
-          k === 'started'
-        ) {
-          merged[k] = sourceData[k];
-        }
-      });
-      merged.visaContext = '186';
-      this.visaContext = '186';
+      const sourceProfiles = getImportableSourceProfiles(sourceData);
+      if (sourceProfiles.length === 0) {
+        return { success: false, error: 'The selected application has no importable applicant data' };
+      }
 
-      this.draft = merged;
+      const matchSummary = buildProfileImportMatches(sourceProfiles, targetProfiles);
+      const applicantRemap = buildApplicantRemap(matchSummary.matchedApplicants);
+      const candidateDraft = cloneDraftValue(this.draft) || {};
+      candidateDraft.profiles = cloneDraftValue(
+        Array.isArray(this.draft?.profiles) && this.draft.profiles.length > 0
+          ? this.draft.profiles
+          : targetProfiles
+      ) || [];
+      candidateDraft.visaContext = '186';
+
+      const copiedProfileSections = copyMatchedProfileSections(sourceData, candidateDraft, matchSummary.matchedApplicants);
+      const copiedSharedSections = copySharedTemporaryWorkSections(sourceData, candidateDraft, applicantRemap);
+
+      const summary = {
+        matchedApplicants: matchSummary.matchedApplicants.map((match) => ({
+          sourceName: match.sourceName,
+          targetName: match.targetName,
+          sourceRelationship: match.sourceRelationship,
+          targetRelationship: match.targetRelationship,
+        })),
+        skippedSourceApplicants: matchSummary.skippedSourceApplicants,
+        unmatchedTargetApplicants: matchSummary.unmatchedTargetApplicants,
+        copiedSections: copiedProfileSections,
+        copiedSharedSections,
+      };
+
+      const previousDraft = cloneDraftValue(this.draft);
+      const previousVisaContext = this.visaContext;
+      this.visaContext = '186';
+      this.draft = candidateDraft;
       this.isSaving = true;
       const result = await db.saveDraft(this.draft, targetId);
       this.isSaving = false;
       if (!result.success) {
+        this.draft = previousDraft;
+        this.visaContext = previousVisaContext;
         return { success: false, error: result.error || 'Failed to save imported data' };
       }
       this.lastSaved = new Date().toISOString();
-      return { success: true };
+      return { success: true, summary };
     } catch (error) {
       this.isSaving = false;
-      console.error('importQuestionnaireFrom482Application:', error);
+      console.error('importQuestionnaireFromApplication:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  async importQuestionnaireFrom482Application(sourceApplicationId) {
+    return this.importQuestionnaireFromApplication(sourceApplicationId, {
+      targetProfiles: this.draft?.profiles || [],
+      targetVisaContext: '186',
+    });
   },
 
   async setPrefill(value) {

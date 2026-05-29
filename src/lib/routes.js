@@ -113,7 +113,7 @@ export const PROTECTION_VISA_ROUTES = [
 // Skills in Demand (subclass 482) — intake routes under /intake/temporary-work/
 export const TEMPORARY_WORK_VISA_ROUTES = [
   { href: "/intake/temporary-work/start", title: "Getting Started" },
-  { href: "/intake/temporary-work/profile", title: "Application Profile" },
+  { href: "/intake/temporary-work/profile", title: "Included Applicants" },
   {
     href: "/intake/temporary-work/main-applicant/details",
     title: "Main Applicant",
@@ -155,7 +155,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
 // Employer Nomination Visa (subclass 186) — same pages, but spouse gets Education + Language
 export const EMPLOYER_NOMINATION_ROUTES = [
   { href: "/intake/temporary-work/start", title: "Getting Started" },
-  { href: "/intake/temporary-work/profile", title: "Application Profile" },
+  { href: "/intake/temporary-work/profile", title: "Included Applicants" },
   {
     href: "/intake/temporary-work/main-applicant/details",
     title: "Main Applicant",

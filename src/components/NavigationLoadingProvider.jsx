@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useCallback, useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { NavigationSpinner } from "@/components/NavigationSpinner";
+import { FileCheck2, Shield } from "lucide-react";
 
 const NavigationLoadingContext = createContext(null);
 
@@ -85,22 +85,43 @@ export function NavigationLoadingProvider({ children }) {
 
   return (
     <NavigationLoadingContext.Provider value={value}>
-      {/* Top progress bar */}
-      {isNavigating && (
-        <div className="fixed top-0 left-0 right-0 h-1 z-[100] overflow-hidden">
-          <div
-            className="h-full w-1/3 nav-progress-bar"
-            style={{ backgroundColor: "#285646" }}
-          />
-        </div>
-      )}
-
-      {/* Delayed centered overlay spinner */}
+      {/* Delayed centered navigation overlay */}
       {showOverlay && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/10 pointer-events-auto">
-          <div className="bg-white/90 rounded-2xl p-6 shadow-lg flex flex-col items-center">
-            <NavigationSpinner size="md" />
-            <p className="text-[#2D5A4F] text-sm font-medium mt-3">Loading…</p>
+        <div className="fixed inset-0 z-[90] flex items-center justify-center px-4 bg-slate-900/20 backdrop-blur-[2px] pointer-events-auto">
+          <div className="w-[92vw] max-w-[500px] rounded-[22px] border border-[#e8ece8] bg-white p-10 shadow-[0_14px_36px_rgba(16,24,40,0.18)]">
+            <div className="mx-auto relative h-[172px] w-[172px]">
+              <svg viewBox="0 0 172 172" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+                <circle cx="86" cy="86" r="80" fill="none" stroke="#d9dedd" strokeWidth="6" />
+                <circle
+                  cx="86"
+                  cy="86"
+                  r="80"
+                  fill="none"
+                  stroke="#4f7f70"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray="108 502"
+                  className="origin-center animate-spin"
+                  style={{ animationDuration: "2.2s" }}
+                />
+              </svg>
+
+              <div className="absolute inset-0 flex items-center justify-center">
+                <FileCheck2 className="h-16 w-16 text-[#4f7f70]" strokeWidth={2.2} />
+              </div>
+            </div>
+
+            <h2 className="mt-5 text-center text-[40px] font-semibold text-[#2f5f52]">Opening application</h2>
+
+            <div className="mt-4 flex items-center justify-center gap-3 text-[#7b8c86]">
+              <div className="h-px w-20 bg-[#d5ddda]" />
+              <Shield className="h-4 w-4 text-[#5d8a7b]" strokeWidth={2.2} />
+              <div className="h-px w-20 bg-[#d5ddda]" />
+            </div>
+
+            <p className="mt-5 text-center text-[13px] text-[#4d655d]">
+              Please wait while we prepare your workspace.
+            </p>
           </div>
         </div>
       )}

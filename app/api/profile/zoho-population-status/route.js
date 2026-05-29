@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import { ZohoCRMClient } from '@/lib/zohoClient';
 import { getAdapter } from '@/lib/adapters';
 
+function summarizeZohoContact(contact) {
+  if (!contact) return null;
+  return {
+    id: contact.id,
+    First_Name: contact.First_Name,
+    Last_Name: contact.Last_Name,
+    Email: contact.Email,
+    Phone: contact.Phone,
+    Mobile: contact.Mobile,
+    Mailing_Street: contact.Mailing_Street,
+    Mailing_Suburb: contact.Mailing_Suburb,
+    Mailing_State: contact.Mailing_State,
+    Pick_List_1: contact.Pick_List_1,
+    Mailing_Zip: contact.Mailing_Zip,
+    Mailing_Country: contact.Mailing_Country,
+  };
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,11 +43,14 @@ export async function GET(request) {
     // Check Zoho CRM for contact
     const zohoClient = new ZohoCRMClient();
     let zohoContact = null;
+    let zohoContacts = [];
     let zohoError = null;
     
     try {
       console.log('🔍 Debug: Searching Zoho for email:', email);
-      zohoContact = await zohoClient.findContactByEmail(email);
+      zohoContacts = await zohoClient.findContactsByEmail(email);
+      zohoContact = zohoContacts[0] || null;
+      console.log(`📋 Debug: Zoho contact match count for ${email}: ${zohoContacts.length}`);
       
       if (zohoContact) {
         console.log('✅ Debug: Zoho contact found:', zohoContact.id);
@@ -132,20 +153,10 @@ export async function GET(request) {
       success: true,
       email: email,
       zohoContactFound: !!zohoContact,
-      zohoContact: zohoContact ? {
-        id: zohoContact.id,
-        First_Name: zohoContact.First_Name,
-        Last_Name: zohoContact.Last_Name,
-        Email: zohoContact.Email,
-        Phone: zohoContact.Phone,
-        Mobile: zohoContact.Mobile,
-        Mailing_Street: zohoContact.Mailing_Street,
-        Mailing_Suburb: zohoContact.Mailing_Suburb,
-        Mailing_State: zohoContact.Mailing_State,
-        Pick_List_1: zohoContact.Pick_List_1, // Custom field used for state when Mailing_State is null
-        Mailing_Zip: zohoContact.Mailing_Zip,
-        Mailing_Country: zohoContact.Mailing_Country,
-      } : null,
+      zohoContactMatchCount: zohoContacts.length,
+      duplicateEmailMatches: zohoContacts.length > 1,
+      zohoContacts: zohoContacts.map((contact) => summarizeZohoContact(contact)),
+      zohoContact: summarizeZohoContact(zohoContact),
       zohoError: zohoError,
       mappedData: mappedData,
       profile: profile ? {
@@ -162,6 +173,7 @@ export async function GET(request) {
       } : null,
       mappingStatus: mappingStatus,
       rawZohoData: zohoContact, // Full raw data for debugging
+      rawZohoContacts: zohoContacts,
     });
   } catch (error) {
     console.error('❌ Error checking Zoho population status:', error);

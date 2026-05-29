@@ -45,13 +45,28 @@ export async function GET(request) {
     const zohoClient = new ZohoCRMClient();
     const fields = 'id,First_Name,Last_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating';
     const records = await zohoClient.getRelatedRecords('Contacts', zohoContactId, DEPENDENT_MODULE, fields);
+    let contactRecord = null;
+    try {
+      contactRecord = await zohoClient.getRecord('Contacts', zohoContactId);
+    } catch (contactError) {
+      console.warn('Could not fetch main contact for dependents prefill:', contactError?.message);
+    }
 
     // Map CRM fields to application-friendly format using centralized method
     const dependents = (records || []).map((rec) => zohoClient.mapZohoDependentToAppFields(rec));
+    const contact = contactRecord
+      ? {
+          firstName: contactRecord.First_Name || '',
+          lastName: contactRecord.Last_Name || '',
+          gender: contactRecord.Gender || '',
+          dateOfBirth: contactRecord.Date_of_Birth || '',
+        }
+      : null;
 
     return NextResponse.json({
       success: true,
       dependents,
+      contact,
       contactId: zohoContactId,
     });
   } catch (error) {
