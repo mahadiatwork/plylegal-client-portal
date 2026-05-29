@@ -7,7 +7,33 @@ import { applicationsStore, authStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Menu, X, ArrowLeft, ChevronDown, UserMinus, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Baby,
+  BriefcaseBusiness,
+  Check,
+  ChevronDown,
+  FileCheck2,
+  FileText,
+  GraduationCap,
+  HeartHandshake,
+  Home,
+  Languages,
+  Loader2,
+  LogOut,
+  MapPin,
+  Menu,
+  Pencil,
+  Plane,
+  Scale,
+  Send,
+  ShieldCheck,
+  Trash2,
+  UserMinus,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
@@ -36,6 +62,32 @@ import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "
 import { getApplicationSlug } from "@/lib/visaDisplay";
 import { useToast } from "@/hooks/use-toast";
 
+function getRouteIcon(route) {
+  const text = `${route?.title || ""} ${route?.href || ""}`.toLowerCase();
+
+  if (text.includes("getting")) return FileText;
+  if (text.includes("included")) return Check;
+  if (text.includes("submit")) return Send;
+  if (text.includes("applicant")) return UsersRound;
+  if (text.includes("sponsor") || text.includes("relationship")) return HeartHandshake;
+  if (text.includes("child")) return Baby;
+  if (text.includes("employment")) return BriefcaseBusiness;
+  if (text.includes("education")) return GraduationCap;
+  if (text.includes("language")) return Languages;
+  if (text.includes("address") || text.includes("contact")) return MapPin;
+  if (text.includes("travel") || text.includes("visa")) return Plane;
+  if (text.includes("health")) return ShieldCheck;
+  if (text.includes("character")) return Scale;
+  if (text.includes("family")) return Home;
+
+  return FileCheck2;
+}
+
+function SidebarRouteIcon({ route, className }) {
+  const Icon = getRouteIcon(route);
+  return <Icon className={cn("h-5 w-5 shrink-0", className)} />;
+}
+
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
@@ -53,6 +105,7 @@ export default function IntakeLayout({ children }) {
   const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [deletingNmfId, setDeletingNmfId] = useState(null);
@@ -118,6 +171,13 @@ export default function IntakeLayout({ children }) {
     visaContext: draftSnap.visaContext,
     ...options,
   });
+  const email = authSnap.user?.email || authSnap.userProfile?.email || authSnap.user?.displayName || null;
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await authStore.logout();
+    router.push("/login");
+  };
 
   useEffect(() => {
     if (urlSubclass && urlSubclass !== draftSnap.visaContext) {
@@ -150,13 +210,6 @@ export default function IntakeLayout({ children }) {
   // Get real completion data from draftStore
   const completionData = draftSnap.completionStatus || {};
   const completionPercentage = mounted ? draftStore.getCompletionPercentage() : { completed: 0, total: 0, percentage: 0 };
-
-  useEffect(() => {
-    if (mounted && completionData) {
-      console.log('Completion Status:', completionData);
-      console.log('Completion Keys:', Object.keys(completionData));
-    }
-  }, [mounted, completionData]);
 
   const isRouteActive = (href) => internalPathname === href;
 
@@ -215,16 +268,16 @@ export default function IntakeLayout({ children }) {
   const isSectionExpanded = (href) => expandedSections.has(href);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-[#fbfaf7] flex flex-col">
       {/* Mobile Header */}
-      <div className="lg:hidden flex-shrink-0 z-40 bg-sidebar text-sidebar-foreground border-b border-sidebar-border">
+      <div className="lg:hidden flex-shrink-0 z-40 bg-emerald-950 text-white border-b border-white/10">
         <div className="flex items-center justify-between p-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             data-testid="button-menu-toggle"
-            className="h-9 w-9 text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground"
+            className="h-9 w-9 text-white hover:bg-white/10 hover:text-white"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -232,13 +285,13 @@ export default function IntakeLayout({ children }) {
             <h2 className="font-serif font-semibold text-sm truncate">
               {currentSection?.title}
             </h2>
-            <Progress value={progress} className="h-1 mt-1" />
+            <Progress value={progress} className="h-1 mt-1 bg-white/20" />
           </div>
         </div>
 
         {/* Mobile Section Tabs */}
         {currentSection?.subpages && (
-          <ScrollArea className="border-t border-sidebar-border">
+          <ScrollArea className="border-t border-white/10">
             <div className="flex gap-1 p-2">
               {currentSection.subpages.map((subpage) => {
                 const href = buildHref(subpage.href);
@@ -251,8 +304,8 @@ export default function IntakeLayout({ children }) {
                     className={cn(
                       "min-h-8 text-xs whitespace-nowrap",
                       isRouteActive(subpage.href)
-                        ? "bg-white text-sidebar hover:bg-white/90"
-                        : "text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-foreground"
+                        ? "bg-white text-emerald-950 hover:bg-white/90"
+                        : "text-white hover:bg-white/10 hover:text-white"
                     )}
                     data-testid={`tab-${subpage.href}`}
                   >
@@ -271,16 +324,18 @@ export default function IntakeLayout({ children }) {
         <aside
           className={cn(
             "fixed top-0 left-0 h-screen z-30 flex-shrink-0",
-            "w-[17.5rem] bg-sidebar border-r border-sidebar-border",
+            "w-[88vw] max-w-[20.75rem] overflow-hidden border-r border-white/10 bg-emerald-950 text-white shadow-[18px_0_50px_rgba(12,43,34,0.14)] lg:w-[20.75rem]",
             "transition-transform duration-300 lg:translate-x-0",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <div className="h-full flex flex-col">
+          <div className="relative h-full flex flex-col">
+            <div className="pointer-events-none absolute -bottom-28 -right-20 h-96 w-96 rounded-full border border-white/10" />
+            <div className="pointer-events-none absolute -bottom-12 -right-8 h-72 w-72 rounded-full border border-white/10" />
             {/* Logo */}
-            <div className="p-6 border-b border-sidebar-border">
-              <BrandLogo priority />
-              <p className="text-sm text-sidebar-foreground/70 mt-1">
+            <div className="relative px-8 pb-7 pt-7">
+              <BrandLogo priority className="mx-0 h-[56px]" />
+              <p className="mt-1 text-sm text-white/70">
                 Client Portal
               </p>
               <Button
@@ -294,7 +349,7 @@ export default function IntakeLayout({ children }) {
                     navPush("/applications");
                   }
                 }}
-                className="mt-3 w-full justify-start text-sm text-white hover:text-white hover:bg-white/10"
+                className="mt-6 w-full justify-start px-0 text-sm font-medium text-white/80 hover:text-white hover:bg-white/10"
                 data-testid="button-back-to-applications"
               >
                 <ArrowLeft className="w-4 h-4 mr-2 text-white" />
@@ -303,22 +358,27 @@ export default function IntakeLayout({ children }) {
             </div>
 
             {/* Progress */}
-            <div className="p-6 border-b border-sidebar-border">
+            <div className="relative mx-8 border-t border-white/20 py-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Completion</span>
+                <span className="text-sm font-medium text-white/70">Completion</span>
                 <span className="text-sm font-semibold text-white">
                   {completionPercentage.percentage}%
                 </span>
               </div>
-              <Progress value={completionPercentage.percentage} className="h-2" />
-              <p className="text-xs text-white mt-2">
+              <div className="h-2 overflow-hidden rounded-full bg-white/80">
+                <div
+                  className="h-full rounded-full bg-[#0f6b55] transition-all duration-500"
+                  style={{ width: `${completionPercentage.percentage}%` }}
+                />
+              </div>
+              <p className="mt-4 text-sm font-medium text-white">
                 {completionPercentage.completed} of {completionPercentage.total} sections complete
               </p>
             </div>
 
             {/* Navigation */}
-            <ScrollArea className="flex-1 overflow-x-visible">
-              <nav className="p-4 pr-3 space-y-2">
+            <ScrollArea className="relative flex-1 overflow-x-visible">
+              <nav className="px-5 pb-8 pt-1 space-y-2">
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
@@ -344,12 +404,12 @@ export default function IntakeLayout({ children }) {
                             setSidebarOpen(false);
                           }}
                           className={cn(
-                            "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                            isRouteActive(route.href) && "bg-primary/20 font-semibold",
-                            isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                            "w-full justify-start gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
+                            isRouteActive(route.href) && "border-[#12c79d] bg-white/10 text-white shadow-sm",
+                            isRouteCompleted(route.href) && !isRouteActive(route.href) && "text-white/60"
                           )}
                         >
-                          {isRouteCompleted(route.href) && <Check className="w-4 h-4 mr-2" />}
+                          <SidebarRouteIcon route={route} />
                           {route.title}
                         </Button>
 
@@ -389,15 +449,15 @@ export default function IntakeLayout({ children }) {
                                   <Button
                                     variant="ghost"
                                     className={cn(
-                                      "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                                      isThisProfileActive && "bg-primary/20"
+                                      "mt-2 w-full justify-between gap-3 rounded-lg px-4 py-3 text-left text-white/90 hover:bg-white/10 hover:text-white",
+                                      isThisProfileActive && "bg-white/10 text-white"
                                     )}
                                     data-testid={`nav-profile-${profileKey}`}
                                   >
-                                    <span className="flex items-center gap-2 text-left">
-                                      <span className="flex-1 truncate">
-                                        <span className="font-medium">{profileName}</span>
-                                        <span className="block text-xs text-sidebar-foreground/60">({parenLabel})</span>
+                                    <span className="flex min-w-0 items-center gap-2 text-left">
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-sm font-semibold uppercase tracking-[0.02em]">{profileName}</span>
+                                        <span className="block truncate text-xs font-normal text-white/70">({parenLabel})</span>
                                       </span>
                                     </span>
                                     <ChevronDown
@@ -434,7 +494,7 @@ export default function IntakeLayout({ children }) {
                                       const isComplete = draftSnap.completionStatus?.[completionKey] === true;
                                       return (
                                         <React.Fragment key={`${subpage.href}-${profileKey}`}>
-                                          <li className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                          <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
                                             <Button
                                               variant="ghost"
                                               size="sm"
@@ -444,11 +504,11 @@ export default function IntakeLayout({ children }) {
                                                 draftStore.setActiveProfile(profileKey);
                                               }}
                                               className={cn(
-                                                "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                                "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
                                                 isActive
-                                                  ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
-                                                  : "text-sidebar-foreground",
-                                                isComplete && !isActive && "text-sidebar-foreground/70"
+                                                  ? "font-semibold text-white"
+                                                  : "text-white/80",
+                                                isComplete && !isActive && "text-white/50"
                                               )}
                                               data-testid={`nav-sub-${subpage.href}-${profileKey}`}
                                             >
@@ -457,7 +517,7 @@ export default function IntakeLayout({ children }) {
                                             </Button>
                                           </li>
                                           {draftSnap.visaContext === '186' && profile.relationship === 'main_applicant' && subpage.title === 'Contact Details' && (
-                                            <li className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                            <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -466,10 +526,10 @@ export default function IntakeLayout({ children }) {
                                                   setSidebarOpen(false);
                                                 }}
                                                 className={cn(
-                                                  "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                                  "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
                                                   internalPathname === '/intake/temporary-work/non-migrating'
-                                                    ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
-                                                    : "text-sidebar-foreground"
+                                                    ? "font-semibold text-white"
+                                                    : "text-white/80"
                                                 )}
                                               >
                                                 Other Family
@@ -511,14 +571,14 @@ export default function IntakeLayout({ children }) {
                                   <Button
                                     variant="ghost"
                                     className={cn(
-                                      "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent group",
-                                      isNmfActive && "bg-primary/20"
+                                      "mt-2 w-full justify-between gap-3 rounded-lg px-4 py-3 text-left text-white/90 hover:bg-white/10 hover:text-white group",
+                                      isNmfActive && "bg-white/10 text-white"
                                     )}
                                   >
                                     <span className="flex items-center gap-2 text-left flex-1 min-w-0">
-                                      <UserMinus className="w-3.5 h-3.5 text-sidebar-foreground/70 flex-shrink-0" />
+                                      <UserMinus className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
                                       <span className="flex-1 truncate">
-                                        <span className="block text-xs text-sidebar-foreground/50">
+                                        <span className="block text-xs text-white/50">
                                           Other Family{member.relationship ? ` (${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)})` : ''}
                                         </span>
                                         <span className="font-medium truncate">{nmfName}</span>
@@ -534,10 +594,10 @@ export default function IntakeLayout({ children }) {
                                           setSidebarOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
-                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-sidebar-accent transition-opacity cursor-pointer"
+                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-opacity cursor-pointer"
                                         title="Edit member"
                                       >
-                                        <Pencil className="w-3 h-3 text-sidebar-foreground/70" />
+                                        <Pencil className="w-3 h-3 text-white/70" />
                                       </span>
                                       <span
                                         role="button"
@@ -602,7 +662,7 @@ export default function IntakeLayout({ children }) {
                                       const href = buildNonMigratingHref(member.id, sub.pathSuffix);
                                       const isActive = internalPathname === href;
                                       return (
-                                        <li key={sub.pathSuffix} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                        <li key={sub.pathSuffix} className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
                                           <Button
                                             variant="ghost"
                                             size="sm"
@@ -611,10 +671,10 @@ export default function IntakeLayout({ children }) {
                                               setSidebarOpen(false);
                                             }}
                                             className={cn(
-                                              "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                              "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
                                               isActive
-                                                ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20"
-                                                : "text-sidebar-foreground"
+                                                ? "font-semibold text-white"
+                                                : "text-white/80"
                                             )}
                                           >
                                             {sub.title}
@@ -644,15 +704,13 @@ export default function IntakeLayout({ children }) {
                             <Button
                               variant="ghost"
                               className={cn(
-                                "w-full justify-between min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "bg-primary/20"
+                                "w-full justify-between gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
+                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "border-[#12c79d] bg-white/10 text-white shadow-sm"
                               )}
                               data-testid={`nav-${route.href}`}
                             >
-                              <span className="flex items-center">
-                                {isRouteCompleted(route.href) && (
-                                  <Check className="w-4 h-4 mr-2" />
-                                )}
+                              <span className="flex min-w-0 items-center gap-3">
+                                <SidebarRouteIcon route={route} />
                                 {route.title}
                               </span>
                               <ChevronDown
@@ -668,7 +726,7 @@ export default function IntakeLayout({ children }) {
                               {route.subpages.map((subpage) => {
                                 const isActive = isRouteActive(subpage.href);
                                 return (
-                                  <li key={subpage.href} className="flex items-center before:content-['•'] before:text-sidebar-foreground/60 before:mr-2 before:text-sm">
+                                  <li key={subpage.href} className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -677,11 +735,11 @@ export default function IntakeLayout({ children }) {
                                         setSidebarOpen(false);
                                       }}
                                       className={cn(
-                                        "w-full justify-start min-h-8 text-xs hover:bg-sidebar-accent flex-1 transition-colors",
+                                        "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
                                         isActive 
-                                          ? "font-bold text-[#4FD1C7] bg-[#4FD1C7]/15 hover:bg-[#4FD1C7]/20" 
-                                          : "text-sidebar-foreground",
-                                        isRouteCompleted(subpage.href) && !isActive && "text-sidebar-foreground/70"
+                                          ? "font-semibold text-white"
+                                          : "text-white/80",
+                                        isRouteCompleted(subpage.href) && !isActive && "text-white/50"
                                       )}
                                       data-testid={`nav-sub-${subpage.href}`}
                                     >
@@ -708,15 +766,13 @@ export default function IntakeLayout({ children }) {
                           setSidebarOpen(false);
                         }}
                         className={cn(
-                          "w-full justify-start min-h-10 text-sidebar-foreground hover:bg-sidebar-accent",
-                          isRouteActive(route.href) && "bg-primary/20 font-semibold",
-                          isRouteCompleted(route.href) && "text-sidebar-foreground/70"
+                          "w-full justify-start gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
+                          isRouteActive(route.href) && "border-[#12c79d] bg-white/10 text-white shadow-sm",
+                          isRouteCompleted(route.href) && !isRouteActive(route.href) && "text-white/60"
                         )}
                         data-testid={`nav-${route.href}`}
                       >
-                        {isRouteCompleted(route.href) && (
-                          <Check className="w-4 h-4 mr-2" />
-                        )}
+                        <SidebarRouteIcon route={route} />
                         {route.title}
                       </Button>
                     );
@@ -736,9 +792,43 @@ export default function IntakeLayout({ children }) {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-8 pb-24 lg:p-12 lg:pb-12 lg:ml-[17.5rem]">
-          <div className="max-w-4xl mx-auto">
-            {children}
+        <main className="relative flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfaf7_0%,#fffefa_50%,#ffffff_100%)] px-4 pb-12 pt-4 sm:px-8 lg:ml-[20.75rem] lg:px-10 xl:px-16">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -right-[23rem] top-[4.5rem] h-[58rem] w-[58rem] rounded-full border-[5.25rem] border-violet-100/50" />
+            <div className="absolute -right-[12rem] top-[11rem] h-[38rem] w-[38rem] rounded-full border-[4.25rem] border-violet-100/30" />
+          </div>
+
+          <div className="relative z-10 flex min-h-full flex-col">
+            <div className="hidden h-20 items-center justify-end gap-5 sm:flex">
+              {email && (
+                <span className="inline-flex max-w-[260px] items-center gap-3 truncate rounded-full border border-slate-200 bg-white/75 px-5 py-3 text-sm font-medium text-slate-900 shadow-sm backdrop-blur">
+                  <UserRound className="h-4 w-4 shrink-0 text-emerald-950" />
+                  {email}
+                </span>
+              )}
+              <div className="h-8 w-px bg-slate-200" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                data-testid="button-logout"
+                className="h-11 px-4 text-sm font-semibold text-emerald-950 hover:bg-emerald-50 hover:text-emerald-950 disabled:opacity-70"
+              >
+                {isLoggingOut ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+                <span>{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
+              </Button>
+            </div>
+
+            <div className="flex flex-1 justify-center pt-4 lg:pt-8">
+              <div className="w-full max-w-4xl">
+                {children}
+              </div>
+            </div>
           </div>
         </main>
       </div>

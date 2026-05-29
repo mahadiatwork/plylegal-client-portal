@@ -350,8 +350,8 @@ export default function ReviewPage() {
   }
   
   return (
-    <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:block">
+    <div className="flex min-h-[100dvh] overflow-hidden bg-background">
+      <div className="hidden lg:block lg:w-[18.5rem] lg:flex-shrink-0">
         <AppSidebar mode="contextual" application={application} />
       </div>
       
@@ -367,7 +367,7 @@ export default function ReviewPage() {
         </div>
       )}
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader 
           onMenuClick={() => setSidebarOpen(true)} 
         />
@@ -376,7 +376,7 @@ export default function ReviewPage() {
           <PillNav appId={appId} slug={slug} />
         </div>
         
-        <main className="flex-1 px-6 py-8">
+        <main className="flex-1 overflow-y-auto px-6 py-8">
           <div className="max-w-4xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>

@@ -222,8 +222,8 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:block">
+    <div className="flex min-h-[100dvh] overflow-hidden bg-background">
+      <div className="hidden lg:block lg:w-[18.5rem] lg:flex-shrink-0">
         <AppSidebar mode="contextual" application={application} />
       </div>
 
@@ -243,7 +243,7 @@ export default function MessagesPage() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader onMenuClick={() => setSidebarOpen(true)} />
 
         <div className="lg:hidden">

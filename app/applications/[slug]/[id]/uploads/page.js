@@ -498,8 +498,8 @@ export default function UploadsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:block">
+    <div className="flex min-h-[100dvh] overflow-hidden bg-background">
+      <div className="hidden lg:block lg:w-[18.5rem] lg:flex-shrink-0">
         <AppSidebar mode="contextual" application={application} />
       </div>
       
@@ -515,7 +515,7 @@ export default function UploadsPage() {
         </div>
       )}
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppHeader 
           onMenuClick={() => setSidebarOpen(true)} 
         />
@@ -524,7 +524,7 @@ export default function UploadsPage() {
           <PillNav appId={appId} slug={slug} />
         </div>
         
-        <main className="flex-1 px-6 py-8">
+        <main className="flex-1 overflow-y-auto px-6 py-8">
           <div className="max-w-6xl mx-auto">
             <div className="mb-6">
               <h1 className="font-semibold text-gray-900 text-2xl mb-2">Upload Documents</h1>
