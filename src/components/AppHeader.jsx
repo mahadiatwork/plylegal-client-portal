@@ -15,6 +15,7 @@ export function AppHeader({ onMenuClick, variant = "default" }) {
   const snap = useSnapshot(authStore);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isSpacious = variant === "spacious";
+  const isClassic = variant === "classic";
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -30,29 +31,55 @@ export function AppHeader({ onMenuClick, variant = "default" }) {
     null;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-sidebar-border bg-sidebar">
-      <div className={cn("mx-auto px-4 sm:px-6", isSpacious ? "max-w-[1680px] lg:px-10 xl:px-16 2xl:px-24" : "max-w-7xl")}>
-        <div className={cn("flex items-center justify-between", isSpacious ? "h-[5.75rem]" : "h-16")}>
+    <header
+      className="sticky top-0 z-50 border-b border-sidebar-border bg-sidebar"
+    >
+      <div
+        className={cn(
+          "mx-auto px-4 sm:px-6",
+          isClassic
+            ? "max-w-[1716px] lg:px-8"
+            : isSpacious
+              ? "max-w-[1680px] lg:px-10 xl:px-16 2xl:px-24"
+              : "max-w-7xl"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center justify-between",
+            isClassic ? "h-20 sm:h-[88px]" : isSpacious ? "h-[5.75rem]" : "h-16"
+          )}
+        >
           {/* Logo */}
           <ProgressLink href="/applications" className="flex-shrink-0">
-            <BrandLogo priority className={cn("mx-0", isSpacious ? "h-[60px]" : "h-[40px]")} />
+            <BrandLogo
+              priority
+              className={cn(
+                "mx-0",
+                isClassic ? "h-[50px] sm:h-[56px]" : isSpacious ? "h-[60px]" : "h-[40px]"
+              )}
+            />
           </ProgressLink>
 
           {/* Right side */}
-          <div className={cn("flex items-center", isSpacious ? "gap-5" : "gap-3")}>
+          <div className={cn("flex items-center", isClassic || isSpacious ? "gap-5" : "gap-3")}>
             {/* User email pill — desktop only */}
             {email && (
               <span className={cn(
                 "hidden sm:inline-flex items-center gap-2 rounded-full bg-white/10 text-sidebar-foreground/85 font-medium truncate",
-                isSpacious ? "max-w-[260px] px-5 py-3 text-sm" : "max-w-[200px] px-3 py-1 text-xs"
+                isClassic
+                  ? "max-w-[260px] px-4 py-2 text-sm"
+                  : isSpacious
+                    ? "max-w-[260px] px-5 py-3 text-sm"
+                    : "max-w-[200px] px-3 py-1 text-xs"
               )}>
-                {isSpacious && <UserRound className="h-4 w-4 shrink-0" />}
+                {isSpacious && !isClassic && <UserRound className="h-4 w-4 shrink-0" />}
                 {email}
               </span>
             )}
 
             {/* Sign Out — desktop only */}
-            {isSpacious && <div className="hidden sm:block h-8 w-px bg-white/25" />}
+            {isSpacious && !isClassic && <div className="hidden sm:block h-8 w-px bg-white/25" />}
             <Button
               variant="ghost"
               size="sm"
@@ -61,7 +88,7 @@ export function AppHeader({ onMenuClick, variant = "default" }) {
               data-testid="button-logout"
               className={cn(
                 "hidden sm:flex items-center gap-2 text-sidebar-foreground/75 hover:text-white hover:bg-white/10 disabled:opacity-70",
-                isSpacious ? "h-11 px-4 text-sm" : ""
+                isClassic ? "h-10 px-3 text-sm font-semibold" : isSpacious ? "h-11 px-4 text-sm" : ""
               )}
             >
               {isLoggingOut ? (

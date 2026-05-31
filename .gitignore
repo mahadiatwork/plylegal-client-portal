@@ -6,9 +6,12 @@ yarn-error.log*
 
 # Next.js
 .next
+.next-e2e
 out
 build
 dist
+test-results
+playwright-report
 
 # Environment variables
 .env*.local

@@ -15,7 +15,7 @@ export function NavigationSpinner({ size = "md" }) {
           cy="50"
           r="45"
           fill="none"
-          stroke="#2D5A4F"
+          stroke="#022C22"
           strokeWidth="4"
           className="opacity-20"
         />
@@ -24,7 +24,7 @@ export function NavigationSpinner({ size = "md" }) {
           cy="50"
           r="45"
           fill="none"
-          stroke="#1a3d32"
+          stroke="#022C22"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={`${2 * Math.PI * 45}`}
@@ -35,7 +35,7 @@ export function NavigationSpinner({ size = "md" }) {
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <svg
-          className={`${iconSize} text-[#2D5A4F] opacity-40 animate-spin`}
+          className={`${iconSize} text-[#022C22] opacity-40 animate-spin`}
           style={{ animation: "spin 2s linear infinite reverse" }}
           viewBox="0 0 24 24"
           fill="none"

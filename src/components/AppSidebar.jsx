@@ -54,7 +54,7 @@ export function AppSidebar({ mode, application, onClose }) {
     { href: `${baseHref}/questionnaire`, label: "Questionnaire", icon: FileText },
     { href: `${baseHref}/uploads`, label: "Upload Documents", icon: Upload },
     { href: `${baseHref}/resources`, label: "Resources", icon: BookOpen },
-    { href: `${baseHref}/corrections`, label: "Submit Corrections", icon: FileEdit },
+    { href: `${baseHref}/corrections`, label: "Document Review", icon: FileEdit },
   ];
   
   return (
@@ -108,12 +108,12 @@ function NavLink({ href, icon: Icon, label, badge, isActive, onClick, variant = 
           "w-full flex items-center gap-3 text-sm font-medium transition-all duration-200",
           isContextual ? "min-h-14 rounded-lg px-4 py-3" : "rounded px-3 py-2",
           isActive && isContextual
-            ? "border-l-4 border-[#00A67E] bg-white/10 text-white shadow-sm"
+            ? "border-l-4 border-white/70 bg-white/10 text-white shadow-sm"
             : isActive
-              ? "bg-[#285646] text-white border-l-4 border-[#00A67E]"
+              ? "border-l-4 border-white/70 bg-white/10 text-white"
               : isContextual
                 ? "text-sidebar-foreground/90 hover:bg-white/10 hover:text-white"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-white/10 hover:text-white"
         )}
         data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
       >
@@ -124,7 +124,7 @@ function NavLink({ href, icon: Icon, label, badge, isActive, onClick, variant = 
             "px-2 py-0.5 text-xs rounded-full",
             isActive 
               ? "bg-white/20 text-white" 
-              : "bg-sidebar-accent text-sidebar-foreground"
+              : "bg-white/10 text-sidebar-foreground"
           )}>
             {badge}
           </span>

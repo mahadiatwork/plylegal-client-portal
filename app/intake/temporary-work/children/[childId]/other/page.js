@@ -308,7 +308,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleFormSubmit)}
-          className="bg-[#285646] hover:bg-[#1e4336] text-white"
+          className="bg-[#022C22] hover:bg-[#022C22] text-white"
           data-testid="button-ok"
         >
           Ok

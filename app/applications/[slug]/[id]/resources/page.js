@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -11,7 +11,37 @@ import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { BookOpen, ExternalLink, FileText, Link as LinkIcon, StickyNote, Video } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardCheck,
+  ExternalLink,
+  FileText,
+  Link as LinkIcon,
+  ShieldCheck,
+  StickyNote,
+  Video,
+} from "lucide-react";
+
+const RESOURCE_SECTION_ORDER = ["documents", "health", "lodgement", "guides"];
+
+const RESOURCE_SECTIONS = {
+  documents: {
+    label: "Documents & Evidence",
+    icon: FileText,
+  },
+  health: {
+    label: "Health & Police Checks",
+    icon: ShieldCheck,
+  },
+  lodgement: {
+    label: "Lodgement & Status",
+    icon: ClipboardCheck,
+  },
+  guides: {
+    label: "Other Guides",
+    icon: BookOpen,
+  },
+};
 
 function toMillis(value) {
   if (!value) return 0;
@@ -33,6 +63,7 @@ function normalizeResource(docSnap) {
     url: data.publicUrl || data.url || "",
     type,
     status: String(data.status || "active").toLowerCase(),
+    category: String(data.category || data.section || data.group || "").toLowerCase(),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
@@ -51,6 +82,47 @@ function getResourceTypeLabel(type) {
   return type.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function normalizeSectionKey(value) {
+  const text = String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .trim();
+
+  if (!text) return "";
+  if (text.includes("document") || text.includes("evidence")) return "documents";
+  if (text.includes("health") || text.includes("police")) return "health";
+  if (text.includes("lodgement") || text.includes("status")) return "lodgement";
+  if (text.includes("guide")) return "guides";
+  return "";
+}
+
+function getResourceSectionKey(resource) {
+  const explicit = normalizeSectionKey(resource.category);
+  if (explicit) return explicit;
+
+  const text = `${resource.title} ${resource.description} ${resource.noteText}`.toLowerCase();
+
+  if (text.includes("relationship evidence") || text.includes("evidence")) return "documents";
+  if (
+    text.includes("health") ||
+    text.includes("police") ||
+    text.includes("character") ||
+    text.includes("biometric")
+  ) {
+    return "health";
+  }
+  if (
+    text.includes("medicare") ||
+    text.includes("processing time") ||
+    text.includes("lodgement") ||
+    text.includes("status")
+  ) {
+    return "lodgement";
+  }
+
+  return "guides";
+}
+
 function ResourceCard({ resource }) {
   const Icon = getResourceIcon(resource.type);
   const isLinkable = Boolean(resource.url);
@@ -59,7 +131,7 @@ function ResourceCard({ resource }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 flex-1">
           <div className="p-2 rounded-lg bg-[#DEE3FF]">
-            <Icon className="w-5 h-5 text-[#285646]" />
+            <Icon className="w-5 h-5 text-[#022C22]" />
           </div>
           <div className="flex-1">
             <CardTitle className="text-base font-semibold mb-1">
@@ -114,6 +186,31 @@ export default function ResourcesPage() {
   const appId = params.id;
   const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
+  const groupedResources = useMemo(() => {
+    const grouped = {
+      documents: [],
+      health: [],
+      lodgement: [],
+      guides: [],
+    };
+
+    resources.forEach((resource) => {
+      const key = getResourceSectionKey(resource);
+      if (!grouped[key]) {
+        grouped.guides.push(resource);
+        return;
+      }
+      grouped[key].push(resource);
+    });
+
+    return RESOURCE_SECTION_ORDER
+      .map((key) => ({
+        key,
+        ...RESOURCE_SECTIONS[key],
+        resources: grouped[key],
+      }))
+      .filter((section) => section.resources.length > 0);
+  }, [resources]);
 
   // Load applications data on mount
   useEffect(() => {
@@ -213,12 +310,12 @@ export default function ResourcesPage() {
             <div className="mb-8">
               <h1 className="font-serif text-3xl font-bold mb-3">Resources</h1>
               <p className="text-base text-muted-foreground leading-relaxed">
-                View helpful links, documents, and videos shared by Ply Legal for this application.
+                These resources provide official guidance and helpful references for your visa journey.
+                Always verify details on official government websites before taking any action.
               </p>
             </div>
 
             <div className="mb-8">
-              <h2 className="font-serif text-xl font-semibold mb-4">Application Resources</h2>
               {resourcesLoading ? (
                 <Card className="rounded-xl shadow-sm">
                   <CardHeader>
@@ -241,11 +338,24 @@ export default function ResourcesPage() {
                   </CardHeader>
                 </Card>
               ) : (
-              <div className="space-y-3">
-                {resources.map((resource) => (
-                  <ResourceCard key={resource.id} resource={resource} />
-                ))}
-              </div>
+                <div className="space-y-8">
+                  {groupedResources.map((section) => {
+                    const SectionIcon = section.icon;
+                    return (
+                      <section key={section.key}>
+                        <div className="mb-4 flex items-center gap-2">
+                          <SectionIcon className="h-5 w-5 text-[#022C22]" />
+                          <h2 className="font-serif text-2xl font-semibold">{section.label}</h2>
+                        </div>
+                        <div className="space-y-3">
+                          {section.resources.map((resource) => (
+                            <ResourceCard key={resource.id} resource={resource} />
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>

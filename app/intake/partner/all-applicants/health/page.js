@@ -266,7 +266,7 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -343,7 +343,7 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -419,7 +419,7 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -495,7 +495,7 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -577,7 +577,7 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -781,7 +781,7 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -840,7 +840,7 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -899,7 +899,7 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -976,7 +976,7 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -1034,7 +1034,7 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>
@@ -1221,7 +1221,7 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#285646] text-white">
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">
           Ok
         </Button>
       </DialogFooter>

@@ -38,7 +38,6 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { cn } from "@/lib/utils";
 import {
   getIntakeRoutes,
-  calculateProgress,
   PROFILE_SUBPAGES,
   EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES,
   TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES,
@@ -205,8 +204,6 @@ export default function IntakeLayout({ children }) {
 
   const INTAKE_ROUTES = getIntakeRoutes(visaType, draftSnap.visaContext);
 
-  const progress = calculateProgress(internalPathname, visaType, draftSnap.visaContext);
-
   // Get real completion data from draftStore
   const completionData = draftSnap.completionStatus || {};
   const completionPercentage = mounted ? draftStore.getCompletionPercentage() : { completed: 0, total: 0, percentage: 0 };
@@ -270,7 +267,12 @@ export default function IntakeLayout({ children }) {
   return (
     <div className="min-h-screen bg-[#fbfaf7] flex flex-col">
       {/* Mobile Header */}
-      <div className="lg:hidden flex-shrink-0 z-40 bg-emerald-950 text-white border-b border-white/10">
+      <div
+        className={cn(
+          "lg:hidden flex-shrink-0 bg-sidebar text-white border-b border-white/10 transition-[z-index]",
+          sidebarOpen ? "z-10" : "z-40"
+        )}
+      >
         <div className="flex items-center justify-between p-4">
           <Button
             variant="ghost"
@@ -279,20 +281,27 @@ export default function IntakeLayout({ children }) {
             data-testid="button-menu-toggle"
             className="h-9 w-9 text-white hover:bg-white/10 hover:text-white"
           >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <Menu className="h-5 w-5" />
           </Button>
           <div className="flex-1 ml-4">
-            <h2 className="font-serif font-semibold text-sm truncate">
+            <h2 className="font-serif font-semibold text-base text-[#E6F2EC] truncate">
               {currentSection?.title}
             </h2>
-            <Progress value={progress} className="h-1 mt-1 bg-white/20" />
+            <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-[#E6F2EC]/90">
+              <span>{completionPercentage.percentage}% complete</span>
+              <span>{completionPercentage.completed} of {completionPercentage.total} sections</span>
+            </div>
+            <Progress
+              value={completionPercentage.percentage}
+              className="mt-1.5 h-2 rounded-full bg-[#2F4A43] [&>div]:bg-[#A7E0C2]"
+            />
           </div>
         </div>
 
         {/* Mobile Section Tabs */}
         {currentSection?.subpages && (
-          <ScrollArea className="border-t border-white/10">
-            <div className="flex gap-1 p-2">
+          <div className="border-t border-white/10 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max min-w-full gap-1 p-2">
               {currentSection.subpages.map((subpage) => {
                 const href = buildHref(subpage.href);
                 return (
@@ -304,7 +313,7 @@ export default function IntakeLayout({ children }) {
                     className={cn(
                       "min-h-8 text-xs whitespace-nowrap",
                       isRouteActive(subpage.href)
-                        ? "bg-white text-emerald-950 hover:bg-white/90"
+                        ? "bg-white text-primary hover:bg-white/90"
                         : "text-white hover:bg-white/10 hover:text-white"
                     )}
                     data-testid={`tab-${subpage.href}`}
@@ -314,7 +323,7 @@ export default function IntakeLayout({ children }) {
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </div>
 
@@ -324,7 +333,7 @@ export default function IntakeLayout({ children }) {
         <aside
           className={cn(
             "fixed top-0 left-0 h-screen z-30 flex-shrink-0",
-            "w-[88vw] max-w-[20.75rem] overflow-hidden border-r border-white/10 bg-emerald-950 text-white shadow-[18px_0_50px_rgba(12,43,34,0.14)] lg:w-[20.75rem]",
+            "w-[88vw] max-w-[20.75rem] overflow-hidden border-r border-white/10 bg-sidebar text-white shadow-[18px_0_50px_rgba(12,43,34,0.14)] lg:w-[20.75rem]",
             "transition-transform duration-300 lg:translate-x-0",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
@@ -332,6 +341,15 @@ export default function IntakeLayout({ children }) {
           <div className="relative h-full flex flex-col">
             <div className="pointer-events-none absolute -bottom-28 -right-20 h-96 w-96 rounded-full border border-white/10" />
             <div className="pointer-events-none absolute -bottom-12 -right-8 h-72 w-72 rounded-full border border-white/10" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(false)}
+              className="absolute left-4 top-4 z-30 h-10 w-10 rounded-md border border-white/20 bg-white/5 text-white hover:bg-white/15 hover:text-white lg:hidden"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5 stroke-[2.5]" />
+            </Button>
             {/* Logo */}
             <div className="relative px-8 pb-7 pt-7">
               <BrandLogo priority className="mx-0 h-[56px]" />
@@ -360,18 +378,16 @@ export default function IntakeLayout({ children }) {
             {/* Progress */}
             <div className="relative mx-8 border-t border-white/20 py-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-white/70">Completion</span>
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-medium text-[#E6F2EC]/85">Completion</span>
+                <span className="text-sm font-semibold text-[#E6F2EC]">
                   {completionPercentage.percentage}%
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/80">
-                <div
-                  className="h-full rounded-full bg-[#0f6b55] transition-all duration-500"
-                  style={{ width: `${completionPercentage.percentage}%` }}
-                />
-              </div>
-              <p className="mt-4 text-sm font-medium text-white">
+              <Progress
+                value={completionPercentage.percentage}
+                className="h-3 rounded-full bg-[#2F4A43] [&>div]:bg-[#A7E0C2]"
+              />
+              <p className="mt-3 text-sm font-medium text-[#E6F2EC]">
                 {completionPercentage.completed} of {completionPercentage.total} sections complete
               </p>
             </div>
@@ -405,7 +421,7 @@ export default function IntakeLayout({ children }) {
                           }}
                           className={cn(
                             "w-full justify-start gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
-                            isRouteActive(route.href) && "border-[#12c79d] bg-white/10 text-white shadow-sm",
+                            isRouteActive(route.href) && "border-white/70 bg-white/10 text-white shadow-sm",
                             isRouteCompleted(route.href) && !isRouteActive(route.href) && "text-white/60"
                           )}
                         >
@@ -705,7 +721,7 @@ export default function IntakeLayout({ children }) {
                               variant="ghost"
                               className={cn(
                                 "w-full justify-between gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
-                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "border-[#12c79d] bg-white/10 text-white shadow-sm"
+                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "border-white/70 bg-white/10 text-white shadow-sm"
                               )}
                               data-testid={`nav-${route.href}`}
                             >
@@ -767,7 +783,7 @@ export default function IntakeLayout({ children }) {
                         }}
                         className={cn(
                           "w-full justify-start gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
-                          isRouteActive(route.href) && "border-[#12c79d] bg-white/10 text-white shadow-sm",
+                          isRouteActive(route.href) && "border-white/70 bg-white/10 text-white shadow-sm",
                           isRouteCompleted(route.href) && !isRouteActive(route.href) && "text-white/60"
                         )}
                         data-testid={`nav-${route.href}`}
@@ -802,7 +818,7 @@ export default function IntakeLayout({ children }) {
             <div className="hidden h-20 items-center justify-end gap-5 sm:flex">
               {email && (
                 <span className="inline-flex max-w-[260px] items-center gap-3 truncate rounded-full border border-slate-200 bg-white/75 px-5 py-3 text-sm font-medium text-slate-900 shadow-sm backdrop-blur">
-                  <UserRound className="h-4 w-4 shrink-0 text-emerald-950" />
+                  <UserRound className="h-4 w-4 shrink-0 text-primary" />
                   {email}
                 </span>
               )}
@@ -813,7 +829,7 @@ export default function IntakeLayout({ children }) {
                 onClick={handleLogout}
                 disabled={isLoggingOut}
                 data-testid="button-logout"
-                className="h-11 px-4 text-sm font-semibold text-emerald-950 hover:bg-emerald-50 hover:text-emerald-950 disabled:opacity-70"
+                className="h-11 px-4 text-sm font-semibold text-primary hover:bg-primary/5 hover:text-primary disabled:opacity-70"
               >
                 {isLoggingOut ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -51,7 +51,11 @@
     "**/*.tsx",
     "**/*.js",
     "**/*.jsx",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-e2e/types/**/*.ts",
+    ".next-e2e/dev/types/**/*.ts",
+    ".next-color-check/types/**/*.ts",
+    ".next-color-check/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

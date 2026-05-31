@@ -8,6 +8,7 @@
     "build": "next build --webpack",
     "start": "next start -p 5000",
     "check": "tsc",
+    "test:e2e": "playwright test",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -85,6 +86,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.3",
+    "@playwright/test": "^1.60.0",
     "@replit/vite-plugin-cartographer": "^0.3.1",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",

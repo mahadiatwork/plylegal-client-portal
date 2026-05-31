@@ -214,7 +214,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">Ok</Button>
       </DialogFooter>
     </form>
   );
@@ -369,7 +369,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4136] text-white" data-testid="button-ok">Ok</Button>
+        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">Ok</Button>
       </DialogFooter>
     </form>
   );

@@ -455,7 +455,7 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">
+        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">
           Ok
         </Button>
       </DialogFooter>
@@ -737,7 +737,7 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">
+        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">
           Ok
         </Button>
       </DialogFooter>
@@ -1002,7 +1002,7 @@ function IdentityDocumentDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">
+        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">
           Ok
         </Button>
       </DialogFooter>
@@ -1172,7 +1172,7 @@ function PermanentResidencyDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#285646] hover:bg-[#1e4336] text-white" data-testid="button-ok">
+        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">
           Ok
         </Button>
       </DialogFooter>

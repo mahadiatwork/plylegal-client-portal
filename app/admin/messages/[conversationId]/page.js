@@ -263,7 +263,7 @@ export default function AdminMessageThreadPage() {
                       <div
                         className={
                           isAdmin
-                            ? "bg-[#285646] text-white rounded-lg px-4 py-3 shadow-sm"
+                            ? "bg-[#022C22] text-white rounded-lg px-4 py-3 shadow-sm"
                             : "bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 shadow-sm"
                         }
                       >
@@ -313,7 +313,7 @@ export default function AdminMessageThreadPage() {
               <Button
                 type="submit"
                 disabled={isSending || !messageText.trim()}
-                className="flex-shrink-0 bg-[#285646] hover:bg-[#1f4236] text-white"
+                className="flex-shrink-0 bg-[#022C22] hover:bg-[#022C22] text-white"
               >
                 {isSending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

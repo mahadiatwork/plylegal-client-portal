@@ -25,6 +25,18 @@ export class BaseAdapter {
   async getUser() {
     throw new Error("Method 'getUser' must be implemented");
   }
+
+  async getUserProfile(userId) {
+    throw new Error("Method 'getUserProfile' must be implemented");
+  }
+
+  async updateUserProfile(userId, profileData) {
+    throw new Error("Method 'updateUserProfile' must be implemented");
+  }
+
+  async markProfileComplete(userId) {
+    throw new Error("Method 'markProfileComplete' must be implemented");
+  }
   
   /**
    * DRAFT METHODS
@@ -40,6 +52,14 @@ export class BaseAdapter {
   
   async clearDraft() {
     throw new Error("Method 'clearDraft' must be implemented");
+  }
+
+  async saveCompletionStatus(completionStatus, applicationId) {
+    throw new Error("Method 'saveCompletionStatus' must be implemented");
+  }
+
+  async loadCompletionStatus(applicationId) {
+    throw new Error("Method 'loadCompletionStatus' must be implemented");
   }
   
   async setPrefill(value) {

@@ -1,20 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore, authStore } from "@/stores";
 import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import {
-  ArrowRight,
-  ChevronRight,
-  CircleDot,
-  Clock3,
-  Inbox,
-  Loader2,
-  Search,
-} from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
@@ -51,148 +43,178 @@ function formatDisplayDate(value, fallback = "N/A") {
 }
 
 function getUpdatedValue(app) {
-  return app.lastUpdated || app.updatedAt || app.updated || app.createdAt || app.created;
-}
-
-function getTrimmedString(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function getApplicationTitle(app) {
-  return getTrimmedString(app.reference) || getTrimmedString(app.type) || app.id || "Visa application";
-}
-
-function getReferenceLabel(app) {
-  const reference = app.zohoId || app.id || app.reference;
-  return reference ? `Reference ${reference}` : "Reference pending";
+  return app.updated || app.lastUpdated || app.updatedAt || app.createdAt || app.created;
 }
 
 function getStatusLabel(status) {
-  return getTrimmedString(status) || "Draft";
+  return typeof status === "string" && status.trim() ? status.trim() : "Draft";
 }
 
-function normalizeStatus(status) {
-  return getStatusLabel(status).toLowerCase();
+function getApplicationTitle(app) {
+  return app.reference || app.id || "Visa application";
 }
 
 function ApplicationsLoadingState() {
   return (
-    <div className="rounded-md border border-emerald-950/10 bg-white p-12 shadow-sm sm:p-20">
-      <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
-        <Riple color="#1a4d3e" size="large" text="" textColor="" />
-        <h3 className="mt-10 text-lg font-semibold text-emerald-950">Synchronizing records</h3>
-        <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
-          Please wait while we fetch the latest application updates from Zoho CRM.
+    <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm sm:min-h-[450px] sm:p-32">
+      <Riple color="#022C22" size="large" text="" textColor="" />
+      <div className="mt-10 px-4">
+        <h3 className="font-sans text-lg font-semibold text-[#022C22] animate-pulse">
+          Synchronizing Records
+        </h3>
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-500">
+          Please wait a moment while we fetch your latest application updates from Zoho CRM.
         </p>
       </div>
     </div>
   );
 }
 
-function ApplicationsEmptyState({ hasApplications }) {
+function ApplicationsEmptyState() {
   return (
-    <div className="rounded-md border border-dashed border-emerald-950/20 bg-white/90 p-10 text-center shadow-sm sm:p-14">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-emerald-50 text-emerald-800">
-        {hasApplications ? <Search className="h-6 w-6" /> : <Inbox className="h-6 w-6" />}
-      </div>
-      <h3 className="mt-5 text-lg font-semibold text-emerald-950">
-        {hasApplications ? "No matching applications" : "No applications yet"}
-      </h3>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-        {hasApplications
-          ? "Try a different search term or status filter to find the record you need."
-          : "Applications will appear here once they are synced from Zoho CRM."}
+    <div className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+      <FileText className="mx-auto mb-4 h-12 w-12 text-slate-400" />
+      <h3 className="font-sans text-lg font-semibold text-slate-950">No Applications Yet</h3>
+      <p className="mt-2 text-slate-600">
+        Applications will appear here once they are synced from Zoho CRM.
       </p>
     </div>
   );
 }
 
-function OpenApplicationButton({ app, navigatingId, onOpen, compact = false }) {
-  const isNavigating = navigatingId === app.id;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(app)}
-      disabled={!!navigatingId}
-      aria-label={`Open ${getApplicationTitle(app)}`}
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-emerald-900/25 bg-white px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:border-emerald-900/50 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {isNavigating ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <>
-          <span>{compact ? "Open" : "Open application"}</span>
-          {compact ? <ChevronRight className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-        </>
-      )}
-    </button>
-  );
-}
-
 function ApplicationsTable({ applications, navigatingId, onOpen }) {
   return (
-    <div className="hidden overflow-hidden rounded-md border border-emerald-950/10 bg-white shadow-sm lg:block">
-      <div className="grid grid-cols-[minmax(330px,1.4fr)_minmax(230px,0.8fr)_minmax(210px,0.7fr)_150px_120px] border-b border-slate-200 px-7 py-4 text-sm font-semibold text-slate-700">
-        <span>Application</span>
-        <span>Visa type</span>
-        <span>Status</span>
-        <span>Updated</span>
-        <span className="text-right">Action</span>
-      </div>
-
-      <div className="divide-y divide-slate-200">
+    <div className="space-y-4">
+      <div className="grid gap-4 justify-items-center md:hidden">
         {applications.map((app) => (
-          <div
+          <article
             key={app.id}
-            className="grid min-h-[96px] grid-cols-[minmax(330px,1.4fr)_minmax(230px,0.8fr)_minmax(210px,0.7fr)_150px_120px] items-center px-7 py-5 transition hover:bg-emerald-50/40"
+            className="w-full max-w-[25.875rem] rounded-xl border border-slate-200 bg-white p-[1rem] shadow-sm"
           >
-            <div className="min-w-0 pr-6">
-              <p className="truncate text-sm font-semibold text-slate-950">{getApplicationTitle(app)}</p>
-              <p className="mt-1 truncate text-xs text-slate-500">{getReferenceLabel(app)}</p>
+            <div className="flex flex-wrap items-start gap-x-3 gap-y-4">
+              <div className="min-w-0 grow basis-[11rem]">
+                <p className="text-[0.75rem] font-medium uppercase tracking-[0.02em] text-slate-500 whitespace-nowrap break-normal">
+                  Reference
+                </p>
+                <p className="mt-1 text-[1rem] font-semibold leading-5 text-slate-950 break-words">
+                  {getApplicationTitle(app)}
+                </p>
+              </div>
+              <StatusBadge
+                status={getStatusLabel(app.status)}
+                className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#022C22] shadow-none"
+              />
+
+              <div className="min-w-0 grow basis-[11rem]">
+                <p className="text-[0.75rem] font-medium uppercase tracking-[0.02em] text-slate-500 whitespace-nowrap break-normal">
+                  Type
+                </p>
+                <p className="mt-1 text-[0.9375rem] leading-6 text-slate-700 break-words">
+                  {formatVisaApplicationType(app)}
+                </p>
+              </div>
+
+              <div className="min-w-[7.5rem] shrink-0">
+                <p className="text-[0.75rem] font-medium uppercase tracking-[0.02em] text-slate-500 whitespace-nowrap break-normal">
+                  Updated
+                </p>
+                <p className="mt-1 text-[0.9375rem] text-slate-700 whitespace-nowrap">
+                  {formatDisplayDate(getUpdatedValue(app))}
+                </p>
+              </div>
+
+              <div className="ml-auto self-end">
+                <button
+                  type="button"
+                  onClick={() => onOpen(app)}
+                  disabled={!!navigatingId}
+                  data-testid={`button-open-${app.id}`}
+                  className="inline-flex h-10 min-w-[5.25rem] items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-[0.9375rem] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {navigatingId === app.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    "Open"
+                  )}
+                </button>
+              </div>
             </div>
-
-            <p className="pr-6 text-sm leading-6 text-slate-600">{formatVisaApplicationType(app)}</p>
-
-            <div className="pr-6">
-              <StatusBadge status={getStatusLabel(app.status)} className="bg-emerald-50 text-emerald-900" />
-            </div>
-
-            <p className="text-sm text-slate-600">{formatDisplayDate(getUpdatedValue(app))}</p>
-
-            <div className="flex justify-end">
-              <OpenApplicationButton app={app} navigatingId={navigatingId} onOpen={onOpen} compact />
-            </div>
-          </div>
+          </article>
         ))}
       </div>
-    </div>
-  );
-}
 
-function ApplicationsCardList({ applications, navigatingId, onOpen }) {
-  return (
-    <div className="space-y-3 lg:hidden">
-      {applications.map((app) => (
-        <div key={app.id} className="rounded-md border border-emerald-950/10 bg-white p-4 shadow-sm">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-5 text-slate-950">{getApplicationTitle(app)}</p>
-            <p className="mt-1 text-xs text-slate-500">{getReferenceLabel(app)}</p>
-          </div>
-
-          <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 text-sm">
-            <div>
-              <p className="text-xs font-medium uppercase text-slate-400">Visa type</p>
-              <p className="mt-1 leading-6 text-slate-700">{formatVisaApplicationType(app)}</p>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <StatusBadge status={getStatusLabel(app.status)} className="bg-emerald-50 text-emerald-900" />
-              <span className="text-xs text-slate-500">{formatDisplayDate(getUpdatedValue(app))}</span>
-            </div>
-            <OpenApplicationButton app={app} navigatingId={navigatingId} onOpen={onOpen} />
-          </div>
-        </div>
-      ))}
+      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-[34%]" />
+            <col className="w-[26%]" />
+            <col className="w-[18%]" />
+            <col className="w-[14%]" />
+            <col className="w-[8%]" />
+          </colgroup>
+          <thead className="border-b border-slate-200 bg-slate-50/50">
+            <tr>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
+                Reference
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
+                Type
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
+                Status
+              </th>
+              <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
+                Updated
+              </th>
+              <th className="px-4 py-4 text-right text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {applications.map((app) => (
+              <tr key={app.id} className="transition-colors hover:bg-slate-50">
+                <td className="px-4 py-4 lg:px-6">
+                  <span className="block truncate text-sm font-semibold text-slate-950 lg:text-base">
+                    {getApplicationTitle(app)}
+                  </span>
+                </td>
+                <td className="px-4 py-4 lg:px-6">
+                  <span className="block truncate text-sm text-slate-700 lg:text-base">
+                    {formatVisaApplicationType(app)}
+                  </span>
+                </td>
+                <td className="px-4 py-4 lg:px-6">
+                  <StatusBadge
+                    status={getStatusLabel(app.status)}
+                    className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#022C22] shadow-none lg:text-sm"
+                  />
+                </td>
+                <td className="px-4 py-4 lg:px-6">
+                  <span className="whitespace-nowrap text-sm text-slate-700 lg:text-base">
+                    {formatDisplayDate(getUpdatedValue(app))}
+                  </span>
+                </td>
+                <td className="px-4 py-4 text-right lg:px-6">
+                  <button
+                    type="button"
+                    onClick={() => onOpen(app)}
+                    disabled={!!navigatingId}
+                    data-testid={`button-open-${app.id}`}
+                    className="inline-flex h-10 min-w-[68px] items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 lg:min-w-[80px] lg:px-4"
+                  >
+                    {navigatingId === app.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      "Open"
+                    )}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -207,8 +229,6 @@ export default function ApplicationsPage() {
   const [isSyncing, setIsSyncing] = useState(true);
   const [hasSynced, setHasSynced] = useState(false);
   const [navigatingId, setNavigatingId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("All");
 
   const openApplication = (app) => {
     if (navigatingId) return;
@@ -241,7 +261,7 @@ export default function ApplicationsPage() {
               body: JSON.stringify({
                 userId: authSnap.user.id,
                 zohoContactId: authSnap.userProfile.zohoContactId,
-                idToken: idToken,
+                idToken,
                 source: "applications-page",
               }),
             });
@@ -267,128 +287,31 @@ export default function ApplicationsPage() {
 
   const isLoading = appsSnap.isLoading || isSyncing;
 
-  const applications = useMemo(() => {
-    return [...appsSnap.applications].sort((a, b) => {
-      const aTime = getTimestampDate(getUpdatedValue(a))?.getTime() || 0;
-      const bTime = getTimestampDate(getUpdatedValue(b))?.getTime() || 0;
-      return bTime - aTime;
-    });
-  }, [appsSnap.applications]);
-
-  const statusOptions = useMemo(() => {
-    const statuses = applications.map((app) => getStatusLabel(app.status));
-    return ["All", ...Array.from(new Set(statuses))];
-  }, [applications]);
-
-  useEffect(() => {
-    if (!statusOptions.includes(selectedStatus)) {
-      setSelectedStatus("All");
-    }
-  }, [selectedStatus, statusOptions]);
-
-  const filteredApplications = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return applications.filter((app) => {
-      const matchesStatus =
-        selectedStatus === "All" || normalizeStatus(app.status) === normalizeStatus(selectedStatus);
-
-      if (!query) return matchesStatus;
-
-      const searchable = [
-        app.reference,
-        app.id,
-        app.zohoId,
-        app.type,
-        app.visaType,
-        app.status,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return matchesStatus && searchable.includes(query);
-    });
-  }, [applications, searchQuery, selectedStatus]);
-
   return (
-    <div className="flex min-h-screen flex-col bg-[#f7f9f5]">
-      <AppHeader variant="spacious" />
+    <div className="flex min-h-screen flex-col bg-[#e4e9ff]">
+      <AppHeader variant="classic" />
 
-      <main className="relative flex-1 overflow-hidden bg-[linear-gradient(180deg,#f7f9f5_0%,#fbfbf8_46%,#ffffff_100%)]">
-        <section className="relative mx-auto w-full max-w-[1680px] px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-14 xl:px-16 2xl:px-24">
-          <div>
-            <h1 className="text-4xl font-semibold leading-tight text-emerald-950 sm:text-5xl lg:text-6xl">
-              Visa applications
+      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-11 lg:px-8">
+        <div className="mx-auto w-full max-w-[1608px]">
+          <div className="mb-8">
+            <h1 className="font-sans text-3xl !font-semibold text-slate-950">
+              Visa Applications
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-              Manage your visa applications and continue each questionnaire from one place.
-            </p>
+            <p className="mt-2 text-lg text-slate-700">Manage your visa applications</p>
           </div>
 
           {isLoading ? (
-            <div className="mt-8">
-              <ApplicationsLoadingState />
-            </div>
+            <ApplicationsLoadingState />
+          ) : appsSnap.applications.length === 0 ? (
+            <ApplicationsEmptyState />
           ) : (
-            <>
-              <div className="mt-8 rounded-md border border-emerald-950/10 bg-white/90 p-4 shadow-sm shadow-emerald-950/5 backdrop-blur">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <label className="relative block w-full lg:max-w-md">
-                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="search"
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search by applicant, visa, or reference"
-                      className="h-12 w-full rounded-md border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-900 focus:ring-4 focus:ring-emerald-900/10"
-                    />
-                  </label>
-
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {statusOptions.map((status) => {
-                      const isSelected = selectedStatus === status;
-                      return (
-                        <button
-                          key={status}
-                          type="button"
-                          onClick={() => setSelectedStatus(status)}
-                          className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-md border px-4 text-sm font-semibold transition ${
-                            isSelected
-                              ? "border-emerald-900 bg-emerald-950 text-white"
-                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-900/30 hover:bg-emerald-50"
-                          }`}
-                        >
-                          {status === "All" ? <CircleDot className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
-                          {status}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5">
-                {applications.length === 0 || filteredApplications.length === 0 ? (
-                  <ApplicationsEmptyState hasApplications={applications.length > 0} />
-                ) : (
-                  <>
-                    <ApplicationsTable
-                      applications={filteredApplications}
-                      navigatingId={navigatingId}
-                      onOpen={openApplication}
-                    />
-                    <ApplicationsCardList
-                      applications={filteredApplications}
-                      navigatingId={navigatingId}
-                      onOpen={openApplication}
-                    />
-                  </>
-                )}
-              </div>
-            </>
+            <ApplicationsTable
+              applications={appsSnap.applications}
+              navigatingId={navigatingId}
+              onOpen={openApplication}
+            />
           )}
-        </section>
+        </div>
       </main>
     </div>
   );

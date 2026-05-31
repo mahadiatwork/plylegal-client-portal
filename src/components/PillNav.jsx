@@ -21,7 +21,7 @@ export function PillNav({ appId, slug }) {
 
   const row2 = [
     { href: `${baseHref}/resources`, label: "Resources", icon: BookOpen },
-    { href: `${baseHref}/corrections`, label: "Submit Corrections", icon: FileEdit },
+    { href: `${baseHref}/corrections`, label: "Document Review", icon: FileEdit },
   ];
 
   const PillButton = ({ href, label, icon: Icon }) => {

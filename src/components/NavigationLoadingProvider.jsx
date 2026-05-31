@@ -97,7 +97,7 @@ export function NavigationLoadingProvider({ children }) {
                   cy="86"
                   r="80"
                   fill="none"
-                  stroke="#4f7f70"
+                  stroke="#022C22"
                   strokeWidth="6"
                   strokeLinecap="round"
                   strokeDasharray="108 502"
@@ -107,15 +107,15 @@ export function NavigationLoadingProvider({ children }) {
               </svg>
 
               <div className="absolute inset-0 flex items-center justify-center">
-                <FileCheck2 className="h-16 w-16 text-[#4f7f70]" strokeWidth={2.2} />
+                <FileCheck2 className="h-16 w-16 text-[#022C22]" strokeWidth={2.2} />
               </div>
             </div>
 
-            <h2 className="mt-5 text-center text-[40px] font-semibold text-[#2f5f52]">Opening application</h2>
+            <h2 className="mt-5 text-center text-[40px] font-semibold text-[#022C22]">Opening application</h2>
 
             <div className="mt-4 flex items-center justify-center gap-3 text-[#7b8c86]">
               <div className="h-px w-20 bg-[#d5ddda]" />
-              <Shield className="h-4 w-4 text-[#5d8a7b]" strokeWidth={2.2} />
+              <Shield className="h-4 w-4 text-[#022C22]" strokeWidth={2.2} />
               <div className="h-px w-20 bg-[#d5ddda]" />
             </div>
 

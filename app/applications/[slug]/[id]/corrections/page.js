@@ -165,7 +165,7 @@ export default function CorrectionsPage() {
               
               <Card className="border-gray-200">
                 <CardHeader>
-                  <CardTitle className="text-lg">Request Corrections</CardTitle>
+                  <CardTitle className="text-lg">Document Review</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {corrections.map((correction, index) => (
@@ -231,7 +231,7 @@ export default function CorrectionsPage() {
                     <Button
                       type="button"
                       onClick={handleSubmit}
-                      className="flex-1 bg-[#285646] hover:bg-[#1f4236]"
+                      className="flex-1 bg-[#022C22] hover:bg-[#022C22]"
                       data-testid="button-submit-corrections"
                     >
                       <Send className="w-4 h-4 mr-2" />

@@ -10,11 +10,23 @@ import { BaseAdapter } from './base';
 // Storage keys (match current implementation)
 const SESSION_KEY = "ply_session";
 const USER_KEY = "ply_user";
+const USER_PROFILE_KEY = "ply_user_profile";
 const DRAFT_KEY = "intake_draft";
 const PREFILL_KEY = "intake_prefill";
 const APPLICATIONS_KEY = "ply:applications";
 
 const getAppDataKey = (appId, dataType) => `ply:app:${appId}:${dataType}`;
+const getDraftKey = (appId) => (appId ? getAppDataKey(appId, "draft") : DRAFT_KEY);
+const getCompletionKey = (appId) => getAppDataKey(appId, "completion");
+
+const DEFAULT_PROFILE = {
+  email: "",
+  profileCompleted: true,
+  needsPasswordChange: false,
+  portalAccess: true,
+  role: "user",
+  zohoContactId: null,
+};
 
 export class LocalStorageAdapter extends BaseAdapter {
   constructor() {
@@ -66,12 +78,7 @@ export class LocalStorageAdapter extends BaseAdapter {
       return {
         isAuthenticated: true,
         user,
-        profile: {
-          email: user?.email || "",
-          profileCompleted: true,
-          needsPasswordChange: false,
-          portalAccess: true,
-        },
+        profile: await this.getUserProfile(user?.id),
       };
     } catch {
       return { isAuthenticated: false };
@@ -88,23 +95,65 @@ export class LocalStorageAdapter extends BaseAdapter {
       return null;
     }
   }
+
+  async getUserProfile(userId) {
+    if (!this.isClient) return { ...DEFAULT_PROFILE };
+
+    try {
+      const stored = localStorage.getItem(USER_PROFILE_KEY);
+      const profile = stored ? JSON.parse(stored) : {};
+      const user = await this.getUser();
+      return {
+        ...DEFAULT_PROFILE,
+        email: profile.email || user?.email || "",
+        userId: userId || user?.id || profile.userId || null,
+        ...profile,
+      };
+    } catch {
+      return { ...DEFAULT_PROFILE };
+    }
+  }
+
+  async updateUserProfile(userId, profileData) {
+    if (!this.isClient) return { success: false };
+
+    try {
+      const currentProfile = await this.getUserProfile(userId);
+      const updatedProfile = {
+        ...currentProfile,
+        ...profileData,
+        userId: userId || currentProfile.userId || null,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedProfile));
+      return { success: true, profile: updatedProfile };
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async markProfileComplete(userId) {
+    return this.updateUserProfile(userId, { profileCompleted: true });
+  }
   
   /**
    * DRAFT METHODS
    */
   
-  async saveDraft(data) {
+  async saveDraft(data, applicationId = null) {
     if (!this.isClient) return { success: false };
     
     try {
+      const draftKey = getDraftKey(applicationId);
       // Load current draft
-      const currentDraft = await this.loadDraft();
+      const currentDraft = await this.loadDraft(applicationId);
       
       // Merge with new data
       const updatedDraft = { ...currentDraft, ...data };
       
       // Save to localStorage
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(updatedDraft));
+      localStorage.setItem(draftKey, JSON.stringify(updatedDraft));
       
       return { success: true, draft: updatedDraft };
     } catch (error) {
@@ -113,11 +162,15 @@ export class LocalStorageAdapter extends BaseAdapter {
     }
   }
   
-  async loadDraft() {
+  async loadDraft(applicationId = null) {
     if (!this.isClient) return {};
     
     try {
-      const stored = localStorage.getItem(DRAFT_KEY);
+      const stored = localStorage.getItem(getDraftKey(applicationId));
+      if (!stored && applicationId) {
+        const legacyStored = localStorage.getItem(DRAFT_KEY);
+        return legacyStored ? JSON.parse(legacyStored) : {};
+      }
       return stored ? JSON.parse(stored) : {};
     } catch (error) {
       console.error("Error loading draft:", error);
@@ -125,15 +178,43 @@ export class LocalStorageAdapter extends BaseAdapter {
     }
   }
   
-  async clearDraft() {
+  async clearDraft(applicationId = null) {
     if (!this.isClient) return { success: false };
     
     try {
-      localStorage.removeItem(DRAFT_KEY);
+      localStorage.removeItem(getDraftKey(applicationId));
       return { success: true };
     } catch (error) {
       console.error("Error clearing draft:", error);
       return { success: false, error: error.message };
+    }
+  }
+
+  async saveCompletionStatus(completionStatus, applicationId) {
+    if (!this.isClient) return { success: false };
+
+    try {
+      if (!applicationId) {
+        return { success: false, error: "Application ID required" };
+      }
+
+      localStorage.setItem(getCompletionKey(applicationId), JSON.stringify(completionStatus || {}));
+      return { success: true, completionStatus: completionStatus || {} };
+    } catch (error) {
+      console.error("Error saving completion status:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async loadCompletionStatus(applicationId) {
+    if (!this.isClient || !applicationId) return {};
+
+    try {
+      const stored = localStorage.getItem(getCompletionKey(applicationId));
+      return stored ? JSON.parse(stored) : {};
+    } catch (error) {
+      console.error("Error loading completion status:", error);
+      return {};
     }
   }
   
@@ -287,7 +368,7 @@ export class LocalStorageAdapter extends BaseAdapter {
     if (!this.isClient) return { success: false };
     
     try {
-      const types = ['uploads', 'docs', 'tasks', 'deliverables', 'messages'];
+      const types = ['uploads', 'docs', 'tasks', 'deliverables', 'messages', 'draft', 'completion'];
       types.forEach(type => {
         const key = getAppDataKey(appId, type);
         localStorage.removeItem(key);

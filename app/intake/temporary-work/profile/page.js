@@ -359,12 +359,12 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
                       onClick={() => isSelected ? handleClearCrm() : handleSelectCrm(dep)}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
                         isSelected
-                          ? "border-[#285646] bg-[#285646]/5 ring-1 ring-[#285646]"
-                          : "border-gray-200 hover:border-[#285646]/50 hover:bg-gray-50"
+                          ? "border-[#022C22] bg-[#022C22]/5 ring-1 ring-[#022C22]"
+                          : "border-gray-200 hover:border-[#022C22]/50 hover:bg-gray-50"
                       }`}
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                        isSelected ? "bg-[#285646] text-white" : "bg-gray-100 text-gray-600"
+                        isSelected ? "bg-[#022C22] text-white" : "bg-gray-100 text-gray-600"
                       }`}>
                         {initials || "?"}
                       </div>
@@ -376,7 +376,7 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
                           {relLabel}{dob ? ` · DOB: ${dob}` : ""}{dep.citizenship ? ` · ${dep.citizenship}` : ""}
                         </p>
                       </div>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#285646] shrink-0" />}
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#022C22] shrink-0" />}
                     </button>
                   );
                 })}
@@ -566,7 +566,7 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
             disabled={isSaving}
-            className="bg-[#285646] hover:bg-[#1f4236] text-white min-w-[120px]"
+            className="bg-[#022C22] hover:bg-[#022C22] text-white min-w-[120px]"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -847,12 +847,12 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
                       onClick={() => isSelected ? handleClearCrm() : handleSelectCrm(dep)}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
                         isSelected
-                          ? "border-[#285646] bg-[#285646]/5 ring-1 ring-[#285646]"
-                          : "border-gray-200 hover:border-[#285646]/50 hover:bg-gray-50"
+                          ? "border-[#022C22] bg-[#022C22]/5 ring-1 ring-[#022C22]"
+                          : "border-gray-200 hover:border-[#022C22]/50 hover:bg-gray-50"
                       }`}
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                        isSelected ? "bg-[#285646] text-white" : "bg-gray-100 text-gray-600"
+                        isSelected ? "bg-[#022C22] text-white" : "bg-gray-100 text-gray-600"
                       }`}>
                         {initials || "?"}
                       </div>
@@ -864,7 +864,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
                           {relLabel}{dob ? ` · DOB: ${dob}` : ""}{dep.citizenship ? ` · ${dep.citizenship}` : ""}
                         </p>
                       </div>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#285646] shrink-0" />}
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#022C22] shrink-0" />}
                     </button>
                   );
                 })}
@@ -986,7 +986,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
             disabled={isSaving}
-            className="bg-[#285646] hover:bg-[#1f4236] text-white min-w-[120px]"
+            className="bg-[#022C22] hover:bg-[#022C22] text-white min-w-[120px]"
             data-testid="button-save-profile"
           >
             {isSaving ? (
@@ -1296,8 +1296,8 @@ export default function ApplicationProfilePage() {
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#285646]/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-[#285646]" />
+            <div className="w-10 h-10 rounded-full bg-[#022C22]/10 flex items-center justify-center">
+              <Users className="w-5 h-5 text-[#022C22]" />
             </div>
             Included Applicants
           </CardTitle>
@@ -1316,11 +1316,11 @@ export default function ApplicationProfilePage() {
           </div>
           {/* Info banner */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-            <p className="font-bold mb-1" style={{ color: '#1E4034' }}>Who should be added?</p>
+            <p className="font-bold mb-1" style={{ color: '#022C22' }}>Who should be added?</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li style={{ color: '#1E4034' }} className="font-bold">Main applicant</li>
-              <li style={{ color: '#1E4034' }} className="font-bold">Spouse or de facto partner</li>
-              <li style={{ color: '#1E4034' }} className="font-bold">Dependent children</li>
+              <li style={{ color: '#022C22' }} className="font-bold">Main applicant</li>
+              <li style={{ color: '#022C22' }} className="font-bold">Spouse or de facto partner</li>
+              <li style={{ color: '#022C22' }} className="font-bold">Dependent children</li>
             </ul>
           </div>
 
@@ -1339,7 +1339,7 @@ export default function ApplicationProfilePage() {
                 return (
                   <div
                     key={profile.id}
-                    className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white hover:border-[#285646]/30 hover:shadow-sm transition-all"
+                    className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white hover:border-[#022C22]/30 hover:shadow-sm transition-all"
                   >
                     {/* Avatar */}
                     <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -1374,7 +1374,7 @@ export default function ApplicationProfilePage() {
                           size="sm"
                           onClick={() => handleSetPrimary(profile)}
                           disabled={settingPrimaryId === profile.id || isSubmitted}
-                          className="h-8 px-2 text-xs border-[#285646]/30 text-[#285646] hover:bg-[#285646]/5"
+                          className="h-8 px-2 text-xs border-[#022C22]/30 text-[#022C22] hover:bg-[#022C22]/5"
                           data-testid={`button-set-primary-${profile.id}`}
                         >
                           {settingPrimaryId === profile.id ? (
@@ -1392,7 +1392,7 @@ export default function ApplicationProfilePage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(profile)}
-                        className="h-8 w-8 text-gray-400 hover:text-[#285646] hover:bg-[#285646]/10"
+                        className="h-8 w-8 text-gray-400 hover:text-[#022C22] hover:bg-[#022C22]/10"
                         data-testid={`button-edit-profile-${profile.id}`}
                       >
                         <Pencil className="w-4 h-4" />
@@ -1425,7 +1425,7 @@ export default function ApplicationProfilePage() {
             type="button"
             variant="outline"
             onClick={() => { setEditingProfile(null); setDialogOpen(true); }}
-            className="w-full border-dashed border-2 border-[#285646]/30 text-[#285646] hover:bg-[#285646]/5 hover:border-[#285646]/60 h-11"
+            className="w-full border-dashed border-2 border-[#022C22]/30 text-[#022C22] hover:bg-[#022C22]/5 hover:border-[#022C22]/60 h-11"
             data-testid="button-add-profile"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -1501,7 +1501,7 @@ export default function ApplicationProfilePage() {
               type="button"
               onClick={handleContinue}
               disabled={!hasMainApplicant || isNavigating}
-              className="w-full bg-[#285646] hover:bg-[#1f4236] text-white h-12 text-base font-semibold flex items-center justify-between px-5"
+              className="w-full bg-[#022C22] hover:bg-[#022C22] text-white h-12 text-base font-semibold flex items-center justify-between px-5"
               data-testid="button-continue"
             >
               <span>{isNavigating ? "Loading..." : "Continue to Forms"}</span>

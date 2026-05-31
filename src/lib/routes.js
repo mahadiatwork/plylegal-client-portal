@@ -207,17 +207,17 @@ export const PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/main-applicant/language", title: "Language" },
 ];
 
-/** Spouse/Partner — subclass 482 (Skills in Demand): Details + Identity only (mirrors main applicant structure, spouse routes). */
+/** Spouse/Partner — subclass 482 (Skills in Demand): Details + Other Names + Identity. */
 export const TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
-  { href: "/intake/temporary-work/spouse-partner/other", title: "Other Names" },
+  { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Names" },
   { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
 ];
 
-// Per-profile sub-pages for 186 spouse (Other Names + Other Details + Education + Language in addition to Details + Identity)
+// Per-profile sub-pages for 186 spouse (Education + Language in addition to the 482 spouse pages)
 export const EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
-  { href: "/intake/temporary-work/spouse-partner/other", title: "Other Names" },
+  { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Names" },
   { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
   { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
   { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },

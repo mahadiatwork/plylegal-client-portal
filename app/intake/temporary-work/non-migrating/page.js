@@ -331,12 +331,12 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
                       onClick={() => isSelected ? handleClearCrm() : handleSelectCrm(dep)}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
                         isSelected
-                          ? "border-[#285646] bg-[#285646]/5 ring-1 ring-[#285646]"
-                          : "border-gray-200 hover:border-[#285646]/50 hover:bg-gray-50"
+                          ? "border-[#022C22] bg-[#022C22]/5 ring-1 ring-[#022C22]"
+                          : "border-gray-200 hover:border-[#022C22]/50 hover:bg-gray-50"
                       }`}
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                        isSelected ? "bg-[#285646] text-white" : "bg-gray-100 text-gray-600"
+                        isSelected ? "bg-[#022C22] text-white" : "bg-gray-100 text-gray-600"
                       }`}>
                         {initials || "?"}
                       </div>
@@ -348,7 +348,7 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
                           {relLabel}{dob ? ` · DOB: ${dob}` : ""}{dep.citizenship ? ` · ${dep.citizenship}` : ""}
                         </p>
                       </div>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#285646] shrink-0" />}
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#022C22] shrink-0" />}
                     </button>
                   );
                 })}
@@ -538,7 +538,7 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
             disabled={isSaving}
-            className="bg-[#285646] hover:bg-[#1f4236] text-white min-w-[120px]"
+            className="bg-[#022C22] hover:bg-[#022C22] text-white min-w-[120px]"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

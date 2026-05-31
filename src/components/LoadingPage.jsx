@@ -20,7 +20,7 @@ export function LoadingPage() {
               cy="50"
               r="45"
               fill="none"
-              stroke="#2D5A4F"
+              stroke="#022C22"
               strokeWidth="4"
               className="opacity-20"
             />
@@ -30,7 +30,7 @@ export function LoadingPage() {
               cy="50"
               r="45"
               fill="none"
-              stroke="#1a3d32"
+              stroke="#022C22"
               strokeWidth="4"
               strokeLinecap="round"
               strokeDasharray={`${2 * Math.PI * 45}`}
@@ -45,13 +45,13 @@ export function LoadingPage() {
           {/* Document Icon in Center */}
           <div className="absolute inset-0 flex items-center justify-center">
             <FileText 
-              className="w-10 h-10 text-[#2D5A4F] opacity-40" 
+              className="w-10 h-10 text-[#022C22] opacity-40" 
             />
           </div>
         </div>
         
         {/* Loading Text */}
-        <p className="text-[#2D5A4F] text-lg font-medium">Loading...</p>
+        <p className="text-[#022C22] text-lg font-medium">Loading...</p>
       </div>
       
       {/* Star Icon in Bottom Right */}

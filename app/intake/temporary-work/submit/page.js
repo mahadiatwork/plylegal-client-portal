@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -11,6 +19,7 @@ import { buildIntakeHref, getPreviousRoute, getVisaTypeFromPath } from "@/lib/ro
 import { CheckCircle2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { getIncompleteChecklist } from "@/lib/submitCompletion";
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -20,6 +29,7 @@ export default function SubmitPage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
 
   useEffect(() => {
@@ -29,6 +39,16 @@ export default function SubmitPage() {
 
   const completionPercentage = completionData.percentage;
   const isFullyComplete = completionPercentage === 100;
+  const incompleteItems = useMemo(
+    () =>
+      getIncompleteChecklist({
+        visaType,
+        visaContext: draftSnap.visaContext,
+        completionStatus: draftSnap.completionStatus,
+        draft: draftSnap.draft,
+      }),
+    [visaType, draftSnap.visaContext, draftSnap.completionStatus, draftSnap.draft]
+  );
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
@@ -38,16 +58,7 @@ export default function SubmitPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!isFullyComplete) {
-      toast({
-        title: "Incomplete Application",
-        description: "Please complete all sections before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const submitApplication = async () => {
     setIsSubmitting(true);
     try {
       const appId = draftSnap.currentApplicationId;
@@ -88,6 +99,17 @@ export default function SubmitPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    if (incompleteItems.length > 0) {
+      setConfirmOpen(true);
+      return;
+    }
+
+    await submitApplication();
   };
 
   return (
@@ -144,13 +166,56 @@ export default function SubmitPage() {
             onPrev={handlePrevious}
             onNext={handleSubmit}
             nextLabel={isSubmitting ? "Submitting..." : "Submit"}
-            disabledNext={!isFullyComplete || isSubmitting}
+            disabledNext={isSubmitting}
             loading={isSubmitting}
             onSave={null} // No save button
           />
         </div>
       </CardContent>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>You Still Have Unfinished Items</DialogTitle>
+            <DialogDescription>
+              You still have items that are not finished. Are you sure you want to submit?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-4">
+            <ul className="space-y-2 text-sm text-slate-700">
+              {incompleteItems.map((item, index) => (
+                <li key={`${item}-${index}`} className="flex items-start gap-2">
+                  <span className="mt-1 text-slate-400">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-2 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                setConfirmOpen(false);
+                await submitApplication();
+              }}
+              disabled={isSubmitting}
+              className="bg-[#022C22] text-white hover:bg-[#022C22]"
+            >
+              Submit Anyway
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
-

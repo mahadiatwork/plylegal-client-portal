@@ -18,7 +18,7 @@ export function IntakeStartPageContent({
 }) {
   return (
     <section className="mx-auto w-full max-w-[49rem]">
-      <div className="rounded-lg border border-emerald-950/10 bg-white/90 shadow-[0_24px_70px_rgba(20,39,34,0.12)] backdrop-blur">
+      <div className="rounded-lg border border-primary/10 bg-white/90 shadow-[0_24px_70px_rgba(20,39,34,0.12)] backdrop-blur">
         <form
           onSubmit={onSubmit}
           onKeyDown={(event) => {
@@ -35,7 +35,7 @@ export function IntakeStartPageContent({
             Getting started
           </div>
 
-          <h1 className="mt-8 font-serif text-5xl font-semibold leading-none text-emerald-950 sm:text-[3.45rem]">
+          <h1 className="mt-8 font-serif text-5xl font-semibold leading-none text-primary sm:text-[3.45rem]">
             Get Started
           </h1>
 
@@ -53,7 +53,7 @@ export function IntakeStartPageContent({
               <div className="flex items-start gap-4">
                 <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-700" />
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-base font-semibold text-emerald-950">Application submitted successfully</h2>
+                  <h2 className="text-base font-semibold text-primary">Application submitted successfully</h2>
                   <p className="mt-1 text-sm leading-6 text-emerald-800">
                     Your application has been submitted and is now under review. You completed {completionPercentage}% of all sections.
                   </p>
@@ -61,7 +61,7 @@ export function IntakeStartPageContent({
                     type="button"
                     variant="outline"
                     onClick={onBackToApplications}
-                    className="mt-4 border-emerald-800/30 text-emerald-950 hover:bg-emerald-100"
+                    className="mt-4 border-primary/30 text-primary hover:bg-primary/5"
                     data-testid="button-back-to-applications"
                   >
                     Back to Applications
@@ -85,7 +85,7 @@ export function IntakeStartPageContent({
           <div
             className={cn(
               "mt-6 rounded-md border bg-white px-6 py-6 shadow-sm transition-colors",
-              error ? "border-red-300 ring-4 ring-red-100" : "border-emerald-900/20"
+              error ? "border-red-300 ring-4 ring-red-100" : "border-primary/20"
             )}
           >
             <div className="flex items-start gap-5">
@@ -94,12 +94,12 @@ export function IntakeStartPageContent({
                 data-testid="checkbox-started"
                 checked={started}
                 onCheckedChange={(checked) => onStartedChange(!!checked)}
-                className="mt-1 h-7 w-7 rounded-md border-emerald-900/30 data-[state=checked]:border-emerald-900 data-[state=checked]:bg-emerald-900 data-[state=checked]:text-white"
+                className="mt-1 h-7 w-7 rounded-md border-primary/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
               />
               <div className="min-w-0 flex-1">
                 <Label
                   htmlFor="started"
-                  className="cursor-pointer text-base font-medium leading-7 text-emerald-950 sm:text-lg"
+                  className="cursor-pointer text-base font-medium leading-7 text-primary sm:text-lg"
                 >
                   I confirm that the information I provide will be accurate to the best of my knowledge.
                 </Label>
@@ -125,7 +125,7 @@ export function IntakeStartPageContent({
               size="lg"
               disabled={!started || isSubmitted || submitting}
               data-testid="button-begin"
-              className="min-h-[3.25rem] w-full justify-between rounded-md bg-emerald-950 px-7 text-base font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[13.25rem]"
+              className="min-h-[3.25rem] w-full justify-between rounded-md bg-primary px-7 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[13.25rem]"
             >
               {submitting ? (
                 <>
