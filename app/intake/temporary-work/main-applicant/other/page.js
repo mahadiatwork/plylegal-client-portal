@@ -10,7 +10,6 @@ import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -38,7 +37,6 @@ const formSchema = z.object({
     issuing_country: z.string().optional(),
     issuing_state: z.string().optional(),
     place_of_issue: z.string().optional(),
-    use_in_application: z.string().optional(),
   })).optional(),
 
   // Question 2: Chinese Commercial Code
@@ -100,7 +98,6 @@ const dialogSchema = z.object({
   issuing_country: z.string().optional(),
   issuing_state: z.string().optional(),
   place_of_issue: z.string().optional(),
-  use_in_application: z.string().optional(),
 });
 
 const prevDobDialogSchema = z.object({
@@ -111,9 +108,7 @@ const prevDobDialogSchema = z.object({
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
-  const initialUseInApplication = row?.use_in_application === "yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
-  const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
 
   const dialogForm = useForm({
     resolver: zodResolver(dialogSchema),
@@ -130,7 +125,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       issuing_country: "",
       issuing_state: "",
       place_of_issue: "",
-      use_in_application: "no",
     },
   });
 
@@ -138,10 +132,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
     if (row?.has_evidence !== undefined) {
       setHasEvidence(row.has_evidence);
       dialogForm.setValue("has_evidence", row.has_evidence);
-    }
-    if (row?.use_in_application !== undefined) {
-      setUseInApplication(row.use_in_application === "yes");
-      dialogForm.setValue("use_in_application", row.use_in_application);
     }
   }, [row]);
 
@@ -201,20 +191,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         {dialogForm.formState.errors.reason_for_change && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_change.message}</p>
         )}
-      </div>
-
-      <div className="flex items-center space-x-2 pt-2">
-        <Checkbox
-          id="use_in_application"
-          checked={useInApplication}
-          onCheckedChange={(checked) => {
-            setUseInApplication(checked);
-            dialogForm.setValue("use_in_application", checked ? "yes" : "no");
-          }}
-        />
-        <Label htmlFor="use_in_application" className="text-sm font-normal cursor-pointer">
-          Use this name in the application
-        </Label>
       </div>
 
       <div className="pt-4 border-t border-gray-200">
@@ -366,7 +342,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleFormSubmit)}
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Save
@@ -419,7 +395,7 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleFormSubmit)}
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-save-dob"
         >
           Save
@@ -427,6 +403,21 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
       </DialogFooter>
     </div>
   );
+}
+
+function sanitizeOtherNames(otherNames) {
+  if (!Array.isArray(otherNames)) return [];
+  return otherNames.map((row) => {
+    const { use_in_application, ...cleanRow } = row || {};
+    return cleanRow;
+  });
+}
+
+function sanitizeOtherData(data) {
+  return {
+    ...data,
+    other_names: sanitizeOtherNames(data?.other_names),
+  };
 }
 
 export default function Page() {
@@ -485,7 +476,7 @@ export default function Page() {
       const formData = {
         // FIX: Ensure all fields are explicitly loaded and default to something safe
         has_other_names: safeStr(savedData.has_other_names) || "no",
-        other_names: savedData.other_names || [],
+        other_names: sanitizeOtherNames(savedData.other_names),
 
         use_chinese_code: safeStr(savedData.use_chinese_code) || "no",
         chinese_code: safeStr(savedData.chinese_code) || "",
@@ -502,9 +493,10 @@ export default function Page() {
   }, [draftSnap.draft?.temporary_work_other, draftSnap.draft?.profiles_data, profileId, form]);
 
   const onSubmit = async (data) => {
+    const sanitizedData = sanitizeOtherData(data);
     const result = profileId
-      ? await draftStore.saveProfileSectionData(profileId, "other", data)
-      : await draftStore.saveSectionData("temporary_work_other", data);
+      ? await draftStore.saveProfileSectionData(profileId, "other", sanitizedData)
+      : await draftStore.saveSectionData("temporary_work_other", sanitizedData);
 
     if (result.success) {
       if (profileId) {
@@ -544,7 +536,7 @@ export default function Page() {
         return;
       }
 
-      const values = form.getValues();
+      const values = sanitizeOtherData(form.getValues());
       const result = profileId
         ? await draftStore.saveProfileSectionData(profileId, "other", values)
         : await draftStore.saveSectionData("temporary_work_other", values);
@@ -579,18 +571,20 @@ export default function Page() {
 
   // FIX: Update the synchronization logic for other_names
   const updateOtherNames = async (newNames) => {
-    form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    const sanitizedNames = sanitizeOtherNames(newNames);
+    form.setValue("other_names", sanitizedNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
     // FIX: Use the complete current state and override just the updated array
+    const currentValues = sanitizeOtherData(form.getValues());
     if (profileId) {
       await draftStore.saveProfileSectionData(profileId, "other", {
-        ...form.getValues(),
-        other_names: newNames
+        ...currentValues,
+        other_names: sanitizedNames
       });
     } else {
       await draftStore.saveSectionData("temporary_work_other", {
-        ...form.getValues(),
-        other_names: newNames
+        ...currentValues,
+        other_names: sanitizedNames
       });
     }
   };
@@ -600,14 +594,15 @@ export default function Page() {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
     // FIX: Use the complete current state and override just the updated array
+    const currentValues = sanitizeOtherData(form.getValues());
     if (profileId) {
       await draftStore.saveProfileSectionData(profileId, "other", {
-        ...form.getValues(),
+        ...currentValues,
         prev_dobs: newDobs
       });
     } else {
       await draftStore.saveSectionData("temporary_work_other", {
-        ...form.getValues(),
+        ...currentValues,
         prev_dobs: newDobs
       });
     }

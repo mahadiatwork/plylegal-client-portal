@@ -14,12 +14,64 @@ import { Button } from "@/components/ui/button";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
+import { appDataStore } from "@/stores/appDataStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import {
+  buildIntakeHref,
+  getIntakeSlugForContext,
+  getPreviousRoute,
+  getVisaTypeFromPath,
+} from "@/lib/routes";
 import { CheckCircle2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getIncompleteChecklist } from "@/lib/submitCompletion";
+
+const COMPLETE_DOCUMENT_STATUSES = new Set([
+  "approved",
+  "awaiting approval",
+  "complete",
+  "completed",
+  "not required",
+  "submitted",
+  "under review",
+  "uploaded",
+  "verified",
+]);
+
+function normalizeDocumentStatus(status) {
+  return String(status || "").trim().toLowerCase();
+}
+
+function isDocumentIncomplete(status) {
+  const normalized = normalizeDocumentStatus(status);
+  if (!normalized) return true;
+  return !COMPLETE_DOCUMENT_STATUSES.has(normalized);
+}
+
+function getMatterDocumentName(doc) {
+  return (
+    doc?.Name ||
+    doc?.Matter_Document_Name ||
+    doc?.Document_Name ||
+    doc?.File_Name ||
+    doc?.name ||
+    "Required document"
+  );
+}
+
+function buildDocumentUploadChecklist(documents, { requireExplicitRequirement = false } = {}) {
+  if (!Array.isArray(documents) || documents.length === 0) return [];
+
+  return documents
+    .filter((doc) => {
+      if (requireExplicitRequirement && doc?.required !== true && !doc?.matterDocumentId) {
+        return false;
+      }
+      return isDocumentIncomplete(doc?.Document_Status || doc?.status);
+    })
+    .map((doc) => `Upload Documents: ${getMatterDocumentName(doc)}`);
+}
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -28,18 +80,27 @@ export default function SubmitPage() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const applicationsSnap = useSnapshot(applicationsStore);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingRequirements, setIsCheckingRequirements] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
+  const [documentIncompleteItems, setDocumentIncompleteItems] = useState([]);
 
   useEffect(() => {
     const data = draftStore.getCompletionPercentage();
     setCompletionData(data);
   }, [draftSnap.completionStatus]);
 
+  useEffect(() => {
+    if (draftSnap.currentApplicationId) {
+      appDataStore.loadUploads(draftSnap.currentApplicationId);
+    }
+  }, [draftSnap.currentApplicationId]);
+
   const completionPercentage = completionData.percentage;
   const isFullyComplete = completionPercentage === 100;
-  const incompleteItems = useMemo(
+  const questionnaireIncompleteItems = useMemo(
     () =>
       getIncompleteChecklist({
         visaType,
@@ -49,6 +110,11 @@ export default function SubmitPage() {
       }),
     [visaType, draftSnap.visaContext, draftSnap.completionStatus, draftSnap.draft]
   );
+  const incompleteItems = useMemo(
+    () => [...questionnaireIncompleteItems, ...documentIncompleteItems],
+    [questionnaireIncompleteItems, documentIncompleteItems]
+  );
+  const hasDocumentUploadIssues = incompleteItems.some((item) => item.startsWith("Upload Documents:"));
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
@@ -58,7 +124,61 @@ export default function SubmitPage() {
     }
   };
 
+  const getDocumentUploadIncompleteItems = async () => {
+    const appId = draftStore.currentApplicationId || draftSnap.currentApplicationId;
+    if (!appId) return [];
+
+    const application =
+      applicationsStore.applications.find((app) => app.id === appId) ||
+      applicationsSnap.applications.find((app) => app.id === appId);
+
+    if (application?.zohoId) {
+      try {
+        const response = await fetch(`/api/uploads/matter-documents?dealId=${application.zohoId}`);
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          return ["Upload Documents: Unable to verify required document uploads"];
+        }
+
+        return buildDocumentUploadChecklist(result.documents || []);
+      } catch {
+        return ["Upload Documents: Unable to verify required document uploads"];
+      }
+    }
+
+    const localUploads = appDataStore.loadUploads(appId) || [];
+    return buildDocumentUploadChecklist(localUploads, { requireExplicitRequirement: true });
+  };
+
+  const getCurrentIncompleteItems = async () => {
+    const questionnaireItems = getIncompleteChecklist({
+      visaType,
+      visaContext: draftStore.visaContext ?? draftStore.draft?.visaContext,
+      completionStatus: draftStore.completionStatus,
+      draft: draftStore.draft,
+    });
+    const documentItems = await getDocumentUploadIncompleteItems();
+    setDocumentIncompleteItems(documentItems);
+    return [...questionnaireItems, ...documentItems];
+  };
+
+  const blockSubmission = (items) => {
+    if (items.length === 0) return false;
+
+    setConfirmOpen(true);
+    toast({
+      title: "Submission blocked",
+      description: "Please complete all required questionnaire items and document uploads before submitting.",
+      variant: "destructive",
+    });
+    return true;
+  };
+
   const submitApplication = async () => {
+    const currentIncompleteItems = await getCurrentIncompleteItems();
+    if (blockSubmission(currentIncompleteItems)) return;
+
     setIsSubmitting(true);
     try {
       const appId = draftSnap.currentApplicationId;
@@ -102,14 +222,28 @@ export default function SubmitPage() {
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || isCheckingRequirements) return;
 
-    if (incompleteItems.length > 0) {
-      setConfirmOpen(true);
-      return;
+    setIsCheckingRequirements(true);
+    try {
+      const currentIncompleteItems = await getCurrentIncompleteItems();
+      if (blockSubmission(currentIncompleteItems)) return;
+
+      await submitApplication();
+    } finally {
+      setIsCheckingRequirements(false);
     }
+  };
 
-    await submitApplication();
+  const handleGoToUploads = () => {
+    const appId = draftSnap.currentApplicationId;
+    if (!appId) return;
+
+    const slug = getIntakeSlugForContext(visaType, draftSnap.visaContext);
+    const uploadsHref = `/applications/${slug}/${encodeURIComponent(appId)}/uploads`;
+    setConfirmOpen(false);
+    startNavigation(uploadsHref);
+    router.push(uploadsHref);
   };
 
   return (
@@ -165,9 +299,9 @@ export default function SubmitPage() {
           <FormNavigation
             onPrev={handlePrevious}
             onNext={handleSubmit}
-            nextLabel={isSubmitting ? "Submitting..." : "Submit"}
-            disabledNext={isSubmitting}
-            loading={isSubmitting}
+            nextLabel={isSubmitting ? "Submitting..." : isCheckingRequirements ? "Checking..." : "Submit"}
+            disabledNext={isSubmitting || isCheckingRequirements}
+            loading={isSubmitting || isCheckingRequirements}
             onSave={null} // No save button
           />
         </div>
@@ -176,9 +310,9 @@ export default function SubmitPage() {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>You Still Have Unfinished Items</DialogTitle>
+            <DialogTitle>Complete Required Items Before Submitting</DialogTitle>
             <DialogDescription>
-              You still have items that are not finished. Are you sure you want to submit?
+              Submission is blocked until every required question, detail field, and required document upload is complete.
             </DialogDescription>
           </DialogHeader>
 
@@ -194,24 +328,23 @@ export default function SubmitPage() {
           </div>
 
           <div className="mt-2 flex justify-end gap-3">
+            {hasDocumentUploadIssues && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGoToUploads}
+                disabled={isSubmitting || isCheckingRequirements}
+              >
+                Upload Documents
+              </Button>
+            )}
             <Button
               type="button"
-              variant="outline"
               onClick={() => setConfirmOpen(false)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCheckingRequirements}
+              className="bg-[#4F726B] text-white hover:bg-[#4F726B]"
             >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={async () => {
-                setConfirmOpen(false);
-                await submitApplication();
-              }}
-              disabled={isSubmitting}
-              className="bg-[#022C22] text-white hover:bg-[#022C22]"
-            >
-              Submit Anyway
+              Close
             </Button>
           </div>
         </DialogContent>

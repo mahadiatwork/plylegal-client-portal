@@ -139,7 +139,7 @@ export default function NonMigratingDetailsPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/details`, null, false);
+    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/details__${memberId}`, null, false);
     // Use global route to navigate to next page in linear flow
     const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
     if (next) {

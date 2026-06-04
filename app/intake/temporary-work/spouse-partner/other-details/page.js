@@ -305,7 +305,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleFormSubmit)}
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Ok
@@ -467,7 +467,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
+                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
                 </Label>
                 <RadioGroup
                   value={form.watch("has_other_names")}
@@ -496,7 +496,7 @@ export default function Page() {
               {hasOtherNames === "yes" && (
                 <div className="pl-0 mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of the other names your Spouse/Partner has been known by, including names before marriage
+                    Enter details of the other names you have been known by, including names before marriage
                   </p>
                   <RepeaterTable
                     data={otherNames}
@@ -525,7 +525,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Does your Spouse/Partner use a Chinese Commercial Code for their name?
+                  Do you use a Chinese Commercial Code for your name?
                 </Label>
                 <RadioGroup
                   value={form.watch("use_chinese_code")}

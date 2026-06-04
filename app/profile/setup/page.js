@@ -466,7 +466,7 @@ export default function ProfileSetupPage() {
                 type="submit"
                 data-testid="button-save-profile"
                 disabled={isSubmitting}
-                className="bg-[#022C22] hover:bg-[#022C22]"
+                className="bg-[#4F726B] hover:bg-[#4F726B]"
               >
                 {isSubmitting ? "Saving..." : "Save Profile"}
               </Button>

@@ -340,6 +340,12 @@ async function checkVisibleCheckboxes(scope, branch) {
 async function fillOpenDialog(page, branch) {
   const dialog = page.getByRole("dialog").last();
   await expect(dialog).toBeVisible();
+
+  if (/\/all-applicants\/travel-history/.test(new URL(page.url()).pathname)) {
+    await expect(dialog.getByText("Is this the main applicant's current location?")).toHaveCount(0);
+    await expect(dialog.getByText("Departure Date")).toBeVisible();
+  }
+
   await fillVisibleTextControls(dialog, branch);
   await fillVisibleSelects(page, dialog);
   await selectVisibleRadios(dialog, branch);
@@ -375,9 +381,90 @@ async function fillVisibleRepeaters(page, branch, seenRepeaters) {
   }
 }
 
+async function waitForNavigationOverlayToClear(page) {
+  await page.waitForTimeout(350);
+  await expect(page.getByText("Opening application")).toHaveCount(0, { timeout: 10_000 });
+}
+
+async function getQuestionnaireProfiles(page) {
+  return page.evaluate(() => {
+    const match = window.location.pathname.match(/^\/applications\/[^/]+\/([^/]+)\//);
+    const appId = match ? decodeURIComponent(match[1]) : null;
+    if (!appId) return [];
+    const draft = JSON.parse(localStorage.getItem(`ply:app:${appId}:draft`) || "{}");
+    return (draft.profiles || []).map((profile) => ({
+      label: [profile.given_names, profile.family_name].filter(Boolean).join(" ").trim() || "Unnamed",
+    }));
+  });
+}
+
+async function completeCountriesOfResidenceCoverage(page, seenRepeaters) {
+  const currentUrl = new URL(page.url());
+  const repeaterKey = `${currentUrl.pathname}${currentUrl.search}:residence-full-coverage`;
+  if (seenRepeaters.has(repeaterKey)) return;
+  seenRepeaters.add(repeaterKey);
+
+  const profiles = await getQuestionnaireProfiles(page);
+  const coverageStartYear = String(new Date().getFullYear() - 10);
+
+  for (const profile of profiles) {
+    await page.getByTestId("button-add-residence").click();
+    const dialog = page.getByRole("dialog").last();
+    await expect(dialog).toBeVisible();
+
+    await selectRadixByTestId(page, "select-applicant-name", profile.label);
+    await selectRadixByTestId(page, "select-from-day", "01");
+    await selectRadixByTestId(page, "select-from-month", "January");
+    await selectRadixByTestId(page, "select-from-year", coverageStartYear);
+    await selectRadixByTestId(page, "select-country", "Australia");
+    await dialog.getByTestId("input-address1").fill("1 E2E Test Street");
+    await dialog.getByTestId("input-suburb").fill("Melbourne");
+    await dialog.getByTestId("input-state").fill("Victoria");
+    await dialog.getByTestId("input-postcode").fill("3000");
+    await dialog.getByTestId("button-ok").click();
+    await expect(dialog).toBeHidden({ timeout: 8_000 });
+  }
+}
+
+async function assertTemporaryWorkCorrectionExpectations(page) {
+  const currentPath = new URL(page.url()).pathname;
+
+  if (/\/main-applicant\/contact-details/.test(currentPath)) {
+    await expect(page.getByTestId("select-usual-country-of-residence")).toBeVisible();
+    const usualBeforeResidential = await page.evaluate(() => {
+      const usual = document.querySelector('[data-testid="select-usual-country-of-residence"]');
+      const residential = document.querySelector('[data-testid="select-residential-country"]');
+      if (!usual || !residential) return false;
+      return Boolean(usual.compareDocumentPosition(residential) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(usualBeforeResidential).toBe(true);
+  }
+
+  if (/\/all-applicants\/visas/.test(currentPath)) {
+    await expect(page.getByText("Visa History")).toHaveCount(0);
+    await expect(page.getByTestId("input-visa-grant-number-0")).toBeVisible();
+    await expect(page.getByText("Person the visa relates to")).toBeVisible();
+  }
+}
+
+export async function expectResidenceCoverageBlocksIncomplete(page) {
+  const currentUrl = page.url();
+  await page.getByTestId("button-next").click();
+  await expect(page.getByTestId("residence-coverage-error")).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(currentUrl);
+}
+
 export async function completeVisibleQuestionnairePage(page, branch, seenRepeaters = new Set()) {
   await expect(page).not.toHaveURL(/\/login/);
   await page.waitForLoadState("domcontentloaded");
+  await waitForNavigationOverlayToClear(page);
+  await assertTemporaryWorkCorrectionExpectations(page);
+
+  if (/\/all-applicants\/countries-of-residence/.test(new URL(page.url()).pathname)) {
+    await completeCountriesOfResidenceCoverage(page, seenRepeaters);
+    return;
+  }
+
   await fillVisibleTextControls(page, branch);
   await fillVisibleSelects(page, page);
   await selectVisibleRadios(page, branch);
@@ -400,20 +487,29 @@ export async function saveDraftOnceAndAssert(page, appId) {
 
 export async function goNext(page) {
   const currentUrl = page.url();
+  const currentMainText = await page.locator("main").innerText().catch(() => "");
   const nextButton = page.locator('[data-testid="button-next"], [data-testid="button-continue"]').first();
   await expect(nextButton).toBeVisible();
   await expect(nextButton).toBeEnabled();
   await nextButton.click();
 
-  const navigated = await expect.poll(() => page.url(), { timeout: 90_000 }).not.toBe(currentUrl).then(
+  const navigated = await expect.poll(
+    async () => {
+      if (page.url() !== currentUrl) return true;
+      const nextMainText = await page.locator("main").innerText().catch(() => "");
+      return Boolean(currentMainText && nextMainText && nextMainText !== currentMainText);
+    },
+    { timeout: 90_000 }
+  ).toBe(true).then(
     () => true,
     () => false
   );
 
   if (!navigated) {
     const errors = await page.locator('[role="alert"], .text-red-600').allTextContents().catch(() => []);
-    throw new Error(`Questionnaire did not navigate from ${currentUrl}. Visible errors: ${errors.join(" | ")}`);
+    throw new Error(`Questionnaire did not navigate from ${currentUrl}. Final URL: ${page.url()}. Visible errors: ${errors.join(" | ")}`);
   }
+  await waitForNavigationOverlayToClear(page);
   await expect(page).not.toHaveURL(/\/login/);
 }
 
@@ -423,6 +519,7 @@ export async function goPrevious(page) {
   await expect(previousButton).toBeVisible();
   await previousButton.click();
   await expect.poll(() => page.url(), { timeout: 30_000 }).not.toBe(currentUrl);
+  await waitForNavigationOverlayToClear(page);
   await expect(page).not.toHaveURL(/\/login/);
 }
 
@@ -445,6 +542,124 @@ export async function submitQuestionnaire(page, appId) {
     ),
     { timeout: 10_000 }
   ).toBe("submitted");
+}
+
+export async function expectCompletionSummary(page, { completed, total, percentage }) {
+  const sidebar = page.getByRole("complementary");
+  await expect(sidebar.getByText(`${percentage}%`, { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(sidebar.getByText(`${completed} of ${total} sections complete`)).toBeVisible({ timeout: 10_000 });
+}
+
+export async function seedTemporaryWorkIncompleteRequiredDraft(page, { appId, visaContext = "482" }) {
+  const profileId = `main-${visaContext}-incomplete`;
+
+  await page.evaluate(
+    ({ seededAppId, seededVisaContext, seededProfileId }) => {
+      const mainProfile = {
+        id: seededProfileId,
+        relationship: "main_applicant",
+        given_names: "Alex",
+        family_name: "Incomplete",
+        gender: "Male",
+        birth_day: "1",
+        birth_month: "January",
+        birth_year: "1990",
+      };
+
+      const draft = {
+        visaContext: seededVisaContext,
+        profiles: [mainProfile],
+        profiles_data: {
+          [seededProfileId]: {
+            details: {
+              family_name: "Incomplete",
+              given_names: "Alex",
+              gender: "Male",
+              birth_day: "1",
+              birth_month: "1",
+              birth_year: "1990",
+              country_of_birth: "",
+              city_of_birth: "",
+              marital_status: "Never Married",
+              citizenship_other_than_birth: "no",
+              citizenships: [],
+            },
+            other: {
+              has_other_names: "yes",
+              other_names: [],
+            },
+            contact_details: {
+              email: "",
+              phone: "",
+              mobile: "",
+              emergency_contact_name: "",
+              emergency_contact_phone: "",
+              usual_country_of_residence: "",
+              residential_address: {},
+            },
+            employment: {
+              is_currently_employed: "yes",
+              current_employer: "",
+              current_position: "",
+              current_country: "",
+              current_start_date_day: "",
+              current_start_date_month: "",
+              current_start_date_year: "",
+              current_employment_type: "",
+              current_address: "",
+              employment_history: [],
+            },
+            education: {
+              has_secondary_education: "yes",
+              education_history: [],
+            },
+            skills: {
+              has_occupational_registration: "no",
+              registrations: [],
+              has_skills_assessment: "yes",
+              assessments: [],
+            },
+            language: {
+              is_english_main_language: "no",
+              languages: [],
+              has_english_test: "no",
+              english_tests: [],
+              studied_in_english: "no",
+              studied_in_english_details: "",
+            },
+          },
+        },
+      };
+
+      const completion = {
+        "temporary-work/start": true,
+        "temporary-work/profile": true,
+        [`temporary-work/main-applicant/details__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/other__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/identity__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/contact-details__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/employment__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/education__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/skills__${seededProfileId}`]: true,
+        [`temporary-work/main-applicant/language__${seededProfileId}`]: true,
+        "temporary-work/all-applicants/visas": true,
+        "temporary-work/all-applicants/travel-history": true,
+        "temporary-work/all-applicants/countries-of-residence": true,
+        "temporary-work/all-applicants/health": true,
+        "temporary-work/all-applicants/character": true,
+      };
+
+      if (seededVisaContext === "186") {
+        completion["temporary-work/non-migrating"] = true;
+      }
+
+      localStorage.setItem(`ply:app:${seededAppId}:draft`, JSON.stringify(draft));
+      localStorage.setItem(`ply:app:${seededAppId}:completion`, JSON.stringify(completion));
+    },
+    { seededAppId: appId, seededVisaContext: visaContext, seededProfileId: profileId }
+  );
+
+  return { profileId };
 }
 
 export async function readScopedDraft(page, appId) {

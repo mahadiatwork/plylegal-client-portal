@@ -41,7 +41,7 @@ export function Field(props) {
           aria-describedby={cn(descriptionId, errorId)}
           aria-invalid={!!fieldState.error}
           className={cn(
-            "resize-none border-2 focus:ring-2 focus:ring-[#022C22]/20 transition-colors",
+            "resize-none border-2 focus:ring-2 focus:ring-[#4F726B]/20 transition-colors",
             fieldState.error && "border-red-600 focus:ring-red-600/20"
           )}
         />
@@ -76,7 +76,7 @@ export function Field(props) {
             aria-describedby={cn(descriptionId, errorId)}
             aria-invalid={!!fieldState.error}
             className={cn(
-              "border-2 focus:ring-2 focus:ring-[#022C22]/20 transition-colors",
+              "border-2 focus:ring-2 focus:ring-[#4F726B]/20 transition-colors",
               fieldState.error && "border-red-600 focus:ring-red-600/20"
             )}
           >
@@ -203,7 +203,7 @@ export function Field(props) {
         aria-describedby={cn(descriptionId, errorId)}
         aria-invalid={!!fieldState.error}
         className={cn(
-          "border-2 focus:ring-2 focus:ring-[#022C22]/20 transition-colors h-11",
+          "border-2 focus:ring-2 focus:ring-[#4F726B]/20 transition-colors h-11",
           fieldState.error && "border-red-600 focus:ring-red-600/20"
         )}
       />

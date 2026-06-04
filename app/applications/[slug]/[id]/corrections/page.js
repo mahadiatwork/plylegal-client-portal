@@ -231,7 +231,7 @@ export default function CorrectionsPage() {
                     <Button
                       type="button"
                       onClick={handleSubmit}
-                      className="flex-1 bg-[#022C22] hover:bg-[#022C22]"
+                      className="flex-1 bg-[#4F726B] hover:bg-[#4F726B]"
                       data-testid="button-submit-corrections"
                     >
                       <Send className="w-4 h-4 mr-2" />

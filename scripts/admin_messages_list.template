@@ -115,7 +115,7 @@ export default function AdminMessagesPage() {
                 variant={filter === &quot;all&quot; ? &quot;default&quot; : &quot;outline&quot;}
                 size=&quot;sm&quot;
                 onClick={() =&gt; setFilter(&quot;all&quot;)}
-                className={filter === &quot;all&quot; ? &quot;bg-[#285646] hover:bg-[#1f4236]&quot; : &quot;&quot;}
+                className={filter === &quot;all&quot; ? &quot;bg-[#4F726B] hover:bg-[#4F726B]&quot; : &quot;&quot;}
               &gt;
                 All
               &lt;/Button&gt;
@@ -123,7 +123,7 @@ export default function AdminMessagesPage() {
                 variant={filter === &quot;unread&quot; ? &quot;default&quot; : &quot;outline&quot;}
                 size=&quot;sm&quot;
                 onClick={() =&gt; setFilter(&quot;unread&quot;)}
-                className={filter === &quot;unread&quot; ? &quot;bg-[#285646] hover:bg-[#1f4236]&quot; : &quot;&quot;}
+                className={filter === &quot;unread&quot; ? &quot;bg-[#4F726B] hover:bg-[#4F726B]&quot; : &quot;&quot;}
               &gt;
                 Unread
               &lt;/Button&gt;
@@ -143,7 +143,7 @@ export default function AdminMessagesPage() {
                   &lt;div
                     key={conv.conversationId}
                     onClick={() =&gt; router.push(&quot;/admin/messages/&quot; + conv.conversationId)}
-                    className=&quot;bg-white rounded-lg border border-gray-200 p-4 hover:border-[#285646] hover:shadow-sm cursor-pointer transition-all flex items-center justify-between&quot;
+                    className=&quot;bg-white rounded-lg border border-gray-200 p-4 hover:border-[#4F726B] hover:shadow-sm cursor-pointer transition-all flex items-center justify-between&quot;
                   &gt;
                     &lt;div className=&quot;flex-1 min-w-0&quot;&gt;
                       &lt;div className=&quot;flex items-center gap-3 mb-1&quot;&gt;
@@ -154,7 +154,7 @@ export default function AdminMessagesPage() {
                           &lt;/span&gt;
                         )}
                         {conv.unreadForAdmin &amp;&amp; (
-                          &lt;span className=&quot;w-2 h-2 bg-[#285646] rounded-full flex-shrink-0&quot; title=&quot;Unread&quot; /&gt;
+                          &lt;span className=&quot;w-2 h-2 bg-[#4F726B] rounded-full flex-shrink-0&quot; title=&quot;Unread&quot; /&gt;
                         )}
                       &lt;/div&gt;
                       &lt;p className=&quot;text-sm text-gray-600 truncate&quot;&gt;{conv.latestMessagePreview || &quot;No messages&quot;}&lt;/p&gt;

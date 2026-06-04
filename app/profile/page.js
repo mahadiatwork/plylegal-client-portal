@@ -579,7 +579,7 @@ export default function ProfilePage() {
                           type="submit"
                           data-testid="button-save"
                           disabled={isSubmitting || isSyncing}
-                          className="bg-[#022C22] hover:bg-[#022C22]"
+                          className="bg-[#4F726B] hover:bg-[#4F726B]"
                         >
                           {isSyncing ? "Syncing to Zoho..." : isSubmitting ? "Saving..." : "Save Changes"}
                         </Button>

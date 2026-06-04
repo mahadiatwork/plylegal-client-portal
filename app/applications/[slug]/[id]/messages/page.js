@@ -302,7 +302,7 @@ export default function MessagesPage() {
                         <div
                           className={
                             isClient
-                              ? "bg-[#022C22] text-white rounded-lg px-4 py-3 shadow-sm"
+                              ? "bg-[#4F726B] text-white rounded-lg px-4 py-3 shadow-sm"
                               : "bg-green-50 border border-green-200 rounded-lg px-4 py-3 shadow-sm"
                           }
                         >
@@ -352,7 +352,7 @@ export default function MessagesPage() {
                 <Button
                   type="submit"
                   disabled={isSending || !messageText.trim()}
-                  className="flex-shrink-0 bg-[#022C22] hover:bg-[#022C22] text-white"
+                  className="flex-shrink-0 bg-[#4F726B] hover:bg-[#4F726B] text-white"
                   data-testid="button-send-message"
                 >
                   {isSending ? (

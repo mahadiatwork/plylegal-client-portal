@@ -2,126 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: "Season Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season-Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season-Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season-Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Season-Mix";
-  src:
-    url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Standerd";
-  src:
-    url("/fonts/plylegal/Standerd-Regular.woff2") format("woff2"),
-    url("/fonts/plylegal/Standerd-Regular.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Standerd";
-  src:
-    url("/fonts/plylegal/Standerd-Medium.woff2") format("woff2"),
-    url("/fonts/plylegal/Standerd-Medium.woff") format("woff");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Standerd";
-  src:
-    url("/fonts/plylegal/Standerd-SemiBold.woff2") format("woff2"),
-    url("/fonts/plylegal/Standerd-SemiBold.woff") format("woff");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Standerd";
-  src:
-    url("/fonts/plylegal/Standerd-Bold.woff2") format("woff2"),
-    url("/fonts/plylegal/Standerd-Bold.woff") format("woff");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -146,21 +26,21 @@
 
   --card-border: 148 16% 90%;
 
-  --sidebar: 165.71 91.3% 9.02%;
+  --sidebar: 168 18% 38%;
 
   --sidebar-foreground: 0 0% 95%;
 
-  --sidebar-border: 165.71 91.3% 9.02%;
+  --sidebar-border: 168 18% 38%;
 
-  --sidebar-primary: 165.71 91.3% 9.02%;
+  --sidebar-primary: 168 18% 38%;
 
   --sidebar-primary-foreground: 158 10% 98%;
 
-  --sidebar-accent: 165.71 91.3% 9.02%;
+  --sidebar-accent: 168 18% 38%;
 
   --sidebar-accent-foreground: 0 0% 95%;
 
-  --sidebar-ring: 165.71 91.3% 9.02%;
+  --sidebar-ring: 168 18% 38%;
 
   --popover: 0 0% 98%;
 
@@ -168,7 +48,7 @@
 
   --popover-border: 148 16% 90%;
 
-  --primary: 165.71 91.3% 9.02%;
+  --primary: 168 18% 38%;
 
   --primary-foreground: 158 10% 98%;
 
@@ -189,15 +69,15 @@
   --destructive-foreground: 0 10% 98%;
 
   --input: 148 18% 76%;
-  --ring: 165.71 91.3% 9.02%;
-  --chart-1: 165.71 91.3% 9.02%;
+  --ring: 168 18% 38%;
+  --chart-1: 168 18% 38%;
   --chart-2: 145 45% 38%;
   --chart-3: 190 38% 44%;
   --chart-4: 159 28% 46%;
   --chart-5: 200 50% 50%;
 
-  --font-sans: "Standerd", Arial, sans-serif;
-  --font-serif: "Season Mix", Georgia, sans-serif;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: Georgia, Merriweather, serif;
   --font-mono: Menlo, Monaco, "Courier New", monospace;
   --radius: .5rem; /* 8px */
   --shadow-2xs: 0px 1px 2px 0px hsl(228 60% 20% / 0.05);
@@ -264,21 +144,21 @@
 
   --card-border: 159 15% 21%;
 
-  --sidebar: 165.71 91.3% 9.02%;
+  --sidebar: 168 18% 38%;
 
   --sidebar-foreground: 0 0% 95%;
 
-  --sidebar-border: 165.71 91.3% 9.02%;
+  --sidebar-border: 168 18% 38%;
 
-  --sidebar-primary: 165.71 91.3% 9.02%;
+  --sidebar-primary: 168 18% 38%;
 
   --sidebar-primary-foreground: 158 10% 98%;
 
-  --sidebar-accent: 165.71 91.3% 9.02%;
+  --sidebar-accent: 168 18% 38%;
 
   --sidebar-accent-foreground: 0 0% 95%;
 
-  --sidebar-ring: 165.71 91.3% 9.02%;
+  --sidebar-ring: 168 18% 38%;
 
   --popover: 159 16% 17%;
 
@@ -286,7 +166,7 @@
 
   --popover-border: 159 15% 23%;
 
-  --primary: 165.71 91.3% 9.02%;
+  --primary: 168 18% 38%;
 
   --primary-foreground: 158 10% 98%;
 
@@ -307,7 +187,7 @@
   --destructive-foreground: 0 10% 98%;
 
   --input: 159 15% 35%;
-  --ring: 165.71 91.3% 9.02%;
+  --ring: 168 18% 38%;
   --chart-1: 159 37% 55%;
   --chart-2: 145 42% 52%;
   --chart-3: 190 32% 62%;
@@ -343,32 +223,11 @@
     -webkit-overflow-scrolling: touch;
     width: 100%;
     position: relative;
-    font-family: var(--font-sans);
-    font-synthesis: none;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    font-family: var(--font-sans) !important;
-  }
-
-  button,
-  input,
-  optgroup,
-  select,
-  textarea {
-    font-family: var(--font-sans) !important;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-serif) !important;
-    font-weight: 500 !important;
-    letter-spacing: 0;
+    font-family: var(--font-sans);
   }
 }
 
@@ -412,14 +271,6 @@
  * need to be distinguished from eachother visually.
  */
 @layer utilities {
-  .font-sans {
-    font-family: var(--font-sans) !important;
-  }
-
-  .font-serif {
-    font-family: var(--font-serif) !important;
-  }
-
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;

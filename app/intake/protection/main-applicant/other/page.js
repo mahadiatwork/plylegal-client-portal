@@ -373,7 +373,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         </Button>
         <Button
           type="submit"
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Save
@@ -432,7 +432,7 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
         </Button>
         <Button
           type="submit"
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-save-dob"
         >
           Save

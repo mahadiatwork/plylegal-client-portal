@@ -54,6 +54,167 @@ const formatDate = (day, month, year) => {
     return `${day} ${month} ${year}`;
 };
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const formatCoverageDate = (date) =>
+    `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+
+const todayOnly = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+const addDays = (date, days) => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+};
+
+const addYears = (date, years) => {
+    const next = new Date(date);
+    next.setFullYear(next.getFullYear() + years);
+    return next;
+};
+
+function monthIndex(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return -1;
+    if (/^\d+$/.test(raw)) {
+        const month = Number.parseInt(raw, 10);
+        return month >= 1 && month <= 12 ? month - 1 : -1;
+    }
+    return MONTHS.findIndex((month) => month.toLowerCase() === raw.toLowerCase());
+}
+
+function parseResidenceDate(day, month, year) {
+    const parsedDay = Number.parseInt(String(day || ""), 10);
+    const parsedYear = Number.parseInt(String(year || ""), 10);
+    const parsedMonth = monthIndex(month);
+    if (!parsedDay || parsedMonth < 0 || !parsedYear) return null;
+
+    const date = new Date(parsedYear, parsedMonth, parsedDay);
+    if (
+        date.getFullYear() !== parsedYear ||
+        date.getMonth() !== parsedMonth ||
+        date.getDate() !== parsedDay
+    ) {
+        return null;
+    }
+    return date;
+}
+
+function rowBelongsToApplicant(row, applicant) {
+    const saved = String(row?.applicant_name || "").trim();
+    if (!saved) return false;
+    return [applicant.value, applicant.label, applicant.id].filter(Boolean).some((token) => saved === token);
+}
+
+function applicantLabelForValue(value, applicants) {
+    const saved = String(value || "").trim();
+    const applicant = applicants.find((item) =>
+        [item.value, item.label, item.id].filter(Boolean).some((token) => token === saved)
+    );
+    return applicant?.label || saved;
+}
+
+function applicantCoverageStart(applicant, today) {
+    const tenYearsAgo = new Date(today);
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+
+    const dob = parseResidenceDate(applicant.birth_day, applicant.birth_month, applicant.birth_year);
+    if (!dob) return tenYearsAgo;
+
+    const sixteenthBirthday = addYears(dob, 16);
+    return sixteenthBirthday > tenYearsAgo ? sixteenthBirthday : tenYearsAgo;
+}
+
+function parseResidenceInterval(row, today) {
+    const start = parseResidenceDate(row.date_from_day, row.date_from_month, row.date_from_year);
+    if (!start) return { error: "Date From is incomplete or invalid." };
+
+    const toValues = [row.date_to_day, row.date_to_month, row.date_to_year].map((value) => String(value || "").trim());
+    const filledToValues = toValues.filter(Boolean).length;
+    let end = today;
+
+    if (filledToValues > 0 && filledToValues < 3) {
+        return { error: "Date To is incomplete." };
+    }
+
+    if (filledToValues === 3) {
+        end = parseResidenceDate(row.date_to_day, row.date_to_month, row.date_to_year);
+        if (!end) return { error: "Date To is invalid." };
+    }
+
+    if (end < start) {
+        return { error: "Date To cannot be before Date From." };
+    }
+
+    return { start, end };
+}
+
+function validateResidenceCoverage(records, applicants) {
+    if (!applicants.length) return null;
+
+    const today = todayOnly();
+    const issues = [];
+
+    applicants.forEach((applicant) => {
+        const requiredStart = applicantCoverageStart(applicant, today);
+        if (requiredStart > today) return;
+
+        const intervals = [];
+        const applicantRows = (records || []).filter((row) => rowBelongsToApplicant(row, applicant));
+
+        applicantRows.forEach((row) => {
+            const parsed = parseResidenceInterval(row, today);
+            if (parsed.error) {
+                issues.push(`${applicant.label}: ${parsed.error}`);
+                return;
+            }
+            if (parsed.end < requiredStart || parsed.start > today) return;
+            intervals.push({
+                start: parsed.start < requiredStart ? requiredStart : parsed.start,
+                end: parsed.end > today ? today : parsed.end,
+            });
+        });
+
+        if (!intervals.length) {
+            issues.push(`${applicant.label}: add residence records from ${formatCoverageDate(requiredStart)} to today.`);
+            return;
+        }
+
+        intervals.sort((a, b) => a.start.getTime() - b.start.getTime());
+        let coveredEnd = null;
+
+        intervals.forEach((interval) => {
+            if (!coveredEnd) {
+                if (interval.start > requiredStart) {
+                    issues.push(`${applicant.label}: coverage must start by ${formatCoverageDate(requiredStart)}.`);
+                }
+                coveredEnd = interval.end;
+                return;
+            }
+
+            if (interval.start.getTime() > coveredEnd.getTime() + MS_PER_DAY) {
+                issues.push(
+                    `${applicant.label}: gap between ${formatCoverageDate(addDays(coveredEnd, 1))} and ${formatCoverageDate(addDays(interval.start, -1))}.`
+                );
+            }
+
+            if (interval.end > coveredEnd) {
+                coveredEnd = interval.end;
+            }
+        });
+
+        if (coveredEnd && coveredEnd < today) {
+            issues.push(`${applicant.label}: coverage must continue through today.`);
+        }
+    });
+
+    if (!issues.length) return null;
+    return `Residence history must cover the full 10-year/since-16 period. ${issues.join(" ")}`;
+}
+
 // ─── Residence Dialog ─────────────────────────────────────────────────
 function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
     const dialogFormSchema = z.object({
@@ -292,7 +453,7 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                 <Button
                     type="button"
                     onClick={dialogForm.handleSubmit(handleSubmit)}
-                    className="bg-[#022C22] hover:bg-[#022C22] text-white"
+                    className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
                     data-testid="button-ok"
                 >
                     Ok
@@ -312,6 +473,7 @@ export default function Page() {
     const { toast } = useToast();
     const draftSnap = useSnapshot(draftStore);
     const [isSaving, setIsSaving] = useState(false);
+    const [coverageError, setCoverageError] = useState("");
 
     useEffect(() => {
         const appIdFromUrl = searchParams.get("applicationId");
@@ -346,7 +508,10 @@ export default function Page() {
                 return {
                     label: fullName.trim() || "Unnamed",
                     value: fullName.trim() || "Unnamed",
-                    id: p.id
+                    id: p.id,
+                    birth_day: p.birth_day || "",
+                    birth_month: p.birth_month || "",
+                    birth_year: p.birth_year || "",
                 };
             });
         }
@@ -356,22 +521,49 @@ export default function Page() {
         const mainDetails = draftSnap.draft?.temporary_work_details;
         if (mainDetails) {
             const fullName = [mainDetails.given_names, mainDetails.family_name].filter(Boolean).join(" ");
-            if (fullName.trim()) list.push({ label: fullName.trim(), value: fullName.trim() });
+            if (fullName.trim()) {
+                list.push({
+                    label: fullName.trim(),
+                    value: fullName.trim(),
+                    id: "legacy_main",
+                    birth_day: mainDetails.birth_day || "",
+                    birth_month: mainDetails.birth_month || "",
+                    birth_year: mainDetails.birth_year || "",
+                });
+            }
         }
 
         const spouseDetails = draftSnap.draft?.temporary_work_spouse_details;
         if (spouseDetails) {
             const fullName = [spouseDetails.given_names, spouseDetails.family_name].filter(Boolean).join(" ");
-            if (fullName.trim()) list.push({ label: `${fullName.trim()} (Spouse/Partner)`, value: fullName.trim() });
+            if (fullName.trim()) {
+                list.push({
+                    label: `${fullName.trim()} (Spouse/Partner)`,
+                    value: fullName.trim(),
+                    id: "legacy_spouse",
+                    birth_day: spouseDetails.birth_day || "",
+                    birth_month: spouseDetails.birth_month || "",
+                    birth_year: spouseDetails.birth_year || "",
+                });
+            }
         }
 
         const childrenData = draftSnap.draft?.temporary_work_children;
         if (childrenData?.children && Array.isArray(childrenData.children)) {
             childrenData.children
                 .filter((child) => child.included_in_application === "Yes")
-                .forEach((child) => {
+                .forEach((child, index) => {
                     const fullName = [child.given_names, child.family_name].filter(Boolean).join(" ");
-                    if (fullName.trim()) list.push({ label: `${fullName.trim()} (Child)`, value: fullName.trim() });
+                    if (fullName.trim()) {
+                        list.push({
+                            label: `${fullName.trim()} (Child)`,
+                            value: fullName.trim(),
+                            id: `legacy_child_${index}`,
+                            birth_day: child.birth_day || "",
+                            birth_month: child.birth_month || "",
+                            birth_year: child.birth_year || "",
+                        });
+                    }
                 });
         }
 
@@ -395,6 +587,17 @@ export default function Page() {
     const onSubmit = async (data) => {
         setIsSaving(true);
         try {
+            const validationError = validateResidenceCoverage(data.residence_records || [], applicants);
+            if (validationError) {
+                setCoverageError(validationError);
+                toast({
+                    title: "Residence history incomplete",
+                    description: validationError,
+                    variant: "destructive",
+                });
+                return;
+            }
+            setCoverageError("");
             await draftStore.saveSectionData("temporary_work_countries_of_residence", data);
             await draftStore.markPageComplete(
                 `${visaType}/all-applicants/countries-of-residence`,
@@ -444,10 +647,24 @@ export default function Page() {
                     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
                         <h2 className="text-xl font-semibold text-foreground">Details of country of residence</h2>
 
+                        {coverageError && (
+                            <div
+                                role="alert"
+                                data-testid="residence-coverage-error"
+                                className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                            >
+                                {coverageError}
+                            </div>
+                        )}
+
                         <RepeaterTable
                             data={residenceRecords}
                             columns={[
-                                { key: "applicant_name", label: "Applicant" },
+                                {
+                                    key: "applicant_name",
+                                    label: "Applicant",
+                                    format: (row) => applicantLabelForValue(row.applicant_name, applicants),
+                                },
                                 { key: "country", label: "Country" },
                                 {
                                     key: "date_from_day",
@@ -464,6 +681,7 @@ export default function Page() {
                                 },
                             ]}
                             onAdd={(newRow) => {
+                                setCoverageError("");
                                 const updated = [...residenceRecords, newRow];
                                 form.setValue("residence_records", updated, {
                                     shouldValidate: true,
@@ -472,6 +690,7 @@ export default function Page() {
                                 });
                             }}
                             onEdit={(index, updatedRow) => {
+                                setCoverageError("");
                                 const updated = [...residenceRecords];
                                 updated[index] = updatedRow;
                                 form.setValue("residence_records", updated, {
@@ -481,6 +700,7 @@ export default function Page() {
                                 });
                             }}
                             onDelete={(index) => {
+                                setCoverageError("");
                                 const updated = residenceRecords.filter((_, i) => i !== index);
                                 form.setValue("residence_records", updated, {
                                     shouldValidate: true,

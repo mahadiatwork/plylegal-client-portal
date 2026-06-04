@@ -141,7 +141,7 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">Ok</Button>
+        <Button type="submit" className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-ok">Ok</Button>
       </DialogFooter>
     </form>
   );
@@ -339,7 +339,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">Ok</Button>
+        <Button type="submit" className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-ok">Ok</Button>
       </DialogFooter>
     </form>
   );

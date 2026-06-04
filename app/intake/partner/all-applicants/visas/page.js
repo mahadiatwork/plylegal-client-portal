@@ -429,7 +429,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleSubmit)}
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Ok

@@ -78,7 +78,6 @@ const otherSchema = z.object({
     issuing_country: z.string().optional(),
     issuing_state: z.string().optional(),
     place_of_issue: z.string().optional(),
-    use_in_application: z.string().optional(),
   })).optional(),
   use_chinese_code: z.enum(["yes", "no"]),
   chinese_code: z.string().optional(),
@@ -98,9 +97,7 @@ const combinedSchema = detailsSchema.merge(otherSchema);
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
-  const initialUseInApplication = row?.use_in_application === "yes";
   const [hasEvidence, setHasEvidence] = useState(initialHasEvidence);
-  const [useInApplication, setUseInApplication] = useState(initialUseInApplication);
 
   const dialogForm = useForm({
     resolver: zodResolver(z.object({
@@ -116,7 +113,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       issuing_country: z.string().optional(),
       issuing_state: z.string().optional(),
       place_of_issue: z.string().optional(),
-      use_in_application: z.string().optional(),
     })),
     defaultValues: row || {
       family_name: "",
@@ -131,7 +127,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       issuing_country: "",
       issuing_state: "",
       place_of_issue: "",
-      use_in_application: "no",
     },
   });
 
@@ -139,10 +134,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
     if (row?.has_evidence !== undefined) {
       setHasEvidence(row.has_evidence);
       dialogForm.setValue("has_evidence", row.has_evidence);
-    }
-    if (row?.use_in_application !== undefined) {
-      setUseInApplication(row.use_in_application === "yes");
-      dialogForm.setValue("use_in_application", row.use_in_application);
     }
   }, [row]);
 
@@ -212,17 +203,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
         {dialogForm.formState.errors.reason_for_change && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_change.message}</p>
         )}
-      </div>
-      <div className="flex items-center space-x-2 pt-2">
-        <Checkbox
-          id="use_in_application"
-          checked={useInApplication}
-          onCheckedChange={(checked) => {
-            setUseInApplication(checked);
-            dialogForm.setValue("use_in_application", checked ? "yes" : "no");
-          }}
-        />
-        <Label htmlFor="use_in_application" className="text-sm font-normal cursor-pointer">Use this name in the application</Label>
       </div>
       <div className="pt-4 border-t border-gray-200">
         <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
@@ -333,7 +313,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       </div>
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-ok">Save</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-ok">Save</Button>
       </DialogFooter>
     </div>
   );
@@ -361,10 +341,25 @@ function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
       </div>
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel-dob">Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} className="bg-[#022C22] hover:bg-[#022C22] text-white" data-testid="button-save-dob">Save</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-save-dob">Save</Button>
       </DialogFooter>
     </div>
   );
+}
+
+function sanitizeOtherNames(otherNames) {
+  if (!Array.isArray(otherNames)) return [];
+  return otherNames.map((row) => {
+    const { use_in_application, ...cleanRow } = row || {};
+    return cleanRow;
+  });
+}
+
+function sanitizeOtherData(data) {
+  return {
+    ...data,
+    other_names: sanitizeOtherNames(data?.other_names),
+  };
 }
 
 export default function Page() {
@@ -431,7 +426,7 @@ export default function Page() {
     if (draftSnap.isLoading) return;
     const savedDetails = profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details || {} : draftSnap.draft?.temporary_work_details || {};
     const savedOther = profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other || {} : draftSnap.draft?.temporary_work_other || {};
-    const merged = { ...savedDetails, ...savedOther };
+    const merged = { ...savedDetails, ...sanitizeOtherData(savedOther) };
     if (Object.keys(merged).length > 0) {
       form.reset(merged);
     } else if (activeProfile) {
@@ -460,8 +455,9 @@ export default function Page() {
         if (detailKeys.includes(key)) detailsData[key] = data[key];
         else otherData[key] = data[key];
       }
+      const sanitizedOtherData = sanitizeOtherData(otherData);
       const resultDetails = profileId ? await draftStore.saveProfileSectionData(profileId, "details", detailsData) : await draftStore.saveSectionData("temporary_work_details", detailsData);
-      const resultOther = profileId ? await draftStore.saveProfileSectionData(profileId, "other", otherData) : await draftStore.saveSectionData("temporary_work_other", otherData);
+      const resultOther = profileId ? await draftStore.saveProfileSectionData(profileId, "other", sanitizedOtherData) : await draftStore.saveSectionData("temporary_work_other", sanitizedOtherData);
       if (resultDetails.success && resultOther.success) {
         if (profileId) {
           await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details-other`);
@@ -504,8 +500,9 @@ export default function Page() {
         if (detailKeys.includes(key)) detailsData[key] = data[key];
         else otherData[key] = data[key];
       }
+      const sanitizedOtherData = sanitizeOtherData(otherData);
       const resultDetails = profileId ? await draftStore.saveProfileSectionData(profileId, "details", detailsData) : await draftStore.saveSectionData("temporary_work_details", detailsData);
-      const resultOther = profileId ? await draftStore.saveProfileSectionData(profileId, "other", otherData) : await draftStore.saveSectionData("temporary_work_other", otherData);
+      const resultOther = profileId ? await draftStore.saveProfileSectionData(profileId, "other", sanitizedOtherData) : await draftStore.saveSectionData("temporary_work_other", sanitizedOtherData);
       if (resultDetails.success && resultOther.success) {
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
@@ -526,15 +523,16 @@ export default function Page() {
 
   // Helper functions to update repeater tables (similar to other page)
   const updateOtherNames = async (newNames) => {
-    form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    const otherData = { ...form.getValues(), other_names: newNames };
+    const sanitizedNames = sanitizeOtherNames(newNames);
+    form.setValue("other_names", sanitizedNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    const otherData = sanitizeOtherData({ ...form.getValues(), other_names: sanitizedNames });
     if (profileId) await draftStore.saveProfileSectionData(profileId, "other", otherData);
     else await draftStore.saveSectionData("temporary_work_other", otherData);
   };
 
   const updatePrevDobs = async (newDobs) => {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    const otherData = { ...form.getValues(), prev_dobs: newDobs };
+    const otherData = sanitizeOtherData({ ...form.getValues(), prev_dobs: newDobs });
     if (profileId) await draftStore.saveProfileSectionData(profileId, "other", otherData);
     else await draftStore.saveSectionData("temporary_work_other", otherData);
   };

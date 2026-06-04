@@ -431,7 +431,7 @@ function VisaDialog({ editingRow, onSave, onCancel }) {
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleSubmit)}
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Ok
@@ -460,6 +460,52 @@ function buildApplicantOptions(draft) {
   return [];
 }
 
+const formSchema = z.object({
+  visa_grant_entries: z.array(z.object({
+    applicantId: z.string().min(1, "Please select the person this visa grant number relates to"),
+    grantNumber: z.string().trim().min(1, "Australian visa grant number is required"),
+    history: z.array(z.any()).optional(),
+  })).min(1, "Please add at least one visa grant number entry"),
+});
+
+function normalizeVisaGrantEntries(savedData, applicantOptions, mainId) {
+  let entries = Array.isArray(savedData?.visa_grant_entries)
+    ? savedData.visa_grant_entries.map((entry) => ({
+        applicantId: entry?.applicantId || "",
+        grantNumber: entry?.grantNumber || entry?.visa_grant_number || "",
+        history: Array.isArray(entry?.history) ? entry.history : [],
+      }))
+    : [];
+
+  if (entries.length === 0 && (savedData?.has_aus_visa_history || savedData?.visa_grant_number)) {
+    entries = [
+      {
+        applicantId: mainId,
+        grantNumber: savedData?.visa_grant_number || "",
+        history: Array.isArray(savedData?.visa_history) ? savedData.visa_history : [],
+      },
+    ];
+  }
+
+  if (entries.length === 0 && applicantOptions.length > 0) {
+    entries = [
+      { applicantId: applicantOptions[0].id, grantNumber: "", history: [] },
+    ];
+  }
+
+  return entries;
+}
+
+function normalizeVisaGrantPayload(data) {
+  return {
+    visa_grant_entries: (data?.visa_grant_entries || []).map((entry) => ({
+      applicantId: entry?.applicantId || "",
+      grantNumber: entry?.grantNumber || "",
+      history: Array.isArray(entry?.history) ? entry.history : [],
+    })),
+  };
+}
+
 
 
 export default function Page() {
@@ -486,6 +532,7 @@ export default function Page() {
   }, [searchParams, draftSnap.currentApplicationId]);
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       visa_grant_entries: [],
     },
@@ -503,29 +550,7 @@ export default function Page() {
     const mainId =
       draft?.profiles?.find((p) => p.relationship === "main_applicant")?.id || "legacy_main";
 
-    let visa_grant_entries = Array.isArray(savedData.visa_grant_entries)
-      ? [...savedData.visa_grant_entries]
-      : [];
-
-    if (visa_grant_entries.length === 0 && (savedData.has_aus_visa_history || savedData.visa_grant_number)) {
-      visa_grant_entries = [
-        {
-          applicantId: mainId,
-          hasGrantNumber: savedData.has_aus_visa_history === "yes",
-          grantNumber: savedData.visa_grant_number || "",
-          history: [],
-        },
-      ];
-    }
-
-    const byId = new Map(visa_grant_entries.map((e) => [e.applicantId, e]));
-    
-    // We only force-add if the list was empty and we have options
-    if (visa_grant_entries.length === 0 && opts.length > 0) {
-      visa_grant_entries = [
-        { applicantId: opts[0].id, hasGrantNumber: false, grantNumber: "", history: [] }
-      ];
-    }
+    const visa_grant_entries = normalizeVisaGrantEntries(savedData, opts, mainId);
 
     reset({ visa_grant_entries });
   }, [draftSnap.draft?.temporary_work_visas, draftSnap.draft?.profiles, draftSnap.draft?.temporary_work_details, reset]);
@@ -533,7 +558,8 @@ export default function Page() {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      await draftStore.saveSectionData("temporary_work_visas", data);
+      const payload = normalizeVisaGrantPayload(data);
+      await draftStore.saveSectionData("temporary_work_visas", payload);
       await draftStore.markPageComplete(`${visaType}/all-applicants/visas`, null, "temporary_work_visas");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
@@ -552,7 +578,7 @@ export default function Page() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const values = watch();
+      const values = normalizeVisaGrantPayload(watch());
       const result = await draftStore.saveSectionData("temporary_work_visas", values);
       if (result.success) {
         toast({
@@ -603,10 +629,10 @@ export default function Page() {
                 ) : (
                   <>
                     <div className="space-y-2">
-                      <Label>Applicant</Label>
+                      <Label>Person the visa relates to</Label>
                       <Select
                         value={watch(`visa_grant_entries.${index}.applicantId`)}
-                        onValueChange={(val) => setValue(`visa_grant_entries.${index}.applicantId`, val, { shouldDirty: true })}
+                        onValueChange={(val) => setValue(`visa_grant_entries.${index}.applicantId`, val, { shouldDirty: true, shouldValidate: true })}
                       >
                         <SelectTrigger data-testid={`select-visa-applicant-${index}`}>
                           <SelectValue placeholder="Choose applicant" />
@@ -619,103 +645,41 @@ export default function Page() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {errors.visa_grant_entries?.[index]?.applicantId?.message && (
+                        <p className="text-sm text-red-600 mt-1">{errors.visa_grant_entries[index].applicantId.message}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label>
-                        Do any family members included in this application have an Australian visa grant number from a
-                        previous visa application?
-                      </Label>
-                      <RadioGroup
-                        value={watch(`visa_grant_entries.${index}.hasGrantNumber`) ? "yes" : "no"}
-                        onValueChange={(value) => {
-                          setValue(`visa_grant_entries.${index}.hasGrantNumber`, value === "yes", { shouldDirty: true });
-                          if (value !== "yes") {
-                            setValue(`visa_grant_entries.${index}.grantNumber`, "", { shouldDirty: true });
-                          }
-                        }}
-                      >
-                        <div className="flex gap-4">
-                          {["yes", "no"].map((option) => (
-                            <div key={option} className="flex items-center space-x-2">
-                              <RadioGroupItem value={option} id={`aus-visa-${field.id}-${option}`} />
-                              <Label htmlFor={`aus-visa-${field.id}-${option}`}>
-                                {option === "yes" ? "Yes" : "No"}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      </RadioGroup>
+                      <Label htmlFor={`visa_grant_number-${index}`}>Australian Visa Grant Number</Label>
+                      <Input
+                        id={`visa_grant_number-${index}`}
+                        {...register(`visa_grant_entries.${index}.grantNumber`)}
+                        placeholder="e.g. 1234567890"
+                        data-testid={`input-visa-grant-number-${index}`}
+                      />
+                      {errors.visa_grant_entries?.[index]?.grantNumber?.message && (
+                        <p className="text-sm text-red-600 mt-1">{errors.visa_grant_entries[index].grantNumber.message}</p>
+                      )}
                     </div>
-
-                    {watch(`visa_grant_entries.${index}.hasGrantNumber`) ? (
-                      <div className="space-y-2">
-                        <Label htmlFor={`visa_grant_number-${index}`}>Visa Grant Number</Label>
-                        <p className="text-sm text-gray-500">
-                          Enter the grant number for the applicant selected above.
-                        </p>
-                        <Input
-                          id={`visa_grant_number-${index}`}
-                          {...register(`visa_grant_entries.${index}.grantNumber`)}
-                          placeholder="e.g. 1234567890"
-                          data-testid={`input-visa-grant-number-${index}`}
-                        />
-                      </div>
-                    ) : (
-                      <div className="mt-8">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Visa History</h3>
-                        <p className="text-sm text-gray-500 mb-4">
-                          Enter details of all Australian Visas applied for or held by this person
-                        </p>
-                        <RepeaterTable
-                          data={watch(`visa_grant_entries.${index}.history`) || []}
-                          columns={[
-                            { 
-                              key: "applicantId", 
-                              label: "Applicant", 
-                              format: () => applicantOptions.find(a => a.id === watch(`visa_grant_entries.${index}.applicantId`))?.label || "Unknown" 
-                            },
-                            // { key: "visa_country", label: "Country" },
-                            { key: "visa_type", label: "Type" },
-                            { key: "linked_passport", label: "Linked Passport" },
-                            { key: "decision_date_year", label: "Decision Date" },
-                            { key: "outcome", label: "Outcome" },
-                            { key: "cancelled", label: "Cancelled" },
-                          ]}
-                          onAdd={(newRow) => {
-                            const history = watch(`visa_grant_entries.${index}.history`) || [];
-                            setValue(`visa_grant_entries.${index}.history`, [...history, newRow], { shouldDirty: true });
-                          }}
-                          onEdit={(idx, updatedRow) => {
-                            const history = [...(watch(`visa_grant_entries.${index}.history`) || [])];
-                            history[idx] = updatedRow;
-                            setValue(`visa_grant_entries.${index}.history`, history, { shouldDirty: true });
-                          }}
-                          onDelete={(idx) => {
-                            const history = (watch(`visa_grant_entries.${index}.history`) || []).filter((_, i) => i !== idx);
-                            setValue(`visa_grant_entries.${index}.history`, history, { shouldDirty: true });
-                          }}
-                          DialogComponent={VisaDialog}
-                          addButtonText="Add Visa"
-                          testIdPrefix={`visa-${index}`}
-                        />
-                      </div>
-                    )}
                   </>
                 )}
               </div>
             ))}
+            {errors.visa_grant_entries?.message && (
+              <p className="text-sm text-red-600">{errors.visa_grant_entries.message}</p>
+            )}
 
             {applicantOptions.length > 0 && (
               <Button
                 type="button"
                 variant="outline"
                 className="w-full py-6 border-dashed border-2 hover:bg-slate-50 flex items-center justify-center gap-2 group"
-                onClick={() => append({ applicantId: applicantOptions[0].id, hasGrantNumber: false, grantNumber: "", history: [] })}
+                onClick={() => append({ applicantId: applicantOptions[0].id, grantNumber: "", history: [] })}
               >
                 <Plus className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
                 <span className="font-semibold text-gray-600">Add Applicant Visa Record</span>
-                <span className="ml-2 px-2 py-0.5 text-[10px] font-bold text-white bg-[#022C22] rounded-full uppercase tracking-wider">
+                <span className="ml-2 px-2 py-0.5 text-[10px] font-bold text-white bg-[#4F726B] rounded-full uppercase tracking-wider">
                   New
                 </span>
               </Button>

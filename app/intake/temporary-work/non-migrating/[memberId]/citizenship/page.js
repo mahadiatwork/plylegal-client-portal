@@ -94,7 +94,7 @@ export default function NonMigratingCitizenshipPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/citizenship`, null, false);
+    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/citizenship__${memberId}`, null, false);
     const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
     startNavigation(toIntakeHref(next));
     if (next) router.push(toIntakeHref(next));

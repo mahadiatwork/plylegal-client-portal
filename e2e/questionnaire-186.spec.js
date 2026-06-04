@@ -3,11 +3,14 @@ import {
   addApplicantProfile,
   completeVisibleQuestionnairePage,
   continueFromProfile,
+  expectCompletionSummary,
+  expectResidenceCoverageBlocksIncomplete,
   goNext,
   goPrevious,
   readScopedDraft,
   saveDraftOnceAndAssert,
   seed186Application,
+  seedTemporaryWorkIncompleteRequiredDraft,
   startQuestionnaire,
   stubExternalQuestionnaireApis,
   submitQuestionnaire,
@@ -58,6 +61,7 @@ test.describe("186 questionnaire @questionnaire-186", () => {
 
     await goNext(page);
     await expect(page).toHaveURL(/\/main-applicant\/other/);
+    await expectMainOtherNameDialogWithoutApplicationName(page);
     await goPrevious(page);
     await expect(page).toHaveURL(/\/main-applicant\/details/);
     await expect(page.getByTestId("input-family-name")).toHaveValue(MAIN_APPLICANT.familyName);
@@ -72,6 +76,7 @@ test.describe("186 questionnaire @questionnaire-186", () => {
     expect(coverage.sawChild).toBe(false);
     expect(coverage.nonMigratingSubpages.size).toBe(0);
 
+    await expectCompletionSummary(page, { completed: 16, total: 16, percentage: 100 });
     await submitQuestionnaire(page, appId);
     crashWatcher.assertClean();
   });
@@ -99,13 +104,44 @@ test.describe("186 questionnaire @questionnaire-186", () => {
       expectNonMigratingSubpages: true,
     });
 
-    expect(coverage.sawSpouseEducation).toBe(true);
+    expect(coverage.sawSpouseEducation).toBe(false);
     expect(coverage.sawSpouseLanguage).toBe(true);
     expect(coverage.sawAllApplicants).toBe(true);
     expect(coverage.contactBeforeOtherFamily).toBe(true);
+    expect(coverage.sawSpouseCitizenship).toBe(true);
+    expect(coverage.sawSpouseOtherDirectCopy).toBe(true);
+    expect(coverage.sawChildCitizenship).toBe(true);
 
+    await expectCompletionSummary(page, { completed: 30, total: 30, percentage: 100 });
     await submitQuestionnaire(page, appId);
     crashWatcher.assertClean();
+  });
+
+  test("186 submit blocks incomplete required answers even when pages are marked complete", async ({ page }) => {
+    const appId = "e2e-186-submit-blocked";
+
+    await seed186Application(page, { appId, reference: "E2E-186-BLOCK" });
+    await seedTemporaryWorkIncompleteRequiredDraft(page, { appId, visaContext: "186" });
+
+    await page.goto(`/applications/186/${appId}/intake/submit`);
+    await expect(page.getByText("Review & Submit")).toBeVisible();
+
+    await page.getByTestId("button-next").click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("Complete Required Items Before Submitting")).toBeVisible();
+    await expect(dialog.getByText(/Birthplace information/)).toBeVisible();
+    await expect(dialog.getByText(/Contact phone number/)).toBeVisible();
+    await expect(dialog.getByText(/Current employment details/)).toBeVisible();
+    await expect(dialog.getByText(/Education history details/)).toBeVisible();
+    await expect(dialog.getByText(/Skills assessment details/)).toBeVisible();
+    await expect(dialog.getByText(/Non-English main language details/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Submit Anyway/i })).toHaveCount(0);
+
+    const status = await page.evaluate((seededAppId) => {
+      const applications = JSON.parse(localStorage.getItem("ply:applications") || "[]");
+      return applications.find((app) => app.id === seededAppId)?.status || null;
+    }, appId);
+    expect(status).not.toBe("submitted");
   });
 });
 
@@ -116,6 +152,11 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
     sawOtherFamilyIndex: false,
     sawSpouseEducation: false,
     sawSpouseLanguage: false,
+    sawSpouseCitizenship: false,
+    sawSpouseOtherDirectCopy: false,
+    sawChildCitizenship: false,
+    sawResidenceCoverageBlock: false,
+    sawResidenceCoverageSuccess: false,
     sawAllApplicants: false,
     sawEmployment: false,
     nonMigratingSubpages: new Set(),
@@ -140,9 +181,26 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
     ).toBe(true);
     expect(currentPath, `Unexpected fallback to 482 route: ${currentPath}`).not.toMatch(/^\/applications\/482\//);
 
-    if (/\/spouse-partner\//.test(currentPath)) coverage.sawSpouse = true;
+    if (/\/spouse-partner\//.test(currentPath)) {
+      coverage.sawSpouse = true;
+      await expect(page.locator('a[href*="/spouse-partner/education"]')).toHaveCount(0);
+    }
     if (/\/children\/[^/]+\//.test(currentPath)) coverage.sawChild = true;
     if (/\/all-applicants\//.test(currentPath)) coverage.sawAllApplicants = true;
+    if (/\/spouse-partner\/details/.test(currentPath)) {
+      await expect(page.getByText("Do you hold citizenship in any country other than your country of birth?")).toBeVisible();
+      coverage.sawSpouseCitizenship = true;
+    }
+    if (/\/spouse-partner\/other-details/.test(currentPath)) {
+      await expect(page.getByText("Have you ever had or been known by any other Name or Alias, or had a different name spelling?")).toBeVisible();
+      await expect(page.getByText("Do you use a Chinese Commercial Code for your name?")).toBeVisible();
+      await expect(page.getByText(/Has your Spouse\/Partner|Does your Spouse\/Partner/)).toHaveCount(0);
+      coverage.sawSpouseOtherDirectCopy = true;
+    }
+    if (/\/children\/[^/]+\/details/.test(currentPath)) {
+      await expect(page.getByText("Does this child hold citizenship in any country other than their country of birth?")).toBeVisible();
+      coverage.sawChildCitizenship = true;
+    }
     if (/\/main-applicant\/contact-details/.test(currentPath) && firstSeen.contactDetails === null) {
       firstSeen.contactDetails = step;
     }
@@ -159,6 +217,11 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
 
     if (/\/spouse-partner\/education/.test(currentPath)) coverage.sawSpouseEducation = true;
     if (/\/spouse-partner\/language/.test(currentPath)) coverage.sawSpouseLanguage = true;
+    const isCountriesOfResidence = /\/all-applicants\/countries-of-residence/.test(currentPath);
+    if (isCountriesOfResidence && !coverage.sawResidenceCoverageBlock) {
+      await expectResidenceCoverageBlocksIncomplete(page);
+      coverage.sawResidenceCoverageBlock = true;
+    }
 
     if (/\/main-applicant\/employment/.test(currentPath)) {
       coverage.sawEmployment = true;
@@ -166,13 +229,17 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
     }
 
     if (/\/submit(?:\?|$)/.test(currentUrl)) {
-      expect(coverage.sawOtherFamilyIndex).toBe(true);
       expect(coverage.sawEmployment).toBe(true);
-      coverage.contactBeforeOtherFamily =
-        firstSeen.contactDetails !== null &&
-        firstSeen.otherFamily !== null &&
-        firstSeen.contactDetails < firstSeen.otherFamily;
-      expect(coverage.contactBeforeOtherFamily).toBe(true);
+      expect(coverage.sawResidenceCoverageBlock).toBe(true);
+      expect(coverage.sawResidenceCoverageSuccess).toBe(true);
+      if (expectations.expectNonMigratingSubpages) {
+        expect(coverage.sawOtherFamilyIndex).toBe(true);
+        coverage.contactBeforeOtherFamily =
+          firstSeen.contactDetails !== null &&
+          firstSeen.otherFamily !== null &&
+          firstSeen.contactDetails < firstSeen.otherFamily;
+        expect(coverage.contactBeforeOtherFamily).toBe(true);
+      }
 
       if (expectations.expectSpouse) expect(coverage.sawSpouse).toBe(true);
       if (!expectations.expectSpouse) expect(coverage.sawSpouse).toBe(false);
@@ -193,7 +260,19 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
 
     await completeVisibleQuestionnairePage(page, branch, seenRepeaters);
     await goNext(page);
+    if (isCountriesOfResidence) coverage.sawResidenceCoverageSuccess = true;
   }
 
   throw new Error(`186 questionnaire did not reach submit page. Last URL: ${page.url()}`);
+}
+
+async function expectMainOtherNameDialogWithoutApplicationName(page) {
+  await page.getByTestId("radio-other-names-yes").click();
+  await page.getByTestId("button-add-other-name").click();
+  const dialog = page.getByRole("dialog").last();
+  await expect(dialog).toBeVisible();
+  await expect(page.getByText("Use this name in the application")).toHaveCount(0);
+  await dialog.getByTestId("button-cancel").click();
+  await expect(dialog).toBeHidden();
+  await page.getByTestId("radio-other-names-no").click();
 }

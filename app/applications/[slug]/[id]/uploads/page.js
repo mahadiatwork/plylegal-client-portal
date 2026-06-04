@@ -631,7 +631,7 @@ export default function UploadsPage() {
                                           {uploadAllowed ? (
                                             <button 
                                               onClick={() => handleOpenDialog(doc)}
-                                              className="px-3 py-1.5 border border-[#022C22] text-[#022C22] rounded-md text-xs font-medium hover:bg-[#022C22] hover:text-white transition whitespace-nowrap"
+                                              className="px-3 py-1.5 border border-[#4F726B] text-[#4F726B] rounded-md text-xs font-medium hover:bg-[#4F726B] hover:text-white transition whitespace-nowrap"
                                             >
                                               <UploadIcon className="w-3 h-3 inline mr-1" />
                                               Upload
@@ -732,7 +732,7 @@ export default function UploadsPage() {
                                         {uploadAllowed ? (
                                           <button 
                                             onClick={() => handleOpenDialog(doc)}
-                                            className="px-3 py-1.5 border border-[#022C22] text-[#022C22] rounded-md text-xs font-medium hover:bg-[#022C22] hover:text-white transition whitespace-nowrap"
+                                            className="px-3 py-1.5 border border-[#4F726B] text-[#4F726B] rounded-md text-xs font-medium hover:bg-[#4F726B] hover:text-white transition whitespace-nowrap"
                                           >
                                             <UploadIcon className="w-3 h-3 inline mr-1" />
                                             Upload
@@ -822,7 +822,7 @@ export default function UploadsPage() {
                 onClick={handleUpload}
                 disabled={!selectedFile || !!error || uploading}
                 data-testid="button-confirm-upload"
-                className="bg-[#022C22] hover:bg-[#022C22]"
+                className="bg-[#4F726B] hover:bg-[#4F726B]"
               >
                 {uploading ? 'Uploading...' : 'Upload File'}
               </Button>

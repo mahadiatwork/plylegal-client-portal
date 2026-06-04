@@ -269,7 +269,7 @@ function DependentCard({ dependent, isSelected, isExcluded, onToggle }) {
     <Card
       className={`transition-all ${
         isSelected
-          ? "border-[#022C22] bg-[#022C22]/5"
+          ? "border-[#4F726B] bg-[#4F726B]/5"
           : isExcluded
           ? "border-orange-300 bg-orange-50/50 opacity-70"
           : "border-gray-200 hover:border-gray-300"
@@ -280,14 +280,14 @@ function DependentCard({ dependent, isSelected, isExcluded, onToggle }) {
           <Checkbox
             checked={isSelected}
             onCheckedChange={onToggle}
-            className={isSelected ? "data-[state=checked]:bg-[#022C22] data-[state=checked]:border-[#022C22]" : ""}
+            className={isSelected ? "data-[state=checked]:bg-[#4F726B] data-[state=checked]:border-[#4F726B]" : ""}
           />
 
           {/* Avatar */}
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
               isSelected
-                ? "bg-[#022C22] text-white"
+                ? "bg-[#4F726B] text-white"
                 : isExcluded
                 ? "bg-orange-200 text-orange-800"
                 : "bg-gray-200 text-gray-600"
@@ -350,7 +350,7 @@ function DependentCard({ dependent, isSelected, isExcluded, onToggle }) {
             <Button
               variant="ghost"
               size="sm"
-              className="text-[#022C22] hover:text-[#022C22] hover:bg-[#022C22]/5 text-xs"
+              className="text-[#4F726B] hover:text-[#4F726B] hover:bg-[#4F726B]/5 text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onToggle();

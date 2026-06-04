@@ -62,7 +62,7 @@ export function FormNavigation({
                         type="button"
                         onClick={onNext}
                         disabled={loading || submitting || disabledNext || isNavigating}
-                        className="min-h-9 min-w-[120px] bg-[#022C22] hover:bg-[#022C22] text-white"
+                        className="min-h-9 min-w-[120px] bg-[#4F726B] hover:bg-[#4F726B] text-white"
                         data-testid="button-next"
                     >
                         {submitting || loading ? (

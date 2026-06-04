@@ -120,7 +120,7 @@ export default function NonMigratingPassportPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/passport`, null, false);
+    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/passport__${memberId}`, null, false);
     const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
     startNavigation(toIntakeHref());
     if (next) router.push(toIntakeHref(next));

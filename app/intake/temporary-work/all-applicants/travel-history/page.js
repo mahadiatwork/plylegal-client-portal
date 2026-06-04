@@ -105,6 +105,18 @@ function migrateTravelRows(rows, profiles) {
   });
 }
 
+function sanitizeTravelRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(({ is_current_location, ...row }) => row);
+}
+
+function sanitizeTravelData(data) {
+  return {
+    ...data,
+    travel_history: sanitizeTravelRows(data?.travel_history),
+  };
+}
+
 function applicantLabels(ids, profiles) {
   return (ids || [])
     .map((id) => {
@@ -189,7 +201,6 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
   const dialogFormSchema = z.object({
     applicant_ids: z.array(z.string()).min(1, "Select at least one applicant"),
     country: z.string().min(1, "Country is required"),
-    is_current_location: z.enum(["Yes", "No"]).optional(),
     reason_for_visit: z.string().min(1, "Reason is required"),
     other_reason_details: z.string().optional(),
     legal_status: z.string().min(1, "Legal Status is required"),
@@ -206,7 +217,6 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
     defaultValues: editingRow || {
       applicant_ids: [],
       country: "",
-      is_current_location: "",
       reason_for_visit: "",
       legal_status: "",
       date_arrived_day: "",
@@ -223,7 +233,6 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
       dialogForm.reset({
         applicant_ids: Array.isArray(editingRow.applicant_ids) ? editingRow.applicant_ids : [],
         country: editingRow.country ?? "",
-        is_current_location: editingRow.is_current_location ?? "",
         reason_for_visit: editingRow.reason_for_visit ?? "",
         other_reason_details: editingRow.other_reason_details ?? "",
         legal_status: editingRow.legal_status ?? "",
@@ -238,7 +247,6 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
       dialogForm.reset({
         applicant_ids: [],
         country: "",
-        is_current_location: "",
         reason_for_visit: "",
         other_reason_details: "",
         legal_status: "",
@@ -257,7 +265,6 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
     dialogForm.reset();
   };
 
-  const isCurrentLocation = dialogForm.watch("is_current_location");
   const reasonForVisit = dialogForm.watch("reason_for_visit");
   const applicantIds = dialogForm.watch("applicant_ids") || [];
 
@@ -272,7 +279,7 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
       const existing = travelHistoryByKey[key];
       if (existing) {
         const fieldsToPrefill = [
-          "country", "is_current_location", "reason_for_visit", "legal_status",
+          "country", "reason_for_visit", "legal_status",
           "date_arrived_day", "date_arrived_month", "date_arrived_year",
           "departure_day", "departure_month", "departure_year",
         ];
@@ -321,25 +328,6 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
         {dialogForm.formState.errors.country && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
-      </div>
-
-      {/* Current Location */}
-      <div>
-        <Label className="mb-2 block">Is this the main applicant&apos;s current location?</Label>
-        <div className="flex gap-4">
-          {["Yes", "No"].map((option) => (
-            <div key={option} className="flex items-center space-x-2">
-              <Button
-                type="button"
-                variant={dialogForm.watch("is_current_location") === option ? "default" : "outline"}
-                onClick={() => dialogForm.setValue("is_current_location", option)}
-                className="h-8 w-16"
-              >
-                {option}
-              </Button>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Reason */}
@@ -445,11 +433,9 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
         )}
       </div>
 
-      {/* Departure Date / Intended Departure Date */}
+      {/* Departure Date */}
       <div>
-        <Label className="mb-2 block">
-          {isCurrentLocation === "Yes" ? "Intended Departure Date" : "Departure Date"}
-        </Label>
+        <Label className="mb-2 block">Departure Date</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("departure_day")}
@@ -500,7 +486,7 @@ function TravelDialog({ editingRow, onSave, onCancel, applicants = [], travelHis
         <Button
           type="button"
           onClick={dialogForm.handleSubmit(handleSubmit)}
-          className="bg-[#022C22] hover:bg-[#022C22] text-white"
+          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Ok
@@ -599,7 +585,7 @@ export default function Page() {
   useEffect(() => {
     const savedData = draftSnap.draft?.temporary_work_travel || {};
     if (Object.keys(savedData).length > 0) {
-      const migrated = migrateTravelRows(savedData.travel_history || [], profiles);
+      const migrated = sanitizeTravelRows(migrateTravelRows(savedData.travel_history || [], profiles));
       const formData = {
         has_travel_history:
           savedData.has_travel_history ??
@@ -622,7 +608,7 @@ export default function Page() {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      await draftStore.saveSectionData("temporary_work_travel", data);
+      await draftStore.saveSectionData("temporary_work_travel", sanitizeTravelData(data));
       await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`, null, "temporary_work_travel");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
@@ -642,7 +628,7 @@ export default function Page() {
     setIsSaving(true);
     try {
       const values = form.getValues();
-      const result = await draftStore.saveSectionData("temporary_work_travel", values);
+      const result = await draftStore.saveSectionData("temporary_work_travel", sanitizeTravelData(values));
       if (result.success) {
         toast({
           title: "Draft saved",

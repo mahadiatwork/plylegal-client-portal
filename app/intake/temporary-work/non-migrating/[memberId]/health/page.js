@@ -80,7 +80,7 @@ export default function NonMigratingHealthPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/health`, null, false);
+    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/health__${memberId}`, null, false);
     // Health is the last subpage — use global route to go to next in overall flow
     const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
     startNavigation(next);

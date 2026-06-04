@@ -131,7 +131,7 @@ function ResourceCard({ resource }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 flex-1">
           <div className="p-2 rounded-lg bg-[#DEE3FF]">
-            <Icon className="w-5 h-5 text-[#022C22]" />
+            <Icon className="w-5 h-5 text-[#4F726B]" />
           </div>
           <div className="flex-1">
             <CardTitle className="text-base font-semibold mb-1">
@@ -344,7 +344,7 @@ export default function ResourcesPage() {
                     return (
                       <section key={section.key}>
                         <div className="mb-4 flex items-center gap-2">
-                          <SectionIcon className="h-5 w-5 text-[#022C22]" />
+                          <SectionIcon className="h-5 w-5 text-[#4F726B]" />
                           <h2 className="font-serif text-2xl font-semibold">{section.label}</h2>
                         </div>
                         <div className="space-y-3">

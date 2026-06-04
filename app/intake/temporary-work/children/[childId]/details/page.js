@@ -19,6 +19,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const childDetailsSchema = z.object({
   prefix: z.string().optional(),
@@ -35,7 +37,17 @@ const childDetailsSchema = z.object({
   marital_status_date_day: z.string().optional(),
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
-});
+  citizenship_other_than_birth: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
+  citizenships: z.array(citizenshipRowSchema).optional(),
+}).refine(
+  (data) => {
+    if (data.citizenship_other_than_birth === "yes") {
+      return data.citizenships && data.citizenships.length > 0;
+    }
+    return true;
+  },
+  { message: "Please add at least one citizenship", path: ["citizenships"] }
+);
 
 export default function ChildDetailsPage() {
   const router = useRouter();
@@ -70,7 +82,9 @@ export default function ChildDetailsPage() {
   const populateFormKey = useMemo(() => {
     const details =
       profileId != null ? draftSnap.draft?.profiles_data?.[profileId]?.details ?? null : null;
-    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${childProfileDobSig}`;
+    const identity =
+      profileId != null ? draftSnap.draft?.profiles_data?.[profileId]?.identity ?? null : null;
+    return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${JSON.stringify(identity)}|${childProfileDobSig}`;
   }, [draftSnap.isLoading, profileId, draftSnap.draft, childProfileDobSig]);
 
   useEffect(() => {
@@ -109,6 +123,8 @@ export default function ChildDetailsPage() {
       marital_status_date_day: "",
       marital_status_date_month: "",
       marital_status_date_year: "",
+      citizenship_other_than_birth: "",
+      citizenships: [],
     },
   });
 
@@ -120,6 +136,7 @@ export default function ChildDetailsPage() {
     if (!profileId) return;
 
     const savedData = draftSnap.draft?.profiles_data?.[profileId]?.details || {};
+    const identityData = draftSnap.draft?.profiles_data?.[profileId]?.identity || {};
 
     const monthsList = [
       "January", "February", "March", "April", "May", "June",
@@ -149,6 +166,13 @@ export default function ChildDetailsPage() {
       : { birth_day: "", birth_month: "", birth_year: "" };
 
     if (savedData && Object.keys(savedData).length > 0) {
+      let migratedCitizenships = Array.isArray(savedData?.citizenships) ? savedData.citizenships : [];
+      let migratedCotb = savedData?.citizenship_other_than_birth;
+      if ((!migratedCitizenships || migratedCitizenships.length === 0) && identityData?.citizenships?.length > 0) {
+        migratedCitizenships = identityData.citizenships;
+        migratedCotb = migratedCotb || "yes";
+      }
+
       const formData = {
         prefix: safeStr(savedData.prefix),
         family_name: safeStr(savedData.family_name),
@@ -164,6 +188,8 @@ export default function ChildDetailsPage() {
         marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
         marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
         marital_status_date_year: safeStr(savedData.marital_status_date_year),
+        citizenship_other_than_birth: safeStr(migratedCotb) || "",
+        citizenships: migratedCitizenships,
       };
       const mergedBirthDay = normalizeNumber(savedData.birth_day) || profileDob.birth_day;
       const mergedBirthMonth = normalizeMonth(savedData.birth_month) || profileDob.birth_month;
@@ -176,6 +202,7 @@ export default function ChildDetailsPage() {
         if (savedData.marital_status) form.setValue("marital_status", safeStr(savedData.marital_status));
       }, 0);
     } else if (childForDob) {
+      const migratedCitizenships = identityData?.citizenships?.length ? identityData.citizenships : [];
       form.reset({
         family_name: childForDob.family_name || "",
         given_names: childForDob.given_names || "",
@@ -191,6 +218,8 @@ export default function ChildDetailsPage() {
         marital_status_date_day: "",
         marital_status_date_month: "",
         marital_status_date_year: "",
+        citizenship_other_than_birth: migratedCitizenships.length ? "yes" : "",
+        citizenships: migratedCitizenships,
       });
       setTimeout(() => {
         form.setValue("birth_day", profileDob.birth_day);
@@ -255,6 +284,8 @@ export default function ChildDetailsPage() {
     "Widowed",
     "Separated"
   ];
+  const citizenshipOther = form.watch("citizenship_other_than_birth");
+  const citizenshipsList = form.watch("citizenships") || [];
 
   if (!activeProfile || activeProfile.relationship !== "child") {
     return null;
@@ -487,6 +518,76 @@ export default function ChildDetailsPage() {
                 <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
               )}
             </div>
+          </div>
+
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Citizenships</h3>
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Does this child hold citizenship in any country other than their country of birth?
+              </Label>
+              <RadioGroup
+                value={citizenshipOther || ""}
+                onValueChange={(value) => {
+                  form.setValue("citizenship_other_than_birth", value, { shouldValidate: true, shouldDirty: true });
+                  if (value === "no") {
+                    form.setValue("citizenships", [], { shouldValidate: true, shouldDirty: true });
+                  }
+                }}
+                className="flex gap-4"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="child-cotb-yes" />
+                  <Label htmlFor="child-cotb-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="child-cotb-no" />
+                  <Label htmlFor="child-cotb-no" className="ml-2 cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+              {form.formState.errors.citizenship_other_than_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.citizenship_other_than_birth.message}</p>
+              )}
+            </div>
+            {citizenshipOther === "yes" && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  Enter details of each citizenship held in a country other than this child's country of birth.
+                </p>
+                <RepeaterTable
+                  data={citizenshipsList}
+                  columns={[
+                    { key: "country", label: "Country" },
+                    { key: "how_obtained", label: "How was this Citizenship obtained?" },
+                    {
+                      key: "date_obtained_day",
+                      label: "Date Obtained",
+                      format: (row) =>
+                        `${row.date_obtained_day || ""} ${row.date_obtained_month || ""} ${row.date_obtained_year || ""}`,
+                    },
+                  ]}
+                  onAdd={(newRow) => {
+                    const updated = [...citizenshipsList, newRow];
+                    form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...citizenshipsList];
+                    updated[index] = updatedRow;
+                    form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onDelete={(index) => {
+                    const updated = citizenshipsList.filter((_, i) => i !== index);
+                    form.setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  DialogComponent={CitizenshipDialog}
+                  addButtonText="Add"
+                  testIdPrefix="child-details-citizenship"
+                />
+                {form.formState.errors.citizenships && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.citizenships.message}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Form Navigation */}

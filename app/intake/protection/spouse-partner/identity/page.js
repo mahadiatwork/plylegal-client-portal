@@ -377,7 +377,7 @@ function ResidencyDialog({ editingRow, onSave, onCancel }) {
 
             <DialogFooter>
                 <div className="flex justify-end gap-2 w-full">
-                    <Button type="submit" className="bg-[#022C22] hover:bg-[#022C22] text-white">Add</Button>
+                    <Button type="submit" className="bg-[#4F726B] hover:bg-[#4F726B] text-white">Add</Button>
                     <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
                 </div>
             </DialogFooter>

@@ -215,7 +215,7 @@ export default function SubmitPage() {
                 await submitApplication();
               }}
               disabled={isSubmitting}
-              className="bg-[#022C22] text-white hover:bg-[#022C22]"
+              className="bg-[#4F726B] text-white hover:bg-[#4F726B]"
             >
               Submit Anyway
             </Button>

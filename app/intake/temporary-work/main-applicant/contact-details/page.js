@@ -53,6 +53,7 @@ const contactFormSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   emergency_contact_name: z.string().optional(),
   emergency_contact_phone: z.string().optional(),
+  usual_country_of_residence: z.string().optional(),
   residential_address: residentialSchema.optional(),
 });
 
@@ -62,6 +63,7 @@ const EMPTY_CONTACT_FORM = {
   email: "",
   emergency_contact_name: "",
   emergency_contact_phone: "",
+  usual_country_of_residence: "",
   residential_address: {
     country: "",
     address_line: "",
@@ -160,6 +162,7 @@ export default function Page() {
         email: merged.email ?? "",
         emergency_contact_name: merged.emergency_contact_name ?? "",
         emergency_contact_phone: merged.emergency_contact_phone ?? "",
+        usual_country_of_residence: merged.usual_country_of_residence ?? "",
         residential_address: {
           country: ra.country ?? "",
           address_line: ra.address_line ?? "",
@@ -180,6 +183,7 @@ export default function Page() {
       email: v.email,
       emergency_contact_name: v.emergency_contact_name,
       emergency_contact_phone: v.emergency_contact_phone,
+      usual_country_of_residence: v.usual_country_of_residence,
       residential_address: v.residential_address || {},
     };
   };
@@ -315,6 +319,35 @@ export default function Page() {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <h2 className="text-xl font-semibold text-foreground">Usual Country of Residence</h2>
+            <div className="space-y-2">
+              <Label>Usual Country of Residence</Label>
+              <Controller
+                control={control}
+                name="usual_country_of_residence"
+                render={({ field }) => (
+                  <Select
+                    key={`${profileId ?? "main"}-usual-${field.value || "none"}`}
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger data-testid="select-usual-country-of-residence">
+                      <SelectValue placeholder="Choose country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
 

@@ -16,6 +16,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 import { COUNTRIES } from "@/reuseable/countries";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
@@ -35,7 +37,17 @@ const formSchema = z.object({
   marital_status_date_day: z.string().optional(),
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
-});
+  citizenship_other_than_birth: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
+  citizenships: z.array(citizenshipRowSchema).optional(),
+}).refine(
+  (data) => {
+    if (data.citizenship_other_than_birth === "yes") {
+      return data.citizenships && data.citizenships.length > 0;
+    }
+    return true;
+  },
+  { message: "Please add at least one citizenship", path: ["citizenships"] }
+);
 
 const MONTHS_LIST = [
   "January", "February", "March", "April", "May", "June",
@@ -58,6 +70,8 @@ const EMPTY_SPOUSE_DETAILS_FORM = {
   marital_status_date_day: "",
   marital_status_date_month: "",
   marital_status_date_year: "",
+  citizenship_other_than_birth: "",
+  citizenships: [],
 };
 
 function normalizeNumber(val) {
@@ -102,6 +116,10 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
     isSpouseProfile && profileId
       ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
       : draftSnap.draft?.temporary_work_spouse_details || {};
+  const identityData =
+    isSpouseProfile && profileId
+      ? draftSnap.draft?.profiles_data?.[profileId]?.identity || {}
+      : draftSnap.draft?.temporary_work_spouse_identity || {};
 
   const profileDob = spouseForDob
     ? {
@@ -112,6 +130,13 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
     : { birth_day: "", birth_month: "", birth_year: "" };
 
   if (savedData && Object.keys(savedData).length > 0) {
+    let migratedCitizenships = Array.isArray(savedData?.citizenships) ? savedData.citizenships : [];
+    let migratedCotb = savedData?.citizenship_other_than_birth;
+    if ((!migratedCitizenships || migratedCitizenships.length === 0) && identityData?.citizenships?.length > 0) {
+      migratedCitizenships = identityData.citizenships;
+      migratedCotb = migratedCotb || "yes";
+    }
+
     const mergedBirthDay = normalizeNumber(savedData.birth_day) || profileDob.birth_day;
     const mergedBirthMonth = normalizeMonth(savedData.birth_month) || profileDob.birth_month;
     const mergedBirthYear = safeStr(savedData.birth_year) || profileDob.birth_year;
@@ -131,11 +156,14 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
       marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
       marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
       marital_status_date_year: safeStr(savedData.marital_status_date_year),
+      citizenship_other_than_birth: safeStr(migratedCotb) || "",
+      citizenships: migratedCitizenships,
     };
     return overlayRosterIdentity(fromDetails, rosterProfile);
   }
 
   if (spouseForDob) {
+    const migratedCitizenships = identityData?.citizenships?.length ? identityData.citizenships : [];
     const seeded = {
       ...EMPTY_SPOUSE_DETAILS_FORM,
       family_name: spouseForDob.family_name || "",
@@ -144,6 +172,8 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
       birth_day: profileDob.birth_day,
       birth_month: profileDob.birth_month,
       birth_year: profileDob.birth_year,
+      citizenship_other_than_birth: migratedCitizenships.length ? "yes" : "",
+      citizenships: migratedCitizenships,
     };
     return overlayRosterIdentity(seeded, rosterProfile);
   }
@@ -189,7 +219,11 @@ export default function Page() {
       isSpouseProfile && profileId
         ? draftSnap.draft?.profiles_data?.[profileId]?.details ?? {}
         : draftSnap.draft?.temporary_work_spouse_details ?? {};
-    return `${profileId ?? ""}|${String(isSpouseProfile)}|${JSON.stringify(slice)}|${spouseProfileDobSig}|${rosterIdentitySig}`;
+    const identitySlice =
+      isSpouseProfile && profileId
+        ? draftSnap.draft?.profiles_data?.[profileId]?.identity ?? {}
+        : draftSnap.draft?.temporary_work_spouse_identity ?? {};
+    return `${profileId ?? ""}|${String(isSpouseProfile)}|${JSON.stringify(slice)}|${JSON.stringify(identitySlice)}|${spouseProfileDobSig}|${rosterIdentitySig}`;
   }, [profileId, isSpouseProfile, draftSnap.draft, spouseProfileDobSig, rosterIdentitySig]);
 
   // Keep draft/application context in sync with URL param
@@ -207,6 +241,7 @@ export default function Page() {
     control,
     reset,
     watch,
+    setValue,
     getValues,
     formState,
   } = useForm({
@@ -324,6 +359,8 @@ export default function Page() {
 
   // Watched value for conditional rendering of marital status date
   const maritalStatusValue = watch("marital_status");
+  const citizenshipOther = watch("citizenship_other_than_birth");
+  const citizenshipsList = watch("citizenships") || [];
 
   return (
     <Card className="rounded-2xl shadow-md bg-white">
@@ -332,7 +369,7 @@ export default function Page() {
           {titleName ? `Details — ${titleName}` : "Spouse/Partner's Details"}
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Provide details for the spouse or partner included in this application (citizenship is captured on Identity).
+          Provide details for the spouse or partner included in this application.
         </p>
       </CardHeader>
       <CardContent>
@@ -621,6 +658,76 @@ export default function Page() {
               <Label>State or Province of Birth</Label>
               <Input {...register("state_of_birth")} data-testid="input-state-of-birth" />
             </div>
+          </div>
+
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Citizenships</h3>
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Do you hold citizenship in any country other than your country of birth?
+              </Label>
+              <RadioGroup
+                value={citizenshipOther || ""}
+                onValueChange={(value) => {
+                  setValue("citizenship_other_than_birth", value, { shouldValidate: true, shouldDirty: true });
+                  if (value === "no") {
+                    setValue("citizenships", [], { shouldValidate: true, shouldDirty: true });
+                  }
+                }}
+                className="flex gap-4"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="spouse-cotb-yes" />
+                  <Label htmlFor="spouse-cotb-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="spouse-cotb-no" />
+                  <Label htmlFor="spouse-cotb-no" className="ml-2 cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+              {formState.errors.citizenship_other_than_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{formState.errors.citizenship_other_than_birth.message}</p>
+              )}
+            </div>
+            {citizenshipOther === "yes" && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  Enter details of each citizenship held in a country other than your country of birth.
+                </p>
+                <RepeaterTable
+                  data={citizenshipsList}
+                  columns={[
+                    { key: "country", label: "Country" },
+                    { key: "how_obtained", label: "How was this Citizenship obtained?" },
+                    {
+                      key: "date_obtained_day",
+                      label: "Date Obtained",
+                      format: (row) =>
+                        `${row.date_obtained_day || ""} ${row.date_obtained_month || ""} ${row.date_obtained_year || ""}`,
+                    },
+                  ]}
+                  onAdd={(newRow) => {
+                    const updated = [...citizenshipsList, newRow];
+                    setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...citizenshipsList];
+                    updated[index] = updatedRow;
+                    setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  onDelete={(index) => {
+                    const updated = citizenshipsList.filter((_, i) => i !== index);
+                    setValue("citizenships", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                  }}
+                  DialogComponent={CitizenshipDialog}
+                  addButtonText="Add"
+                  testIdPrefix="spouse-details-citizenship"
+                />
+                {formState.errors.citizenships && (
+                  <p className="text-sm text-red-600 mt-2">{formState.errors.citizenships.message}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">

@@ -423,7 +423,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">Ok</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#4F726B] text-white">Ok</Button>
       </DialogFooter>
     </div>
   );
@@ -529,7 +529,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">Ok</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#4F726B] text-white">Ok</Button>
       </DialogFooter>
     </div>
   );
@@ -603,7 +603,7 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">Ok</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#4F726B] text-white">Ok</Button>
       </DialogFooter>
     </div>
   );
@@ -645,7 +645,7 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">Ok</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#4F726B] text-white">Ok</Button>
       </DialogFooter>
     </div>
   );
@@ -685,7 +685,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">Ok</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#4F726B] text-white">Ok</Button>
       </DialogFooter>
     </div>
   );

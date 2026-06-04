@@ -152,7 +152,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
   { href: "/intake/temporary-work/submit", title: "Submit" },
 ];
 
-// Employer Nomination Visa (subclass 186) — same pages, but spouse gets Education + Language
+// Employer Nomination Visa (subclass 186) — same pages, but spouse gets Language
 export const EMPLOYER_NOMINATION_ROUTES = [
   { href: "/intake/temporary-work/start", title: "Getting Started" },
   { href: "/intake/temporary-work/profile", title: "Included Applicants" },
@@ -176,7 +176,6 @@ export const EMPLOYER_NOMINATION_ROUTES = [
     subpages: [
       { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
       { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
-      { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
       { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
     ],
   },
@@ -214,12 +213,11 @@ export const TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
 ];
 
-// Per-profile sub-pages for 186 spouse (Education + Language in addition to the 482 spouse pages)
+// Per-profile sub-pages for 186 spouse (Language in addition to the 482 spouse pages)
 export const EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
   { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Names" },
   { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
-  { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
   { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },
 ];
 

@@ -2,7 +2,7 @@
 
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
-import { getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
 import { authStore } from "./authStore";
 
 // Get database adapter (Firebase or localStorage based on env)
@@ -282,6 +282,43 @@ function buildProfileImportMatches(sourceProfiles, targetProfiles) {
     }));
 
   return { matchedApplicants, unmatchedTargetApplicants, skippedSourceApplicants };
+}
+
+function getCompletionKeyFromTemporaryWorkRoute(route) {
+  if (!route || route.includes("/submit")) return null;
+
+  const [pathOnly, queryString] = String(route).split("?", 2);
+  const params = new URLSearchParams(queryString || "");
+  const pathWithoutPrefix = pathOnly.replace("/intake/temporary-work/", "");
+  const baseKey = `temporary-work/${pathWithoutPrefix}`;
+
+  const profileId = params.get("profileId");
+  if (profileId && /^(main-applicant|spouse-partner)\//.test(pathWithoutPrefix)) {
+    return `${baseKey}__${profileId}`;
+  }
+
+  const childMatch = pathWithoutPrefix.match(/^children\/([^/]+)\/[^/]+$/);
+  if (childMatch?.[1]) {
+    return `${baseKey}__${childMatch[1]}`;
+  }
+
+  const nonMigratingMatch = pathWithoutPrefix.match(/^non-migrating\/([^/]+)\/[^/]+$/);
+  if (nonMigratingMatch?.[1]) {
+    return `${baseKey}__${nonMigratingMatch[1]}`;
+  }
+
+  return baseKey;
+}
+
+function isCompletionKeyComplete(completionStatus, key) {
+  if (completionStatus?.[key] === true) return true;
+
+  if (key?.startsWith("temporary-work/") && key.includes("__")) {
+    const legacyKey = key.split("__")[0];
+    return completionStatus?.[legacyKey] === true;
+  }
+
+  return false;
 }
 
 function buildApplicantRemap(matchedApplicants) {
@@ -1427,6 +1464,23 @@ export const draftStore = proxy({
     const visaContextForRoutes =
       visaType === 'temporary-work' ? (this.visaContext ?? this.draft?.visaContext ?? null) : null;
 
+    if (visaType === 'temporary-work') {
+      const completionKeys = getAllRoutes("temporary-work", visaContextForRoutes)
+        .map((route) => getCompletionKeyFromTemporaryWorkRoute(route))
+        .filter(Boolean);
+      const uniqueCompletionKeys = [...new Set(completionKeys)];
+      const completedCount = uniqueCompletionKeys.filter(
+        (key) => isCompletionKeyComplete(this.completionStatus, key)
+      ).length;
+      const totalPages = uniqueCompletionKeys.length;
+
+      return {
+        completed: completedCount,
+        total: totalPages,
+        percentage: totalPages > 0 ? Math.round((completedCount / totalPages) * 100) : 0
+      };
+    }
+
     // Get routes for the detected visa type (186 vs 482 order for temporary-work)
     const routes = getIntakeRoutes(visaType, visaContextForRoutes);
 
@@ -1457,40 +1511,9 @@ export const draftStore = proxy({
       return `${visaType}/${pathWithoutPrefix}`;
     });
 
-    // Skills in Demand (482): each dependent child profile adds Details / Identity / Custody (profile-scoped keys)
-    let childExtraTotal = 0;
-    let childExtraCompleted = 0;
-    if (visaType === 'temporary-work') {
-      (this.getProfiles() || []).forEach((p) => {
-        if (p.relationship !== 'child') return;
-        const id = p.id;
-        ['details', 'identity', 'custody'].forEach((suffix) => {
-          childExtraTotal += 1;
-          const fullKey = `temporary-work/children/${id}/${suffix}__${id}`;
-          if (this.completionStatus[fullKey] === true) childExtraCompleted += 1;
-        });
-      });
-    }
-
-    // Employer Nomination (186): non-migrating index + per-member subpages
-    let nmfExtraTotal = 0;
-    let nmfExtraCompleted = 0;
-    if (visaType === 'temporary-work' && (this.visaContext ?? this.draft?.visaContext) === '186') {
-      nmfExtraTotal += 1;
-      if (this.completionStatus['temporary-work/non-migrating'] === true) nmfExtraCompleted += 1;
-
-      (this.getNonMigratingMembers() || []).forEach((member) => {
-        NON_MIGRATING_MEMBER_SUBPAGES.forEach((sub) => {
-          nmfExtraTotal += 1;
-          const key = `temporary-work/non-migrating/${member.id}/${sub.pathSuffix}__${member.id}`;
-          if (this.completionStatus[key] === true) nmfExtraCompleted += 1;
-        });
-      });
-    }
-
     // Count completed pages
-    const completedCount = allPages.filter(page => this.isPageComplete(page)).length + childExtraCompleted + nmfExtraCompleted;
-    const totalPages = allPages.length + childExtraTotal + nmfExtraTotal;
+    const completedCount = allPages.filter(page => this.isPageComplete(page)).length;
+    const totalPages = allPages.length;
 
     return {
       completed: completedCount,

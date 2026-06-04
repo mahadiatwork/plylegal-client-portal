@@ -18,7 +18,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-const BRAND_GREEN = "#022C22";
+const BRAND_GREEN = "#4F726B";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -65,7 +65,7 @@ export default function LoginPage() {
   };
 
   const inputClassName =
-    "h-11 rounded-lg border border-slate-200/90 bg-slate-100/90 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#022C22]/25 sm:h-10 sm:text-sm";
+    "h-11 rounded-lg border border-slate-200/90 bg-slate-100/90 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#4F726B]/25 sm:h-10 sm:text-sm";
 
   return (
     <div className="relative min-h-[100dvh] w-full max-w-full overflow-x-hidden">
@@ -142,7 +142,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#022C22]"
+                  className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F726B]"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

@@ -390,7 +390,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#022C22] text-white">Ok</Button>
+        <Button type="button" onClick={dialogForm.handleSubmit(handleSubmit)} className="bg-[#4F726B] text-white">Ok</Button>
       </DialogFooter>
     </div >
   );

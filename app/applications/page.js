@@ -57,9 +57,9 @@ function getApplicationTitle(app) {
 function ApplicationsLoadingState() {
   return (
     <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm sm:min-h-[450px] sm:p-32">
-      <Riple color="#022C22" size="large" text="" textColor="" />
+      <Riple color="#4F726B" size="large" text="" textColor="" />
       <div className="mt-10 px-4">
-        <h3 className="font-sans text-lg font-semibold text-[#022C22] animate-pulse">
+        <h3 className="font-sans text-lg font-semibold text-[#4F726B] animate-pulse">
           Synchronizing Records
         </h3>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-500">
@@ -102,7 +102,7 @@ function ApplicationsTable({ applications, navigatingId, onOpen }) {
               </div>
               <StatusBadge
                 status={getStatusLabel(app.status)}
-                className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#022C22] shadow-none"
+                className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#4F726B] shadow-none"
               />
 
               <div className="min-w-0 grow basis-[11rem]">
@@ -187,7 +187,7 @@ function ApplicationsTable({ applications, navigatingId, onOpen }) {
                 <td className="px-4 py-4 lg:px-6">
                   <StatusBadge
                     status={getStatusLabel(app.status)}
-                    className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#022C22] shadow-none lg:text-sm"
+                    className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#4F726B] shadow-none lg:text-sm"
                   />
                 </td>
                 <td className="px-4 py-4 lg:px-6">
