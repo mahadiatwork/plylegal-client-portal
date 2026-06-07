@@ -74,6 +74,7 @@ export default function QuestionnairePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isQuestionnaireLoading, setIsQuestionnaireLoading] = useState(true);
 
   const applicationsSnap = useSnapshot(applicationsStore);
   const draftSnap = useSnapshot(draftStore);
@@ -98,7 +99,11 @@ export default function QuestionnairePage() {
 
   const routeSectionTotal = useMemo(() => getTotalSectionCount(routeSections), [routeSections]);
 
-  const completion = draftStore.getCompletionPercentage();
+  const completionStatus = draftSnap.completionStatus || {};
+  const completion = useMemo(
+    () => draftStore.getCompletionPercentage(),
+    [completionStatus, draftSnap.draft, draftSnap.visaContext]
+  );
   const progress = {
     completed: completion.total > 0 ? completion.completed : 0,
     total: completion.total > 0 ? completion.total : routeSectionTotal,
@@ -133,14 +138,35 @@ export default function QuestionnairePage() {
   }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
 
   useEffect(() => {
-    if (!appId) return;
+    let cancelled = false;
 
-    if (visaContext) {
-      draftStore.setVisaContext(visaContext);
-    }
+    const loadQuestionnaire = async () => {
+      if (!appId) {
+        setIsQuestionnaireLoading(false);
+        return;
+      }
 
-    draftStore.setApplicationId(appId);
-    draftStore.loadDraft(appId);
+      setIsQuestionnaireLoading(true);
+
+      try {
+        if (visaContext) {
+          draftStore.setVisaContext(visaContext);
+        }
+
+        draftStore.setApplicationId(appId);
+        await draftStore.loadDraft(appId);
+      } finally {
+        if (!cancelled) {
+          setIsQuestionnaireLoading(false);
+        }
+      }
+    };
+
+    loadQuestionnaire();
+
+    return () => {
+      cancelled = true;
+    };
   }, [appId, visaContext]);
 
   const handleStartQuestionnaire = (event) => {
@@ -159,7 +185,7 @@ export default function QuestionnairePage() {
     router.push(route);
   };
 
-  if (isLoading) {
+  if (isLoading || isQuestionnaireLoading || draftSnap.isLoading) {
     return <LoadingState />;
   }
 
