@@ -198,8 +198,19 @@ export class LocalStorageAdapter extends BaseAdapter {
         return { success: false, error: "Application ID required" };
       }
 
-      localStorage.setItem(getCompletionKey(applicationId), JSON.stringify(completionStatus || {}));
-      return { success: true, completionStatus: completionStatus || {} };
+      const nextCompletionStatus = completionStatus || {};
+      localStorage.setItem(getCompletionKey(applicationId), JSON.stringify(nextCompletionStatus));
+
+      if (typeof nextCompletionStatus.completionPercentage === "number") {
+        const currentDraft = await this.loadDraft(applicationId);
+        const nextDraft = {
+          ...currentDraft,
+          completionPercentage: nextCompletionStatus.completionPercentage,
+        };
+        localStorage.setItem(getDraftKey(applicationId), JSON.stringify(nextDraft));
+      }
+
+      return { success: true, completionStatus: nextCompletionStatus };
     } catch (error) {
       console.error("Error saving completion status:", error);
       return { success: false, error: error.message };

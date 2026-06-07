@@ -53,10 +53,11 @@ export default function IntakeStartPage() {
 
     setSubmitting(true);
     try {
+      const appId = searchParams.get('applicationId') || draftSnap.currentApplicationId;
       await draftStore.saveDraft({ started: true });
-      await draftStore.markPageComplete(`${visaType}/start`);
+      await draftStore.markPageComplete(`${visaType}/start`, appId, false);
 
-      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+      const next = getNextRoute(pathname, visaType, appId);
       if (next) {
         startNavigation(next);
         router.push(next);

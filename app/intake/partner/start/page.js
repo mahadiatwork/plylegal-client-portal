@@ -69,7 +69,7 @@ export default function IntakeStartPage() {
     setSubmitting(true);
     try {
       await draftStore.saveDraft({ started: true });
-      await draftStore.markPageComplete(`${visaType}/start`);
+      await draftStore.markPageComplete(`${visaType}/start`, appId, false);
 
       const next = getNextRoute(pathname, visaType, appId);
       if (next) {

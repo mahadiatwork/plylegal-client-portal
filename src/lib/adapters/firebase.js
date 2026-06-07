@@ -30,7 +30,8 @@ import {
   query,
   where,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 
 export class FirebaseAdapter extends BaseAdapter {
@@ -961,13 +962,27 @@ export class FirebaseAdapter extends BaseAdapter {
         return { success: false, error: 'Application ID required' };
       }
       
-      // Save completion status to application's completion data
+      const cleanedCompletionStatus = this.cleanDataForFirestore(completionStatus || {});
+
+      // Save completion status to application's completion data and mirror the
+      // derived percentage onto the questionnaire doc for durable reporting.
       const completionRef = doc(this.db, 'applications', applicationId, 'data', 'completion');
+      const questionnaireRef = doc(this.db, 'applications', applicationId, 'data', 'questionnaire');
+      const batch = writeBatch(this.db);
       
-      await setDoc(completionRef, {
-        ...completionStatus,
+      batch.set(completionRef, {
+        ...cleanedCompletionStatus,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      });
+
+      if (typeof cleanedCompletionStatus.completionPercentage === 'number') {
+        batch.set(questionnaireRef, {
+          completionPercentage: cleanedCompletionStatus.completionPercentage,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+      await batch.commit();
       
       return { success: true };
     } catch (error) {

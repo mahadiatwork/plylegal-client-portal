@@ -58,6 +58,14 @@ const HEALTH_REPEATER_FLAG_BY_KEY = {
   health_insurance_details: "health_insurance",
 };
 
+const COMPLETION_PAGE_PREFIXES = ["temporary-work/", "partner/", "protection/"];
+
+function getCompletionPageKeys(completionStatus) {
+  return Object.keys(completionStatus || {}).filter((key) =>
+    COMPLETION_PAGE_PREFIXES.some((prefix) => key.startsWith(prefix))
+  );
+}
+
 function cloneDraftValue(value) {
   if (value === undefined) return undefined;
   return JSON.parse(JSON.stringify(value));
@@ -732,6 +740,7 @@ export const draftStore = proxy({
     const newDraft = { ...this.draft, profiles };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
+    await this.persistCompletionPercentage(this.currentApplicationId);
     const action = newProfile.zohoDependentId ? "update" : "create";
     const zohoDependentId = await this.syncDependentProfileToZoho(newProfile, action);
     if (zohoDependentId) {
@@ -754,6 +763,7 @@ export const draftStore = proxy({
     const newDraft = { ...this.draft, profiles };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
+    await this.persistCompletionPercentage(this.currentApplicationId);
 
     if (existingProfile?.zohoDependentId && !this.isZohoSyncableProfile(updatedProfile)) {
       await this.syncDependentProfileToZoho(existingProfile, "delete");
@@ -820,7 +830,7 @@ export const draftStore = proxy({
       return { success: false, error: draftResult.error || "Failed to update primary applicant" };
     }
 
-    await db.saveCompletionStatus(this.completionStatus, appId);
+    await this.persistCompletionPercentage(appId);
     this.activeProfileId = profileId;
 
     const newPrimary = updatedProfiles.find((profile) => profile.id === profileId);
@@ -840,6 +850,7 @@ export const draftStore = proxy({
     const newDraft = { ...this.draft, profiles, profiles_data };
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
+    await this.persistCompletionPercentage(this.currentApplicationId);
     if (profileToDelete?.zohoDependentId && this.isZohoSyncableProfile(profileToDelete)) {
       await this.syncDependentProfileToZoho(profileToDelete, "delete");
     }
@@ -933,6 +944,7 @@ export const draftStore = proxy({
       this.draft = previousDraft;
       return null;
     }
+    await this.persistCompletionPercentage(appId);
 
     // Sync to Zoho CRM as non-migrating dependent
     const zohoDependentId = await this.syncNonMigratingMemberToZoho(newMember, "create");
@@ -967,6 +979,7 @@ export const draftStore = proxy({
       this.draft = previousDraft;
       return false;
     }
+    await this.persistCompletionPercentage(appId);
 
     // Sync to Zoho CRM
     if (updatedMember) {
@@ -999,6 +1012,7 @@ export const draftStore = proxy({
       this.draft = previousDraft;
       return false;
     }
+    await this.persistCompletionPercentage(appId);
 
     // Delete from Zoho CRM if synced
     if (memberToDelete?.zohoDependentId) {
@@ -1325,6 +1339,21 @@ export const draftStore = proxy({
     return this.getNestedValue(this.draft, section) || {};
   },
 
+  async persistCompletionPercentage(applicationId) {
+    const appId = applicationId || this.currentApplicationId;
+    if (!appId) {
+      return { success: false, error: "Application ID required" };
+    }
+
+    const { percentage } = this.getCompletionPercentage();
+    this.completionStatus = {
+      ...this.completionStatus,
+      completionPercentage: percentage,
+    };
+
+    return db.saveCompletionStatus(this.completionStatus, appId);
+  },
+
   // Mark a page as complete
   async markPageComplete(pageKey, applicationId, sectionKeyToCheck = null) {
     console.log(`[DEBUG draftStore] markPageComplete called for: ${pageKey}`);
@@ -1368,7 +1397,7 @@ export const draftStore = proxy({
       // Save to Firebase
       console.log(`[DEBUG draftStore] Saving completion status to database...`);
       const dbStartTime = performance.now();
-      await db.saveCompletionStatus(this.completionStatus, appId);
+      await this.persistCompletionPercentage(appId);
       const dbEndTime = performance.now();
       console.log(`[DEBUG draftStore] Database save completed in ${(dbEndTime - dbStartTime).toFixed(2)}ms`);
 
@@ -1398,7 +1427,7 @@ export const draftStore = proxy({
       }
 
       this.completionStatus = {};
-      await db.saveCompletionStatus({}, appId);
+      await this.persistCompletionPercentage(appId);
 
       return { success: true };
     } catch (error) {
@@ -1420,7 +1449,7 @@ export const draftStore = proxy({
       this.completionStatus = { ...this.completionStatus, [pageKey]: false };
 
       // Save to Firebase
-      await db.saveCompletionStatus(this.completionStatus, appId);
+      await this.persistCompletionPercentage(appId);
 
       return { success: true };
     } catch (error) {
@@ -1438,7 +1467,7 @@ export const draftStore = proxy({
   getCompletionPercentage() {
     // Auto-detect visa type from existing completion keys
     let visaType = null;
-    const completionKeys = Object.keys(this.completionStatus);
+    const completionKeys = getCompletionPageKeys(this.completionStatus);
 
     if (completionKeys.length > 0) {
       // Check for visa type prefix in existing keys
