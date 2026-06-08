@@ -23,9 +23,9 @@ function ReviewValue({ value }) {
         {value.filter(hasReviewValue).map((item, index) => (
           <div
             key={index}
-            className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+            className="space-y-2 border-l border-slate-200 pl-3"
           >
-            <div className="mb-2 inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 ring-1 ring-slate-200">
+            <div className="text-xs font-semibold uppercase text-slate-500">
               Item {index + 1}
             </div>
             {isPlainObject(item) ? (
@@ -60,10 +60,10 @@ function NestedObject({ value }) {
   if (entries.length === 0) return null;
 
   return (
-    <div className="space-y-3 border-l-2 border-slate-200 pl-3">
+    <div className="space-y-3">
       {entries.map(([key, nestedValue]) => (
         <div key={key} className="min-w-0">
-          <div className="mb-1 text-xs font-semibold uppercase text-slate-500">
+          <div className="mb-1 text-sm font-medium leading-5 text-slate-700">
             {formatReviewLabel(key)}
           </div>
           <ReviewValue value={nestedValue} />
@@ -77,8 +77,8 @@ function ReviewRow({ item }) {
   if (!item || !hasReviewValue(item.value)) return null;
 
   return (
-    <div className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,14rem)_1fr] sm:gap-5">
-      <dt className="text-xs font-semibold uppercase leading-5 text-slate-500">
+    <div className="space-y-1 py-2">
+      <dt className="text-sm font-semibold leading-6 text-slate-950">
         {item.label}
       </dt>
       <dd className="min-w-0">
@@ -99,38 +99,26 @@ export function TemporaryWorkReviewSummary({
 
   return (
     <section
-      className={cn("space-y-4", className)}
+      className={cn("space-y-8", className)}
       data-testid="temporary-work-review-summary"
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-950">Your Answers</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Review each section before submitting.
-          </p>
-        </div>
-        {visibleSections.length > 0 && (
-          <span className="text-sm font-medium text-slate-500">
-            {visibleSections.length} section{visibleSections.length === 1 ? "" : "s"}
-          </span>
-        )}
-      </div>
+      <h2 className="text-xl font-semibold text-slate-950">Your Answers</h2>
 
       {visibleSections.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-600">
           {emptyMessage}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-8">
           {visibleSections.map((section) => (
             <article
               key={section.id}
-              className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+              className="space-y-3"
               data-testid={`review-section-${section.id}`}
             >
-              <div className="flex flex-col gap-3 border-b border-slate-200 bg-[#eef7f4] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
                 <div className="min-w-0">
-                  <h3 className="break-words text-base font-semibold text-[#285646]">
+                  <h3 className="break-words text-lg font-semibold text-sky-700">
                     {section.title}
                   </h3>
                   {section.subtitle && (
@@ -143,7 +131,7 @@ export function TemporaryWorkReviewSummary({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="self-start bg-white text-[#285646] sm:self-center"
+                    className="self-start bg-white text-[#285646]"
                   >
                     <ProgressLink href={section.editHref}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -152,7 +140,7 @@ export function TemporaryWorkReviewSummary({
                   </Button>
                 )}
               </div>
-              <dl className="divide-y divide-slate-100">
+              <dl className="space-y-4">
                 {section.items.map((item, index) => (
                   <ReviewRow key={`${item.label}-${index}`} item={item} />
                 ))}
