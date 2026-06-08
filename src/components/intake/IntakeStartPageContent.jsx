@@ -145,16 +145,6 @@ export function IntakeStartPageContent({
         </form>
       </div>
 
-      <div className="mt-8 flex items-center gap-5 text-sm text-slate-500">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="flex shrink-0 items-center gap-3 text-center">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-            <LockKeyhole className="h-4 w-4" />
-          </span>
-          Secure portal. Your privacy is our priority.
-        </span>
-        <div className="h-px flex-1 bg-slate-200" />
-      </div>
     </section>
   );
 }

@@ -67,6 +67,9 @@ test.describe("482 questionnaire @questionnaire-482", () => {
 
     await completeLinearFlowToSubmit(page, "low", { expectSpouse: false, expectChild: false });
     await expectCompletionSummary(page, { completed: 15, total: 15, percentage: 100 });
+    await expectTemporaryWorkSubmitReview(page, {
+      mainApplicant: MAIN_APPLICANT,
+    });
     await submitQuestionnaire(page, appId);
 
     crashWatcher.assertClean();
@@ -97,6 +100,11 @@ test.describe("482 questionnaire @questionnaire-482", () => {
     expect(routeCoverage.sawChildCitizenship).toBe(true);
 
     await expectCompletionSummary(page, { completed: 22, total: 22, percentage: 100 });
+    await expectTemporaryWorkSubmitReview(page, {
+      mainApplicant: MAIN_APPLICANT,
+      spouse: SPOUSE,
+      child: CHILD,
+    });
     await submitQuestionnaire(page, appId);
 
     crashWatcher.assertClean();
@@ -129,6 +137,26 @@ test.describe("482 questionnaire @questionnaire-482", () => {
     expect(status).not.toBe("submitted");
   });
 });
+
+async function expectTemporaryWorkSubmitReview(page, { mainApplicant, spouse = null, child = null }) {
+  const review = page.getByTestId("temporary-work-review-summary");
+  await expect(review).toBeVisible();
+  await expect(review).toContainText("Your Answers");
+  await expect(review).toContainText("Included Applicants");
+  await expect(review).toContainText("Applicant 1 (Main Applicant) - Details");
+  await expect(review).toContainText(`${mainApplicant.givenNames} ${mainApplicant.familyName}`);
+  await expect(review).toContainText("All Applicants - Visas");
+
+  if (spouse) {
+    await expect(review).toContainText("Applicant 2 (Spouse/Partner) - Details");
+    await expect(review).toContainText(`${spouse.givenNames} ${spouse.familyName}`);
+  }
+
+  if (child) {
+    await expect(review).toContainText("Applicant 3 (Child) - Details");
+    await expect(review).toContainText(`${child.givenNames} ${child.familyName}`);
+  }
+}
 
 async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectChild }) {
   const coverage = {

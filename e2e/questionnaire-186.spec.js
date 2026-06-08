@@ -77,6 +77,9 @@ test.describe("186 questionnaire @questionnaire-186", () => {
     expect(coverage.nonMigratingSubpages.size).toBe(0);
 
     await expectCompletionSummary(page, { completed: 16, total: 16, percentage: 100 });
+    await expectTemporaryWorkSubmitReview(page, {
+      mainApplicant: MAIN_APPLICANT,
+    });
     await submitQuestionnaire(page, appId);
     crashWatcher.assertClean();
   });
@@ -113,6 +116,12 @@ test.describe("186 questionnaire @questionnaire-186", () => {
     expect(coverage.sawChildCitizenship).toBe(true);
 
     await expectCompletionSummary(page, { completed: 30, total: 30, percentage: 100 });
+    await expectTemporaryWorkSubmitReview(page, {
+      mainApplicant: MAIN_APPLICANT,
+      spouse: SPOUSE,
+      child: CHILD,
+      expectOtherFamily: true,
+    });
     await submitQuestionnaire(page, appId);
     crashWatcher.assertClean();
   });
@@ -144,6 +153,35 @@ test.describe("186 questionnaire @questionnaire-186", () => {
     expect(status).not.toBe("submitted");
   });
 });
+
+async function expectTemporaryWorkSubmitReview(page, {
+  mainApplicant,
+  spouse = null,
+  child = null,
+  expectOtherFamily = false,
+}) {
+  const review = page.getByTestId("temporary-work-review-summary");
+  await expect(review).toBeVisible();
+  await expect(review).toContainText("Your Answers");
+  await expect(review).toContainText("Included Applicants");
+  await expect(review).toContainText("Applicant 1 (Main Applicant) - Details");
+  await expect(review).toContainText(`${mainApplicant.givenNames} ${mainApplicant.familyName}`);
+  await expect(review).toContainText("All Applicants - Character");
+
+  if (spouse) {
+    await expect(review).toContainText("Applicant 2 (Spouse/Partner) - Details");
+    await expect(review).toContainText(`${spouse.givenNames} ${spouse.familyName}`);
+  }
+
+  if (child) {
+    await expect(review).toContainText("Applicant 3 (Child) - Details");
+    await expect(review).toContainText(`${child.givenNames} ${child.familyName}`);
+  }
+
+  if (expectOtherFamily) {
+    await expect(review).toContainText("Other Family");
+  }
+}
 
 async function completeLinearFlowToSubmit186(page, branch, expectations) {
   const coverage = {

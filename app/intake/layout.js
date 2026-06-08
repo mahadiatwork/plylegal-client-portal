@@ -533,24 +533,33 @@ export default function IntakeLayout({ children }) {
                                             </Button>
                                           </li>
                                           {draftSnap.visaContext === '186' && profile.relationship === 'main_applicant' && subpage.title === 'Contact Details' && (
-                                            <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                  navPush("/intake/temporary-work/non-migrating");
-                                                  setSidebarOpen(false);
-                                                }}
-                                                className={cn(
-                                                  "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
-                                                  internalPathname === '/intake/temporary-work/non-migrating'
-                                                    ? "font-semibold text-white"
-                                                    : "text-white/80"
-                                                )}
-                                              >
-                                                Other Family
-                                              </Button>
-                                            </li>
+                                            (() => {
+                                              const isActive = internalPathname === '/intake/temporary-work/non-migrating';
+                                              const isComplete = draftSnap.completionStatus?.["temporary-work/non-migrating"] === true;
+
+                                              return (
+                                                <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                      navPush("/intake/temporary-work/non-migrating");
+                                                      setSidebarOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                      "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
+                                                      isActive
+                                                        ? "font-semibold text-white"
+                                                        : "text-white/80",
+                                                      isComplete && !isActive && "text-white/50"
+                                                    )}
+                                                  >
+                                                    {isComplete && <Check className="w-3 h-3 mr-2" />}
+                                                    Other Family
+                                                  </Button>
+                                                </li>
+                                              );
+                                            })()
                                           )}
                                         </React.Fragment>
                                       );

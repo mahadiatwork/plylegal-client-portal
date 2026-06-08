@@ -24,8 +24,10 @@ import {
 } from "@/lib/routes";
 import { CheckCircle2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { TemporaryWorkReviewSummary } from "@/components/intake/TemporaryWorkReviewSummary";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getIncompleteChecklist } from "@/lib/submitCompletion";
+import { buildTemporaryWorkReviewSections } from "@/lib/temporaryWorkReview";
 
 const COMPLETE_DOCUMENT_STATUSES = new Set([
   "approved",
@@ -100,6 +102,7 @@ export default function SubmitPage() {
 
   const completionPercentage = completionData.percentage;
   const isFullyComplete = completionPercentage === 100;
+  const intakeSlug = getIntakeSlugForContext(visaType, draftSnap.visaContext);
   const questionnaireIncompleteItems = useMemo(
     () =>
       getIncompleteChecklist({
@@ -115,6 +118,16 @@ export default function SubmitPage() {
     [questionnaireIncompleteItems, documentIncompleteItems]
   );
   const hasDocumentUploadIssues = incompleteItems.some((item) => item.startsWith("Upload Documents:"));
+  const reviewSections = useMemo(
+    () =>
+      buildTemporaryWorkReviewSections({
+        draft: draftSnap.draft,
+        visaContext: draftSnap.visaContext,
+        appId: draftSnap.currentApplicationId,
+        slug: intakeSlug,
+      }),
+    [draftSnap.draft, draftSnap.visaContext, draftSnap.currentApplicationId, intakeSlug]
+  );
 
   const handlePrevious = () => {
     const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
@@ -294,6 +307,8 @@ export default function SubmitPage() {
               </li>
             </ul>
           </div>
+
+          <TemporaryWorkReviewSummary sections={reviewSections} />
 
           {/* Form Navigation */}
           <FormNavigation
