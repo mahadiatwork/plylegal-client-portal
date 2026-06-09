@@ -9,8 +9,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import {
   BookOpen,
   ClipboardCheck,
@@ -42,39 +41,6 @@ const RESOURCE_SECTIONS = {
     icon: BookOpen,
   },
 };
-
-function toMillis(value) {
-  if (!value) return 0;
-  if (typeof value.toMillis === "function") return value.toMillis();
-  if (typeof value.toDate === "function") return value.toDate().getTime();
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function normalizeResource(docSnap) {
-  const data = docSnap.data() || {};
-  const type = String(data.type || "link").toLowerCase();
-
-  return {
-    id: docSnap.id,
-    title: data.title || "Untitled resource",
-    description: data.description || "",
-    noteText: data.noteText || data.content || data.description || "",
-    url: data.publicUrl || data.url || "",
-    type,
-    status: String(data.status || "draft").toLowerCase(),
-    category: String(data.category || data.section || data.group || "").toLowerCase(),
-    scope: String(data.scope || "shared").toLowerCase(),
-    program: String(data.program || "").toLowerCase(),
-    audience: String(data.audience || "").toLowerCase(),
-    createdAt: data.createdAt,
-    updatedAt: data.updatedAt,
-  };
-}
-
-function isResourceVisible(resource) {
-  return resource.status === "active";
-}
 
 function getResourceIcon(type) {
   if (type === "document" || type === "file") return FileText;
@@ -219,6 +185,42 @@ export default function ResourcesPage() {
       .filter((section) => section.resources.length > 0);
   }, [resources]);
 
+  const loadResources = async () => {
+    if (!appId) {
+      setResources([]);
+      setResourcesLoading(false);
+      return;
+    }
+
+    try {
+      setResourcesLoading(true);
+      setResourcesError("");
+
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error("Missing authentication token");
+      }
+
+      const response = await fetch(`/api/resources/shared?applicationId=${appId}`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to load shared resources");
+      }
+
+      setResources(data.resources || []);
+    } catch (error) {
+      console.error("Error loading shared resources:", error);
+      setResourcesError("We could not load your resources. Please refresh the page or contact Ply Legal.");
+    } finally {
+      setResourcesLoading(false);
+    }
+  };
+
   // Load applications data on mount
   useEffect(() => {
     const loadData = async () => {
@@ -238,8 +240,11 @@ export default function ResourcesPage() {
         if (applicationsSnap.applications.length === 0) {
           await applicationsStore.loadApplications(userId);
         }
+
+        await loadResources();
       } catch (error) {
         console.error('Error loading data:', error);
+        setResourcesLoading(false);
       } finally {
         setIsLoading(false);
       }
@@ -247,36 +252,6 @@ export default function ResourcesPage() {
 
     loadData();
   }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
-
-  useEffect(() => {
-    const loadResources = async () => {
-      setResourcesLoading(true);
-      setResourcesError("");
-
-      try {
-        const resourcesRef = collection(db, "resources");
-        const resourcesQuery = query(
-          resourcesRef,
-          where("status", "==", "active"),
-          orderBy("updatedAt", "desc")
-        );
-        const resourcesSnap = await getDocs(resourcesQuery);
-        const loadedResources = resourcesSnap.docs
-          .map(normalizeResource)
-          .filter(isResourceVisible)
-          .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
-
-        setResources(loadedResources);
-      } catch (error) {
-        console.error("Error loading shared resources:", error);
-        setResourcesError("We could not load your resources. Please refresh the page or contact Ply Legal.");
-      } finally {
-        setResourcesLoading(false);
-      }
-    };
-
-    loadResources();
-  }, []);
   
   // Show loading state while data is being loaded
   if (isLoading || !application) {
