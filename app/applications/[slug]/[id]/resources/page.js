@@ -9,7 +9,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   BookOpen,
@@ -62,11 +62,18 @@ function normalizeResource(docSnap) {
     noteText: data.noteText || data.content || data.description || "",
     url: data.publicUrl || data.url || "",
     type,
-    status: String(data.status || "active").toLowerCase(),
+    status: String(data.status || "draft").toLowerCase(),
     category: String(data.category || data.section || data.group || "").toLowerCase(),
+    scope: String(data.scope || "shared").toLowerCase(),
+    program: String(data.program || "").toLowerCase(),
+    audience: String(data.audience || "").toLowerCase(),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+
+function isResourceVisible(resource) {
+  return resource.status === "active";
 }
 
 function getResourceIcon(type) {
@@ -243,21 +250,25 @@ export default function ResourcesPage() {
 
   useEffect(() => {
     const loadResources = async () => {
-      if (!appId) return;
       setResourcesLoading(true);
       setResourcesError("");
 
       try {
-        const resourcesRef = collection(db, "applications", appId, "resources");
-        const resourcesSnap = await getDocs(resourcesRef);
+        const resourcesRef = collection(db, "resources");
+        const resourcesQuery = query(
+          resourcesRef,
+          where("status", "==", "active"),
+          orderBy("updatedAt", "desc")
+        );
+        const resourcesSnap = await getDocs(resourcesQuery);
         const loadedResources = resourcesSnap.docs
           .map(normalizeResource)
-          .filter((resource) => resource.status !== "inactive" && resource.status !== "archived")
-          .sort((a, b) => toMillis(b.createdAt || b.updatedAt) - toMillis(a.createdAt || a.updatedAt));
+          .filter(isResourceVisible)
+          .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
 
         setResources(loadedResources);
       } catch (error) {
-        console.error("Error loading resources:", error);
+        console.error("Error loading shared resources:", error);
         setResourcesError("We could not load your resources. Please refresh the page or contact Ply Legal.");
       } finally {
         setResourcesLoading(false);
@@ -265,7 +276,7 @@ export default function ResourcesPage() {
     };
 
     loadResources();
-  }, [appId]);
+  }, []);
   
   // Show loading state while data is being loaded
   if (isLoading || !application) {
@@ -333,7 +344,7 @@ export default function ResourcesPage() {
                   <CardHeader>
                     <CardTitle className="text-base font-semibold">No resources available yet</CardTitle>
                     <CardDescription>
-                      Ply Legal has not shared any resources for this application yet.
+                      No shared resources are available yet.
                     </CardDescription>
                   </CardHeader>
                 </Card>

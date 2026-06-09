@@ -28,6 +28,11 @@ service cloud.firestore {
       allow read: if get(/databases/$(database)/documents/applications/$(appId)).data.publicReviewAccess == true;
     }
 
+    match /resources/{resourceId} {
+      allow read: if request.auth != null &&
+        resource.data.status == "active";
+    }
+
     match /users/{userId}/preferences/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
