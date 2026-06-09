@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -22,7 +23,7 @@ import {
   getPreviousRoute,
   getVisaTypeFromPath,
 } from "@/lib/routes";
-import { CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { TemporaryWorkReviewSummary } from "@/components/intake/TemporaryWorkReviewSummary";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
@@ -75,6 +76,12 @@ function buildDocumentUploadChecklist(documents, { requireExplicitRequirement = 
     .map((doc) => `Upload Documents: ${getMatterDocumentName(doc)}`);
 }
 
+const RESET_CONFIRMATION_PHRASE = "reset my questionnaire";
+
+function getApplicationResetReference(application, appId) {
+  return String(application?.reference || application?.id || appId || "").trim();
+}
+
 export default function SubmitPage() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -88,6 +95,10 @@ export default function SubmitPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
   const [documentIncompleteItems, setDocumentIncompleteItems] = useState([]);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetReferenceInput, setResetReferenceInput] = useState("");
+  const [resetPhraseInput, setResetPhraseInput] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     const data = draftStore.getCompletionPercentage();
@@ -118,6 +129,22 @@ export default function SubmitPage() {
     [questionnaireIncompleteItems, documentIncompleteItems]
   );
   const hasDocumentUploadIssues = incompleteItems.some((item) => item.startsWith("Upload Documents:"));
+  const currentApplication = useMemo(() => {
+    const appId = draftSnap.currentApplicationId;
+    if (!appId) return null;
+    return applicationsSnap.applications.find((app) => String(app.id) === String(appId)) || null;
+  }, [applicationsSnap.applications, draftSnap.currentApplicationId]);
+  const resetReference = getApplicationResetReference(currentApplication, draftSnap.currentApplicationId);
+  const resetReferenceLabel = currentApplication?.reference ? "application reference" : "application ID";
+  const canResetQuestionnaire =
+    visaType === "temporary-work" &&
+    (draftSnap.visaContext === "186" || draftSnap.visaContext === "482");
+  const canConfirmReset =
+    canResetQuestionnaire &&
+    Boolean(resetReference) &&
+    resetReferenceInput.trim() === resetReference &&
+    resetPhraseInput.trim() === RESET_CONFIRMATION_PHRASE &&
+    !isResetting;
   const reviewSections = useMemo(
     () =>
       buildTemporaryWorkReviewSections({
@@ -259,6 +286,58 @@ export default function SubmitPage() {
     router.push(uploadsHref);
   };
 
+  const handleResetOpenChange = (open) => {
+    if (isResetting) return;
+    setResetOpen(open);
+    if (!open) {
+      setResetReferenceInput("");
+      setResetPhraseInput("");
+    }
+  };
+
+  const handleResetQuestionnaire = async () => {
+    if (!canConfirmReset) return;
+
+    const appId = draftStore.currentApplicationId || draftSnap.currentApplicationId;
+    const visaContext = draftStore.visaContext ?? draftStore.draft?.visaContext ?? draftSnap.visaContext;
+    if (!appId || (visaContext !== "186" && visaContext !== "482")) return;
+
+    setIsResetting(true);
+    try {
+      const result = await draftStore.resetQuestionnaire(appId, { visaContext });
+      if (!result.success) {
+        throw new Error(result.error || "Failed to reset questionnaire");
+      }
+
+      toast({
+        title: "Questionnaire reset",
+        description: "Your questionnaire answers have been cleared. You can start again now.",
+      });
+
+      setResetOpen(false);
+      setResetReferenceInput("");
+      setResetPhraseInput("");
+
+      const startHref = buildIntakeHref({
+        appId,
+        internalHref: "/intake/temporary-work/start",
+        visaType: "temporary-work",
+        visaContext,
+      });
+      startNavigation(startHref);
+      router.push(startHref);
+    } catch (error) {
+      console.error("Questionnaire reset error:", error);
+      toast({
+        title: "Reset failed",
+        description: error.message || "We could not reset your questionnaire. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
@@ -309,6 +388,33 @@ export default function SubmitPage() {
           </div>
 
           <TemporaryWorkReviewSummary sections={reviewSections} />
+
+          {canResetQuestionnaire && (
+            <div className="rounded-lg border border-red-200 bg-red-50/40 p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                  <div>
+                    <h3 className="font-semibold text-red-950">Danger Zone</h3>
+                    <p className="mt-1 text-sm leading-6 text-red-800">
+                      Resetting clears all saved questionnaire answers, included applicants, family members, and completion for this application. Uploaded documents and messages are kept.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleResetOpenChange(true)}
+                  disabled={isSubmitting || isCheckingRequirements || isResetting}
+                  data-testid="button-open-reset-questionnaire"
+                  className="min-h-10 flex-shrink-0 border-red-300 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset questionnaire
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Form Navigation */}
           <FormNavigation
@@ -361,6 +467,92 @@ export default function SubmitPage() {
             >
               Close
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetOpen} onOpenChange={handleResetOpenChange}>
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0">
+          <div className="p-6 sm:p-8">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Reset Questionnaire</DialogTitle>
+              <DialogDescription className="pt-2 text-base leading-7">
+                This will permanently clear your saved questionnaire answers for this application.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="border-y border-slate-200 bg-slate-50 p-6 sm:p-8">
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="reset-reference" className="text-sm font-semibold text-slate-900">
+                  To confirm, type the {resetReferenceLabel} <span className="font-bold">{resetReference}</span>
+                </label>
+                <Input
+                  id="reset-reference"
+                  value={resetReferenceInput}
+                  onChange={(event) => setResetReferenceInput(event.target.value)}
+                  disabled={isResetting}
+                  data-testid="input-reset-reference"
+                  className="mt-3 h-11 bg-white"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reset-phrase" className="text-sm font-semibold text-slate-900">
+                  To confirm, type <span className="font-bold">{RESET_CONFIRMATION_PHRASE}</span>
+                </label>
+                <Input
+                  id="reset-phrase"
+                  value={resetPhraseInput}
+                  onChange={(event) => setResetPhraseInput(event.target.value)}
+                  disabled={isResetting}
+                  data-testid="input-reset-phrase"
+                  className="mt-3 h-11 bg-white"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-8">
+            <div className="mb-6 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+              <p className="text-sm font-medium leading-6">
+                Resetting this questionnaire cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleResetOpenChange(false)}
+                disabled={isResetting}
+                data-testid="button-cancel-reset-questionnaire"
+                className="min-h-11"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleResetQuestionnaire}
+                disabled={!canConfirmReset}
+                data-testid="button-confirm-reset-questionnaire"
+                className="min-h-11 min-w-[180px]"
+              >
+                {isResetting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Resetting...
+                  </>
+                ) : (
+                  "Reset questionnaire"
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

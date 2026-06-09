@@ -152,6 +152,68 @@ test.describe("186 questionnaire @questionnaire-186", () => {
     }, appId);
     expect(status).not.toBe("submitted");
   });
+
+  test("186 reset questionnaire clears dynamic family data and keeps application data", async ({ page }) => {
+    const appId = "e2e-186-reset";
+
+    await seed186Application(page, { appId, reference: "E2E-186-RESET" });
+    await seedTemporaryWorkIncompleteRequiredDraft(page, { appId, visaContext: "186" });
+    await page.evaluate((seededAppId) => {
+      const draft = JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:draft`) || "{}");
+      draft.temporary_work_non_migrating = { has_other_family: "yes" };
+      draft.non_migrating_members = [
+        {
+          id: "nmf-reset-1",
+          relationship: "sibling",
+          passport: {
+            given_names: "Morgan",
+            family_name: "Family",
+          },
+        },
+      ];
+      localStorage.setItem(`ply:app:${seededAppId}:draft`, JSON.stringify(draft));
+      localStorage.setItem(
+        `ply:app:${seededAppId}:uploads`,
+        JSON.stringify([{ id: "upload-1", required: true, status: "uploaded" }])
+      );
+
+      const completion = JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:completion`) || "{}");
+      completion["temporary-work/non-migrating/nmf-reset-1/details__nmf-reset-1"] = true;
+      completion["temporary-work/non-migrating/nmf-reset-1/passport__nmf-reset-1"] = true;
+      localStorage.setItem(`ply:app:${seededAppId}:completion`, JSON.stringify(completion));
+    }, appId);
+
+    await page.goto(`/applications/186/${appId}/intake/submit`);
+    await expect(page.getByText("Review & Submit")).toBeVisible();
+    await page.getByTestId("button-open-reset-questionnaire").click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Reset Questionnaire" })).toBeVisible();
+    const confirmButton = dialog.getByTestId("button-confirm-reset-questionnaire");
+    await expect(confirmButton).toBeDisabled();
+
+    await dialog.getByTestId("input-reset-reference").fill("E2E-186-RESET");
+    await dialog.getByTestId("input-reset-phrase").fill("reset my questionnaire");
+    await expect(confirmButton).toBeEnabled();
+    await confirmButton.click();
+
+    await expect(page).toHaveURL(new RegExp(`/applications/186/${appId}/intake/start`));
+
+    const storage = await page.evaluate((seededAppId) => {
+      const applications = JSON.parse(localStorage.getItem("ply:applications") || "[]");
+      return {
+        draft: JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:draft`) || "{}"),
+        completion: JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:completion`) || "{}"),
+        uploads: JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:uploads`) || "[]"),
+        application: applications.find((app) => app.id === seededAppId) || null,
+      };
+    }, appId);
+
+    expect(storage.draft).toEqual({ visaContext: "186" });
+    expect(storage.completion).toEqual({});
+    expect(storage.uploads).toHaveLength(1);
+    expect(storage.application?.status).toBe("Draft");
+  });
 });
 
 async function expectTemporaryWorkSubmitReview(page, {

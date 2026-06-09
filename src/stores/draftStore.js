@@ -1150,6 +1150,54 @@ export const draftStore = proxy({
     }
   },
 
+  async resetQuestionnaire(applicationId, options = {}) {
+    try {
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) {
+        return { success: false, error: "Application ID required" };
+      }
+
+      const nextVisaContext = options.visaContext ?? this.visaContext ?? this.draft?.visaContext;
+      if (nextVisaContext !== "186" && nextVisaContext !== "482") {
+        return {
+          success: false,
+          error: "Questionnaire reset is only available for subclass 186 and 482 applications",
+        };
+      }
+
+      this.isSaving = true;
+
+      const clearDraftResult = await db.clearDraft(appId);
+      if (clearDraftResult && clearDraftResult.success === false) {
+        throw new Error(clearDraftResult.error || "Failed to clear questionnaire draft");
+      }
+
+      const completionResult = await db.saveCompletionStatus({}, appId);
+      if (completionResult && completionResult.success === false) {
+        throw new Error(completionResult.error || "Failed to clear questionnaire completion");
+      }
+
+      const nextDraft = { visaContext: nextVisaContext };
+      const saveContextResult = await db.saveDraft(nextDraft, appId);
+      if (saveContextResult && saveContextResult.success === false) {
+        throw new Error(saveContextResult.error || "Failed to preserve questionnaire subclass");
+      }
+
+      this.draft = nextDraft;
+      this.completionStatus = {};
+      this.visaContext = nextVisaContext;
+      this.activeProfileId = null;
+      this.lastSaved = new Date().toISOString();
+      this.isSaving = false;
+
+      return { success: true, draft: nextDraft };
+    } catch (error) {
+      console.error("Error resetting questionnaire:", error);
+      this.isSaving = false;
+      return { success: false, error: error.message };
+    }
+  },
+
   /**
    * Copy questionnaire answers from another application into the current one.
    * The target application's profile list is authoritative: source applicants are matched by

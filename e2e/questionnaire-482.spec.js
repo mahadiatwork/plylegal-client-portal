@@ -136,6 +136,55 @@ test.describe("482 questionnaire @questionnaire-482", () => {
     }, appId);
     expect(status).not.toBe("submitted");
   });
+
+  test("482 reset questionnaire requires exact confirmation and keeps application data", async ({ page }) => {
+    const appId = "e2e-482-reset";
+
+    await seed482Application(page, { appId, reference: "E2E-482-RESET" });
+    await seedTemporaryWorkIncompleteRequiredDraft(page, { appId, visaContext: "482" });
+    await page.evaluate((seededAppId) => {
+      localStorage.setItem(
+        `ply:app:${seededAppId}:uploads`,
+        JSON.stringify([{ id: "upload-1", required: true, status: "uploaded" }])
+      );
+    }, appId);
+
+    await page.goto(`/applications/482/${appId}/intake/submit`);
+    await expect(page.getByText("Review & Submit")).toBeVisible();
+    await page.getByTestId("button-open-reset-questionnaire").click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Reset Questionnaire" })).toBeVisible();
+    const confirmButton = dialog.getByTestId("button-confirm-reset-questionnaire");
+    await expect(confirmButton).toBeDisabled();
+
+    await dialog.getByTestId("input-reset-reference").fill("E2E-482-RESET");
+    await expect(confirmButton).toBeDisabled();
+
+    await dialog.getByTestId("input-reset-phrase").fill("RESET MY QUESTIONNAIRE");
+    await expect(confirmButton).toBeDisabled();
+
+    await dialog.getByTestId("input-reset-phrase").fill("reset my questionnaire");
+    await expect(confirmButton).toBeEnabled();
+    await confirmButton.click();
+
+    await expect(page).toHaveURL(new RegExp(`/applications/482/${appId}/intake/start`));
+
+    const storage = await page.evaluate((seededAppId) => {
+      const applications = JSON.parse(localStorage.getItem("ply:applications") || "[]");
+      return {
+        draft: JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:draft`) || "{}"),
+        completion: JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:completion`) || "{}"),
+        uploads: JSON.parse(localStorage.getItem(`ply:app:${seededAppId}:uploads`) || "[]"),
+        application: applications.find((app) => app.id === seededAppId) || null,
+      };
+    }, appId);
+
+    expect(storage.draft).toEqual({ visaContext: "482" });
+    expect(storage.completion).toEqual({});
+    expect(storage.uploads).toHaveLength(1);
+    expect(storage.application?.status).toBe("Draft");
+  });
 });
 
 async function expectTemporaryWorkSubmitReview(page, { mainApplicant, spouse = null, child = null }) {
