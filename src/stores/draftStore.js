@@ -3,6 +3,7 @@
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
 import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
+import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
 import { authStore } from "./authStore";
 
 // Get database adapter (Firebase or localStorage based on env)
@@ -319,7 +320,9 @@ function getCompletionKeyFromTemporaryWorkRoute(route) {
 }
 
 function isCompletionKeyComplete(completionStatus, key) {
-  if (completionStatus?.[key] === true) return true;
+  if (Object.prototype.hasOwnProperty.call(completionStatus || {}, key)) {
+    return completionStatus?.[key] === true;
+  }
 
   if (key?.startsWith("temporary-work/") && key.includes("__")) {
     const legacyKey = key.split("__")[0];
@@ -1415,9 +1418,26 @@ export const draftStore = proxy({
       }
       console.log(`[DEBUG draftStore] App ID: ${appId}`);
 
+      const strictValidation = validateTemporaryWorkSectionCompletion({
+        draft: this.draft,
+        visaContext: this.visaContext ?? this.draft?.visaContext,
+        pageKey,
+      });
+
+      if (strictValidation.applicable && !strictValidation.complete) {
+        console.warn(`[DEBUG draftStore] Cannot mark ${pageKey} as complete - strict validation failed`, strictValidation.issues);
+        this.completionStatus = { ...this.completionStatus, [pageKey]: false };
+        await this.persistCompletionPercentage(appId);
+        return {
+          success: false,
+          error: "Please complete the required information before continuing.",
+          issues: strictValidation.issues,
+        };
+      }
+
       // Validation: Check if section has meaningful data
       // If a specific section key is provided, use it. Otherwise try to guess.
-      if (sectionKeyToCheck !== false) {
+      if (!strictValidation.applicable && sectionKeyToCheck !== false) {
         const sectionKey = sectionKeyToCheck || this.getSectionKeyFromPageKey(pageKey);
         const sectionData = this.getSectionData(sectionKey);
         console.log(`[DEBUG draftStore] Checking section data for key: ${sectionKey}`);
@@ -1433,7 +1453,7 @@ export const draftStore = proxy({
 
         if (!hasData) {
           console.warn(`[DEBUG draftStore] Cannot mark ${pageKey} as complete - no data inside section (${sectionKey})`);
-          return { success: false, error: 'No data to save' };
+          return { success: false, error: 'No data to save', issues: ['No data to save'] };
         }
         console.log(`[DEBUG draftStore] Section has data, proceeding...`);
       }

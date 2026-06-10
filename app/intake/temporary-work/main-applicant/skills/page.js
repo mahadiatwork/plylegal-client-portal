@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Unexpected", "Pending", "Other"];
 const ASSESSMENT_TYPES = ["Full Skills Assessment", "Provisional Skills Assessment", "Job Ready Program", "Points Test Advice", "Other"];
@@ -645,10 +646,13 @@ export default function SkillsPage() {
       : await draftStore.saveSectionData("temporary_work_skills", data);
 
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/skills`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/main-applicant/skills`, null, "temporary_work_skills");
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/skills`)
+        : await draftStore.markPageComplete(`${visaType}/main-applicant/skills`, null, "temporary_work_skills");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

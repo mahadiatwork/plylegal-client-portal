@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
@@ -198,10 +199,13 @@ export default function Page() {
         : await draftStore.saveSectionData("temporary_work_contact_details", payload);
 
       if (result.success) {
-        if (profileId) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/contact-details`);
-        } else {
-          await draftStore.markPageComplete(`${visaType}/main-applicant/contact-details`, null, "temporary_work_contact_details");
+        const completionResult = profileId
+          ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/contact-details`)
+          : await draftStore.markPageComplete(`${visaType}/main-applicant/contact-details`, null, "temporary_work_contact_details");
+
+        if (!completionResult.success) {
+          showCompletionIssuesToast(toast, completionResult);
+          return;
         }
 
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

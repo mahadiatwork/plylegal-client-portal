@@ -19,6 +19,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const QUALIFICATION_LEVELS = [
   "Secondary",
@@ -505,10 +506,13 @@ export default function EducationPage() {
       : await draftStore.saveSectionData("temporary_work_education", data);
 
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/education`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/main-applicant/education`, null, "temporary_work_education");
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/education`)
+        : await draftStore.markPageComplete(`${visaType}/main-applicant/education`, null, "temporary_work_education");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

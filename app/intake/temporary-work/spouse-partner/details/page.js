@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 import { COUNTRIES } from "@/reuseable/countries";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const formSchema = z.object({
   prefix: z.string().optional(),
@@ -282,10 +283,13 @@ export default function Page() {
       : await draftStore.saveSectionData("temporary_work_spouse_details", values);
 
     if (result.success) {
-      if (profileId && isSpouseProfile) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/spouse-partner/details`, null, "temporary_work_spouse_details");
+      const completionResult = (profileId && isSpouseProfile)
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`)
+        : await draftStore.markPageComplete(`${visaType}/spouse-partner/details`, null, "temporary_work_spouse_details");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const custodySchema = z
   .object({
@@ -181,7 +182,12 @@ export default function ChildCustodyPage() {
         toast({ title: "Error", description: "Failed to save", variant: "destructive" });
         return;
       }
-      await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
+      const completionResult = await draftStore.markProfilePageComplete(childId, `${visaType}/children/${childId}/custody`);
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
+      }
+
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       console.log("[CUSTODY] next route:", next);
       if (next) {

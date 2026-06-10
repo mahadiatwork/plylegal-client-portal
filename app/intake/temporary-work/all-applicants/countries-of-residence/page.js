@@ -17,6 +17,8 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
+import { getResidenceCoverageIssues } from "@/lib/submitCompletion";
 
 // ─── Constants ────────────────────────────────────────────────────────
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
@@ -54,165 +56,12 @@ const formatDate = (day, month, year) => {
     return `${day} ${month} ${year}`;
 };
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const formatCoverageDate = (date) =>
-    `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-
-const todayOnly = () => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
-
-const addDays = (date, days) => {
-    const next = new Date(date);
-    next.setDate(next.getDate() + days);
-    return next;
-};
-
-const addYears = (date, years) => {
-    const next = new Date(date);
-    next.setFullYear(next.getFullYear() + years);
-    return next;
-};
-
-function monthIndex(value) {
-    const raw = String(value || "").trim();
-    if (!raw) return -1;
-    if (/^\d+$/.test(raw)) {
-        const month = Number.parseInt(raw, 10);
-        return month >= 1 && month <= 12 ? month - 1 : -1;
-    }
-    return MONTHS.findIndex((month) => month.toLowerCase() === raw.toLowerCase());
-}
-
-function parseResidenceDate(day, month, year) {
-    const parsedDay = Number.parseInt(String(day || ""), 10);
-    const parsedYear = Number.parseInt(String(year || ""), 10);
-    const parsedMonth = monthIndex(month);
-    if (!parsedDay || parsedMonth < 0 || !parsedYear) return null;
-
-    const date = new Date(parsedYear, parsedMonth, parsedDay);
-    if (
-        date.getFullYear() !== parsedYear ||
-        date.getMonth() !== parsedMonth ||
-        date.getDate() !== parsedDay
-    ) {
-        return null;
-    }
-    return date;
-}
-
-function rowBelongsToApplicant(row, applicant) {
-    const saved = String(row?.applicant_name || "").trim();
-    if (!saved) return false;
-    return [applicant.value, applicant.label, applicant.id].filter(Boolean).some((token) => saved === token);
-}
-
 function applicantLabelForValue(value, applicants) {
     const saved = String(value || "").trim();
     const applicant = applicants.find((item) =>
         [item.value, item.label, item.id].filter(Boolean).some((token) => token === saved)
     );
     return applicant?.label || saved;
-}
-
-function applicantCoverageStart(applicant, today) {
-    const tenYearsAgo = new Date(today);
-    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
-
-    const dob = parseResidenceDate(applicant.birth_day, applicant.birth_month, applicant.birth_year);
-    if (!dob) return tenYearsAgo;
-
-    const sixteenthBirthday = addYears(dob, 16);
-    return sixteenthBirthday > tenYearsAgo ? sixteenthBirthday : tenYearsAgo;
-}
-
-function parseResidenceInterval(row, today) {
-    const start = parseResidenceDate(row.date_from_day, row.date_from_month, row.date_from_year);
-    if (!start) return { error: "Date From is incomplete or invalid." };
-
-    const toValues = [row.date_to_day, row.date_to_month, row.date_to_year].map((value) => String(value || "").trim());
-    const filledToValues = toValues.filter(Boolean).length;
-    let end = today;
-
-    if (filledToValues > 0 && filledToValues < 3) {
-        return { error: "Date To is incomplete." };
-    }
-
-    if (filledToValues === 3) {
-        end = parseResidenceDate(row.date_to_day, row.date_to_month, row.date_to_year);
-        if (!end) return { error: "Date To is invalid." };
-    }
-
-    if (end < start) {
-        return { error: "Date To cannot be before Date From." };
-    }
-
-    return { start, end };
-}
-
-function validateResidenceCoverage(records, applicants) {
-    if (!applicants.length) return null;
-
-    const today = todayOnly();
-    const issues = [];
-
-    applicants.forEach((applicant) => {
-        const requiredStart = applicantCoverageStart(applicant, today);
-        if (requiredStart > today) return;
-
-        const intervals = [];
-        const applicantRows = (records || []).filter((row) => rowBelongsToApplicant(row, applicant));
-
-        applicantRows.forEach((row) => {
-            const parsed = parseResidenceInterval(row, today);
-            if (parsed.error) {
-                issues.push(`${applicant.label}: ${parsed.error}`);
-                return;
-            }
-            if (parsed.end < requiredStart || parsed.start > today) return;
-            intervals.push({
-                start: parsed.start < requiredStart ? requiredStart : parsed.start,
-                end: parsed.end > today ? today : parsed.end,
-            });
-        });
-
-        if (!intervals.length) {
-            issues.push(`${applicant.label}: add residence records from ${formatCoverageDate(requiredStart)} to today.`);
-            return;
-        }
-
-        intervals.sort((a, b) => a.start.getTime() - b.start.getTime());
-        let coveredEnd = null;
-
-        intervals.forEach((interval) => {
-            if (!coveredEnd) {
-                if (interval.start > requiredStart) {
-                    issues.push(`${applicant.label}: coverage must start by ${formatCoverageDate(requiredStart)}.`);
-                }
-                coveredEnd = interval.end;
-                return;
-            }
-
-            if (interval.start.getTime() > coveredEnd.getTime() + MS_PER_DAY) {
-                issues.push(
-                    `${applicant.label}: gap between ${formatCoverageDate(addDays(coveredEnd, 1))} and ${formatCoverageDate(addDays(interval.start, -1))}.`
-                );
-            }
-
-            if (interval.end > coveredEnd) {
-                coveredEnd = interval.end;
-            }
-        });
-
-        if (coveredEnd && coveredEnd < today) {
-            issues.push(`${applicant.label}: coverage must continue through today.`);
-        }
-    });
-
-    if (!issues.length) return null;
-    return `Residence history must cover the full 10-year/since-16 period. ${issues.join(" ")}`;
 }
 
 // ─── Residence Dialog ─────────────────────────────────────────────────
@@ -256,6 +105,17 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
         onSave(data);
         dialogForm.reset();
     };
+    const handleClearDateTo = () => {
+        dialogForm.setValue("date_to_day", "");
+        dialogForm.setValue("date_to_month", "");
+        dialogForm.setValue("date_to_year", "");
+        dialogForm.clearErrors(["date_to_day", "date_to_month", "date_to_year"]);
+    };
+    const hasDateTo = !!(
+        dialogForm.watch("date_to_day") ||
+        dialogForm.watch("date_to_month") ||
+        dialogForm.watch("date_to_year")
+    );
 
     return (
         <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
@@ -335,40 +195,52 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
             {/* Date To */}
             <div>
                 <Label className="mb-2 block">Date to <span className="text-gray-400 font-normal">(&apos;Date to&apos; may be left blank if this address is current)</span></Label>
-                <div className="grid grid-cols-3 gap-2">
-                    <Select
-                        value={dialogForm.watch("date_to_day")}
-                        onValueChange={(v) => dialogForm.setValue("date_to_day", v)}
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                    <div className="grid grid-cols-3 gap-2">
+                        <Select
+                            value={dialogForm.watch("date_to_day")}
+                            onValueChange={(v) => dialogForm.setValue("date_to_day", v)}
+                        >
+                            <SelectTrigger data-testid="select-to-day">
+                                <SelectValue placeholder="Day" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select
+                            value={dialogForm.watch("date_to_month")}
+                            onValueChange={(v) => dialogForm.setValue("date_to_month", v)}
+                        >
+                            <SelectTrigger data-testid="select-to-month">
+                                <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select
+                            value={dialogForm.watch("date_to_year")}
+                            onValueChange={(v) => dialogForm.setValue("date_to_year", v)}
+                        >
+                            <SelectTrigger data-testid="select-to-year">
+                                <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!hasDateTo}
+                        className="justify-self-start md:self-end"
+                        onClick={handleClearDateTo}
                     >
-                        <SelectTrigger data-testid="select-to-day">
-                            <SelectValue placeholder="Day" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={dialogForm.watch("date_to_month")}
-                        onValueChange={(v) => dialogForm.setValue("date_to_month", v)}
-                    >
-                        <SelectTrigger data-testid="select-to-month">
-                            <SelectValue placeholder="Month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={dialogForm.watch("date_to_year")}
-                        onValueChange={(v) => dialogForm.setValue("date_to_year", v)}
-                    >
-                        <SelectTrigger data-testid="select-to-year">
-                            <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                        Clear
+                    </Button>
                 </div>
             </div>
 
@@ -473,7 +345,7 @@ export default function Page() {
     const { toast } = useToast();
     const draftSnap = useSnapshot(draftStore);
     const [isSaving, setIsSaving] = useState(false);
-    const [coverageError, setCoverageError] = useState("");
+    const [coverageIssues, setCoverageIssues] = useState([]);
 
     useEffect(() => {
         const appIdFromUrl = searchParams.get("applicationId");
@@ -587,23 +459,38 @@ export default function Page() {
     const onSubmit = async (data) => {
         setIsSaving(true);
         try {
-            const validationError = validateResidenceCoverage(data.residence_records || [], applicants);
-            if (validationError) {
-                setCoverageError(validationError);
+            const validationError = getResidenceCoverageIssues(data.residence_records || [], applicants);
+            if (validationError.length > 0) {
+                setCoverageIssues(validationError);
                 toast({
                     title: "Residence history incomplete",
-                    description: validationError,
+                    description: validationError.slice(0, 6).join("\n"),
                     variant: "destructive",
                 });
                 return;
             }
-            setCoverageError("");
-            await draftStore.saveSectionData("temporary_work_countries_of_residence", data);
-            await draftStore.markPageComplete(
+            setCoverageIssues([]);
+            const saveResult = await draftStore.saveSectionData("temporary_work_countries_of_residence", data);
+            if (!saveResult.success) {
+                toast({
+                    title: "Error",
+                    description: saveResult.error || "Failed to save draft",
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            const completionResult = await draftStore.markPageComplete(
                 `${visaType}/all-applicants/countries-of-residence`,
                 null,
                 "temporary_work_countries_of_residence"
             );
+            if (!completionResult.success) {
+                setCoverageIssues(completionResult.issues || []);
+                showCompletionIssuesToast(toast, completionResult);
+                return;
+            }
+
             const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
             startNavigation(next);
             if (next) router.push(next);
@@ -612,17 +499,37 @@ export default function Page() {
         }
     };
 
-    const handlePrevious = () => {
+    const saveResidenceDraft = async () => {
+        const values = form.getValues();
+        return draftStore.saveSectionData("temporary_work_countries_of_residence", values);
+    };
+
+    const handlePrevious = async () => {
         const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-        startNavigation(prev);
-        if (prev) router.push(prev);
+        if (!prev) return;
+
+        setIsSaving(true);
+        try {
+            const result = await saveResidenceDraft();
+            if (!result.success) {
+                toast({
+                    title: "Error",
+                    description: "Failed to save draft",
+                    variant: "destructive",
+                });
+                return;
+            }
+            startNavigation(prev);
+            router.push(prev);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const values = form.getValues();
-            const result = await draftStore.saveSectionData("temporary_work_countries_of_residence", values);
+            const result = await saveResidenceDraft();
             if (result.success) {
                 toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
             } else {
@@ -647,13 +554,20 @@ export default function Page() {
                     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
                         <h2 className="text-xl font-semibold text-foreground">Details of country of residence</h2>
 
-                        {coverageError && (
+                        {coverageIssues.length > 0 && (
                             <div
                                 role="alert"
                                 data-testid="residence-coverage-error"
                                 className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                             >
-                                {coverageError}
+                                <p className="font-medium">
+                                    Residence history must cover the full 10-year/since-16 period.
+                                </p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5">
+                                    {coverageIssues.map((issue, index) => (
+                                        <li key={`${issue}-${index}`}>{issue}</li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
 
@@ -681,7 +595,7 @@ export default function Page() {
                                 },
                             ]}
                             onAdd={(newRow) => {
-                                setCoverageError("");
+                                setCoverageIssues([]);
                                 const updated = [...residenceRecords, newRow];
                                 form.setValue("residence_records", updated, {
                                     shouldValidate: true,
@@ -690,7 +604,7 @@ export default function Page() {
                                 });
                             }}
                             onEdit={(index, updatedRow) => {
-                                setCoverageError("");
+                                setCoverageIssues([]);
                                 const updated = [...residenceRecords];
                                 updated[index] = updatedRow;
                                 form.setValue("residence_records", updated, {
@@ -700,7 +614,7 @@ export default function Page() {
                                 });
                             }}
                             onDelete={(index) => {
-                                setCoverageError("");
+                                setCoverageIssues([]);
                                 const updated = residenceRecords.filter((_, i) => i !== index);
                                 form.setValue("residence_records", updated, {
                                     shouldValidate: true,
@@ -709,7 +623,7 @@ export default function Page() {
                                 });
                             }}
                             DialogComponent={ResidenceDialogWithApplicants}
-                            addButtonText="Add Country"
+                            addButtonText="Add"
                             emptyMessage="No countries of residence added yet"
                             testIdPrefix="residence"
                         />

@@ -108,6 +108,7 @@ export default function IntakeLayout({ children }) {
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [deletingNmfId, setDeletingNmfId] = useState(null);
+  const mobileActiveTabRef = React.useRef(null);
   const internalPathname = getInternalIntakeHref(pathname).split("?")[0];
   const pathSlug = getIntakeSlugFromPathname(pathname);
   const subclassFromQuery = searchParams.get("__subclass");
@@ -228,6 +229,79 @@ export default function IntakeLayout({ children }) {
     return false;
   });
 
+  const findProfileById = (profileId) =>
+    profiles.find((profile) => String(profile.id) === String(profileId));
+
+  const routeProfile = (() => {
+    if (visaType !== "temporary-work") return null;
+
+    if (internalPathname.startsWith("/intake/temporary-work/main-applicant/")) {
+      return (
+        (profileIdFromUrl ? findProfileById(profileIdFromUrl) : null) ||
+        profiles.find((profile) => profile.relationship === "main_applicant") ||
+        { id: profileIdFromUrl || null, relationship: "main_applicant" }
+      );
+    }
+
+    if (internalPathname.startsWith("/intake/temporary-work/spouse-partner/")) {
+      return (
+        (profileIdFromUrl ? findProfileById(profileIdFromUrl) : null) ||
+        profiles.find((profile) => profile.relationship === "spouse") ||
+        { id: profileIdFromUrl || null, relationship: "spouse" }
+      );
+    }
+
+    if (childProfileIdFromPath) {
+      return findProfileById(childProfileIdFromPath) || { id: childProfileIdFromPath, relationship: "child" };
+    }
+
+    return null;
+  })();
+
+  const activeProfile =
+    routeProfile ||
+    (effectiveProfileId ? findProfileById(effectiveProfileId) : null);
+
+  const getTemporaryWorkProfileSubpages = (profile) => {
+    if (!profile) return [];
+    if (profile.relationship === "child") {
+      return TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((subpage) => ({
+        href: buildTemporaryWorkChildHref(profile.id, subpage.pathSuffix),
+        title: subpage.title,
+      }));
+    }
+    if (profile.relationship === "spouse") {
+      return draftSnap.visaContext === "186"
+        ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES
+        : TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES;
+    }
+    return PROFILE_SUBPAGES;
+  };
+
+  const getTemporaryWorkProfileTitle = (profile) => {
+    if (!profile) return "";
+    if (profile.relationship === "main_applicant") return "Main Applicant";
+    if (profile.relationship === "spouse") return "Spouse/Partner";
+    if (profile.relationship === "child") return "Child";
+    return "Dependent";
+  };
+
+  const mobileSection =
+    visaType === "temporary-work" && activeProfile
+      ? {
+          title: getTemporaryWorkProfileTitle(activeProfile),
+          subpages: getTemporaryWorkProfileSubpages(activeProfile),
+          profileId: activeProfile.id,
+        }
+      : currentSection;
+
+  useEffect(() => {
+    mobileActiveTabRef.current?.scrollIntoView({
+      block: "nearest",
+      inline: "center",
+    });
+  }, [internalPathname, mobileSection?.profileId, mobileSection?.title]);
+
   // Auto-expand sections that contain the current active route
   useEffect(() => {
     if (mounted) {
@@ -285,7 +359,7 @@ export default function IntakeLayout({ children }) {
           </Button>
           <div className="flex-1 ml-4">
             <h2 className="font-serif font-semibold text-base text-[#E6F2EC] truncate">
-              {currentSection?.title}
+              {mobileSection?.title}
             </h2>
             <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-[#E6F2EC]/90">
               <span>{completionPercentage.percentage}% complete</span>
@@ -299,20 +373,25 @@ export default function IntakeLayout({ children }) {
         </div>
 
         {/* Mobile Section Tabs */}
-        {currentSection?.subpages && (
+        {mobileSection?.subpages && (
           <div className="border-t border-white/10 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex w-max min-w-full gap-1 p-2">
-              {currentSection.subpages.map((subpage) => {
-                const href = buildHref(subpage.href);
+              {mobileSection.subpages.map((subpage) => {
+                const href = buildHref(subpage.href, mobileSection.profileId ? { profileId: mobileSection.profileId } : {});
+                const isActiveTab = isRouteActive(subpage.href);
                 return (
                   <Button
                     key={subpage.href}
+                    ref={isActiveTab ? mobileActiveTabRef : null}
                     variant="ghost"
                     size="sm"
-                    onClick={() => navPush(href)}
+                    onClick={() => {
+                      if (mobileSection.profileId) draftStore.setActiveProfile(mobileSection.profileId);
+                      navPush(href);
+                    }}
                     className={cn(
                       "min-h-8 text-xs whitespace-nowrap",
-                      isRouteActive(subpage.href)
+                      isActiveTab
                         ? "bg-white text-primary hover:bg-white/90"
                         : "text-white hover:bg-white/10 hover:text-white"
                     )}

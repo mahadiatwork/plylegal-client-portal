@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 const childDetailsSchema = z.object({
   prefix: z.string().optional(),
   family_name: z.string().optional(),
@@ -233,7 +234,12 @@ export default function ChildDetailsPage() {
     const values = form.getValues();
     const result = await draftStore.saveProfileSectionData(profileId, "details", values);
     if (result.success) {
-      await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
+      const completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
+      }
+
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
       if (next) router.push(next);

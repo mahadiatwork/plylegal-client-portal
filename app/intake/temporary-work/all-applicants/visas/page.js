@@ -460,15 +460,33 @@ function buildApplicantOptions(draft) {
   return [];
 }
 
-const formSchema = z.object({
-  visa_grant_entries: z.array(z.object({
-    applicantId: z.string().min(1, "Please select the person this visa grant number relates to"),
-    grantNumber: z.string().trim().min(1, "Australian visa grant number is required"),
-    history: z.array(z.any()).optional(),
-  })).min(1, "Please add at least one visa grant number entry"),
+const visaGrantEntrySchema = z.object({
+  applicantId: z.string().min(1, "Please select the person this visa grant number relates to"),
+  grantNumber: z.string().trim().min(1, "Australian visa grant number is required"),
+  history: z.array(z.any()).optional(),
 });
 
-function normalizeVisaGrantEntries(savedData, applicantOptions, mainId) {
+const formSchema = z
+  .object({
+    has_australian_visa_grant_number: z.enum(["yes", "no"], {
+      required_error: "Please indicate whether any applicants have an Australian visa grant number",
+    }),
+    visa_grant_entries: z.array(visaGrantEntrySchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.has_australian_visa_grant_number === "yes" &&
+      (!Array.isArray(data.visa_grant_entries) || data.visa_grant_entries.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please add at least one visa grant number entry",
+        path: ["visa_grant_entries"],
+      });
+    }
+  });
+
+function normalizeVisaGrantEntries(savedData) {
   let entries = Array.isArray(savedData?.visa_grant_entries)
     ? savedData.visa_grant_entries.map((entry) => ({
         applicantId: entry?.applicantId || "",
@@ -477,32 +495,25 @@ function normalizeVisaGrantEntries(savedData, applicantOptions, mainId) {
       }))
     : [];
 
-  if (entries.length === 0 && (savedData?.has_aus_visa_history || savedData?.visa_grant_number)) {
-    entries = [
-      {
-        applicantId: mainId,
-        grantNumber: savedData?.visa_grant_number || "",
-        history: Array.isArray(savedData?.visa_history) ? savedData.visa_history : [],
-      },
-    ];
-  }
-
-  if (entries.length === 0 && applicantOptions.length > 0) {
-    entries = [
-      { applicantId: applicantOptions[0].id, grantNumber: "", history: [] },
-    ];
-  }
-
   return entries;
 }
 
 function normalizeVisaGrantPayload(data) {
+  const has_australian_visa_grant_number = String(
+    data?.has_australian_visa_grant_number || "no"
+  ).toLowerCase();
+
   return {
-    visa_grant_entries: (data?.visa_grant_entries || []).map((entry) => ({
-      applicantId: entry?.applicantId || "",
-      grantNumber: entry?.grantNumber || "",
-      history: Array.isArray(entry?.history) ? entry.history : [],
-    })),
+    has_australian_visa_grant_number:
+      has_australian_visa_grant_number === "yes" ? "yes" : "no",
+    visa_grant_entries:
+      has_australian_visa_grant_number === "yes"
+        ? (data?.visa_grant_entries || []).map((entry) => ({
+            applicantId: entry?.applicantId || "",
+            grantNumber: entry?.grantNumber || "",
+            history: Array.isArray(entry?.history) ? entry.history : [],
+          }))
+        : [],
   };
 }
 
@@ -534,6 +545,7 @@ export default function Page() {
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      has_australian_visa_grant_number: "no",
       visa_grant_entries: [],
     },
   });
@@ -546,14 +558,22 @@ export default function Page() {
   useEffect(() => {
     const draft = draftSnap.draft;
     const savedData = draft?.temporary_work_visas || {};
-    const opts = buildApplicantOptions(draft);
-    const mainId =
-      draft?.profiles?.find((p) => p.relationship === "main_applicant")?.id || "legacy_main";
+    const hasSavedChoice = String(savedData?.has_australian_visa_grant_number || "").toLowerCase();
+    const visa_grant_entries = normalizeVisaGrantEntries(savedData);
+    const has_australian_visa_grant_number =
+      hasSavedChoice === "yes" || hasSavedChoice === "no"
+        ? hasSavedChoice
+        : visa_grant_entries.length > 0
+          ? "yes"
+          : "no";
 
-    const visa_grant_entries = normalizeVisaGrantEntries(savedData, opts, mainId);
-
-    reset({ visa_grant_entries });
+    reset({
+      has_australian_visa_grant_number,
+      visa_grant_entries,
+    });
   }, [draftSnap.draft?.temporary_work_visas, draftSnap.draft?.profiles, draftSnap.draft?.temporary_work_details, reset]);
+
+  const hasAustralianVisaGrantNumber = watch("has_australian_visa_grant_number");
 
   const onSubmit = async (data) => {
     setIsSaving(true);
@@ -609,80 +629,110 @@ export default function Page() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <div className="space-y-6">
-            {fields.map((field, index) => (
-              <div key={field.id} className="bg-card border border-border rounded-lg p-6 space-y-6 relative group">
-                {fields.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                    title="Delete record"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-                
-                {applicantOptions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Add applicants on the Application Profile page to answer this section.
-                  </p>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Person the visa relates to</Label>
-                      <Select
-                        value={watch(`visa_grant_entries.${index}.applicantId`)}
-                        onValueChange={(val) => setValue(`visa_grant_entries.${index}.applicantId`, val, { shouldDirty: true, shouldValidate: true })}
-                      >
-                        <SelectTrigger data-testid={`select-visa-applicant-${index}`}>
-                          <SelectValue placeholder="Choose applicant" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {applicantOptions.map((a) => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {a.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.visa_grant_entries?.[index]?.applicantId?.message && (
-                        <p className="text-sm text-red-600 mt-1">{errors.visa_grant_entries[index].applicantId.message}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`visa_grant_number-${index}`}>Australian Visa Grant Number</Label>
-                      <Input
-                        id={`visa_grant_number-${index}`}
-                        {...register(`visa_grant_entries.${index}.grantNumber`)}
-                        placeholder="e.g. 1234567890"
-                        data-testid={`input-visa-grant-number-${index}`}
-                      />
-                      {errors.visa_grant_entries?.[index]?.grantNumber?.message && (
-                        <p className="text-sm text-red-600 mt-1">{errors.visa_grant_entries[index].grantNumber.message}</p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-            {errors.visa_grant_entries?.message && (
-              <p className="text-sm text-red-600">{errors.visa_grant_entries.message}</p>
-            )}
-
-            {applicantOptions.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full py-6 border-dashed border-2 hover:bg-slate-50 flex items-center justify-center gap-2 group"
-                onClick={() => append({ applicantId: applicantOptions[0].id, grantNumber: "", history: [] })}
+            <div className="space-y-2">
+              <Label>Do any applicants included in this application have an Australian visa grant number?</Label>
+              <RadioGroup
+                value={hasAustralianVisaGrantNumber}
+                onValueChange={(value) => setValue("has_australian_visa_grant_number", value)}
               >
-                <Plus className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
-                <span className="font-semibold text-gray-600">Add Applicant Visa Record</span>
-                <span className="ml-2 px-2 py-0.5 text-[10px] font-bold text-white bg-[#4F726B] rounded-full uppercase tracking-wider">
-                  New
-                </span>
-              </Button>
+                <div className="flex gap-4">
+                  {["yes", "no"].map((option) => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option} id={`australian-visa-grant-${option}`} data-testid={`radio-australian-visa-grant-${option}`} />
+                      <Label htmlFor={`australian-visa-grant-${option}`}>
+                        {option === "yes" ? "Yes" : "No"}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+              {errors.has_australian_visa_grant_number?.message && (
+                <p className="text-sm text-red-600 mt-1">{errors.has_australian_visa_grant_number.message}</p>
+              )}
+            </div>
+
+            {hasAustralianVisaGrantNumber === "yes" && (
+              <>
+                {fields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="bg-card border border-border rounded-lg p-6 space-y-6 relative group"
+                  >
+                    {fields.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        title="Delete record"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+
+                    {applicantOptions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Add applicants on the Application Profile page to answer this section.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Person the visa relates to</Label>
+                          <Select
+                            value={watch(`visa_grant_entries.${index}.applicantId`)}
+                            onValueChange={(val) => setValue(`visa_grant_entries.${index}.applicantId`, val, { shouldDirty: true, shouldValidate: true })}
+                          >
+                            <SelectTrigger data-testid={`select-visa-applicant-${index}`}>
+                              <SelectValue placeholder="Choose applicant" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {applicantOptions.map((a) => (
+                                <SelectItem key={a.id} value={a.id}>
+                                  {a.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors.visa_grant_entries?.[index]?.applicantId?.message && (
+                            <p className="text-sm text-red-600 mt-1">{errors.visa_grant_entries[index].applicantId.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`visa_grant_number-${index}`}>Australian Visa Grant Number</Label>
+                          <Input
+                            id={`visa_grant_number-${index}`}
+                            {...register(`visa_grant_entries.${index}.grantNumber`)}
+                            placeholder="e.g. 1234567890"
+                            data-testid={`input-visa-grant-number-${index}`}
+                          />
+                          {errors.visa_grant_entries?.[index]?.grantNumber?.message && (
+                            <p className="text-sm text-red-600 mt-1">{errors.visa_grant_entries[index].grantNumber.message}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+
+                {errors.visa_grant_entries?.message && (
+                  <p className="text-sm text-red-600">{errors.visa_grant_entries.message}</p>
+                )}
+
+                {applicantOptions.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full py-6 border-dashed border-2 hover:bg-slate-50 flex items-center justify-center gap-2 group"
+                    onClick={() => append({ applicantId: applicantOptions[0].id, grantNumber: "", history: [] })}
+                  >
+                    <Plus className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+                    <span className="font-semibold text-gray-600">Add Applicant Visa Record</span>
+                    <span className="ml-2 px-2 py-0.5 text-[10px] font-bold text-white bg-[#4F726B] rounded-full uppercase tracking-wider">
+                      New
+                    </span>
+                  </Button>
+                )}
+              </>
             )}
 
             <FormNavigation

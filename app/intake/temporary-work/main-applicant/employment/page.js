@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   "Employed",
@@ -471,10 +472,13 @@ export default function EmploymentPage() {
       : await draftStore.saveSectionData("temporary_work_employment", data);
 
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/employment`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/main-applicant/employment`, null, "temporary_work_employment");
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/employment`)
+        : await draftStore.markPageComplete(`${visaType}/main-applicant/employment`, null, "temporary_work_employment");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

@@ -27,6 +27,7 @@ import { SimplifiedOtherIdentityDialog } from "@/components/intake/temporary-wor
 import { COUNTRIES } from "@/reuseable/countries";
 import { buildPassportNameOptions } from "@/lib/passportNameOptions";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const nationalIdCardSchema = z.object({
   family_name: z.string().optional(),
@@ -94,22 +95,24 @@ const formSchema = z
       path: ["passports"],
     }
   )
-  .refine(
-    (data) => {
-      if (data.has_national_id !== "yes") return true;
-      const n = data.national_id_card || {};
-      return !!(
-        n.family_name?.trim() &&
-        n.given_names?.trim() &&
-        n.identification_number?.trim() &&
-        n.country_of_issue?.trim()
-      );
-    },
-    {
-      message: "Please complete National ID card details",
-      path: ["national_id_card"],
-    }
-  );
+  .superRefine((data, ctx) => {
+    if (data.has_national_id !== "yes") return;
+    const n = data.national_id_card || {};
+    [
+      ["family_name", "Family name is required"],
+      ["given_names", "Given names are required"],
+      ["identification_number", "Identification number is required"],
+      ["country_of_issue", "Country of issue is required"],
+    ].forEach(([field, message]) => {
+      if (!String(n[field] || "").trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message,
+          path: ["national_id_card", field],
+        });
+      }
+    });
+  });
 
 function mapLegacyDocumentTypeToSimplified(t) {
   const lower = String(t || "").toLowerCase();
@@ -309,6 +312,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+  const futureYears = Array.from({ length: 50 }, (_, i) => (currentYear + i).toString());
 
   return (
     <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -602,7 +606,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
                 <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent>
-                {years.map((year) => (
+                {futureYears.map((year) => (
                   <SelectItem key={year} value={year}>{year}</SelectItem>
                 ))}
               </SelectContent>
@@ -788,10 +792,15 @@ export default function ChildProfileIdentityPage() {
       const result = await draftStore.saveProfileSectionData(profileId, "identity", data);
 
       if (result.success) {
-        await draftStore.markProfilePageComplete(
+        const completionResult = await draftStore.markProfilePageComplete(
           profileId,
           `${visaType}/children/${childId}/identity`
         );
+
+        if (!completionResult.success) {
+          showCompletionIssuesToast(toast, completionResult);
+          return;
+        }
 
         const nextRoute = getNextRoute(
           pathname,
@@ -921,9 +930,10 @@ export default function ChildProfileIdentityPage() {
             <RadioGroup
               value={hasNationalId || ""}
               onValueChange={(value) => {
-                form.setValue("has_national_id", value);
+                form.setValue("has_national_id", value, { shouldValidate: true });
                 if (value === "no") {
                   form.setValue("national_id_card", { ...emptyNational }, { shouldValidate: true });
+                  form.clearErrors("national_id_card");
                 }
               }}
               className="flex gap-4"
@@ -953,20 +963,29 @@ export default function ChildProfileIdentityPage() {
                   <div>
                     <Label>Family name</Label>
                     <Input {...form.register("national_id_card.family_name")} />
+                    {form.formState.errors.national_id_card?.family_name && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.family_name.message}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Given names</Label>
                     <Input {...form.register("national_id_card.given_names")} />
+                    {form.formState.errors.national_id_card?.given_names && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.given_names.message}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Identification number</Label>
                     <Input {...form.register("national_id_card.identification_number")} />
+                    {form.formState.errors.national_id_card?.identification_number && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.identification_number.message}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Country of issue</Label>
                     <Select
                       value={form.watch("national_id_card.country_of_issue") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.country_of_issue", v)}
+                      onValueChange={(v) => form.setValue("national_id_card.country_of_issue", v, { shouldValidate: true })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose Country" />
@@ -977,6 +996,9 @@ export default function ChildProfileIdentityPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {form.formState.errors.national_id_card?.country_of_issue && (
+                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.country_of_issue.message}</p>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -1031,9 +1053,6 @@ export default function ChildProfileIdentityPage() {
                     </Select>
                   </div>
                 </div>
-                {form.formState.errors.national_id_card && (
-                  <p className="text-sm text-red-600">{form.formState.errors.national_id_card.message}</p>
-                )}
               </div>
             )}
           </div>

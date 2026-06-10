@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const formSchema = z.object({
   // Question 1: Other Names
@@ -499,10 +500,13 @@ export default function Page() {
       : await draftStore.saveSectionData("temporary_work_other", sanitizedData);
 
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/other`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/main-applicant/other`, null, "temporary_work_other");
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/other`)
+        : await draftStore.markPageComplete(`${visaType}/main-applicant/other`, null, "temporary_work_other");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

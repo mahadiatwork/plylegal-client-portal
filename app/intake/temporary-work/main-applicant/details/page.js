@@ -21,6 +21,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { CitizenshipDialog, citizenshipRowSchema } from "@/components/intake/temporary-work/CitizenshipDialog";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const formSchema = z.object({
   is_main_applicant: z.enum(["yes", "no"]),
@@ -263,13 +264,20 @@ export default function Page() {
       let result;
       if (profileId) {
         result = await draftStore.saveProfileSectionData(profileId, "details", data);
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
       } else {
         result = await draftStore.saveSectionData("temporary_work_details", data);
-        await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
       }
 
       if (result.success) {
+        const completionResult = profileId
+          ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`)
+          : await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+
+        if (!completionResult.success) {
+          showCompletionIssuesToast(toast, completionResult);
+          return;
+        }
+
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         if (next) {
           startNavigation(next);

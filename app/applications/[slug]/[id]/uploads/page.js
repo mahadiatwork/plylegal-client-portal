@@ -30,6 +30,29 @@ import {
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
+function getMatterDocumentName(doc = {}) {
+  const idSuffix = doc.id ? String(doc.id).slice(-6) : 'Unknown';
+  return doc.Name ||
+    doc.Matter_Document_Name ||
+    doc.Document_Name ||
+    doc.File_Name ||
+    doc.matter_document_name ||
+    doc.document_name ||
+    doc.file_name ||
+    doc.name ||
+    `Document ${idSuffix}`;
+}
+
+function getMatterDocumentComment(doc = {}) {
+  return doc.Decline_Reason ||
+    doc.Comments ||
+    doc.Rejection_Comments ||
+    doc.comments ||
+    doc.rejection_comments ||
+    doc.decline_reason ||
+    '';
+}
+
 export default function UploadsPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -323,6 +346,55 @@ export default function UploadsPage() {
     return true;
   };
 
+  const renderUploadButton = (doc, status) => {
+    const uploadAllowed = canUpload(status);
+
+    return uploadAllowed ? (
+      <button
+        type="button"
+        onClick={() => handleOpenDialog(doc)}
+        className="inline-flex items-center justify-center gap-1 rounded-md border border-[#4F726B] px-3 py-1.5 text-xs font-medium text-[#4F726B] transition hover:bg-[#4F726B] hover:text-white"
+      >
+        <UploadIcon className="w-3 h-3" />
+        Upload
+      </button>
+    ) : (
+      <button
+        type="button"
+        disabled
+        className="inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-400 opacity-50"
+      >
+        <UploadIcon className="w-3 h-3" />
+        Upload
+      </button>
+    );
+  };
+
+  const renderMobileDocumentCard = (doc, statusFallback = 'Not Submitted Yet') => {
+    const status = doc.Document_Status || statusFallback;
+    const documentName = getMatterDocumentName(doc);
+    const comment = getMatterDocumentComment(doc);
+
+    return (
+      <div key={doc.id || documentName} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="flex items-start gap-3">
+          <FileText className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+          <div className="min-w-0 flex-1">
+            <div className="break-words text-sm font-medium text-gray-800">{documentName}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {getStatusBadge(status)}
+              {renderUploadButton(doc, status)}
+            </div>
+            <div className="mt-3 text-xs font-medium uppercase text-gray-500">Comments</div>
+            <div className="mt-1 break-words text-sm text-gray-700">
+              {comment || <span className="text-xs text-gray-400">No comments</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Organize documents by categories from documents_json
   // IMPORTANT: All document data (names, status, comments) comes from Zoho Matter Documents
   // JSON is ONLY used for categorization and ordering
@@ -571,7 +643,10 @@ export default function UploadsPage() {
                         {/* Category Content */}
                         <CollapsibleContent>
                           <div className="p-4">
-                            <div className="overflow-x-auto">
+                            <div className="space-y-3 lg:hidden">
+                              {category.documents.map((doc) => renderMobileDocumentCard(doc, 'Not Submitted Yet'))}
+                            </div>
+                            <div className="hidden overflow-x-auto lg:block">
                               <table className="w-full table-fixed">
                                 <colgroup>
                                   <col className="w-[40%]" />
@@ -591,19 +666,9 @@ export default function UploadsPage() {
                                   {category.documents.map((doc, index) => {
                                     // ALL data comes from Zoho document - never from JSON
                                     // Use "Name" key as primary source, then fallback to other Zoho fields
-                                    const documentName = doc.Name || 
-                                      doc.Matter_Document_Name || 
-                                      doc.Document_Name || 
-                                      doc.File_Name || 
-                                      doc.matter_document_name ||
-                                      doc.document_name ||
-                                      doc.file_name ||
-                                      doc.name ||
-                                      `Document ${doc.id?.slice(-6) || 'Unknown'}`;
-                                    
+                                    const documentName = getMatterDocumentName(doc);
                                     const status = doc.Document_Status || 'Not Submitted Yet';
-                                    const uploadAllowed = canUpload(status);
-                                    const comment = doc.Decline_Reason || doc.Comments || doc.Rejection_Comments || doc.comments || doc.rejection_comments || doc.decline_reason || '';
+                                    const comment = getMatterDocumentComment(doc);
                                     
                                     return (
                                       <tr key={doc.id || index} className="hover:bg-gray-50 transition-colors">
@@ -628,23 +693,7 @@ export default function UploadsPage() {
                                           )}
                                         </td>
                                         <td className="py-3 px-4 text-right">
-                                          {uploadAllowed ? (
-                                            <button 
-                                              onClick={() => handleOpenDialog(doc)}
-                                              className="px-3 py-1.5 border border-[#4F726B] text-[#4F726B] rounded-md text-xs font-medium hover:bg-[#4F726B] hover:text-white transition whitespace-nowrap"
-                                            >
-                                              <UploadIcon className="w-3 h-3 inline mr-1" />
-                                              Upload
-                                            </button>
-                                          ) : (
-                                            <button 
-                                              disabled
-                                              className="px-3 py-1.5 border border-gray-300 text-gray-400 rounded-md text-xs font-medium cursor-not-allowed opacity-50 whitespace-nowrap"
-                                            >
-                                              <UploadIcon className="w-3 h-3 inline mr-1" />
-                                              Upload
-                                            </button>
-                                          )}
+                                          {renderUploadButton(doc, status)}
                                         </td>
                                       </tr>
                                     );
@@ -674,7 +723,10 @@ export default function UploadsPage() {
 
                       <CollapsibleContent>
                         <div className="p-4">
-                          <div className="overflow-x-auto">
+                          <div className="space-y-3 lg:hidden">
+                            {organizedDocuments.uncategorized.map((doc) => renderMobileDocumentCard(doc, 'Pending'))}
+                          </div>
+                          <div className="hidden overflow-x-auto lg:block">
                             <table className="w-full table-fixed">
                               <colgroup>
                                 <col className="w-[40%]" />
@@ -694,17 +746,8 @@ export default function UploadsPage() {
                                 {organizedDocuments.uncategorized.map((doc) => {
                                   const status = doc.Document_Status || 'Pending';
                                   // Use "Name" key as primary source, then fallback to other fields
-                                  const documentName = doc.Name || 
-                                                     doc.Matter_Document_Name || 
-                                                     doc.Document_Name || 
-                                                     doc.File_Name || 
-                                                     doc.matter_document_name ||
-                                                     doc.document_name ||
-                                                     doc.file_name ||
-                                                     doc.name ||
-                                                     `Document ${doc.id?.slice(-6) || 'Unknown'}`;
-                                  const uploadAllowed = canUpload(status);
-                                  const comment = doc.Decline_Reason || doc.Comments || doc.Rejection_Comments || doc.comments || doc.rejection_comments || doc.decline_reason || '';
+                                  const documentName = getMatterDocumentName(doc);
+                                  const comment = getMatterDocumentComment(doc);
                                   
                                   return (
                                     <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
@@ -729,23 +772,7 @@ export default function UploadsPage() {
                                         )}
                                       </td>
                                       <td className="py-3 px-4 text-right">
-                                        {uploadAllowed ? (
-                                          <button 
-                                            onClick={() => handleOpenDialog(doc)}
-                                            className="px-3 py-1.5 border border-[#4F726B] text-[#4F726B] rounded-md text-xs font-medium hover:bg-[#4F726B] hover:text-white transition whitespace-nowrap"
-                                          >
-                                            <UploadIcon className="w-3 h-3 inline mr-1" />
-                                            Upload
-                                          </button>
-                                        ) : (
-                                          <button 
-                                            disabled
-                                            className="px-3 py-1.5 border border-gray-300 text-gray-400 rounded-md text-xs font-medium cursor-not-allowed opacity-50 whitespace-nowrap"
-                                          >
-                                            <UploadIcon className="w-3 h-3 inline mr-1" />
-                                            Upload
-                                          </button>
-                                        )}
+                                        {renderUploadButton(doc, status)}
                                       </td>
                                     </tr>
                                   );

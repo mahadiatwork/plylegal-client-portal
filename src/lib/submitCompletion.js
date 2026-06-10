@@ -54,6 +54,37 @@ const LEGACY_TEMPORARY_WORK_SECTION_KEYS = {
 };
 
 const EMPLOYED_STATUSES = new Set(["employed", "self-employed"]);
+const STRICT_TEMPORARY_WORK_CONTEXTS = new Set(["186", "482"]);
+
+const TEMPORARY_WORK_SECTION_BY_ROUTE = {
+  details: "details",
+  other: "other",
+  "other-details": "other",
+  identity: "identity",
+  "contact-details": "contact_details",
+  employment: "employment",
+  education: "education",
+  skills: "skills",
+  language: "language",
+  custody: "custody",
+};
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function hasText(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
@@ -97,6 +128,257 @@ function addValidationIssue(items, itemSet, label) {
   if (!label || itemSet.has(label)) return;
   itemSet.add(label);
   items.push(label);
+}
+
+function getStrictTemporaryWorkContext(visaContext, draft) {
+  const context = visaContext ?? draft?.visaContext ?? null;
+  return STRICT_TEMPORARY_WORK_CONTEXTS.has(context) ? context : null;
+}
+
+function normalizeTemporaryWorkPageKey(pageKey) {
+  const rawKey = String(pageKey || "").split("__")[0];
+  if (!rawKey) return "";
+  if (rawKey.startsWith("/intake/temporary-work/")) {
+    return rawKey.replace("/intake/", "");
+  }
+  return rawKey.replace(/^\/+/, "");
+}
+
+function parseTemporaryWorkPageKey(pageKey) {
+  const key = normalizeTemporaryWorkPageKey(pageKey);
+  if (!key.startsWith("temporary-work/")) return null;
+
+  const parts = key.split("/");
+  if (parts[1] === "main-applicant") {
+    return {
+      applicantType: "main_applicant",
+      sectionName: TEMPORARY_WORK_SECTION_BY_ROUTE[parts[2]],
+      routeKey: key,
+    };
+  }
+
+  if (parts[1] === "spouse-partner") {
+    return {
+      applicantType: "spouse",
+      sectionName: TEMPORARY_WORK_SECTION_BY_ROUTE[parts[2]],
+      routeKey: key,
+    };
+  }
+
+  if (parts[1] === "children") {
+    return {
+      applicantType: "child",
+      childId: parts[2],
+      sectionName: TEMPORARY_WORK_SECTION_BY_ROUTE[parts[3]],
+      routeKey: key,
+    };
+  }
+
+  if (parts[1] === "all-applicants" && parts[2] === "countries-of-residence") {
+    return {
+      applicantType: "all_applicants",
+      sectionName: "countries_of_residence",
+      routeKey: key,
+    };
+  }
+
+  return null;
+}
+
+function getProfileIdFromPageKey(pageKey) {
+  const profileId = String(pageKey || "").split("__")[1];
+  return profileId || null;
+}
+
+function getProfileForTemporaryWorkPage(draft, parsed, profileId) {
+  const profiles = Array.isArray(draft?.profiles) ? draft.profiles : [];
+  const resolvedId = profileId || parsed?.childId || null;
+  const matchById = resolvedId
+    ? profiles.find((profile) => String(profile?.id) === String(resolvedId))
+    : null;
+  if (matchById) return matchById;
+
+  const matchByRelationship = profiles.find((profile) => profile?.relationship === parsed?.applicantType);
+  if (matchByRelationship) return matchByRelationship;
+
+  return {
+    id: resolvedId,
+    relationship: parsed?.applicantType,
+  };
+}
+
+function collectValidationIssues(runValidation) {
+  const issues = [];
+  const issueSet = new Set();
+  const addIssue = (label) => addValidationIssue(issues, issueSet, label);
+  runValidation(addIssue);
+  return issues;
+}
+
+function todayOnly() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function addYears(date, years) {
+  const next = new Date(date);
+  next.setFullYear(next.getFullYear() + years);
+  return next;
+}
+
+function formatCoverageDate(date) {
+  return `${String(date.getDate()).padStart(2, "0")} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function monthIndex(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return -1;
+  if (/^\d+$/.test(raw)) {
+    const month = Number.parseInt(raw, 10);
+    return month >= 1 && month <= 12 ? month - 1 : -1;
+  }
+  return MONTH_NAMES.findIndex((month) => month.toLowerCase() === raw.toLowerCase());
+}
+
+function parseResidenceDate(day, month, year) {
+  const parsedDay = Number.parseInt(String(day || ""), 10);
+  const parsedYear = Number.parseInt(String(year || ""), 10);
+  const parsedMonth = monthIndex(month);
+  if (!parsedDay || parsedMonth < 0 || !parsedYear) return null;
+
+  const date = new Date(parsedYear, parsedMonth, parsedDay);
+  if (
+    date.getFullYear() !== parsedYear ||
+    date.getMonth() !== parsedMonth ||
+    date.getDate() !== parsedDay
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function rowBelongsToApplicant(row, applicant) {
+  const saved = String(row?.applicant_name || "").trim();
+  if (!saved) return false;
+  return [applicant.value, applicant.label, applicant.id].filter(Boolean).some((token) => saved === token);
+}
+
+function applicantCoverageStart(applicant, today) {
+  const tenYearsAgo = new Date(today);
+  tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+
+  const dob = parseResidenceDate(applicant.birth_day, applicant.birth_month, applicant.birth_year);
+  if (!dob) return tenYearsAgo;
+
+  const sixteenthBirthday = addYears(dob, 16);
+  return sixteenthBirthday > tenYearsAgo ? sixteenthBirthday : tenYearsAgo;
+}
+
+function parseResidenceInterval(row, today) {
+  const start = parseResidenceDate(row.date_from_day, row.date_from_month, row.date_from_year);
+  if (!start) return { error: "Date From is incomplete or invalid." };
+
+  const toValues = [row.date_to_day, row.date_to_month, row.date_to_year].map((value) => String(value || "").trim());
+  const filledToValues = toValues.filter(Boolean).length;
+  let end = today;
+
+  if (filledToValues > 0 && filledToValues < 3) {
+    return { error: "Date To is incomplete." };
+  }
+
+  if (filledToValues === 3) {
+    end = parseResidenceDate(row.date_to_day, row.date_to_month, row.date_to_year);
+    if (!end) return { error: "Date To is invalid." };
+  }
+
+  if (end < start) {
+    return { error: "Date To cannot be before Date From." };
+  }
+
+  return { start, end };
+}
+
+function getResidenceApplicants(draft) {
+  return (draft?.profiles || []).map((profile) => {
+    const fullName = [profile?.given_names, profile?.family_name].filter(Boolean).join(" ").trim();
+    const label = fullName || "Unnamed";
+    return {
+      label,
+      value: label,
+      id: profile?.id,
+      birth_day: profile?.birth_day || "",
+      birth_month: profile?.birth_month || "",
+      birth_year: profile?.birth_year || "",
+    };
+  });
+}
+
+export function getResidenceCoverageIssues(records, applicants) {
+  if (!Array.isArray(applicants) || applicants.length === 0) return [];
+
+  const today = todayOnly();
+  const issues = [];
+
+  applicants.forEach((applicant) => {
+    const requiredStart = applicantCoverageStart(applicant, today);
+    if (requiredStart > today) return;
+
+    const intervals = [];
+    const applicantRows = (records || []).filter((row) => rowBelongsToApplicant(row, applicant));
+
+    applicantRows.forEach((row) => {
+      const parsed = parseResidenceInterval(row, today);
+      if (parsed.error) {
+        issues.push(`${applicant.label}: ${parsed.error}`);
+        return;
+      }
+      if (parsed.end < requiredStart || parsed.start > today) return;
+      intervals.push({
+        start: parsed.start < requiredStart ? requiredStart : parsed.start,
+        end: parsed.end > today ? today : parsed.end,
+      });
+    });
+
+    if (!intervals.length) {
+      issues.push(`${applicant.label}: add residence records from ${formatCoverageDate(requiredStart)} to today.`);
+      return;
+    }
+
+    intervals.sort((a, b) => a.start.getTime() - b.start.getTime());
+    let coveredEnd = null;
+
+    intervals.forEach((interval) => {
+      if (!coveredEnd) {
+        if (interval.start > requiredStart) {
+          issues.push(`${applicant.label}: coverage must start by ${formatCoverageDate(requiredStart)}.`);
+        }
+        coveredEnd = interval.end;
+        return;
+      }
+
+      if (interval.start.getTime() > coveredEnd.getTime() + MS_PER_DAY) {
+        issues.push(
+          `${applicant.label}: gap between ${formatCoverageDate(addDays(coveredEnd, 1))} and ${formatCoverageDate(addDays(interval.start, -1))}.`
+        );
+      }
+
+      if (interval.end > coveredEnd) {
+        coveredEnd = interval.end;
+      }
+    });
+
+    if (coveredEnd && coveredEnd < today) {
+      issues.push(`${applicant.label}: coverage must continue through today.`);
+    }
+  });
+
+  return issues;
 }
 
 function getTemporaryWorkSection(draft, profile, sectionName) {
@@ -401,39 +683,220 @@ function validateLanguageSection(section, label, addIssue) {
   }
 }
 
-function appendTemporaryWorkValidationIssues(items, draft, visaContext) {
-  const itemSet = new Set(items);
-  const addIssue = (label) => addValidationIssue(items, itemSet, label);
+function validateIdentitySection(section, label, addIssue) {
+  if (!hasAnswer(section?.has_passport)) {
+    addIssue(`${label}: Passport question`);
+  } else if (
+    isYes(section.has_passport) &&
+    !allRowsHaveFields(section?.passports, [
+      "document_type",
+      "document_number",
+      "passport_country",
+      "place_of_issue",
+      "nationality",
+      "gender",
+      "name",
+      "date_issued_day",
+      "date_issued_month",
+      "date_issued_year",
+      "document_status",
+    ], (row) => {
+      if (row?.document_status === "Current") {
+        return hasCompleteDate(row, ["date_expiry_day", "date_expiry_month", "date_expiry_year"]);
+      }
+      return true;
+    })
+  ) {
+    addIssue(`${label}: Passport/travel document details`);
+  }
+
+  if (!hasAnswer(section?.has_national_id)) {
+    addIssue(`${label}: National ID question`);
+  } else if (isYes(section.has_national_id)) {
+    const nationalId = section?.national_id_card || {};
+    if (!hasText(nationalId.family_name)) addIssue(`${label}: National ID family name`);
+    if (!hasText(nationalId.given_names)) addIssue(`${label}: National ID given names`);
+    if (!hasText(nationalId.identification_number)) addIssue(`${label}: National ID number`);
+    if (!hasText(nationalId.country_of_issue)) addIssue(`${label}: National ID country of issue`);
+  }
+
+  if (
+    hasRows(section?.other_identity_documents) &&
+    !section.other_identity_documents.every((row) =>
+      rowHasFields(row, ["family_name", "given_names", "document_type", "identification_number", "country_of_issue"])
+    )
+  ) {
+    addIssue(`${label}: Other identity document details`);
+  }
+}
+
+function hasBooleanAnswer(value) {
+  return value === true || value === false || hasAnswer(value);
+}
+
+function isAffirmative(value) {
+  return value === true || isYes(value);
+}
+
+function isNegative(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return value === false || normalized === "no";
+}
+
+function validateCustodySection(section, label, addIssue) {
+  if (!hasBooleanAnswer(section?.under_18)) {
+    addIssue(`${label}: Under 18 question`);
+    return;
+  }
+
+  if (!isAffirmative(section?.under_18)) return;
+
+  if (!section?.primary_custody || !hasBooleanAnswer(section.primary_custody.has)) {
+    addIssue(`${label}: Primary custody question`);
+  } else if (isNegative(section.primary_custody.has) && !hasText(section.primary_custody.details)) {
+    addIssue(`${label}: Primary custody details`);
+  }
+
+  if (!section?.other_person_rights || !hasBooleanAnswer(section.other_person_rights.has)) {
+    addIssue(`${label}: Other person rights question`);
+  } else if (isAffirmative(section.other_person_rights.has) && !hasText(section.other_person_rights.details)) {
+    addIssue(`${label}: Other person rights details`);
+  }
+
+  if (!section?.travel_impediments || !hasBooleanAnswer(section.travel_impediments.has)) {
+    addIssue(`${label}: Travel impediments question`);
+  } else if (isAffirmative(section.travel_impediments.has) && !hasText(section.travel_impediments.details)) {
+    addIssue(`${label}: Travel impediments details`);
+  }
+}
+
+function validateCountriesOfResidenceSection(section, draft, addIssue) {
+  const records = Array.isArray(section?.residence_records) ? section.residence_records : [];
+  const applicants = getResidenceApplicants(draft);
+  const issues = getResidenceCoverageIssues(records, applicants);
+  issues.forEach((issue) => addIssue(`All Applicants: Countries of Residence - ${issue}`));
+}
+
+function validateTemporaryWorkProfileSection({ draft, visaContext, parsed, profileId, addIssue }) {
+  const profile = getProfileForTemporaryWorkPage(draft, parsed, profileId);
+  if (!profile?.relationship || !parsed?.sectionName) return false;
+
+  const label = getProfileDisplayName(profile);
+  const section = getTemporaryWorkSection(draft, profile, parsed.sectionName);
+
+  switch (parsed.sectionName) {
+    case "details":
+      validateDetailsSection(section, label, addIssue);
+      return true;
+    case "other":
+      validateOtherNamesSection(section, label, addIssue, {
+        hasChineseCodeQuestion: profile.relationship === "spouse",
+        hasRussianDescentQuestion: false,
+        hasPreviousDobQuestion: false,
+      });
+      return true;
+    case "identity":
+      validateIdentitySection(section, label, addIssue);
+      return true;
+    case "contact_details":
+      validateContactSection(section, label, addIssue);
+      return true;
+    case "employment":
+      validateEmploymentSection(section, label, visaContext, addIssue);
+      return true;
+    case "education":
+      validateEducationSection(section, label, addIssue);
+      return true;
+    case "skills":
+      validateSkillsSection(section, label, addIssue);
+      return true;
+    case "language":
+      validateLanguageSection(section, label, addIssue);
+      return true;
+    case "custody":
+      validateCustodySection(section, label, addIssue);
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function validateTemporaryWorkSectionCompletion({
+  draft = {},
+  visaContext = null,
+  pageKey = "",
+  profileId = null,
+} = {}) {
+  const strictContext = getStrictTemporaryWorkContext(visaContext, draft);
+  const parsed = parseTemporaryWorkPageKey(pageKey);
+
+  if (!strictContext || !parsed?.sectionName) {
+    return { applicable: false, complete: true, issues: [] };
+  }
+
+  const issues = collectValidationIssues((addIssue) => {
+    if (parsed.sectionName === "countries_of_residence") {
+      validateCountriesOfResidenceSection(draft?.temporary_work_countries_of_residence || {}, draft, addIssue);
+      return;
+    }
+
+    validateTemporaryWorkProfileSection({
+      draft,
+      visaContext: strictContext,
+      parsed,
+      profileId: profileId || getProfileIdFromPageKey(pageKey),
+      addIssue,
+    });
+  });
+
+  return {
+    applicable: true,
+    complete: issues.length === 0,
+    issues,
+  };
+}
+
+function getTemporaryWorkValidationPageKeys(draft, visaContext) {
   const profiles = getSortedProfiles(draft?.profiles || []);
+  const pageKeys = [];
 
   profiles.forEach((profile) => {
     if (!profile?.id) return;
 
-    const label = getProfileDisplayName(profile);
-
-    validateDetailsSection(getTemporaryWorkSection(draft, profile, "details"), label, addIssue);
-    validateOtherNamesSection(
-      getTemporaryWorkSection(draft, profile, "other"),
-      label,
-      addIssue,
-      {
-        hasChineseCodeQuestion: profile.relationship === "spouse",
-        hasRussianDescentQuestion: false,
-        hasPreviousDobQuestion: false,
-      }
-    );
-
-    if (profile.relationship === "main_applicant") {
-      validateContactSection(getTemporaryWorkSection(draft, profile, "contact_details"), label, addIssue);
-      validateEmploymentSection(getTemporaryWorkSection(draft, profile, "employment"), label, visaContext, addIssue);
-      validateEducationSection(getTemporaryWorkSection(draft, profile, "education"), label, addIssue);
-      validateSkillsSection(getTemporaryWorkSection(draft, profile, "skills"), label, addIssue);
-      validateLanguageSection(getTemporaryWorkSection(draft, profile, "language"), label, addIssue);
+    if (profile.relationship === "child") {
+      TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.forEach((subpage) => {
+        pageKeys.push(`temporary-work/children/${profile.id}/${subpage.pathSuffix}__${profile.id}`);
+      });
+      return;
     }
 
-    if (profile.relationship === "spouse" && visaContext === "186") {
-      validateLanguageSection(getTemporaryWorkSection(draft, profile, "language"), label, addIssue);
-    }
+    const subpages =
+      profile.relationship === "spouse"
+        ? visaContext === "186"
+          ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES
+          : TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES
+        : PROFILE_SUBPAGES;
+
+    subpages.forEach((subpage) => {
+      const suffix = subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1];
+      const routePrefix = profile.relationship === "spouse" ? "spouse-partner" : "main-applicant";
+      pageKeys.push(`temporary-work/${routePrefix}/${suffix}__${profile.id}`);
+    });
+  });
+
+  pageKeys.push("temporary-work/all-applicants/countries-of-residence");
+
+  return pageKeys;
+}
+
+function appendTemporaryWorkValidationIssues(items, draft, visaContext) {
+  const itemSet = new Set(items);
+  const addIssue = (label) => addValidationIssue(items, itemSet, label);
+
+  getTemporaryWorkValidationPageKeys(draft, visaContext).forEach((pageKey) => {
+    const result = validateTemporaryWorkSectionCompletion({ draft, visaContext, pageKey });
+    if (!result.applicable || result.complete) return;
+    result.issues.forEach(addIssue);
   });
 }
 
@@ -452,6 +915,10 @@ export function getIncompleteChecklist({
       ? key.split("__")[0]
       : null;
     if (completion[key] === true) return;
+    if (Object.prototype.hasOwnProperty.call(completion, key)) {
+      items.push(label);
+      return;
+    }
     if (legacyPerMemberKey && completion[legacyPerMemberKey] === true) return;
     items.push(label);
   };

@@ -23,6 +23,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -416,7 +417,12 @@ export default function ChildOtherNamesPage() {
   const onSubmit = async (data) => {
     const result = await draftStore.saveProfileSectionData(profileId, "other", data);
     if (result.success) {
-      await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/other`);
+      const completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/other`);
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
+      }
+
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
       if (next) router.push(next);

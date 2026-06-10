@@ -19,6 +19,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const PROFICIENCY_LEVELS = ["Basic", "Intermediate", "Proficient", "Fluent/Native"];
 const TEST_TYPES = ["IELTS Academic", "IELTS General", "PTE Academic", "TOEFL iBT", "OET", "Other"];
@@ -425,10 +426,13 @@ export default function LanguagePage() {
       : await draftStore.saveSectionData("temporary_work_language", data);
 
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/language`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/main-applicant/language`, null, "temporary_work_language");
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/language`)
+        : await draftStore.markPageComplete(`${visaType}/main-applicant/language`, null, "temporary_work_language");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);

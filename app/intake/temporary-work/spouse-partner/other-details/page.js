@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -388,10 +389,13 @@ export default function Page() {
       : await draftStore.saveSectionData("temporary_work_spouse_other", data);
 
     if (result.success) {
-      if (profileId) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
-      } else {
-        await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`, null, "temporary_work_spouse_other");
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`)
+        : await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`, null, "temporary_work_spouse_other");
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
       }
 
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
