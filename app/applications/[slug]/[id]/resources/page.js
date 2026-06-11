@@ -101,8 +101,8 @@ function CategoryIcon({ icon }) {
   const Icon = CATEGORY_ICONS[icon] || Folder;
 
   return (
-    <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#EEF7F2] text-[#255E4A]">
-      <Icon className="h-5 w-5" />
+    <span className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[#EEF7F2] text-[#255E4A]">
+      <Icon className="h-4 w-4" />
     </span>
   );
 }
@@ -136,9 +136,9 @@ function ResourceTemplateItem({ item }) {
   ].filter(Boolean).join(" | ");
 
   return (
-    <article className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 gap-3">
-        <span className="mt-0.5 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#F4F8F6] text-[#4F726B]">
+    <article className="flex flex-col gap-3 rounded-md border border-[#DFE9E3] bg-[#F8FBF6] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-1 gap-3">
+        <span className="mt-0.5 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-[#D7E3DD] bg-white text-[#4F726B]">
           <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -155,7 +155,7 @@ function ResourceTemplateItem({ item }) {
           href={item.externalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-10 flex-shrink-0 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
+          className="inline-flex h-9 flex-shrink-0 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] bg-white px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
           data-testid={getResourceTestId(item.name)}
         >
           <ExternalLink className="h-4 w-4" />
@@ -322,30 +322,20 @@ export default function ResourcesPage() {
                   </CardHeader>
                 </Card>
               ) : (
-                <div className="space-y-5">
-                  {template?.title && (
-                    <div>
-                      <h2 className="font-serif text-2xl font-semibold">{template.title}</h2>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Resources selected for this visa type.
-                      </p>
-                    </div>
-                  )}
+                <div className="space-y-8">
                   {groupedResources.map((category) => (
-                    <section key={category.name} className="overflow-hidden rounded-lg border bg-white shadow-sm">
-                      <div className="border-b px-5 py-4">
-                        <div className="flex items-center gap-3">
+                    <section key={category.name}>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
                           <CategoryIcon icon={category.icon} />
-                          <div className="min-w-0">
-                            <h2 className="truncate font-serif text-xl font-semibold text-gray-900">{category.name}</h2>
-                            <p className="text-sm text-muted-foreground">
-                              {category.items.length} {category.items.length === 1 ? "resource" : "resources"}
-                            </p>
-                          </div>
+                          <h2 className="truncate font-serif text-xl font-semibold text-gray-900">{category.name}</h2>
                         </div>
+                        <span className="inline-flex h-7 items-center rounded-full bg-[#EEF7F2] px-3 text-xs font-semibold text-[#255E4A]">
+                          {category.items.length} {category.items.length === 1 ? "resource" : "resources"}
+                        </span>
                       </div>
 
-                      <div className="divide-y">
+                      <div className="mt-3 space-y-2 border-t border-[#DDE7E1] pt-3">
                         {category.items.map((item) => (
                           <ResourceTemplateItem key={item.id} item={item} />
                         ))}
