@@ -64,7 +64,7 @@ export const PARTNER_VISA_ROUTES = [
       { href: "/intake/partner/all-applicants/contacts", title: "Contacts" },
     ],
   },
-  { href: "/intake/partner/submit", title: "Submit" },
+  { href: "/intake/partner/submit", title: "Review and Submit" },
 ];
 
 // Protection Visa Routes
@@ -107,7 +107,7 @@ export const PROTECTION_VISA_ROUTES = [
       { href: "/intake/protection/all-applicants/contacts", title: "Contacts" },
     ],
   },
-  { href: "/intake/protection/submit", title: "Submit" },
+  { href: "/intake/protection/submit", title: "Review and Submit" },
 ];
 
 // Skills in Demand (subclass 482) — intake routes under /intake/temporary-work/
@@ -149,7 +149,7 @@ export const TEMPORARY_WORK_VISA_ROUTES = [
       { href: "/intake/temporary-work/all-applicants/character", title: "Character" },
     ],
   },
-  { href: "/intake/temporary-work/submit", title: "Submit" },
+  { href: "/intake/temporary-work/submit", title: "Review and Submit" },
 ];
 
 // Employer Nomination Visa (subclass 186) — same pages, but spouse gets Language
@@ -191,7 +191,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
       { href: "/intake/temporary-work/all-applicants/character", title: "Character" },
     ],
   },
-  { href: "/intake/temporary-work/submit", title: "Submit" },
+  { href: "/intake/temporary-work/submit", title: "Review and Submit" },
 ];
 
 // Per-profile sub-pages (shared definition used by sidebar + routing)

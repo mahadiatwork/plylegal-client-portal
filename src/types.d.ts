@@ -317,6 +317,27 @@ export type Resource = {
   url?: string;
 };
 
+export type ResourceTemplateItemKind = "folder" | "file" | "link";
+
+export type ResourceTemplateItem = {
+  id: string;
+  parentId: string | null;
+  kind: ResourceTemplateItemKind;
+  name: string;
+  order: number;
+  externalUrl: string | null;
+  workdriveId: string | null;
+  mimeType: string | null;
+  size: number | null;
+};
+
+export type ResourceTemplate = {
+  visaSlug: string;
+  title: string;
+  status: "active" | "draft" | "archived";
+  updatedAt: string | null;
+};
+
 export type Message = {
   id: string;
   from: "client" | "plylegal";

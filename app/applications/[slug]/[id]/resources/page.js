@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -11,183 +11,118 @@ import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/firebase";
 import {
-  BookOpen,
-  ClipboardCheck,
+  ChevronDown,
+  ChevronRight,
   ExternalLink,
+  File,
   FileText,
+  Folder,
   Link as LinkIcon,
-  ShieldCheck,
-  StickyNote,
-  Video,
 } from "lucide-react";
 
-const RESOURCE_SECTION_ORDER = ["documents", "health", "lodgement", "guides"];
+function buildTree(items) {
+  const map = {};
+  const roots = [];
 
-const RESOURCE_SECTIONS = {
-  documents: {
-    label: "Documents & Evidence",
-    icon: FileText,
-  },
-  health: {
-    label: "Health & Police Checks",
-    icon: ShieldCheck,
-  },
-  lodgement: {
-    label: "Lodgement & Status",
-    icon: ClipboardCheck,
-  },
-  guides: {
-    label: "Other Guides",
-    icon: BookOpen,
-  },
-};
+  items.forEach((item) => {
+    map[item.id] = { ...item, children: [] };
+  });
 
-function getResourceIcon(type) {
-  if (type === "document" || type === "file") return FileText;
-  if (type === "guide") return BookOpen;
-  if (type === "video") return Video;
-  if (type === "note") return StickyNote;
+  items.forEach((item) => {
+    const node = map[item.id];
+    if (item.parentId && map[item.parentId]) {
+      map[item.parentId].children.push(node);
+    } else if (!item.parentId) {
+      roots.push(node);
+    }
+  });
+
+  return roots;
+}
+
+function getItemIcon(kind) {
+  if (kind === "folder") return Folder;
+  if (kind === "file") return FileText;
   return LinkIcon;
 }
 
-function getResourceTypeLabel(type) {
-  if (!type) return "Resource";
-  return type.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-}
+function TreeNode({ node, depth = 0 }) {
+  const [expanded, setExpanded] = useState(depth === 0);
+  const isFolder = node.kind === "folder";
+  const Icon = getItemIcon(node.kind);
+  const hasExternalUrl = Boolean(node.externalUrl);
 
-function normalizeSectionKey(value) {
-  const text = String(value || "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .trim();
-
-  if (!text) return "";
-  if (text.includes("document") || text.includes("evidence")) return "documents";
-  if (text.includes("health") || text.includes("police")) return "health";
-  if (text.includes("lodgement") || text.includes("status")) return "lodgement";
-  if (text.includes("guide")) return "guides";
-  return "";
-}
-
-function getResourceSectionKey(resource) {
-  const explicit = normalizeSectionKey(resource.category);
-  if (explicit) return explicit;
-
-  const text = `${resource.title} ${resource.description} ${resource.noteText}`.toLowerCase();
-
-  if (text.includes("relationship evidence") || text.includes("evidence")) return "documents";
-  if (
-    text.includes("health") ||
-    text.includes("police") ||
-    text.includes("character") ||
-    text.includes("biometric")
-  ) {
-    return "health";
-  }
-  if (
-    text.includes("medicare") ||
-    text.includes("processing time") ||
-    text.includes("lodgement") ||
-    text.includes("status")
-  ) {
-    return "lodgement";
-  }
-
-  return "guides";
-}
-
-function ResourceCard({ resource }) {
-  const Icon = getResourceIcon(resource.type);
-  const isLinkable = Boolean(resource.url);
-  const content = (
-    <CardHeader className="pb-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 flex-1">
-          <div className="p-2 rounded-lg bg-[#DEE3FF]">
-            <Icon className="w-5 h-5 text-[#4F726B]" />
-          </div>
-          <div className="flex-1">
-            <CardTitle className="text-base font-semibold mb-1">
-              {resource.title}
-            </CardTitle>
-            <CardDescription className="text-sm whitespace-pre-wrap">
-              {resource.noteText || resource.description}
-            </CardDescription>
-            <div className="mt-2">
-              <span className="inline-flex items-center text-xs text-muted-foreground">
-                {getResourceTypeLabel(resource.type)}
-              </span>
-            </div>
-          </div>
-        </div>
-        {isLinkable && <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />}
-      </div>
-    </CardHeader>
-  );
-
-  return (
-    <Card className="rounded-xl shadow-sm hover-elevate transition-all duration-200">
-      {isLinkable ? (
-        <a 
-          href={resource.url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="block"
-          data-testid={`link-resource-${resource.title.toLowerCase().replace(/\s+/g, '-')}`}
+  if (isFolder) {
+    return (
+      <div>
+        <button
+          onClick={() => setExpanded((prev) => !prev)}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-[#DEE3FF]/50 transition-colors"
         >
-          {content}
-      </a>
-      ) : (
-        <div className="block">
-          {content}
-        </div>
-      )}
-    </Card>
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
+          )}
+          <Folder className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
+          <span className="truncate">{node.name}</span>
+        </button>
+        {expanded && node.children.length > 0 && (
+          <div className="ml-4 border-l border-gray-200 pl-2">
+            {node.children.map((child) => (
+              <TreeNode key={child.id} node={child} depth={depth + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const content = (
+    <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[#DEE3FF]/50 transition-colors">
+      <Icon className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
+      <span className="flex-1 truncate">{node.name}</span>
+      {hasExternalUrl && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />}
+    </div>
   );
+
+  if (hasExternalUrl) {
+    return (
+      <a
+        href={node.externalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid={`link-resource-${node.name.toLowerCase().replace(/\s+/g, "-")}`}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return <div className="opacity-60 cursor-default">{content}</div>;
 }
 
 export default function ResourcesPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [resources, setResources] = useState([]);
+  const [template, setTemplate] = useState(null);
+  const [items, setItems] = useState([]);
   const [resourcesLoading, setResourcesLoading] = useState(true);
   const [resourcesError, setResourcesError] = useState("");
   const applicationsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
-  
+
   const appId = params.id;
   const slug = params.slug;
-  const application = applicationsSnap.applications.find(app => app.id === appId);
-  const groupedResources = useMemo(() => {
-    const grouped = {
-      documents: [],
-      health: [],
-      lodgement: [],
-      guides: [],
-    };
+  const application = applicationsSnap.applications.find((app) => app.id === appId);
 
-    resources.forEach((resource) => {
-      const key = getResourceSectionKey(resource);
-      if (!grouped[key]) {
-        grouped.guides.push(resource);
-        return;
-      }
-      grouped[key].push(resource);
-    });
+  const tree = useMemo(() => buildTree(items), [items]);
 
-    return RESOURCE_SECTION_ORDER
-      .map((key) => ({
-        key,
-        ...RESOURCE_SECTIONS[key],
-        resources: grouped[key],
-      }))
-      .filter((section) => section.resources.length > 0);
-  }, [resources]);
-
-  const loadResources = async () => {
+  const loadResources = useCallback(async () => {
     if (!appId) {
-      setResources([]);
+      setItems([]);
+      setTemplate(null);
       setResourcesLoading(false);
       return;
     }
@@ -201,7 +136,7 @@ export default function ResourcesPage() {
         throw new Error("Missing authentication token");
       }
 
-      const response = await fetch(`/api/resources/shared?applicationId=${appId}`, {
+      const response = await fetch(`/api/resources/template?applicationId=${appId}`, {
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
@@ -209,23 +144,22 @@ export default function ResourcesPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to load shared resources");
+        throw new Error(data.error || "Failed to load resources");
       }
 
-      setResources(data.resources || []);
+      setTemplate(data.template || null);
+      setItems(data.items || []);
     } catch (error) {
-      console.error("Error loading shared resources:", error);
+      console.error("Error loading resources:", error);
       setResourcesError("We could not load your resources. Please refresh the page or contact Ply Legal.");
     } finally {
       setResourcesLoading(false);
     }
-  };
+  }, [appId]);
 
-  // Load applications data on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Wait for auth to be ready
         if (!authSnap.isAuthenticated && !authSnap.user) {
           await authStore.checkSession();
         }
@@ -236,14 +170,13 @@ export default function ResourcesPage() {
           return;
         }
 
-        // Load applications if not already loaded
         if (applicationsSnap.applications.length === 0) {
           await applicationsStore.loadApplications(userId);
         }
 
         await loadResources();
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error("Error loading data:", error);
         setResourcesLoading(false);
       } finally {
         setIsLoading(false);
@@ -251,9 +184,8 @@ export default function ResourcesPage() {
     };
 
     loadData();
-  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length]);
-  
-  // Show loading state while data is being loaded
+  }, [appId, authSnap.isAuthenticated, authSnap.user?.id, applicationsSnap.applications.length, loadResources]);
+
   if (isLoading || !application) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -263,17 +195,17 @@ export default function ResourcesPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="flex min-h-[100dvh] overflow-hidden bg-background">
       <div className="hidden lg:block lg:w-[18.5rem] lg:flex-shrink-0">
         <AppSidebar mode="contextual" application={application} />
       </div>
-      
+
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           <div className="absolute left-0 top-0 bottom-0">
@@ -281,16 +213,16 @@ export default function ResourcesPage() {
           </div>
         </div>
       )}
-      
+
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <AppHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
+        <AppHeader
+          onMenuClick={() => setSidebarOpen(true)}
         />
-        
+
         <div className="lg:hidden">
           <PillNav appId={appId} slug={slug} />
         </div>
-        
+
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
@@ -314,33 +246,25 @@ export default function ResourcesPage() {
                     <CardDescription className="text-red-700">{resourcesError}</CardDescription>
                   </CardHeader>
                 </Card>
-              ) : resources.length === 0 ? (
+              ) : items.length === 0 ? (
                 <Card className="rounded-xl shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base font-semibold">No resources available yet</CardTitle>
                     <CardDescription>
-                      No shared resources are available yet.
+                      Resources for your visa type will appear here once they are published.
                     </CardDescription>
                   </CardHeader>
                 </Card>
               ) : (
-                <div className="space-y-8">
-                  {groupedResources.map((section) => {
-                    const SectionIcon = section.icon;
-                    return (
-                      <section key={section.key}>
-                        <div className="mb-4 flex items-center gap-2">
-                          <SectionIcon className="h-5 w-5 text-[#4F726B]" />
-                          <h2 className="font-serif text-2xl font-semibold">{section.label}</h2>
-                        </div>
-                        <div className="space-y-3">
-                          {section.resources.map((resource) => (
-                            <ResourceCard key={resource.id} resource={resource} />
-                          ))}
-                        </div>
-                      </section>
-                    );
-                  })}
+                <div>
+                  {template?.title && (
+                    <h2 className="font-serif text-2xl font-semibold mb-4">{template.title}</h2>
+                  )}
+                  <div className="rounded-xl border bg-white shadow-sm p-4">
+                    {tree.map((node) => (
+                      <TreeNode key={node.id} node={node} />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
