@@ -317,24 +317,33 @@ export type Resource = {
   url?: string;
 };
 
-export type ResourceTemplateItemKind = "folder" | "file" | "link";
+export type ResourceTemplateItemKind = "folder" | "file" | "link" | "note";
 
 export type ResourceTemplateItem = {
   id: string;
   parentId: string | null;
   kind: ResourceTemplateItemKind;
   name: string;
+  category: string;
   order: number;
-  externalUrl: string | null;
-  workdriveId: string | null;
+  externalUrl: string;
+  noteText?: string;
   mimeType: string | null;
   size: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type ResourceTemplateCategory = {
+  name: string;
+  icon: string;
 };
 
 export type ResourceTemplate = {
   visaSlug: string;
   title: string;
   status: "active" | "draft" | "archived";
+  categories: ResourceTemplateCategory[];
   updatedAt: string | null;
 };
 

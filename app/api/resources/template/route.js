@@ -5,6 +5,36 @@ import { getApplicationSlug } from "@/lib/visaDisplay";
 
 const SUPPORTED_SLUGS = new Set(["partner", "protection", "482", "186"]);
 
+const DEFAULT_TEMPLATE_CATEGORIES = [
+  { name: "Uncategorized", icon: "folder" },
+  { name: "Guides", icon: "guide" },
+  { name: "Policies", icon: "policy" },
+  { name: "Helpful Links", icon: "link" },
+];
+
+function serializeTimestamp(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "object" && typeof value.seconds === "number") {
+    return new Date(value.seconds * 1000).toISOString();
+  }
+  return value;
+}
+
+function normalizeCategories(categories) {
+  const source = Array.isArray(categories) && categories.length > 0
+    ? categories
+    : DEFAULT_TEMPLATE_CATEGORIES;
+
+  return source
+    .map((category) => ({
+      name: String(category?.name || "").trim(),
+      icon: String(category?.icon || "folder").trim() || "folder",
+    }))
+    .filter((category) => category.name);
+}
+
 export async function GET(request) {
   try {
     const dbResult = getDb();
@@ -36,7 +66,12 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
     }
 
-    const visaSlug = getApplicationSlug(appData);
+    const questionnaireDoc = await appDoc.ref.collection("data").doc("questionnaire").get();
+    const questionnaireData = questionnaireDoc.exists ? questionnaireDoc.data() || {} : {};
+    const visaSlug = getApplicationSlug({
+      ...appData,
+      questionnaireVisaContext: questionnaireData.visaContext,
+    });
     if (!visaSlug || !SUPPORTED_SLUGS.has(visaSlug)) {
       return NextResponse.json(
         { success: false, error: "No resource template available for this application type" },
@@ -52,7 +87,7 @@ export async function GET(request) {
       );
     }
 
-    const templateData = templateDoc.data();
+    const templateData = templateDoc.data() || {};
     if (templateData.status !== "active") {
       return NextResponse.json(
         { success: false, error: "Resource template is not currently active" },
@@ -69,19 +104,24 @@ export async function GET(request) {
 
     const items = itemsSnapshot.docs
       .map((doc) => {
-        const data = doc.data();
+        const data = doc.data() || {};
         return {
           id: doc.id,
           parentId: data.parentId || null,
-          kind: data.kind || "file",
-          name: data.name || "Untitled",
+          kind: String(data.kind || "file").toLowerCase(),
+          name: data.name || data.fileName || "Untitled resource",
+          category: data.category || "Uncategorized",
           order: typeof data.order === "number" ? data.order : 0,
-          externalUrl: data.externalUrl || null,
-          workdriveId: data.workdriveId || null,
+          externalUrl: data.externalUrl || "",
+          noteText: data.noteText || data.body || data.content || data.description || "",
           mimeType: data.mimeType || null,
-          size: data.size || null,
+          size: typeof data.size === "number" ? data.size : null,
+          createdAt: serializeTimestamp(data.createdAt),
+          updatedAt: serializeTimestamp(data.updatedAt),
         };
       })
+      .filter((item) => item.kind !== "folder")
+      .filter((item) => item.kind === "note" || item.externalUrl)
       .sort((a, b) => {
         const orderDiff = a.order - b.order;
         if (orderDiff !== 0) return orderDiff;
@@ -94,7 +134,8 @@ export async function GET(request) {
         visaSlug,
         title: templateData.title || "",
         status: templateData.status,
-        updatedAt: templateData.updatedAt || null,
+        categories: normalizeCategories(templateData.categories),
+        updatedAt: serializeTimestamp(templateData.updatedAt),
       },
       items,
     });

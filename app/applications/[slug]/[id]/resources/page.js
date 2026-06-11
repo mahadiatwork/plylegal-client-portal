@@ -11,95 +11,159 @@ import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/firebase";
 import {
-  ChevronDown,
-  ChevronRight,
+  BookOpen,
   ExternalLink,
-  File,
   FileText,
   Folder,
   Link as LinkIcon,
+  ScrollText,
+  ShieldCheck,
 } from "lucide-react";
 
-function buildTree(items) {
-  const map = {};
-  const roots = [];
+const DEFAULT_TEMPLATE_CATEGORIES = [
+  { name: "Uncategorized", icon: "folder" },
+  { name: "Guides", icon: "guide" },
+  { name: "Policies", icon: "policy" },
+  { name: "Helpful Links", icon: "link" },
+];
 
-  items.forEach((item) => {
-    map[item.id] = { ...item, children: [] };
+const CATEGORY_ICONS = {
+  folder: Folder,
+  guide: BookOpen,
+  policy: ShieldCheck,
+  link: LinkIcon,
+  file: FileText,
+  note: ScrollText,
+};
+
+function normalizeTemplateCategories(categories) {
+  const source = Array.isArray(categories) && categories.length > 0
+    ? categories
+    : DEFAULT_TEMPLATE_CATEGORIES;
+
+  return source
+    .map((category) => ({
+      name: String(category?.name || "").trim(),
+      icon: String(category?.icon || "folder").trim() || "folder",
+    }))
+    .filter((category) => category.name);
+}
+
+function compareResourceItems(a, b) {
+  const orderDiff = Number(a.order || 0) - Number(b.order || 0);
+  if (orderDiff !== 0) return orderDiff;
+  return String(a.name || "").localeCompare(String(b.name || ""));
+}
+
+function groupResourcesByCategory(categories, items) {
+  const categoryMap = new Map();
+
+  normalizeTemplateCategories(categories).forEach((category) => {
+    categoryMap.set(category.name.toLowerCase(), {
+      ...category,
+      items: [],
+    });
   });
 
   items.forEach((item) => {
-    const node = map[item.id];
-    if (item.parentId && map[item.parentId]) {
-      map[item.parentId].children.push(node);
-    } else if (!item.parentId) {
-      roots.push(node);
+    if (item.status && item.status !== "active") return;
+    if (item.kind !== "note" && !item.externalUrl) return;
+
+    const categoryName = item.category || "Uncategorized";
+    const key = categoryName.toLowerCase();
+
+    if (!categoryMap.has(key)) {
+      categoryMap.set(key, {
+        name: categoryName,
+        icon: "folder",
+        items: [],
+      });
     }
+
+    categoryMap.get(key).items.push(item);
   });
 
-  return roots;
+  return Array.from(categoryMap.values())
+    .map((category) => ({
+      ...category,
+      items: category.items.sort(compareResourceItems),
+    }))
+    .filter((category) => category.items.length > 0);
 }
 
 function getItemIcon(kind) {
-  if (kind === "folder") return Folder;
   if (kind === "file") return FileText;
+  if (kind === "note") return ScrollText;
   return LinkIcon;
 }
 
-function TreeNode({ node, depth = 0 }) {
-  const [expanded, setExpanded] = useState(depth === 0);
-  const isFolder = node.kind === "folder";
-  const Icon = getItemIcon(node.kind);
-  const hasExternalUrl = Boolean(node.externalUrl);
+function CategoryIcon({ icon }) {
+  const Icon = CATEGORY_ICONS[icon] || Folder;
 
-  if (isFolder) {
-    return (
-      <div>
-        <button
-          onClick={() => setExpanded((prev) => !prev)}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium hover:bg-[#DEE3FF]/50 transition-colors"
-        >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
-          )}
-          <Folder className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
-          <span className="truncate">{node.name}</span>
-        </button>
-        {expanded && node.children.length > 0 && (
-          <div className="ml-4 border-l border-gray-200 pl-2">
-            {node.children.map((child) => (
-              <TreeNode key={child.id} node={child} depth={depth + 1} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const content = (
-    <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[#DEE3FF]/50 transition-colors">
-      <Icon className="h-4 w-4 text-[#4F726B] flex-shrink-0" />
-      <span className="flex-1 truncate">{node.name}</span>
-      {hasExternalUrl && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />}
-    </div>
+  return (
+    <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[#EEF7F2] text-[#255E4A]">
+      <Icon className="h-5 w-5" />
+    </span>
   );
+}
 
-  if (hasExternalUrl) {
-    return (
-      <a
-        href={node.externalUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-testid={`link-resource-${node.name.toLowerCase().replace(/\s+/g, "-")}`}
-      >
-        {content}
-      </a>
-    );
-  }
+function formatResourceKind(kind) {
+  if (kind === "file") return "File";
+  if (kind === "note") return "Note";
+  if (kind === "link") return "Link";
+  return "Resource";
+}
 
-  return <div className="opacity-60 cursor-default">{content}</div>;
+function formatFileSize(size) {
+  if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) return null;
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getResourceTestId(name) {
+  return `link-resource-${String(name || "resource").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+function ResourceTemplateItem({ item }) {
+  const isNote = item.kind === "note";
+  const Icon = getItemIcon(item.kind);
+  const fileSize = formatFileSize(item.size);
+  const meta = [
+    formatResourceKind(item.kind),
+    item.kind === "file" ? item.mimeType : null,
+    fileSize,
+  ].filter(Boolean).join(" | ");
+
+  return (
+    <article className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 gap-3">
+        <span className="mt-0.5 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#F4F8F6] text-[#4F726B]">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold text-gray-900">{item.name}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
+          {isNote && item.noteText ? (
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.noteText}</p>
+          ) : null}
+        </div>
+      </div>
+
+      {!isNote && item.externalUrl ? (
+        <a
+          href={item.externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-10 flex-shrink-0 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
+          data-testid={getResourceTestId(item.name)}
+        >
+          <ExternalLink className="h-4 w-4" />
+          Open
+        </a>
+      ) : null}
+    </article>
+  );
 }
 
 export default function ResourcesPage() {
@@ -117,7 +181,9 @@ export default function ResourcesPage() {
   const slug = params.slug;
   const application = applicationsSnap.applications.find((app) => app.id === appId);
 
-  const tree = useMemo(() => buildTree(items), [items]);
+  const groupedResources = useMemo(() => {
+    return groupResourcesByCategory(template?.categories, items);
+  }, [template?.categories, items]);
 
   const loadResources = useCallback(async () => {
     if (!appId) {
@@ -235,19 +301,19 @@ export default function ResourcesPage() {
 
             <div className="mb-8">
               {resourcesLoading ? (
-                <Card className="rounded-xl shadow-sm">
+                <Card className="rounded-lg shadow-sm">
                   <CardHeader>
                     <CardDescription>Loading resources...</CardDescription>
                   </CardHeader>
                 </Card>
               ) : resourcesError ? (
-                <Card className="rounded-xl shadow-sm border-red-200 bg-red-50">
+                <Card className="rounded-lg shadow-sm border-red-200 bg-red-50">
                   <CardHeader>
                     <CardDescription className="text-red-700">{resourcesError}</CardDescription>
                   </CardHeader>
                 </Card>
-              ) : items.length === 0 ? (
-                <Card className="rounded-xl shadow-sm">
+              ) : groupedResources.length === 0 ? (
+                <Card className="rounded-lg shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base font-semibold">No resources available yet</CardTitle>
                     <CardDescription>
@@ -256,15 +322,36 @@ export default function ResourcesPage() {
                   </CardHeader>
                 </Card>
               ) : (
-                <div>
+                <div className="space-y-5">
                   {template?.title && (
-                    <h2 className="font-serif text-2xl font-semibold mb-4">{template.title}</h2>
+                    <div>
+                      <h2 className="font-serif text-2xl font-semibold">{template.title}</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Resources selected for this visa type.
+                      </p>
+                    </div>
                   )}
-                  <div className="rounded-xl border bg-white shadow-sm p-4">
-                    {tree.map((node) => (
-                      <TreeNode key={node.id} node={node} />
-                    ))}
-                  </div>
+                  {groupedResources.map((category) => (
+                    <section key={category.name} className="overflow-hidden rounded-lg border bg-white shadow-sm">
+                      <div className="border-b px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <CategoryIcon icon={category.icon} />
+                          <div className="min-w-0">
+                            <h2 className="truncate font-serif text-xl font-semibold text-gray-900">{category.name}</h2>
+                            <p className="text-sm text-muted-foreground">
+                              {category.items.length} {category.items.length === 1 ? "resource" : "resources"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="divide-y">
+                        {category.items.map((item) => (
+                          <ResourceTemplateItem key={item.id} item={item} />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
                 </div>
               )}
             </div>

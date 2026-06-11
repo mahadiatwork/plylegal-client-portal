@@ -88,6 +88,18 @@ export function formatVisaApplicationType(app) {
 export function getApplicationSlug(app) {
   if (!app) return "partner";
 
+  const explicitSlug = String(
+    app.visaSlug ||
+    app.resourceTemplateSlug ||
+    app.visaContext ||
+    app.questionnaireVisaContext ||
+    ""
+  ).trim().toLowerCase();
+
+  if (["186", "482", "partner", "protection"].includes(explicitSlug)) {
+    return explicitSlug;
+  }
+
   const text = [
     app.type,
     app.reference,
