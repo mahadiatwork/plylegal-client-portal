@@ -418,8 +418,6 @@ export default function IntakeLayout({ children }) {
           )}
         >
           <div className="relative h-full flex flex-col">
-            <div className="pointer-events-none absolute -bottom-28 -right-20 h-96 w-96 rounded-full border border-white/10" />
-            <div className="pointer-events-none absolute -bottom-12 -right-8 h-72 w-72 rounded-full border border-white/10" />
             <Button
               variant="ghost"
               size="icon"
@@ -897,11 +895,6 @@ export default function IntakeLayout({ children }) {
 
         {/* Main Content */}
         <main className="relative flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfaf7_0%,#fffefa_50%,#ffffff_100%)] px-4 pb-12 pt-4 sm:px-8 lg:ml-[20.75rem] lg:px-10 xl:px-16">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -right-[23rem] top-[4.5rem] h-[58rem] w-[58rem] rounded-full border-[5.25rem] border-violet-100/50" />
-            <div className="absolute -right-[12rem] top-[11rem] h-[38rem] w-[38rem] rounded-full border-[4.25rem] border-violet-100/30" />
-          </div>
-
           <div className="relative z-10 flex min-h-full flex-col">
             <div className="hidden h-20 items-center justify-end gap-5 sm:flex">
               {email && (

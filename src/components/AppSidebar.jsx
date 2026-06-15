@@ -74,7 +74,7 @@ export function AppSidebar({ mode, application, onClose }) {
         </ProgressLink>
         
         <div>
-          <h2 className="font-serif text-2xl font-semibold leading-snug text-sidebar-foreground">
+          <h2 className="text-2xl font-semibold leading-snug text-sidebar-foreground">
             {formatVisaApplicationType(application)}
           </h2>
         </div>
