@@ -59,12 +59,14 @@ export function AppSidebar({ mode, application, onClose }) {
   
   return (
     <aside className="w-[18.5rem] border-r border-sidebar-border bg-sidebar flex flex-col h-[100dvh] overflow-hidden lg:fixed lg:left-0 lg:top-0 lg:z-30">
-      <div className="pointer-events-none absolute -bottom-28 -left-20 h-96 w-96 rounded-full border border-white/10" />
-      <div className="pointer-events-none absolute -bottom-16 -left-10 h-72 w-72 rounded-full border border-white/10" />
       <div className="relative p-7">
+        <ProgressLink href="/applications" className="block w-fit">
+          <BrandLogo priority className="mx-0 h-[52px]" />
+        </ProgressLink>
+
         <ProgressLink href="/applications">
           <button
-            className="flex items-center gap-2 text-sm text-sidebar-foreground/75 hover:text-sidebar-foreground transition-colors mb-9"
+            className="mt-5 mb-9 flex items-center gap-2 text-sm text-sidebar-foreground/75 hover:text-sidebar-foreground transition-colors"
             onClick={onClose}
             data-testid="button-back-to-applications"
           >

@@ -43,13 +43,14 @@ const detailsSchema = z.object({
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
-  country_of_birth: z.string().optional(),
-  city_of_birth: z.string().optional(),
-  state_of_birth: z.string().optional(),
+  country_of_birth: z.string().trim().min(1, "Country of birth is required"),
+  city_of_birth: z.string().trim().min(1, "City or town of birth is required"),
+  state_of_birth: z.string().trim().min(1, "State or province of birth is required"),
   marital_status: z.string().optional(),
   marital_status_date_day: z.string().optional(),
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
+  citizenship_of_passport_country: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
   citizenship_other_than_birth: z.enum(["yes", "no"]).optional(),
   citizenships: z.array(citizenshipRowSchema).optional(),
 }).refine(
@@ -405,6 +406,7 @@ export default function Page() {
       marital_status_date_day: "",
       marital_status_date_month: "",
       marital_status_date_year: "",
+      citizenship_of_passport_country: "",
       citizenship_other_than_birth: "",
       citizenships: [],
       // Other defaults
@@ -449,7 +451,7 @@ export default function Page() {
       const otherData = {};
       // split based on known keys
       const detailKeys = [
-        "is_main_applicant","completing_family_name","completing_given_names","completing_preferred_names","completing_gender","completing_birth_day","completing_birth_month","completing_birth_year","prefix","family_name","given_names","preferred_names","gender","birth_day","birth_month","birth_year","country_of_birth","city_of_birth","state_of_birth","marital_status","marital_status_date_day","marital_status_date_month","marital_status_date_year","citizenship_other_than_birth","citizenships"
+        "is_main_applicant","completing_family_name","completing_given_names","completing_preferred_names","completing_gender","completing_birth_day","completing_birth_month","completing_birth_year","prefix","family_name","given_names","preferred_names","gender","birth_day","birth_month","birth_year","country_of_birth","city_of_birth","state_of_birth","marital_status","marital_status_date_day","marital_status_date_month","marital_status_date_year","citizenship_of_passport_country","citizenship_other_than_birth","citizenships"
       ];
       for (const key of Object.keys(data)) {
         if (detailKeys.includes(key)) detailsData[key] = data[key];
@@ -494,7 +496,7 @@ export default function Page() {
       const detailsData = {};
       const otherData = {};
       const detailKeys = [
-        "is_main_applicant","completing_family_name","completing_given_names","completing_preferred_names","completing_gender","completing_birth_day","completing_birth_month","completing_birth_year","prefix","family_name","given_names","preferred_names","gender","birth_day","birth_month","birth_year","country_of_birth","city_of_birth","state_of_birth","marital_status","marital_status_date_day","marital_status_date_month","marital_status_date_year","citizenship_other_than_birth","citizenships"
+        "is_main_applicant","completing_family_name","completing_given_names","completing_preferred_names","completing_gender","completing_birth_day","completing_birth_month","completing_birth_year","prefix","family_name","given_names","preferred_names","gender","birth_day","birth_month","birth_year","country_of_birth","city_of_birth","state_of_birth","marital_status","marital_status_date_day","marital_status_date_month","marital_status_date_year","citizenship_of_passport_country","citizenship_other_than_birth","citizenships"
       ];
       for (const key of Object.keys(data)) {
         if (detailKeys.includes(key)) detailsData[key] = data[key];

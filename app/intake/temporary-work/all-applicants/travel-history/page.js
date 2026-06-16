@@ -20,6 +20,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, Check } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -71,6 +72,19 @@ const LEGAL_STATUSES = [
   "No Legal Status",
   "Other",
 ];
+
+const formSchema = z.object({
+  has_travel_history: z.string().min(1, "Please select Yes or No"),
+  travel_history: z.array(z.object({}).passthrough()).optional(),
+}).superRefine((data, ctx) => {
+  if (data.has_travel_history === "yes" && (!Array.isArray(data.travel_history) || data.travel_history.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["travel_history"],
+      message: "Please add at least one travel record",
+    });
+  }
+});
 
 const formatDate = (day, month, year) => {
   if (!day || !month || !year) return "";
@@ -516,6 +530,7 @@ export default function Page() {
   }, [searchParams, draftSnap.currentApplicationId]);
 
   const form = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       has_travel_history: "",
       travel_history: [],
@@ -609,7 +624,15 @@ export default function Page() {
     setIsSaving(true);
     try {
       await draftStore.saveSectionData("temporary_work_travel", sanitizeTravelData(data));
-      await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`, null, "temporary_work_travel");
+      const completionResult = await draftStore.markPageComplete(
+        `${visaType}/all-applicants/travel-history`,
+        null,
+        "temporary_work_travel"
+      );
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
+      }
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
       if (next) router.push(next);
@@ -691,7 +714,7 @@ export default function Page() {
               </p>
               <RadioGroup
                 value={hasTravelHistory}
-                onValueChange={(value) => form.setValue("has_travel_history", value)}
+                onValueChange={(value) => form.setValue("has_travel_history", value, { shouldValidate: true })}
               >
                 <div className="flex gap-4">
                   {["yes", "no"].map((option) => (
@@ -702,6 +725,9 @@ export default function Page() {
                   ))}
                 </div>
               </RadioGroup>
+              {form.formState.errors.has_travel_history?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.has_travel_history.message}</p>
+              )}
             </div>
 
             {/* Travel history table (shown if Yes) */}
@@ -776,6 +802,9 @@ export default function Page() {
                   addButtonText="Add"
                   testIdPrefix="travel"
                 />
+                {form.formState.errors.travel_history?.message && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.travel_history.message}</p>
+                )}
               </div>
             )}
 

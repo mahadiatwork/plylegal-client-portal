@@ -295,7 +295,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-  const futureYears = Array.from({ length: 50 }, (_, i) => (currentYear + i).toString());
+  const passportExpiryYears = Array.from({ length: currentYear + 50 - 2016 + 1 }, (_, i) => (2016 + i).toString());
 
   return (
     <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -579,7 +579,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
                 <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent>
-                {futureYears.map((year) => (
+                {passportExpiryYears.map((year) => (
                   <SelectItem key={year} value={year}>{year}</SelectItem>
                 ))}
               </SelectContent>

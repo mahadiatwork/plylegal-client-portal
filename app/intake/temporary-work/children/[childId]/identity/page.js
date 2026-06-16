@@ -25,7 +25,6 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SimplifiedOtherIdentityDialog } from "@/components/intake/temporary-work/SimplifiedOtherIdentityDialog";
 import { COUNTRIES } from "@/reuseable/countries";
-import { buildPassportNameOptions } from "@/lib/passportNameOptions";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
@@ -257,18 +256,9 @@ const passportDialogSchema = z.object({
   }
 );
 
-function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptionItems = [] }) {
+function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   const initialIsOriginal = row?.is_original_date !== undefined ? row.is_original_date : "yes";
   const [isOriginalDate, setIsOriginalDate] = useState(initialIsOriginal);
-
-  const nameSelectItems = useMemo(() => {
-    const items = [...nameOptionItems];
-    const current = row?.name;
-    if (current && !items.some((i) => i.value === current)) {
-      items.push({ value: current, label: `${current} (saved on document)` });
-    }
-    return items;
-  }, [nameOptionItems, row?.name]);
 
   const dialogForm = useForm({
     resolver: zodResolver(passportDialogSchema),
@@ -312,7 +302,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
   ];
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-  const futureYears = Array.from({ length: 50 }, (_, i) => (currentYear + i).toString());
+  const passportExpiryYears = Array.from({ length: currentYear + 50 - 2016 + 1 }, (_, i) => (2016 + i).toString());
 
   return (
     <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -421,23 +411,13 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
       </div>
 
       <div>
-        <Label className="block mb-2">Name</Label>
-        <p className="text-sm text-gray-600 mb-2">
-          Enter the name that is shown on the document. The name entered <strong>must</strong> be the same as it appears on the document. If the correct name is not shown as an option it will need to be added in the Other Names question located on this person's Other tab.
-        </p>
-        <Select
-          value={dialogForm.watch("name")}
-          onValueChange={(value) => dialogForm.setValue("name", value, { shouldValidate: true })}
-        >
-          <SelectTrigger data-testid="select-passport-name">
-            <SelectValue placeholder="Choose name" />
-          </SelectTrigger>
-          <SelectContent>
-            {nameSelectItems.map(({ value, label }) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label htmlFor="passport_name">Name</Label>
+        <Input
+          id="passport_name"
+          {...dialogForm.register("name")}
+          data-testid="input-passport-name"
+          placeholder="Enter name exactly as shown on document"
+        />
         {dialogForm.formState.errors.name && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
         )}
@@ -606,7 +586,7 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel, nameOptio
                 <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent>
-                {futureYears.map((year) => (
+                {passportExpiryYears.map((year) => (
                   <SelectItem key={year} value={year}>{year}</SelectItem>
                 ))}
               </SelectContent>
@@ -754,13 +734,6 @@ export default function ChildProfileIdentityPage() {
     "July", "August", "September", "October", "November", "December",
   ];
   const nidYears = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
-
-
-
-  const passportNameOptionItems = useMemo(
-    () => buildPassportNameOptions(draftSnap.draft, profileId),
-    [draftSnap.draft, profileId, draftSnap.draft?.profiles, draftSnap.draft?.profiles_data]
-  );
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -910,7 +883,6 @@ export default function ChildProfileIdentityPage() {
                     form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                   }}
                   DialogComponent={PassportDialog}
-                  dialogProps={{ nameOptionItems: passportNameOptionItems }}
                   addButtonText="Add"
                   testIdPrefix="passport"
                 />

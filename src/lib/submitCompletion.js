@@ -182,6 +182,14 @@ function parseTemporaryWorkPageKey(pageKey) {
     };
   }
 
+  if (parts[1] === "all-applicants" && parts[2] === "travel-history") {
+    return {
+      applicantType: "all_applicants",
+      sectionName: "travel_history",
+      routeKey: key,
+    };
+  }
+
   return null;
 }
 
@@ -429,12 +437,16 @@ function validateDetailsSection(section, label, addIssue) {
     addIssue(`${label}: Marital status date`);
   }
 
-  if (!rowHasFields(section, ["country_of_birth", "city_of_birth"])) {
+  if (!rowHasFields(section, ["country_of_birth", "city_of_birth", "state_of_birth"])) {
     addIssue(`${label}: Birthplace information`);
   }
 
+  if (!hasAnswer(section?.citizenship_of_passport_country)) {
+    addIssue(`${label}: Passport citizenship question`);
+  }
+
   if (!hasAnswer(section?.citizenship_other_than_birth)) {
-    addIssue(`${label}: Citizenship question`);
+    addIssue(`${label}: Other citizenship question`);
   } else if (
     isYes(section.citizenship_other_than_birth) &&
     !allRowsHaveFields(section?.citizenships, ["country", "how_obtained"], (row) => {
@@ -777,6 +789,40 @@ function validateCountriesOfResidenceSection(section, draft, addIssue) {
   issues.forEach((issue) => addIssue(`All Applicants: Countries of Residence - ${issue}`));
 }
 
+function validateTravelHistorySection(section, addIssue) {
+  if (!hasAnswer(section?.has_travel_history)) {
+    addIssue("All Applicants: Travel history question");
+    return;
+  }
+
+  if (!isYes(section.has_travel_history)) return;
+
+  const rows = Array.isArray(section?.travel_history) ? section.travel_history : [];
+  if (!hasRows(rows)) {
+    addIssue("All Applicants: Travel history records");
+    return;
+  }
+
+  const rowsComplete = rows.every((row) => {
+    const applicantIds = Array.isArray(row?.applicant_ids) ? row.applicant_ids.filter(Boolean) : [];
+    return (
+      applicantIds.length > 0 &&
+      rowHasFields(row, [
+        "country",
+        "reason_for_visit",
+        "legal_status",
+        "date_arrived_day",
+        "date_arrived_month",
+        "date_arrived_year",
+      ])
+    );
+  });
+
+  if (!rowsComplete) {
+    addIssue("All Applicants: Travel history details");
+  }
+}
+
 function validateTemporaryWorkProfileSection({ draft, visaContext, parsed, profileId, addIssue }) {
   const profile = getProfileForTemporaryWorkPage(draft, parsed, profileId);
   if (!profile?.relationship || !parsed?.sectionName) return false;
@@ -837,6 +883,11 @@ export function validateTemporaryWorkSectionCompletion({
   const issues = collectValidationIssues((addIssue) => {
     if (parsed.sectionName === "countries_of_residence") {
       validateCountriesOfResidenceSection(draft?.temporary_work_countries_of_residence || {}, draft, addIssue);
+      return;
+    }
+
+    if (parsed.sectionName === "travel_history") {
+      validateTravelHistorySection(draft?.temporary_work_travel || {}, addIssue);
       return;
     }
 

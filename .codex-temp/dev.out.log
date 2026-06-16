@@ -1,0 +1,1873 @@
+
+> rest-express@1.0.0 dev F:\Projects\validifypro-visa-portal
+> next dev --webpack -p 5000
+
+▲ Next.js 16.1.0 (webpack)
+- Local:         http://localhost:5000
+- Network:       http://198.18.0.1:5000
+- Environments: .env
+- Experiments (use with caution):
+  · serverActions
+  ? serverComponentsExternalPackages (invalid experimental key)
+
+✓ Starting...
+✓ Ready in 2.2s
+○ Compiling /applications ...
+ GET /applications 200 in 7.6s (compile: 6.5s, proxy.ts: 194ms, render: 891ms)
+ GET /login 200 in 1814ms (compile: 1722ms, proxy.ts: 21ms, render: 71ms)
+🔍 Searching for contact with email: user@example.com
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T18:48:36.803Z
+📋 Search returned 1 contact(s)
+📦 Contact search data: [
+  {
+    "nearby_distance__s": null,
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "Email": "user@example.com",
+    "$currency_symbol": "AUD",
+    "$field_states": null,
+    "Other_Phone": null,
+    "Mailing_State": null,
+    "Other_State": null,
+    "$sharing_permission": "full_access",
+    "Gender": null,
+    "Needs_Password_Change": false,
+    "Other_Country": null,
+    "Last_Activity_Time": "2026-06-04T12:55:09+10:00",
+    "Department": null,
+    "Unsubscribed_Mode": null,
+    "Address_1": "",
+    "$process_flow": false,
+    "Assistant": null,
+    "Visa_Type_Matter": null,
+    "Portal_Access": null,
+    "Address_1_Zip_Postal_Code": null,
+    "Passport_Expiry_Date": null,
+    "Mailing_Country": "Bangladesh",
+    "$locked_for_me": false,
+    "id": "102555000000636009",
+    "Password_Reset_Token": null,
+    "Reporting_To": null,
+    "$approval": {
+      "delegate": false,
+      "takeover": false,
+      "approve": false,
+      "reject": false,
+      "resubmit": false
+    },
+    "Other_City": null,
+    "Address_1_City": null,
+    "Created_Time": "2025-11-06T09:51:47+11:00",
+    "$wizard_connection_path": null,
+    "$editable": true,
+    "Temporary_Password": null,
+    "Home_Phone": null,
+    "Country_of_Passport": null,
+    "Address_1_State_Province": null,
+    "Visa_Expiry_Date": "2026-05-30",
+    "Relationship_Status": null,
+    "Created_By": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "$zia_owner_assignment": "owner_recommendation_unavailable",
+    "Secondary_Email": null,
+    "$is_duplicate": false,
+    "Country_of_Residence": null,
+    "Description": null,
+    "Mailing_Zip": "4211",
+    "$review_process": {
+      "approve": false,
+      "reject": false,
+      "resubmit": false
+    },
+    "Twitter": null,
+    "Other_Zip": null,
+    "Mailing_Street": "hamzarbag, chittagong",
+    "$layout_id": {
+      "display_label": "Standard",
+      "name": "Standard",
+      "id": "102555000000000629"
+    },
+    "Address_1_Coordinates_Longitude": null,
+    "Current_Visa": null,
+    "Salutation": null,
+    "First_Name": "Mahmudul",
+    "Full_Name": "Mahmudul Hassan",
+    "Asst_Phone": null,
+    "Record_Image": null,
+    "Modified_By": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "$review": null,
+    "Skype_ID": null,
+    "Phone": "+8801867884361",
+    "Address_1_Coordinates": "",
+    "Address_1_Flat_House_No_Building_Apartment_Name": null,
+    "Account_Name": null,
+    "Country_of_Birth": null,
+    "Email_Opt_Out": false,
+    "$zia_visions": null,
+    "Mailing_Suburb": "Chittagong",
+    "Passport_No": null,
+    "Address_1_Country_Region": null,
+    "Modified_Time": "2026-05-01T06:14:29+10:00",
+    "Date_of_Birth": null,
+    "Mailing_City": null,
+    "Unsubscribed_Time": null,
+    "Pick_List_1": null,
+    "Title": null,
+    "Address_1_Coordinates_Latitude": null,
+    "Other_Street": null,
+    "Mobile": null,
+    "Record_Status__s": "Available",
+    "Nationality": null,
+    "$orchestration": false,
+    "Address_1_Street_Address": null,
+    "Last_Name": "Hassan",
+    "$in_merge": false,
+    "Locked__s": false,
+    "Lead_Source": null,
+    "Tag": [],
+    "Fax": null,
+    "$approval_state": "approved",
+    "$pathfinder": false
+  }
+]
+✅ Contact found: 102555000000636009
+❌ Portal access inactive for contact: 102555000000636009
+ POST /api/auth/verify-zoho 403 in 3.2s (compile: 1462ms, render: 1781ms)
+ GET /applications/186/test-app/questionnaire 200 in 2.4s (compile: 1964ms, proxy.ts: 14ms, render: 416ms)
+ GET /login 200 in 64ms (compile: 26ms, proxy.ts: 10ms, render: 28ms)
+ GET / 200 in 1516ms (compile: 1110ms, proxy.ts: 22ms, render: 385ms)
+ GET /login 200 in 168ms (compile: 26ms, proxy.ts: 12ms, render: 131ms)
+ GET /applications 200 in 685ms (compile: 639ms, proxy.ts: 9ms, render: 37ms)
+ GET /applications 200 in 39ms (compile: 5ms, proxy.ts: 12ms, render: 22ms)
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Executing sync for contact 102555000000408580
+🔍 Fetching related records: GET /Contacts/102555000000408580/Deals?fields=id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+[fetch-zoho-deals:52db8573] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Coalescing onto existing in-flight sync
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T18:50:38.543Z
+📦 Raw response for Contacts/102555000000408580/Deals: {
+  "data": [
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "Modified_Time": "2026-06-11T12:37:15+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+      "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000001354231",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+    },
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Modified_Time": "2026-06-04T12:54:34+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+      "Visa_Type": "Skills in Demand (Subclass 482)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000000489132",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 2,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 2 related records in Deals
+📋 First record sample: {
+  "Owner": {
+    "name": "Stacey Nitchov",
+    "id": "102555000000546001",
+    "email": "stacey@plylegal.com.au"
+  },
+  "Modified_Time": "2026-06-11T12:37:15+10:00",
+  "Contact_Role": {
+    "id": null
+  },
+  "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+  "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+  "Amount": null,
+  "Stage": "Preparing Application",
+  "id": "102555000001354231",
+  "Contact_Name": {
+    "name": "Mahmudul Hassan",
+    "id": "102555000000408580"
+  },
+  "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+}
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 deals in related list
+📦 Raw deals JSON data: [
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "Modified_Time": "2026-06-11T12:37:15+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+    "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000001354231",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+  },
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000362001",
+      "email": "snitchov@gmail.com"
+    },
+    "Modified_Time": "2026-06-04T12:54:34+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+    "Visa_Type": "Skills in Demand (Subclass 482)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000000489132",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+  }
+]
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Loading existing applications from Firebase
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 existing applications in Firebase
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application p3l_6ULZFe40 for deal 102555000001354231 (zohoId: 102555000001354231)
+✅ Application p3l_6ULZFe40 updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: 'p3l_6ULZFe40',
+    createdAt: '2026-05-26T21:02:06.056Z',
+    updatedAt: '2026-06-16T18:00:39.591Z',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    updated: '11 June 2026',
+    closingDate: '',
+    status: 'Preparing Application',
+    zohoId: '102555000001354231',
+    publicReviewAccess: true,
+    lastUpdated: '2026-06-11T12:37:15+10:00',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    visaTypeCode: 'temporary-work'
+  }
+}
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application p3l_6ULZFe40 from deal 102555000001354231 (zohoId: 102555000001354231)
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application 0WYvMHxLU5GT for deal 102555000000489132 (zohoId: 102555000000489132)
+✅ Application 0WYvMHxLU5GT updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: '0WYvMHxLU5GT',
+    status: 'Preparing Application',
+    zohoId: '102555000000489132',
+    publicReviewAccess: true,
+    visaTypeCode: 'temporary-work',
+    updatedAt: '2026-06-16T18:00:39.863Z',
+    closingDate: '',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    type: 'Skills in Demand (Subclass 482)',
+    createdAt: '2026-05-28T20:00:55.095Z',
+    updated: '4 June 2026',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    lastUpdated: '2026-06-04T12:54:34+10:00'
+  }
+}
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application 0WYvMHxLU5GT from deal 102555000000489132 (zohoId: 102555000000489132)
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Processed 2 applications from Zoho CRM
+📋 Applications saved to Firebase: [
+  {
+    id: 'p3l_6ULZFe40',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    zohoId: '102555000001354231'
+  },
+  {
+    id: '0WYvMHxLU5GT',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    type: 'Skills in Demand (Subclass 482)',
+    zohoId: '102555000000489132'
+  }
+]
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase before cleanup: 2 applications
+[fetch-zoho-deals:4e0b17f0] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase after cleanup: 2 applications
+ POST /api/applications/fetch-zoho-deals 200 in 4.7s (compile: 1178ms, render: 3.5s)
+ POST /api/applications/fetch-zoho-deals 200 in 4.7s (compile: 1179ms, render: 3.5s)
+ GET /applications/186/p3l_6ULZFe40/questionnaire 200 in 861ms (compile: 800ms, proxy.ts: 8ms, render: 54ms)
+ GET /login 200 in 423ms (compile: 240ms, proxy.ts: 43ms, render: 139ms)
+ GET /applications/186/p3l_6ULZFe40/questionnaire 200 in 429ms (compile: 340ms, proxy.ts: 43ms, render: 46ms)
+ GET /login 200 in 229ms (compile: 73ms, proxy.ts: 29ms, render: 127ms)
+ GET /applications/186/p3l_6ULZFe40/questionnaire 200 in 236ms (compile: 158ms, proxy.ts: 28ms, render: 50ms)
+ GET /applications/186/p3l_6ULZFe40/intake/start 200 in 2.3s (compile: 2.2s, proxy.ts: 12ms, render: 58ms)
+ GET /applications/186/p3l_6ULZFe40/questionnaire 200 in 85ms (compile: 38ms, proxy.ts: 10ms, render: 37ms)
+ GET /applications 200 in 41ms (compile: 16ms, proxy.ts: 5ms, render: 20ms)
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Executing sync for contact 102555000000408580
+🔍 Fetching related records: GET /Contacts/102555000000408580/Deals?fields=id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+[fetch-zoho-deals:95aaa55d] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Coalescing onto existing in-flight sync
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T18:54:53.191Z
+📦 Raw response for Contacts/102555000000408580/Deals: {
+  "data": [
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "Modified_Time": "2026-06-11T12:37:15+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+      "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000001354231",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+    },
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Modified_Time": "2026-06-04T12:54:34+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+      "Visa_Type": "Skills in Demand (Subclass 482)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000000489132",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 2,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 2 related records in Deals
+📋 First record sample: {
+  "Owner": {
+    "name": "Stacey Nitchov",
+    "id": "102555000000546001",
+    "email": "stacey@plylegal.com.au"
+  },
+  "Modified_Time": "2026-06-11T12:37:15+10:00",
+  "Contact_Role": {
+    "id": null
+  },
+  "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+  "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+  "Amount": null,
+  "Stage": "Preparing Application",
+  "id": "102555000001354231",
+  "Contact_Name": {
+    "name": "Mahmudul Hassan",
+    "id": "102555000000408580"
+  },
+  "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+}
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 deals in related list
+📦 Raw deals JSON data: [
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "Modified_Time": "2026-06-11T12:37:15+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+    "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000001354231",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+  },
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000362001",
+      "email": "snitchov@gmail.com"
+    },
+    "Modified_Time": "2026-06-04T12:54:34+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+    "Visa_Type": "Skills in Demand (Subclass 482)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000000489132",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+  }
+]
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Loading existing applications from Firebase
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 existing applications in Firebase
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application p3l_6ULZFe40 for deal 102555000001354231 (zohoId: 102555000001354231)
+✅ Application p3l_6ULZFe40 updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: 'p3l_6ULZFe40',
+    publicReviewAccess: true,
+    createdAt: '2026-05-26T21:02:06.056Z',
+    visaTypeCode: 'temporary-work',
+    status: 'Preparing Application',
+    closingDate: '',
+    zohoId: '102555000001354231',
+    updatedAt: '2026-06-16T18:04:54.265Z',
+    updated: '11 June 2026',
+    lastUpdated: '2026-06-11T12:37:15+10:00',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)'
+  }
+}
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application p3l_6ULZFe40 from deal 102555000001354231 (zohoId: 102555000001354231)
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application 0WYvMHxLU5GT for deal 102555000000489132 (zohoId: 102555000000489132)
+✅ Application 0WYvMHxLU5GT updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: '0WYvMHxLU5GT',
+    status: 'Preparing Application',
+    publicReviewAccess: true,
+    updated: '4 June 2026',
+    createdAt: '2026-05-28T20:00:55.095Z',
+    zohoId: '102555000000489132',
+    lastUpdated: '2026-06-04T12:54:34+10:00',
+    type: 'Skills in Demand (Subclass 482)',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    closingDate: '',
+    updatedAt: '2026-06-16T18:04:54.458Z',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    visaTypeCode: 'temporary-work'
+  }
+}
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application 0WYvMHxLU5GT from deal 102555000000489132 (zohoId: 102555000000489132)
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Processed 2 applications from Zoho CRM
+📋 Applications saved to Firebase: [
+  {
+    id: 'p3l_6ULZFe40',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    zohoId: '102555000001354231'
+  },
+  {
+    id: '0WYvMHxLU5GT',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    type: 'Skills in Demand (Subclass 482)',
+    zohoId: '102555000000489132'
+  }
+]
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase before cleanup: 2 applications
+[fetch-zoho-deals:4bd31058] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase after cleanup: 2 applications
+ POST /api/applications/fetch-zoho-deals 200 in 4.2s (compile: 1138ms, render: 3.0s)
+ POST /api/applications/fetch-zoho-deals 200 in 4.2s (compile: 1151ms, render: 3.0s)
+ GET /applications/482/0WYvMHxLU5GT/questionnaire 200 in 107ms (compile: 66ms, proxy.ts: 8ms, render: 33ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/start 200 in 58ms (compile: 29ms, proxy.ts: 6ms, render: 24ms)
+ GET /login 200 in 282ms (compile: 168ms, proxy.ts: 11ms, render: 103ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/start 200 in 287ms (compile: 225ms, proxy.ts: 11ms, render: 51ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/profile 200 in 2.4s (compile: 2.3s, proxy.ts: 8ms, render: 48ms)
+🔍 Fetching related records: GET /Contacts/102555000000408580/Partner_Dependents?fields=id,First_Name,Last_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T18:57:28.749Z
+📦 Raw response for Contacts/102555000000408580/Partner_Dependents: {
+  "data": [
+    {
+      "First_Name": "Jill",
+      "Email": null,
+      "Date_of_Birth": "1996-11-21",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Spouse",
+      "id": "102555000001889001",
+      "Gender": "Female",
+      "Name": "Smith"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001739001",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001738003",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001655008",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Kutub",
+      "Email": null,
+      "Date_of_Birth": null,
+      "Non_Migrating": true,
+      "Relationship_to_Applicant": "Other",
+      "id": "102555000001611021",
+      "Gender": "Male",
+      "Name": "Uddin"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001603038",
+      "Gender": "Male",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001598008",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408598",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408593",
+      "Gender": "Male",
+      "Name": "Hassan"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 9,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 9 related records in Partner_Dependents
+📋 First record sample: {
+  "First_Name": "Jill",
+  "Email": null,
+  "Date_of_Birth": "1996-11-21",
+  "Non_Migrating": false,
+  "Relationship_to_Applicant": "Spouse",
+  "id": "102555000001889001",
+  "Gender": "Female",
+  "Name": "Smith"
+}
+🔑 Using cached Zoho access token
+📦 Response structure for Contacts/102555000000408580: {
+  "data": [
+    {
+      "nearby_distance__s": null,
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Email": "spzlobby@gmail.com",
+      "$currency_symbol": "AUD",
+      "$field_states": null,
+      "$sharing_permission": "full_access",
+      "Gender": "Male",
+      "Needs_Password_Change": false,
+      "Last_Activity_Time": "2026-06-16T13:11:35+10:00",
+      "Unsubscribed_Mode": null,
+      "Address_1": "",
+      "$process_flow": false,
+      "Visa_Type_Matter": null,
+      "Portal_Access": "Active",
+      "Address_1_Zip_Postal_Code": null,
+      "Passport_Expiry_Date": null,
+      "$locked_for_me": false,
+      "id": "102555000000408580",
+      "Password_Reset_Token": null,
+      "$approval": {
+        "delegate": false,
+        "takeover": false,
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "Enrich_Status__s": null,
+      "Address_1_City": null,
+      "Created_Time": "2025-09-07T21:04:47+10:00",
+      "Change_Log_Time__s": "2026-06-16T13:11:35+10:00",
+      "$wizard_connection_path": null,
+      "$editable": true,
+      "Temporary_Password": null,
+      "Country_of_Passport": null,
+      "Address_1_State_Province": null,
+      "Visa_Expiry_Date": "2026-05-31",
+      "Relationship_Status": null,
+      "Created_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "$zia_owner_assignment": "owner_recommendation_unavailable",
+      "Secondary_Email": null,
+      "$is_duplicate": false,
+      "Country_of_Residence": null,
+      "Description": null,
+      "$review_process": {
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "$layout_id": {
+        "display_label": "Standard",
+        "name": "Standard",
+        "id": "102555000000000629"
+      },
+      "Address_1_Coordinates_Longitude": null,
+      "Current_Visa": null,
+      "Salutation": null,
+      "First_Name": "Mahmudul",
+      "Full_Name": "Mahmudul Hassan",
+      "Record_Image": null,
+      "Modified_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "$review": null,
+      "Phone": "17868798393",
+      "Address_1_Coordinates": "",
+      "Address_1_Flat_House_No_Building_Apartment_Name": null,
+      "Country_of_Birth": null,
+      "Email_Opt_Out": false,
+      "$zia_visions": null,
+      "Passport_No": null,
+      "Address_1_Country_Region": null,
+      "Modified_Time": "2026-06-16T13:11:35+10:00",
+      "Date_of_Birth": "1985-12-10",
+      "Unsubscribed_Time": null,
+      "Address_1_Coordinates_Latitude": null,
+      "Mobile": "0422398067",
+      "Record_Status__s": "Available",
+      "Nationality": null,
+      "$orchestration": false,
+      "Address_1_Street_Address": null,
+      "Last_Name": "Hassan",
+      "$in_merge": false,
+      "Locked__s": false,
+      "Lead_Source": "Google/Online search",
+      "Tag": [],
+      "$approval_state": "approved",
+      "$pathfinder": false,
+      "Last_Enriched_Time__s": null
+    }
+  ]
+}
+ GET /api/intake/dependents?userId=o1tAninehkegB886d8bcwh1djb73&zohoContactId=102555000000408580 200 in 3.9s (compile: 1829ms, render: 2.0s)
+🔍 Fetching related records: GET /Contacts/102555000000408580/Partner_Dependents?fields=id,First_Name,Last_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/details?profileId=profile_1780969744289_qa6ip 200 in 3.0s (compile: 2.9s, proxy.ts: 9ms, render: 50ms)
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T18:57:31.782Z
+📦 Raw response for Contacts/102555000000408580/Partner_Dependents: {
+  "data": [
+    {
+      "First_Name": "Jill",
+      "Email": null,
+      "Date_of_Birth": "1996-11-21",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Spouse",
+      "id": "102555000001889001",
+      "Gender": "Female",
+      "Name": "Smith"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001739001",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001738003",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001655008",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Kutub",
+      "Email": null,
+      "Date_of_Birth": null,
+      "Non_Migrating": true,
+      "Relationship_to_Applicant": "Other",
+      "id": "102555000001611021",
+      "Gender": "Male",
+      "Name": "Uddin"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001603038",
+      "Gender": "Male",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001598008",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408598",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408593",
+      "Gender": "Male",
+      "Name": "Hassan"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 9,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 9 related records in Partner_Dependents
+📋 First record sample: {
+  "First_Name": "Jill",
+  "Email": null,
+  "Date_of_Birth": "1996-11-21",
+  "Non_Migrating": false,
+  "Relationship_to_Applicant": "Spouse",
+  "id": "102555000001889001",
+  "Gender": "Female",
+  "Name": "Smith"
+}
+🔑 Using cached Zoho access token
+📦 Response structure for Contacts/102555000000408580: {
+  "data": [
+    {
+      "nearby_distance__s": null,
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Email": "spzlobby@gmail.com",
+      "$currency_symbol": "AUD",
+      "$field_states": null,
+      "$sharing_permission": "full_access",
+      "Gender": "Male",
+      "Needs_Password_Change": false,
+      "Last_Activity_Time": "2026-06-16T13:11:35+10:00",
+      "Unsubscribed_Mode": null,
+      "Address_1": "",
+      "$process_flow": false,
+      "Visa_Type_Matter": null,
+      "Portal_Access": "Active",
+      "Address_1_Zip_Postal_Code": null,
+      "Passport_Expiry_Date": null,
+      "$locked_for_me": false,
+      "id": "102555000000408580",
+      "Password_Reset_Token": null,
+      "$approval": {
+        "delegate": false,
+        "takeover": false,
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "Enrich_Status__s": null,
+      "Address_1_City": null,
+      "Created_Time": "2025-09-07T21:04:47+10:00",
+      "Change_Log_Time__s": "2026-06-16T13:11:35+10:00",
+      "$wizard_connection_path": null,
+      "$editable": true,
+      "Temporary_Password": null,
+      "Country_of_Passport": null,
+      "Address_1_State_Province": null,
+      "Visa_Expiry_Date": "2026-05-31",
+      "Relationship_Status": null,
+      "Created_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "$zia_owner_assignment": "owner_recommendation_unavailable",
+      "Secondary_Email": null,
+      "$is_duplicate": false,
+      "Country_of_Residence": null,
+      "Description": null,
+      "$review_process": {
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "$layout_id": {
+        "display_label": "Standard",
+        "name": "Standard",
+        "id": "102555000000000629"
+      },
+      "Address_1_Coordinates_Longitude": null,
+      "Current_Visa": null,
+      "Salutation": null,
+      "First_Name": "Mahmudul",
+      "Full_Name": "Mahmudul Hassan",
+      "Record_Image": null,
+      "Modified_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "$review": null,
+      "Phone": "17868798393",
+      "Address_1_Coordinates": "",
+      "Address_1_Flat_House_No_Building_Apartment_Name": null,
+      "Country_of_Birth": null,
+      "Email_Opt_Out": false,
+      "$zia_visions": null,
+      "Passport_No": null,
+      "Address_1_Country_Region": null,
+      "Modified_Time": "2026-06-16T13:11:35+10:00",
+      "Date_of_Birth": "1985-12-10",
+      "Unsubscribed_Time": null,
+      "Address_1_Coordinates_Latitude": null,
+      "Mobile": "0422398067",
+      "Record_Status__s": "Available",
+      "Nationality": null,
+      "$orchestration": false,
+      "Address_1_Street_Address": null,
+      "Last_Name": "Hassan",
+      "$in_merge": false,
+      "Locked__s": false,
+      "Lead_Source": "Google/Online search",
+      "Tag": [],
+      "$approval_state": "approved",
+      "$pathfinder": false,
+      "Last_Enriched_Time__s": null
+    }
+  ]
+}
+ GET /api/intake/dependents?userId=o1tAninehkegB886d8bcwh1djb73&zohoContactId=102555000000408580 200 in 2.6s (compile: 1526ms, render: 1121ms)
+ GET /login 200 in 355ms (compile: 230ms, proxy.ts: 22ms, render: 103ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/details?profileId=profile_1780969744289_qa6ip 200 in 361ms (compile: 303ms, proxy.ts: 22ms, render: 36ms)
+ GET /login 200 in 78ms (compile: 13ms, proxy.ts: 13ms, render: 52ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/details?profileId=profile_1780969744289_qa6ip 200 in 91ms (compile: 36ms, proxy.ts: 13ms, render: 41ms)
+ GET /login 200 in 152ms (compile: 60ms, proxy.ts: 13ms, render: 79ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/details?profileId=profile_1780969744289_qa6ip 200 in 155ms (compile: 109ms, proxy.ts: 13ms, render: 32ms)
+ GET /login 200 in 194ms (compile: 62ms, proxy.ts: 71ms, render: 60ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/details?profileId=profile_1780969744289_qa6ip 200 in 199ms (compile: 96ms, proxy.ts: 71ms, render: 31ms)
+ GET /login 200 in 149ms (compile: 58ms, proxy.ts: 12ms, render: 79ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/details?profileId=profile_1780969744289_qa6ip 200 in 153ms (compile: 106ms, proxy.ts: 12ms, render: 35ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/main-applicant/employment?profileId=profile_1780969744289_qa6ip 200 in 2.4s (compile: 2.4s, proxy.ts: 11ms, render: 50ms)
+ GET /applications/482/0WYvMHxLU5GT/questionnaire 200 in 94ms (compile: 51ms, proxy.ts: 9ms, render: 34ms)
+ GET /applications 200 in 49ms (compile: 22ms, proxy.ts: 8ms, render: 19ms)
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Executing sync for contact 102555000000408580
+🔍 Fetching related records: GET /Contacts/102555000000408580/Deals?fields=id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+[fetch-zoho-deals:f11454d9] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Coalescing onto existing in-flight sync
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T19:02:47.520Z
+📦 Raw response for Contacts/102555000000408580/Deals: {
+  "data": [
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "Modified_Time": "2026-06-11T12:37:15+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+      "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000001354231",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+    },
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Modified_Time": "2026-06-04T12:54:34+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+      "Visa_Type": "Skills in Demand (Subclass 482)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000000489132",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 2,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 2 related records in Deals
+📋 First record sample: {
+  "Owner": {
+    "name": "Stacey Nitchov",
+    "id": "102555000000546001",
+    "email": "stacey@plylegal.com.au"
+  },
+  "Modified_Time": "2026-06-11T12:37:15+10:00",
+  "Contact_Role": {
+    "id": null
+  },
+  "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+  "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+  "Amount": null,
+  "Stage": "Preparing Application",
+  "id": "102555000001354231",
+  "Contact_Name": {
+    "name": "Mahmudul Hassan",
+    "id": "102555000000408580"
+  },
+  "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+}
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 deals in related list
+📦 Raw deals JSON data: [
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "Modified_Time": "2026-06-11T12:37:15+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+    "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000001354231",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+  },
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000362001",
+      "email": "snitchov@gmail.com"
+    },
+    "Modified_Time": "2026-06-04T12:54:34+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+    "Visa_Type": "Skills in Demand (Subclass 482)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000000489132",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+  }
+]
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Loading existing applications from Firebase
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 existing applications in Firebase
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application p3l_6ULZFe40 for deal 102555000001354231 (zohoId: 102555000001354231)
+✅ Application p3l_6ULZFe40 updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: 'p3l_6ULZFe40',
+    createdAt: '2026-05-26T21:02:06.056Z',
+    publicReviewAccess: true,
+    closingDate: '',
+    lastUpdated: '2026-06-11T12:37:15+10:00',
+    visaTypeCode: 'temporary-work',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    updatedAt: '2026-06-16T18:12:48.462Z',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    zohoId: '102555000001354231',
+    status: 'Preparing Application',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    updated: '11 June 2026'
+  }
+}
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application p3l_6ULZFe40 from deal 102555000001354231 (zohoId: 102555000001354231)
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application 0WYvMHxLU5GT for deal 102555000000489132 (zohoId: 102555000000489132)
+✅ Application 0WYvMHxLU5GT updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: '0WYvMHxLU5GT',
+    lastUpdated: '2026-06-04T12:54:34+10:00',
+    type: 'Skills in Demand (Subclass 482)',
+    updatedAt: '2026-06-16T18:12:48.799Z',
+    updated: '4 June 2026',
+    closingDate: '',
+    zohoId: '102555000000489132',
+    publicReviewAccess: true,
+    status: 'Preparing Application',
+    createdAt: '2026-05-28T20:00:55.095Z',
+    visaTypeCode: 'temporary-work',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    userId: 'o1tAninehkegB886d8bcwh1djb73'
+  }
+}
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application 0WYvMHxLU5GT from deal 102555000000489132 (zohoId: 102555000000489132)
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Processed 2 applications from Zoho CRM
+📋 Applications saved to Firebase: [
+  {
+    id: 'p3l_6ULZFe40',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    zohoId: '102555000001354231'
+  },
+  {
+    id: '0WYvMHxLU5GT',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    type: 'Skills in Demand (Subclass 482)',
+    zohoId: '102555000000489132'
+  }
+]
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase before cleanup: 2 applications
+[fetch-zoho-deals:d6d641aa] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase after cleanup: 2 applications
+ POST /api/applications/fetch-zoho-deals 200 in 4.6s (compile: 1534ms, render: 3.1s)
+ POST /api/applications/fetch-zoho-deals 200 in 4.6s (compile: 1537ms, render: 3.1s)
+ GET /applications/482/0WYvMHxLU5GT/questionnaire 200 in 138ms (compile: 87ms, proxy.ts: 8ms, render: 44ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/start 200 in 61ms (compile: 26ms, proxy.ts: 8ms, render: 27ms)
+ GET /login 200 in 311ms (compile: 197ms, proxy.ts: 10ms, render: 105ms)
+ GET /applications/482/0WYvMHxLU5GT/intake/start 200 in 344ms (compile: 265ms, proxy.ts: 10ms, render: 69ms)
+ GET /applications/482/0WYvMHxLU5GT/questionnaire 200 in 140ms (compile: 74ms, proxy.ts: 21ms, render: 46ms)
+ GET /applications 200 in 60ms (compile: 27ms, proxy.ts: 8ms, render: 24ms)
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Executing sync for contact 102555000000408580
+🔍 Fetching related records: GET /Contacts/102555000000408580/Deals?fields=id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+[fetch-zoho-deals:f58d0371] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Coalescing onto existing in-flight sync
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T19:19:04.248Z
+📦 Raw response for Contacts/102555000000408580/Deals: {
+  "data": [
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "Modified_Time": "2026-06-11T12:37:15+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+      "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000001354231",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+    },
+    {
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Modified_Time": "2026-06-04T12:54:34+10:00",
+      "Contact_Role": {
+        "id": null
+      },
+      "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+      "Visa_Type": "Skills in Demand (Subclass 482)",
+      "Amount": null,
+      "Stage": "Preparing Application",
+      "id": "102555000000489132",
+      "Contact_Name": {
+        "name": "Mahmudul Hassan",
+        "id": "102555000000408580"
+      },
+      "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 2,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 2 related records in Deals
+📋 First record sample: {
+  "Owner": {
+    "name": "Stacey Nitchov",
+    "id": "102555000000546001",
+    "email": "stacey@plylegal.com.au"
+  },
+  "Modified_Time": "2026-06-11T12:37:15+10:00",
+  "Contact_Role": {
+    "id": null
+  },
+  "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+  "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+  "Amount": null,
+  "Stage": "Preparing Application",
+  "id": "102555000001354231",
+  "Contact_Name": {
+    "name": "Mahmudul Hassan",
+    "id": "102555000000408580"
+  },
+  "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+}
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 deals in related list
+📦 Raw deals JSON data: [
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000546001",
+      "email": "stacey@plylegal.com.au"
+    },
+    "Modified_Time": "2026-06-11T12:37:15+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Employer Nomination Visa (Subclass 186)",
+    "Visa_Type": "Employer Nomination Visa (Subclass 186)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000001354231",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-11T12:37:15+10:00"
+  },
+  {
+    "Owner": {
+      "name": "Stacey Nitchov",
+      "id": "102555000000362001",
+      "email": "snitchov@gmail.com"
+    },
+    "Modified_Time": "2026-06-04T12:54:34+10:00",
+    "Contact_Role": {
+      "id": null
+    },
+    "Deal_Name": "Mahmudul Hassan - Skills in Demand (Subclass 482)",
+    "Visa_Type": "Skills in Demand (Subclass 482)",
+    "Amount": null,
+    "Stage": "Preparing Application",
+    "id": "102555000000489132",
+    "Contact_Name": {
+      "name": "Mahmudul Hassan",
+      "id": "102555000000408580"
+    },
+    "Last_Activity_Time": "2026-06-04T12:54:34+10:00"
+  }
+]
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Loading existing applications from Firebase
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Found 2 existing applications in Firebase
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application p3l_6ULZFe40 for deal 102555000001354231 (zohoId: 102555000001354231)
+✅ Application p3l_6ULZFe40 updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: 'p3l_6ULZFe40',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    publicReviewAccess: true,
+    createdAt: '2026-05-26T21:02:06.056Z',
+    visaTypeCode: 'temporary-work',
+    status: 'Preparing Application',
+    closingDate: '',
+    zohoId: '102555000001354231',
+    updatedAt: '2026-06-16T18:29:05.297Z',
+    updated: '11 June 2026',
+    lastUpdated: '2026-06-11T12:37:15+10:00',
+    type: 'Employer Nomination Visa (Subclass 186)'
+  }
+}
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application p3l_6ULZFe40 from deal 102555000001354231 (zohoId: 102555000001354231)
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updating existing application 0WYvMHxLU5GT for deal 102555000000489132 (zohoId: 102555000000489132)
+✅ Application 0WYvMHxLU5GT updated successfully
+💾 Update result: {
+  success: true,
+  application: {
+    id: '0WYvMHxLU5GT',
+    createdAt: '2026-05-28T20:00:55.095Z',
+    updated: '4 June 2026',
+    zohoId: '102555000000489132',
+    status: 'Preparing Application',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    updatedAt: '2026-06-16T18:29:05.534Z',
+    type: 'Skills in Demand (Subclass 482)',
+    userId: 'o1tAninehkegB886d8bcwh1djb73',
+    lastUpdated: '2026-06-04T12:54:34+10:00',
+    visaTypeCode: 'temporary-work',
+    publicReviewAccess: true,
+    closingDate: ''
+  }
+}
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Updated application 0WYvMHxLU5GT from deal 102555000000489132 (zohoId: 102555000000489132)
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Processed 2 applications from Zoho CRM
+📋 Applications saved to Firebase: [
+  {
+    id: 'p3l_6ULZFe40',
+    reference: 'Mahmudul Hassan - Employer Nomination Visa (Subclass 186)',
+    type: 'Employer Nomination Visa (Subclass 186)',
+    zohoId: '102555000001354231'
+  },
+  {
+    id: '0WYvMHxLU5GT',
+    reference: 'Mahmudul Hassan - Skills in Demand (Subclass 482)',
+    type: 'Skills in Demand (Subclass 482)',
+    zohoId: '102555000000489132'
+  }
+]
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase before cleanup: 2 applications
+[fetch-zoho-deals:cbaa4403] [source:applications-page] [key:o1tAninehkegB886d8bcwh1djb73:102555000000408580] Final count in Firebase after cleanup: 2 applications
+ POST /api/applications/fetch-zoho-deals 200 in 4.9s (compile: 1541ms, render: 3.4s)
+ POST /api/applications/fetch-zoho-deals 200 in 4.9s (compile: 1546ms, render: 3.4s)
+ GET /applications/186/p3l_6ULZFe40/questionnaire 200 in 156ms (compile: 106ms, proxy.ts: 14ms, render: 37ms)
+ GET /applications/186/p3l_6ULZFe40/intake/start 200 in 76ms (compile: 33ms, proxy.ts: 17ms, render: 26ms)
+ GET /applications/186/p3l_6ULZFe40/intake/profile 200 in 1700ms (compile: 1655ms, proxy.ts: 11ms, render: 35ms)
+🔍 Fetching related records: GET /Contacts/102555000000408580/Partner_Dependents?fields=id,First_Name,Last_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T19:19:29.107Z
+📦 Raw response for Contacts/102555000000408580/Partner_Dependents: {
+  "data": [
+    {
+      "First_Name": "Jill",
+      "Email": null,
+      "Date_of_Birth": "1996-11-21",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Spouse",
+      "id": "102555000001889001",
+      "Gender": "Female",
+      "Name": "Smith"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001739001",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001738003",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001655008",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Kutub",
+      "Email": null,
+      "Date_of_Birth": null,
+      "Non_Migrating": true,
+      "Relationship_to_Applicant": "Other",
+      "id": "102555000001611021",
+      "Gender": "Male",
+      "Name": "Uddin"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001603038",
+      "Gender": "Male",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001598008",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408598",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408593",
+      "Gender": "Male",
+      "Name": "Hassan"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 9,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 9 related records in Partner_Dependents
+📋 First record sample: {
+  "First_Name": "Jill",
+  "Email": null,
+  "Date_of_Birth": "1996-11-21",
+  "Non_Migrating": false,
+  "Relationship_to_Applicant": "Spouse",
+  "id": "102555000001889001",
+  "Gender": "Female",
+  "Name": "Smith"
+}
+🔑 Using cached Zoho access token
+📦 Response structure for Contacts/102555000000408580: {
+  "data": [
+    {
+      "nearby_distance__s": null,
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Email": "spzlobby@gmail.com",
+      "$currency_symbol": "AUD",
+      "$field_states": null,
+      "$sharing_permission": "full_access",
+      "Gender": "Male",
+      "Needs_Password_Change": false,
+      "Last_Activity_Time": "2026-06-16T13:11:35+10:00",
+      "Unsubscribed_Mode": null,
+      "Address_1": "",
+      "$process_flow": false,
+      "Visa_Type_Matter": null,
+      "Portal_Access": "Active",
+      "Address_1_Zip_Postal_Code": null,
+      "Passport_Expiry_Date": null,
+      "$locked_for_me": false,
+      "id": "102555000000408580",
+      "Password_Reset_Token": null,
+      "$approval": {
+        "delegate": false,
+        "takeover": false,
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "Enrich_Status__s": null,
+      "Address_1_City": null,
+      "Created_Time": "2025-09-07T21:04:47+10:00",
+      "Change_Log_Time__s": "2026-06-16T13:11:35+10:00",
+      "$wizard_connection_path": null,
+      "$editable": true,
+      "Temporary_Password": null,
+      "Country_of_Passport": null,
+      "Address_1_State_Province": null,
+      "Visa_Expiry_Date": "2026-05-31",
+      "Relationship_Status": null,
+      "Created_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "$zia_owner_assignment": "owner_recommendation_unavailable",
+      "Secondary_Email": null,
+      "$is_duplicate": false,
+      "Country_of_Residence": null,
+      "Description": null,
+      "$review_process": {
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "$layout_id": {
+        "display_label": "Standard",
+        "name": "Standard",
+        "id": "102555000000000629"
+      },
+      "Address_1_Coordinates_Longitude": null,
+      "Current_Visa": null,
+      "Salutation": null,
+      "First_Name": "Mahmudul",
+      "Full_Name": "Mahmudul Hassan",
+      "Record_Image": null,
+      "Modified_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "$review": null,
+      "Phone": "17868798393",
+      "Address_1_Coordinates": "",
+      "Address_1_Flat_House_No_Building_Apartment_Name": null,
+      "Country_of_Birth": null,
+      "Email_Opt_Out": false,
+      "$zia_visions": null,
+      "Passport_No": null,
+      "Address_1_Country_Region": null,
+      "Modified_Time": "2026-06-16T13:11:35+10:00",
+      "Date_of_Birth": "1985-12-10",
+      "Unsubscribed_Time": null,
+      "Address_1_Coordinates_Latitude": null,
+      "Mobile": "0422398067",
+      "Record_Status__s": "Available",
+      "Nationality": null,
+      "$orchestration": false,
+      "Address_1_Street_Address": null,
+      "Last_Name": "Hassan",
+      "$in_merge": false,
+      "Locked__s": false,
+      "Lead_Source": "Google/Online search",
+      "Tag": [],
+      "$approval_state": "approved",
+      "$pathfinder": false,
+      "Last_Enriched_Time__s": null
+    }
+  ]
+}
+ GET /api/intake/dependents?userId=o1tAninehkegB886d8bcwh1djb73&zohoContactId=102555000000408580 200 in 3.6s (compile: 1643ms, render: 1945ms)
+🔍 Fetching related records: GET /Contacts/102555000000408580/Partner_Dependents?fields=id,First_Name,Last_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating
+🔑 Fetching fresh Zoho access token from: https://www.zohoapis.com.au/crm/v7/functions/get_access_token/actions/execute?auth_type=apikey&zapikey=1003.8f401af9a676992dd4705130778e3034.b00a1a4434411db645acd0cef0a303b8
+ GET /applications/186/p3l_6ULZFe40/intake/main-applicant/details?profileId=profile_1780454680084_6mn78 200 in 1886ms (compile: 1811ms, proxy.ts: 7ms, render: 68ms)
+📦 Token response structure: {
+  "access_token": "Zoho-oauthtoken 1000.65fcf0bee430c6287ee27c2eca0b84a9.d925e1b4cf24717349ed90d2b1abf9eb"
+}
+✅ Zoho access token cached until: 2026-06-16T19:19:32.088Z
+📦 Raw response for Contacts/102555000000408580/Partner_Dependents: {
+  "data": [
+    {
+      "First_Name": "Jill",
+      "Email": null,
+      "Date_of_Birth": "1996-11-21",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Spouse",
+      "id": "102555000001889001",
+      "Gender": "Female",
+      "Name": "Smith"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001739001",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001738003",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001655008",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Kutub",
+      "Email": null,
+      "Date_of_Birth": null,
+      "Non_Migrating": true,
+      "Relationship_to_Applicant": "Other",
+      "id": "102555000001611021",
+      "Gender": "Male",
+      "Name": "Uddin"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001603038",
+      "Gender": "Male",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Mehraj",
+      "Email": null,
+      "Date_of_Birth": "2025-11-16",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000001598008",
+      "Gender": "Male",
+      "Name": "Hasan"
+    },
+    {
+      "First_Name": "Shareen",
+      "Email": null,
+      "Date_of_Birth": "2025-09-26",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408598",
+      "Gender": "Female",
+      "Name": "Hassan"
+    },
+    {
+      "First_Name": "Nubaid",
+      "Email": null,
+      "Date_of_Birth": "2025-09-18",
+      "Non_Migrating": false,
+      "Relationship_to_Applicant": "Children",
+      "id": "102555000000408593",
+      "Gender": "Male",
+      "Name": "Hassan"
+    }
+  ],
+  "info": {
+    "per_page": 200,
+    "next_page_token": null,
+    "count": 9,
+    "page": 1,
+    "previous_page_token": null,
+    "page_token_expiry": null,
+    "more_records": false
+  }
+}
+✅ Found 9 related records in Partner_Dependents
+📋 First record sample: {
+  "First_Name": "Jill",
+  "Email": null,
+  "Date_of_Birth": "1996-11-21",
+  "Non_Migrating": false,
+  "Relationship_to_Applicant": "Spouse",
+  "id": "102555000001889001",
+  "Gender": "Female",
+  "Name": "Smith"
+}
+🔑 Using cached Zoho access token
+📦 Response structure for Contacts/102555000000408580: {
+  "data": [
+    {
+      "nearby_distance__s": null,
+      "Owner": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "Email": "spzlobby@gmail.com",
+      "$currency_symbol": "AUD",
+      "$field_states": null,
+      "$sharing_permission": "full_access",
+      "Gender": "Male",
+      "Needs_Password_Change": false,
+      "Last_Activity_Time": "2026-06-16T13:11:35+10:00",
+      "Unsubscribed_Mode": null,
+      "Address_1": "",
+      "$process_flow": false,
+      "Visa_Type_Matter": null,
+      "Portal_Access": "Active",
+      "Address_1_Zip_Postal_Code": null,
+      "Passport_Expiry_Date": null,
+      "$locked_for_me": false,
+      "id": "102555000000408580",
+      "Password_Reset_Token": null,
+      "$approval": {
+        "delegate": false,
+        "takeover": false,
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "Enrich_Status__s": null,
+      "Address_1_City": null,
+      "Created_Time": "2025-09-07T21:04:47+10:00",
+      "Change_Log_Time__s": "2026-06-16T13:11:35+10:00",
+      "$wizard_connection_path": null,
+      "$editable": true,
+      "Temporary_Password": null,
+      "Country_of_Passport": null,
+      "Address_1_State_Province": null,
+      "Visa_Expiry_Date": "2026-05-31",
+      "Relationship_Status": null,
+      "Created_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000362001",
+        "email": "snitchov@gmail.com"
+      },
+      "$zia_owner_assignment": "owner_recommendation_unavailable",
+      "Secondary_Email": null,
+      "$is_duplicate": false,
+      "Country_of_Residence": null,
+      "Description": null,
+      "$review_process": {
+        "approve": false,
+        "reject": false,
+        "resubmit": false
+      },
+      "$layout_id": {
+        "display_label": "Standard",
+        "name": "Standard",
+        "id": "102555000000000629"
+      },
+      "Address_1_Coordinates_Longitude": null,
+      "Current_Visa": null,
+      "Salutation": null,
+      "First_Name": "Mahmudul",
+      "Full_Name": "Mahmudul Hassan",
+      "Record_Image": null,
+      "Modified_By": {
+        "name": "Stacey Nitchov",
+        "id": "102555000000546001",
+        "email": "stacey@plylegal.com.au"
+      },
+      "$review": null,
+      "Phone": "17868798393",
+      "Address_1_Coordinates": "",
+      "Address_1_Flat_House_No_Building_Apartment_Name": null,
+      "Country_of_Birth": null,
+      "Email_Opt_Out": false,
+      "$zia_visions": null,
+      "Passport_No": null,
+      "Address_1_Country_Region": null,
+      "Modified_Time": "2026-06-16T13:11:35+10:00",
+      "Date_of_Birth": "1985-12-10",
+      "Unsubscribed_Time": null,
+      "Address_1_Coordinates_Latitude": null,
+      "Mobile": "0422398067",
+      "Record_Status__s": "Available",
+      "Nationality": null,
+      "$orchestration": false,
+      "Address_1_Street_Address": null,
+      "Last_Name": "Hassan",
+      "$in_merge": false,
+      "Locked__s": false,
+      "Lead_Source": "Google/Online search",
+      "Tag": [],
+      "$approval_state": "approved",
+      "$pathfinder": false,
+      "Last_Enriched_Time__s": null
+    }
+  ]
+}
+ GET /api/intake/dependents?userId=o1tAninehkegB886d8bcwh1djb73&zohoContactId=102555000000408580 200 in 2.8s (compile: 1411ms, render: 1379ms)
+ GET /login 200 in 455ms (compile: 302ms, proxy.ts: 27ms, render: 126ms)
+ GET /applications/186/p3l_6ULZFe40/intake/main-applicant/details?profileId=profile_1780454680084_6mn78 200 in 460ms (compile: 383ms, proxy.ts: 27ms, render: 49ms)
+ GET /login 200 in 353ms (compile: 4ms, proxy.ts: 6ms, render: 343ms)
+[?25h
+ ELIFECYCLE  Command failed with exit code 4294967295.

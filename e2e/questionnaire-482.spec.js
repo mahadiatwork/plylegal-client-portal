@@ -225,7 +225,8 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
     coverage.sawChild = coverage.sawChild || /\/children\/[^/]+\//.test(url);
 
     if (/\/spouse-partner\/details/.test(url)) {
-      await expect(page.getByText("Do you hold citizenship in any country other than your country of birth?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of their country of passport?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of any other country?")).toBeVisible();
       coverage.sawSpouseCitizenship = true;
     }
     if (/\/spouse-partner\/other-details/.test(url)) {
@@ -235,7 +236,8 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
       coverage.sawSpouseOtherDirectCopy = true;
     }
     if (/\/children\/[^/]+\/details/.test(url)) {
-      await expect(page.getByText("Does this child hold citizenship in any country other than their country of birth?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of their country of passport?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of any other country?")).toBeVisible();
       coverage.sawChildCitizenship = true;
     }
     const isCountriesOfResidence = /\/all-applicants\/countries-of-residence/.test(url);

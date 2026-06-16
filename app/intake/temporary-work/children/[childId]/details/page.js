@@ -31,13 +31,14 @@ const childDetailsSchema = z.object({
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
-  country_of_birth: z.string().optional(),
-  city_of_birth: z.string().optional(),
-  state_of_birth: z.string().optional(),
+  country_of_birth: z.string().trim().min(1, "Country of birth is required"),
+  city_of_birth: z.string().trim().min(1, "City or town of birth is required"),
+  state_of_birth: z.string().trim().min(1, "State or province of birth is required"),
   marital_status: z.string().optional(),
   marital_status_date_day: z.string().optional(),
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
+  citizenship_of_passport_country: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
   citizenship_other_than_birth: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
   citizenships: z.array(citizenshipRowSchema).optional(),
 }).refine(
@@ -124,6 +125,7 @@ export default function ChildDetailsPage() {
       marital_status_date_day: "",
       marital_status_date_month: "",
       marital_status_date_year: "",
+      citizenship_of_passport_country: "",
       citizenship_other_than_birth: "",
       citizenships: [],
     },
@@ -189,6 +191,7 @@ export default function ChildDetailsPage() {
         marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
         marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
         marital_status_date_year: safeStr(savedData.marital_status_date_year),
+        citizenship_of_passport_country: safeStr(savedData.citizenship_of_passport_country) || "",
         citizenship_other_than_birth: safeStr(migratedCotb) || "",
         citizenships: migratedCitizenships,
       };
@@ -219,6 +222,7 @@ export default function ChildDetailsPage() {
         marital_status_date_day: "",
         marital_status_date_month: "",
         marital_status_date_year: "",
+        citizenship_of_passport_country: "",
         citizenship_other_than_birth: migratedCitizenships.length ? "yes" : "",
         citizenships: migratedCitizenships,
       });
@@ -290,6 +294,7 @@ export default function ChildDetailsPage() {
     "Widowed",
     "Separated"
   ];
+  const citizenshipOfPassportCountry = form.watch("citizenship_of_passport_country");
   const citizenshipOther = form.watch("citizenship_other_than_birth");
   const citizenshipsList = form.watch("citizenships") || [];
 
@@ -530,7 +535,29 @@ export default function ChildDetailsPage() {
             <h3 className="text-lg font-medium border-b pb-2">Citizenships</h3>
             <div>
               <Label className="text-base font-medium mb-3 block">
-                Does this child hold citizenship in any country other than their country of birth?
+                Is this applicant a citizen of their country of passport?
+              </Label>
+              <RadioGroup
+                value={citizenshipOfPassportCountry || ""}
+                onValueChange={(value) => form.setValue("citizenship_of_passport_country", value, { shouldValidate: true, shouldDirty: true })}
+                className="flex gap-4"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="child-passport-citizen-yes" />
+                  <Label htmlFor="child-passport-citizen-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="child-passport-citizen-no" />
+                  <Label htmlFor="child-passport-citizen-no" className="ml-2 cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+              {form.formState.errors.citizenship_of_passport_country?.message && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.citizenship_of_passport_country.message}</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Is this applicant a citizen of any other country?
               </Label>
               <RadioGroup
                 value={citizenshipOther || ""}
@@ -558,7 +585,7 @@ export default function ChildDetailsPage() {
             {citizenshipOther === "yes" && (
               <div className="mt-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of each citizenship held in a country other than this child's country of birth.
+                  Enter details of each other citizenship held by this applicant.
                 </p>
                 <RepeaterTable
                   data={citizenshipsList}

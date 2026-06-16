@@ -31,13 +31,14 @@ const formSchema = z.object({
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
-  country_of_birth: z.string().optional(),
-  city_of_birth: z.string().optional(),
-  state_of_birth: z.string().optional(),
+  country_of_birth: z.string().trim().min(1, "Country of birth is required"),
+  city_of_birth: z.string().trim().min(1, "City or town of birth is required"),
+  state_of_birth: z.string().trim().min(1, "State or province of birth is required"),
   marital_status: z.string().optional(),
   marital_status_date_day: z.string().optional(),
   marital_status_date_month: z.string().optional(),
   marital_status_date_year: z.string().optional(),
+  citizenship_of_passport_country: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
   citizenship_other_than_birth: z.union([z.enum(["yes", "no"]), z.literal("")]).optional(),
   citizenships: z.array(citizenshipRowSchema).optional(),
 }).refine(
@@ -71,6 +72,7 @@ const EMPTY_SPOUSE_DETAILS_FORM = {
   marital_status_date_day: "",
   marital_status_date_month: "",
   marital_status_date_year: "",
+  citizenship_of_passport_country: "",
   citizenship_other_than_birth: "",
   citizenships: [],
 };
@@ -157,6 +159,7 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
       marital_status_date_day: normalizeNumber(savedData.marital_status_date_day),
       marital_status_date_month: normalizeMonth(savedData.marital_status_date_month),
       marital_status_date_year: safeStr(savedData.marital_status_date_year),
+      citizenship_of_passport_country: safeStr(savedData.citizenship_of_passport_country) || "",
       citizenship_other_than_birth: safeStr(migratedCotb) || "",
       citizenships: migratedCitizenships,
     };
@@ -173,6 +176,7 @@ function buildSpouseDetailsFormValues(draftSnap, profileId, isSpouseProfile, spo
       birth_day: profileDob.birth_day,
       birth_month: profileDob.birth_month,
       birth_year: profileDob.birth_year,
+      citizenship_of_passport_country: "",
       citizenship_other_than_birth: migratedCitizenships.length ? "yes" : "",
       citizenships: migratedCitizenships,
     };
@@ -363,6 +367,7 @@ export default function Page() {
 
   // Watched value for conditional rendering of marital status date
   const maritalStatusValue = watch("marital_status");
+  const citizenshipOfPassportCountry = watch("citizenship_of_passport_country");
   const citizenshipOther = watch("citizenship_other_than_birth");
   const citizenshipsList = watch("citizenships") || [];
 
@@ -656,11 +661,17 @@ export default function Page() {
             <div>
               <Label>City or Town of Birth</Label>
               <Input {...register("city_of_birth")} data-testid="input-city-of-birth" />
+              {formState.errors.city_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{formState.errors.city_of_birth.message}</p>
+              )}
             </div>
 
             <div>
               <Label>State or Province of Birth</Label>
               <Input {...register("state_of_birth")} data-testid="input-state-of-birth" />
+              {formState.errors.state_of_birth?.message && (
+                <p className="text-sm text-red-600 mt-1">{formState.errors.state_of_birth.message}</p>
+              )}
             </div>
           </div>
 
@@ -668,7 +679,29 @@ export default function Page() {
             <h3 className="text-lg font-medium border-b pb-2">Citizenships</h3>
             <div>
               <Label className="text-base font-medium mb-3 block">
-                Do you hold citizenship in any country other than your country of birth?
+                Is this applicant a citizen of their country of passport?
+              </Label>
+              <RadioGroup
+                value={citizenshipOfPassportCountry || ""}
+                onValueChange={(value) => setValue("citizenship_of_passport_country", value, { shouldValidate: true, shouldDirty: true })}
+                className="flex gap-4"
+              >
+                <div className="flex items-center">
+                  <RadioGroupItem value="yes" id="spouse-passport-citizen-yes" />
+                  <Label htmlFor="spouse-passport-citizen-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
+                </div>
+                <div className="flex items-center">
+                  <RadioGroupItem value="no" id="spouse-passport-citizen-no" />
+                  <Label htmlFor="spouse-passport-citizen-no" className="ml-2 cursor-pointer font-normal">No</Label>
+                </div>
+              </RadioGroup>
+              {formState.errors.citizenship_of_passport_country?.message && (
+                <p className="text-sm text-red-600 mt-1">{formState.errors.citizenship_of_passport_country.message}</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Is this applicant a citizen of any other country?
               </Label>
               <RadioGroup
                 value={citizenshipOther || ""}
@@ -696,7 +729,7 @@ export default function Page() {
             {citizenshipOther === "yes" && (
               <div className="mt-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of each citizenship held in a country other than your country of birth.
+                  Enter details of each other citizenship held by this applicant.
                 </p>
                 <RepeaterTable
                   data={citizenshipsList}

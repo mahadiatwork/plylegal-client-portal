@@ -101,6 +101,20 @@ export const detailsSchema = z.object({
         path: ["country_of_birth"],
       });
     }
+    if (!data.city_of_birth || data.city_of_birth.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["city_of_birth"],
+      });
+    }
+    if (!data.state_of_birth || data.state_of_birth.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["state_of_birth"],
+      });
+    }
     if (!data.marital_status && data.is_main_applicant === "Yes") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -184,6 +198,20 @@ export const detailsSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "Required",
         path: ["completing_country_of_birth"],
+      });
+    }
+    if (!data.completing_city_of_birth || data.completing_city_of_birth.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["completing_city_of_birth"],
+      });
+    }
+    if (!data.completing_state_of_birth || data.completing_state_of_birth.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Required",
+        path: ["completing_state_of_birth"],
       });
     }
   }

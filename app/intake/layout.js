@@ -339,7 +339,7 @@ export default function IntakeLayout({ children }) {
   const isSectionExpanded = (href) => expandedSections.has(href);
 
   return (
-    <div className="min-h-screen bg-[#fbfaf7] flex flex-col">
+    <div className="min-h-screen bg-[#E4E9FF] flex flex-col">
       {/* Mobile Header */}
       <div
         className={cn(
@@ -894,7 +894,7 @@ export default function IntakeLayout({ children }) {
         )}
 
         {/* Main Content */}
-        <main className="relative flex-1 overflow-y-auto bg-[linear-gradient(180deg,#fbfaf7_0%,#fffefa_50%,#ffffff_100%)] px-4 pb-12 pt-4 sm:px-8 lg:ml-[20.75rem] lg:px-10 xl:px-16">
+        <main className="relative flex-1 overflow-y-auto bg-[#E4E9FF] px-4 pb-12 pt-4 sm:px-8 lg:ml-[20.75rem] lg:px-10 xl:px-16">
           <div className="relative z-10 flex min-h-full flex-col">
             <div className="hidden h-20 items-center justify-end gap-5 sm:flex">
               {email && (

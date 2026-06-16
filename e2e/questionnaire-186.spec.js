@@ -107,7 +107,7 @@ test.describe("186 questionnaire @questionnaire-186", () => {
       expectNonMigratingSubpages: true,
     });
 
-    expect(coverage.sawSpouseEducation).toBe(false);
+    expect(coverage.sawSpouseEducation).toBe(true);
     expect(coverage.sawSpouseLanguage).toBe(true);
     expect(coverage.sawAllApplicants).toBe(true);
     expect(coverage.contactBeforeOtherFamily).toBe(true);
@@ -115,7 +115,7 @@ test.describe("186 questionnaire @questionnaire-186", () => {
     expect(coverage.sawSpouseOtherDirectCopy).toBe(true);
     expect(coverage.sawChildCitizenship).toBe(true);
 
-    await expectCompletionSummary(page, { completed: 30, total: 30, percentage: 100 });
+    await expectCompletionSummary(page, { completed: 31, total: 31, percentage: 100 });
     await expectTemporaryWorkSubmitReview(page, {
       mainApplicant: MAIN_APPLICANT,
       spouse: SPOUSE,
@@ -283,12 +283,12 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
 
     if (/\/spouse-partner\//.test(currentPath)) {
       coverage.sawSpouse = true;
-      await expect(page.locator('a[href*="/spouse-partner/education"]')).toHaveCount(0);
     }
     if (/\/children\/[^/]+\//.test(currentPath)) coverage.sawChild = true;
     if (/\/all-applicants\//.test(currentPath)) coverage.sawAllApplicants = true;
     if (/\/spouse-partner\/details/.test(currentPath)) {
-      await expect(page.getByText("Do you hold citizenship in any country other than your country of birth?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of their country of passport?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of any other country?")).toBeVisible();
       coverage.sawSpouseCitizenship = true;
     }
     if (/\/spouse-partner\/other-details/.test(currentPath)) {
@@ -298,7 +298,8 @@ async function completeLinearFlowToSubmit186(page, branch, expectations) {
       coverage.sawSpouseOtherDirectCopy = true;
     }
     if (/\/children\/[^/]+\/details/.test(currentPath)) {
-      await expect(page.getByText("Does this child hold citizenship in any country other than their country of birth?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of their country of passport?")).toBeVisible();
+      await expect(page.getByText("Is this applicant a citizen of any other country?")).toBeVisible();
       coverage.sawChildCitizenship = true;
     }
     if (/\/main-applicant\/contact-details/.test(currentPath) && firstSeen.contactDetails === null) {
