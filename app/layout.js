@@ -6,7 +6,7 @@ const FAVICON_URL =
   "https://cdn.prod.website-files.com/68df275416b515842035785c/68f9a3861f1f134bb950ee93_Favicon.svg";
 
 export const metadata = {
-  title: "PlyLegal: Visa Portal",
+  title: "Ply Legal | Client Portal",
   description: "Legal immigration case management portal",
   icons: {
     icon: FAVICON_URL,

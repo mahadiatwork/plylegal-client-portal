@@ -69,15 +69,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-[100dvh] w-full max-w-full overflow-x-hidden">
-      <div className="pointer-events-none fixed inset-0 bg-[#f4f6f3]" aria-hidden />
-
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-        <div
-          className="absolute -bottom-[18%] -right-[8%] h-[min(75vh,36rem)] w-[min(110vw,44rem)] rounded-[52%_48%_48%_52%] bg-gradient-to-br from-emerald-100/85 via-emerald-50/50 to-white/25 opacity-95"
-          style={{ filter: "blur(0.5px)" }}
-        />
-        <div className="absolute -bottom-24 right-0 h-[min(55vh,26rem)] w-[min(95vw,34rem)] rounded-tl-[55%] rounded-tr-[40%] bg-gradient-to-tl from-emerald-200/45 via-emerald-100/25 to-transparent" />
-      </div>
+      <div className="pointer-events-none fixed inset-0 bg-[#E4E9FF]" aria-hidden />
 
       <main className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <div className="login-glass-panel w-full max-w-md rounded-2xl px-6 py-9 sm:px-9 sm:py-10">

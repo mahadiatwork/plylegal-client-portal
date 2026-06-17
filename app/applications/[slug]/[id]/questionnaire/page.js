@@ -58,7 +58,7 @@ function getTotalSectionCount(sections) {
 
 function LoadingState() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f9f5]">
+    <div className="flex min-h-screen items-center justify-center bg-[#E4E9FF]">
       <div className="rounded-md border border-primary/10 bg-white px-8 py-7 text-center shadow-sm">
         <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
         <p className="mt-4 text-sm font-medium text-slate-600">Loading application data...</p>
@@ -191,7 +191,7 @@ export default function QuestionnairePage() {
 
   if (!application) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f9f5] px-4">
+      <div className="flex min-h-screen items-center justify-center bg-[#E4E9FF] px-4">
         <div className="rounded-md border border-primary/10 bg-white p-8 text-center shadow-sm">
           <h1 className="font-serif text-2xl font-semibold text-primary">Application not found</h1>
           <p className="mt-2 text-sm text-slate-500">Return to your application list and open the matter again.</p>
@@ -212,7 +212,7 @@ export default function QuestionnairePage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] overflow-hidden bg-[#e4e9ff]">
+    <div className="flex min-h-[100dvh] overflow-hidden bg-[#E4E9FF]">
       <div className="hidden lg:block lg:w-[18.5rem] lg:flex-shrink-0">
         <AppSidebar mode="contextual" application={application} />
       </div>

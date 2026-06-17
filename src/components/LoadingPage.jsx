@@ -4,7 +4,7 @@ import { FileText, Star } from "lucide-react";
 
 export function LoadingPage() {
   return (
-    <div className="min-h-screen bg-[#E0E7FF] flex items-center justify-center relative">
+    <div className="min-h-screen bg-[#E4E9FF] flex items-center justify-center relative">
       {/* Main Loading Indicator */}
       <div className="flex flex-col items-center justify-center">
         {/* Circular Spinner with Document Icon */}

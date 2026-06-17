@@ -90,6 +90,7 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
+        heading: ["var(--font-heading)"],
         serif: ["var(--font-serif)"],
         mono: ["Menlo", "Monaco", "Courier New", "monospace"],
       },

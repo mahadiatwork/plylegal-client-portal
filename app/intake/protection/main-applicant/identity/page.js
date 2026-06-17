@@ -1415,7 +1415,7 @@ export default function IdentityPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
+    <div className="min-h-screen bg-[#E4E9FF]">
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <StickyNav
           onSave={handleSave}

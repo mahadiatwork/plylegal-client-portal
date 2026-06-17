@@ -303,7 +303,7 @@ export default function ProfileSetupPage() {
   // Show loader while waiting for Zoho data
   if (waitingForZoho || loadingStatus) {
     return (
-      <div className="min-h-screen bg-[#E0E7FF] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#E4E9FF] flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
@@ -333,7 +333,7 @@ export default function ProfileSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#E4E9FF] flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-2xl">Complete Your Profile</CardTitle>

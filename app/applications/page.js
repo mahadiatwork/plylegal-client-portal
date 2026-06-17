@@ -288,7 +288,7 @@ export default function ApplicationsPage() {
   const isLoading = appsSnap.isLoading || isSyncing;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#e4e9ff]">
+    <div className="flex min-h-screen flex-col bg-[#E4E9FF]">
       <AppHeader variant="classic" />
 
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-11 lg:px-8">

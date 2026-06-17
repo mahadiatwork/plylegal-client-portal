@@ -445,7 +445,7 @@ export default function EducationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E0E7FF]">
+    <div className="min-h-screen bg-[#E4E9FF]">
 
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

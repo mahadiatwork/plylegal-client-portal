@@ -35,7 +35,7 @@ export function IntakeStartPageContent({
             Getting started
           </div>
 
-          <h1 className="mt-8 font-['Segoe_UI'] text-5xl font-semibold leading-none text-primary sm:text-[3.45rem]">
+          <h1 className="mt-8 font-['Segoe_UI'] text-5xl font-semibold leading-none text-slate-900 sm:text-[3.45rem]">
             Get Started
           </h1>
 
