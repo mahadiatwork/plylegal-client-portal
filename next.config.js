@@ -19,6 +19,10 @@ const nextConfig = {
         destination: '/intake/temporary-work/:path*?applicationId=:appId&__subclass=482',
       },
       {
+        source: '/applications/820/:appId/intake/:path*',
+        destination: '/intake/partner/:path*?applicationId=:appId',
+      },
+      {
         source: '/applications/partner/:appId/intake/:path*',
         destination: '/intake/partner/:path*?applicationId=:appId',
       },

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/firebase-admin";
 import { requireClient, verifyAuth } from "@/lib/serverAuth";
 import { getApplicationSlug } from "@/lib/visaDisplay";
 
-const SUPPORTED_SLUGS = new Set(["partner", "protection", "482", "186"]);
+const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", "482", "186"]);
 
 const DEFAULT_TEMPLATE_CATEGORIES = [
   { name: "Uncategorized", icon: "folder" },
@@ -79,7 +79,8 @@ export async function GET(request) {
       );
     }
 
-    const templateDoc = await db.collection("resourceTemplates").doc(visaSlug).get();
+    const templateSlug = visaSlug === "820" ? "partner" : visaSlug;
+    const templateDoc = await db.collection("resourceTemplates").doc(templateSlug).get();
     if (!templateDoc.exists) {
       return NextResponse.json(
         { success: false, error: "No resource template found for this visa type" },
@@ -97,7 +98,7 @@ export async function GET(request) {
 
     const itemsSnapshot = await db
       .collection("resourceTemplates")
-      .doc(visaSlug)
+      .doc(templateSlug)
       .collection("items")
       .where("status", "==", "active")
       .get();
@@ -132,6 +133,7 @@ export async function GET(request) {
       success: true,
       template: {
         visaSlug,
+        templateSlug,
         title: templateData.title || "",
         status: templateData.status,
         categories: normalizeCategories(templateData.categories),

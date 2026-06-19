@@ -13,7 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { buildIntakeHref, getIntakeRoutes } from "@/lib/routes";
-import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
+import { formatVisaApplicationType, getApplicationSlug, normalizeApplicationSlug } from "@/lib/visaDisplay";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 function getParamValue(value) {
@@ -28,7 +28,8 @@ function getVisaContext(slug) {
 
 function getInternalVisaType(slug, application) {
   if (slug === "186" || slug === "482") return "temporary-work";
-  if (slug === "partner" || slug === "protection") return slug;
+  if (slug === "820" || slug === "309" || slug === "partner") return "partner";
+  if (slug === "protection") return "protection";
 
   const text = [application?.type, application?.visaTypeCode].filter(Boolean).join(" ").toLowerCase();
   if (text.includes("protection")) return "protection";
@@ -87,7 +88,9 @@ export default function QuestionnairePage() {
     (app) => String(app.id) === String(appId)
   );
 
-  const applicationSlug = slugFromUrl || (application ? getApplicationSlug(application) : null);
+  const applicationSlug = application
+    ? getApplicationSlug(application)
+    : normalizeApplicationSlug(slugFromUrl);
   const visaContext = getVisaContext(applicationSlug);
   const visaType = getInternalVisaType(applicationSlug, application);
   const applicationTypeLabel = application ? formatVisaApplicationType(application) : "Visa application";

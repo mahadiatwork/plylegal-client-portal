@@ -1,3 +1,5 @@
+import { normalizeApplicationSlug } from "./visaDisplay";
+
 // Partner Visa Routes
 export const PARTNER_VISA_ROUTES = [
   { href: "/intake/partner/start", title: "Getting Started" },
@@ -296,14 +298,17 @@ export function getInternalIntakeHref(href) {
   const prefix =
     slug === "186" || slug === "482"
       ? "/intake/temporary-work"
+      : slug === "820" || slug === "309" || slug === "partner"
+        ? "/intake/partner"
       : `/intake/${slug}`;
   return queryStr ? `${prefix}/${rest}?${queryStr}` : `${prefix}/${rest}`;
 }
 
 export function getIntakeSlugForContext(visaType, visaContext = null, explicitSlug = null) {
-  if (explicitSlug) return explicitSlug;
+  if (explicitSlug) return normalizeApplicationSlug(explicitSlug);
   if (visaType === "temporary-work") return visaContext === "186" ? "186" : "482";
-  return visaType || "partner";
+  if (visaType === "partner") return "820";
+  return visaType || "820";
 }
 
 function temporaryWorkPathname(href) {

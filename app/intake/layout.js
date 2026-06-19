@@ -127,7 +127,7 @@ export default function IntakeLayout({ children }) {
   const effectiveProfileId = profileIdFromUrl ?? childProfileIdFromPath;
 
   // Profiles from draft
-  const profiles = draftSnap.draft?.profiles || [];
+  const storedProfiles = draftSnap.draft?.profiles || [];
 
   // Prevent hydration mismatch by only rendering interactive elements after mount
   useEffect(() => {
@@ -156,6 +156,7 @@ export default function IntakeLayout({ children }) {
   }, [childProfileIdFromPath]);
 
   const visaType = getVisaTypeFromPath(pathname);
+  const profiles = storedProfiles;
   const urlSubclass = pathSlug === "186" || pathSlug === "482"
     ? pathSlug
     : (subclassFromQuery === "186" || subclassFromQuery === "482" ? subclassFromQuery : null);
@@ -262,7 +263,7 @@ export default function IntakeLayout({ children }) {
     routeProfile ||
     (effectiveProfileId ? findProfileById(effectiveProfileId) : null);
 
-  const getTemporaryWorkProfileSubpages = (profile) => {
+  const getProfileSubpages = (profile) => {
     if (!profile) return [];
     if (profile.relationship === "child") {
       return TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((subpage) => ({
@@ -278,7 +279,7 @@ export default function IntakeLayout({ children }) {
     return PROFILE_SUBPAGES;
   };
 
-  const getTemporaryWorkProfileTitle = (profile) => {
+  const getProfileTitle = (profile) => {
     if (!profile) return "";
     if (profile.relationship === "main_applicant") return "Main Applicant";
     if (profile.relationship === "spouse") return "Spouse/Partner";
@@ -289,8 +290,8 @@ export default function IntakeLayout({ children }) {
   const mobileSection =
     visaType === "temporary-work" && activeProfile
       ? {
-          title: getTemporaryWorkProfileTitle(activeProfile),
-          subpages: getTemporaryWorkProfileSubpages(activeProfile),
+          title: getProfileTitle(activeProfile),
+          subpages: getProfileSubpages(activeProfile),
           profileId: activeProfile.id,
         }
       : currentSection;
@@ -476,8 +477,9 @@ export default function IntakeLayout({ children }) {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
 
-                  // ── For temporary-work: replace Main Applicant / Spouse / Children with per-profile sections ──
-                  const isProfileSection = visaType === 'temporary-work' && (
+                  // ── Replace applicant sections with per-profile sections for profile-led visas ──
+                  const isProfileSection =
+                    visaType === 'temporary-work' && (
                       route.href.includes('/main-applicant') ||
                       route.href.includes('/spouse-partner') ||
                       route.href === '/intake/temporary-work/children'
@@ -580,11 +582,17 @@ export default function IntakeLayout({ children }) {
                                         (profile.relationship === 'child' && subpage.pathSuffix
                                           ? internalPathname === buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix)
                                           : isRouteActive(subpage.href));
-                                      const completionKey =
-                                        profile.relationship === 'child'
-                                          ? `${getTemporaryWorkChildProfileCompletionKey(profileKey, subpage.pathSuffix)}__${profileKey}`
-                                          : `${visaType}/${profile.relationship === 'spouse' ? 'spouse-partner' : 'main-applicant'}/${subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1]}__${profileKey}`;
-                                      const isComplete = draftSnap.completionStatus?.[completionKey] === true;
+                                      const completionKey = (() => {
+                                        if (profile.relationship === 'child') {
+                                          return `${getTemporaryWorkChildProfileCompletionKey(profileKey, subpage.pathSuffix)}__${profileKey}`;
+                                        }
+                                        const section = profile.relationship === 'spouse' ? 'spouse-partner' : 'main-applicant';
+                                        return `${visaType}/${section}/${subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1]}__${profileKey}`;
+                                      })();
+                                      const legacyCompletionKey = completionKey.includes("__") ? completionKey.split("__")[0] : completionKey;
+                                      const isComplete =
+                                        draftSnap.completionStatus?.[completionKey] === true ||
+                                        draftSnap.completionStatus?.[legacyCompletionKey] === true;
                                       return (
                                         <React.Fragment key={`${subpage.href}-${profileKey}`}>
                                           <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">

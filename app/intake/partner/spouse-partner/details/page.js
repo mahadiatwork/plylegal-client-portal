@@ -6,19 +6,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
+import { authStore } from "@/stores/authStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormNavigation } from "@/components/FormNavigation";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { DateSelector } from "@/components/DateSelecters";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { Download } from "lucide-react";
 
 const spousePartnerDetailsSchema = z.object({
   family_name: z.string().optional(),
@@ -35,6 +38,53 @@ const spousePartnerDetailsSchema = z.object({
   state_of_birth: z.string().optional(),
 });
 
+const firstText = (...values) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+};
+
+const normalizeNumberString = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const number = Number(text);
+  return Number.isFinite(number) ? String(number) : text;
+};
+
+const normalizeGender = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const lower = text.toLowerCase();
+  if (lower === "m" || lower === "male") return "Male";
+  if (lower === "f" || lower === "female") return "Female";
+  if (lower === "other") return "Other";
+  return "";
+};
+
+const isSpouseDependent = (dependent) => {
+  const relationship = firstText(dependent?.relationship, dependent?.Relationship_to_Applicant).toLowerCase();
+  return relationship.includes("spouse") || relationship.includes("partner") || relationship.includes("de facto");
+};
+
+function buildSpouseImportValues(dependent) {
+  return {
+    family_name: firstText(dependent?.family_name, dependent?.lastName, dependent?.Last_Name),
+    given_names: firstText(dependent?.given_names, dependent?.firstName, dependent?.First_Name),
+    preferred_names: firstText(dependent?.preferred_names, dependent?.preferredName),
+    gender: normalizeGender(firstText(dependent?.gender, dependent?.Gender)),
+    birth_day: normalizeNumberString(dependent?.birth_day),
+    birth_month: normalizeNumberString(dependent?.birth_month),
+    birth_year: firstText(dependent?.birth_year),
+    country_of_birth: firstText(dependent?.country_of_birth, dependent?.countryOfBirth),
+    suburb_of_birth: firstText(dependent?.suburb_of_birth, dependent?.suburbOfBirth),
+    city_of_birth: firstText(dependent?.city_of_birth, dependent?.cityOfBirth),
+    state_of_birth: firstText(dependent?.state_of_birth, dependent?.stateOfBirth),
+  };
+}
+
 export default function SpousePartnerDetailsPage() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -42,9 +92,12 @@ export default function SpousePartnerDetailsPage() {
   const searchParams = useSearchParams();
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
+  const authSnap = useSnapshot(authStore);
   const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [crmDependents, setCrmDependents] = useState([]);
+  const [isImportingDetails, setIsImportingDetails] = useState(false);
 
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
@@ -63,6 +116,31 @@ export default function SpousePartnerDetailsPage() {
 
   // Load section data
   const sectionData = draftStore.getSectionData('spousePartner.details');
+
+  const fetchCrmDependents = useCallback(async () => {
+    const userId = authSnap.user?.id;
+    if (!userId) return [];
+
+    try {
+      const params = new URLSearchParams({ userId });
+      if (authSnap.userProfile?.zohoContactId) {
+        params.set("zohoContactId", authSnap.userProfile.zohoContactId);
+      }
+      const res = await fetch(`/api/intake/dependents?${params.toString()}`);
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.dependents)) {
+        setCrmDependents(data.dependents);
+        return data.dependents;
+      }
+    } catch (error) {
+      console.warn("Could not load CRM dependents for spouse import:", error);
+    }
+    return [];
+  }, [authSnap.user?.id, authSnap.userProfile?.zohoContactId]);
+
+  useEffect(() => {
+    fetchCrmDependents();
+  }, [fetchCrmDependents]);
 
   const form = useForm({
     resolver: zodResolver(spousePartnerDetailsSchema),
@@ -258,6 +336,37 @@ export default function SpousePartnerDetailsPage() {
     }
   };
 
+  const handleImportDetails = async () => {
+    setIsImportingDetails(true);
+    try {
+      const dependents = crmDependents.length > 0 ? crmDependents : await fetchCrmDependents();
+      const spouse = dependents.find(isSpouseDependent);
+
+      if (!spouse) {
+        toast({
+          title: "No spouse details found",
+          description: "We could not find a spouse/partner record to import.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const importValues = buildSpouseImportValues(spouse);
+      const entries = Object.entries(importValues).filter(([, value]) => Boolean(firstText(value)));
+      const nextValues = { ...form.getValues() };
+      entries.forEach(([key, value]) => {
+        nextValues[key] = value;
+      });
+      reset(nextValues, { keepDefaultValues: true });
+      toast({
+        title: "Details imported",
+        description: "Please review the imported spouse/partner information before continuing.",
+      });
+    } finally {
+      setIsImportingDetails(false);
+    }
+  };
+
   return (
     <>
       <Card className="rounded-2xl shadow-md bg-white">
@@ -289,6 +398,23 @@ export default function SpousePartnerDetailsPage() {
                 </ul>
               </div>
             )}
+
+            <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-primary">Import existing details</p>
+                <p className="text-sm text-gray-600">Prefill this page from the connected spouse/partner record.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleImportDetails}
+                disabled={isImportingDetails}
+                className="w-full sm:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {isImportingDetails ? "Importing..." : "Import details"}
+              </Button>
+            </div>
 
             {/* Family Name */}
             <div>

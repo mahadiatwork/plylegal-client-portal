@@ -1562,8 +1562,8 @@ export const draftStore = proxy({
       visaType === 'temporary-work' ? (this.visaContext ?? this.draft?.visaContext ?? null) : null;
 
     if (visaType === 'temporary-work') {
-      const completionKeys = getAllRoutes("temporary-work", visaContextForRoutes)
-        .map((route) => getCompletionKeyFromTemporaryWorkRoute(route))
+      const completionKeys = getAllRoutes(visaType, visaContextForRoutes)
+        .map(getCompletionKeyFromTemporaryWorkRoute)
         .filter(Boolean);
       const uniqueCompletionKeys = [...new Set(completionKeys)];
       const completedCount = uniqueCompletionKeys.filter(
@@ -1666,6 +1666,8 @@ export const draftStore = proxy({
   })(),
 });
 // Register the profiles getter to break circular dependency with routes.js
-setProfilesGetter(() => draftStore.draft?.profiles || []);
+setProfilesGetter(() => {
+  return draftStore.draft?.profiles || [];
+});
 // Register the non-migrating members getter to include them in linear navigation flow
 setNonMigratingMembersGetter(() => draftStore.draft?.non_migrating_members || []);

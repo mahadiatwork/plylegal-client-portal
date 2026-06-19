@@ -700,7 +700,7 @@ export default function Page() {
           <li>visits back to your own country</li>
         </ul>
         <p className="text-sm font-bold text-red-600 mt-4">
-          Please note if the child is under 16 years of age, this information is not required.
+          Please note if an applicant is under 16 years of age, this information is not required.
         </p>
       </CardHeader>
       <CardContent>

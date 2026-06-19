@@ -4,9 +4,10 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
+import { authStore } from "@/stores/authStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormNavigation } from "@/components/FormNavigation";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Download } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
@@ -38,6 +39,119 @@ const formSchema = z.object({
   marital_status_date_year: z.string().optional(),
 });
 
+const MONTH_NAME_TO_NUMBER = {
+  january: "1",
+  february: "2",
+  march: "3",
+  april: "4",
+  may: "5",
+  june: "6",
+  july: "7",
+  august: "8",
+  september: "9",
+  october: "10",
+  november: "11",
+  december: "12",
+};
+
+const firstText = (...values) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+};
+
+const normalizeNumberString = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const number = Number(text);
+  return Number.isFinite(number) ? String(number) : text;
+};
+
+const normalizeMonth = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const number = Number(text);
+  if (Number.isFinite(number)) return String(number);
+  return MONTH_NAME_TO_NUMBER[text.toLowerCase()] || text;
+};
+
+const normalizeGender = (value) => {
+  const text = firstText(value);
+  if (!text) return "";
+  const lower = text.toLowerCase();
+  if (lower === "m" || lower === "male") return "Male";
+  if (lower === "f" || lower === "female") return "Female";
+  return "";
+};
+
+const parseDateParts = (value) => {
+  if (!value) return {};
+
+  const rawValue = typeof value?.toDate === "function" ? value.toDate() : value;
+  if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
+    return {
+      birth_day: String(rawValue.getDate()),
+      birth_month: String(rawValue.getMonth() + 1),
+      birth_year: String(rawValue.getFullYear()),
+    };
+  }
+
+  const text = firstText(rawValue);
+  if (!text) return {};
+
+  const isoMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (isoMatch) {
+    return {
+      birth_day: normalizeNumberString(isoMatch[3]),
+      birth_month: normalizeMonth(isoMatch[2]),
+      birth_year: isoMatch[1],
+    };
+  }
+
+  const dateMatch = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (dateMatch) {
+    const first = Number(dateMatch[1]);
+    const second = Number(dateMatch[2]);
+    const day = first > 12 ? dateMatch[1] : second > 12 ? dateMatch[2] : dateMatch[1];
+    const month = first > 12 ? dateMatch[2] : second > 12 ? dateMatch[1] : dateMatch[2];
+    return {
+      birth_day: normalizeNumberString(day),
+      birth_month: normalizeMonth(month),
+      birth_year: dateMatch[3],
+    };
+  }
+
+  return {};
+};
+
+function buildMainApplicantImportValues(userProfile, crmContact) {
+  const dobParts = parseDateParts(firstText(
+    crmContact?.dateOfBirth,
+    crmContact?.Date_of_Birth,
+    userProfile?.dateOfBirth,
+    userProfile?.Date_of_Birth,
+    userProfile?.dob,
+    userProfile?.birthDate
+  ));
+
+  return {
+    family_name: firstText(crmContact?.lastName, crmContact?.Last_Name, userProfile?.lastName, userProfile?.family_name, userProfile?.familyName),
+    given_names: firstText(crmContact?.firstName, crmContact?.First_Name, userProfile?.firstName, userProfile?.given_names, userProfile?.givenName),
+    preferred_names: firstText(userProfile?.preferredName, userProfile?.preferred_names, userProfile?.preferredGivenName),
+    gender: normalizeGender(firstText(crmContact?.gender, crmContact?.Gender, userProfile?.gender, userProfile?.Gender, userProfile?.sex)),
+    birth_day: normalizeNumberString(firstText(userProfile?.birth_day, userProfile?.birthDay, dobParts.birth_day)),
+    birth_month: normalizeMonth(firstText(userProfile?.birth_month, userProfile?.birthMonth, dobParts.birth_month)),
+    birth_year: firstText(userProfile?.birth_year, userProfile?.birthYear, dobParts.birth_year),
+    country_of_birth: firstText(userProfile?.country_of_birth, userProfile?.countryOfBirth, userProfile?.birthCountry),
+    city_of_birth: firstText(userProfile?.city_of_birth, userProfile?.cityOfBirth, userProfile?.birthCity),
+    state_of_birth: firstText(userProfile?.state_of_birth, userProfile?.stateOfBirth, userProfile?.birthState),
+    marital_status: firstText(userProfile?.marital_status, userProfile?.maritalStatus),
+  };
+}
+
 export default function Page() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -46,8 +160,11 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const authSnap = useSnapshot(authStore);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [crmContact, setCrmContact] = useState(null);
+  const [isImportingDetails, setIsImportingDetails] = useState(false);
   const [showJsonData, setShowJsonData] = useState(false);
   const isSavingRef = useRef(false);
 
@@ -96,6 +213,31 @@ export default function Page() {
 
   // Load section data
   const sectionData = draftStore.getSectionData('mainApplicant.details');
+
+  const fetchCrmContact = useCallback(async () => {
+    const userId = authSnap.user?.id;
+    if (!userId) return;
+
+    try {
+      const params = new URLSearchParams({ userId });
+      if (authSnap.userProfile?.zohoContactId) {
+        params.set("zohoContactId", authSnap.userProfile.zohoContactId);
+      }
+      const res = await fetch(`/api/intake/dependents?${params.toString()}`);
+      const data = await res.json();
+      if (data?.success && data.contact) {
+        setCrmContact(data.contact);
+        return data.contact;
+      }
+    } catch (error) {
+      console.warn("Could not load CRM contact for main applicant import:", error);
+    }
+    return null;
+  }, [authSnap.user?.id, authSnap.userProfile?.zohoContactId]);
+
+  useEffect(() => {
+    fetchCrmContact();
+  }, [fetchCrmContact]);
 
   // Populate Form
   useEffect(() => {
@@ -251,6 +393,37 @@ export default function Page() {
     }
   };
 
+  const handleImportDetails = async () => {
+    setIsImportingDetails(true);
+    try {
+      const contact = crmContact || await fetchCrmContact();
+
+      const importValues = buildMainApplicantImportValues(authSnap.userProfile, contact);
+      const entries = Object.entries(importValues).filter(([, value]) => Boolean(firstText(value)));
+
+      if (entries.length === 0) {
+        toast({
+          title: "No details found",
+          description: "We could not find saved profile details to import.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const nextValues = { ...form.getValues() };
+      entries.forEach(([key, value]) => {
+        nextValues[key] = value;
+      });
+      form.reset(nextValues);
+      toast({
+        title: "Details imported",
+        description: "Please review the imported information before continuing.",
+      });
+    } finally {
+      setIsImportingDetails(false);
+    }
+  };
+
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -299,6 +472,23 @@ export default function Page() {
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-primary">Import existing details</p>
+              <p className="text-sm text-gray-600">Prefill this page from the client profile or connected CRM contact.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleImportDetails}
+              disabled={isImportingDetails}
+              className="w-full sm:w-auto"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isImportingDetails ? "Importing..." : "Import details"}
+            </Button>
+          </div>
+
           {/* Main Applicant's Personal Details Section */}
           <div className="space-y-6 border-gray-200">
             <div>

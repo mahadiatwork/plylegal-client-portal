@@ -148,7 +148,7 @@ function getApplicationTargetSet(application) {
     ["186", "subclass 186", "employer nomination", "employer nomination scheme", "temporary-work", "temporary work"].forEach((tag) => addTarget(targets, tag));
   } else if (slug === "482") {
     ["482", "subclass 482", "skills in demand", "temporary skill shortage", "tss", "temporary-work", "temporary work"].forEach((tag) => addTarget(targets, tag));
-  } else if (slug === "partner") {
+  } else if (slug === "820" || slug === "partner") {
     ["partner", "partner visa", "820", "309", "subclass 820", "subclass 309"].forEach((tag) => addTarget(targets, tag));
   } else if (slug === "protection") {
     ["protection", "protection visa"].forEach((tag) => addTarget(targets, tag));
