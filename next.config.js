@@ -23,6 +23,10 @@ const nextConfig = {
         destination: '/intake/partner/:path*?applicationId=:appId',
       },
       {
+        source: '/applications/866/:appId/intake/:path*',
+        destination: '/intake/protection/:path*?applicationId=:appId',
+      },
+      {
         source: '/applications/partner/:appId/intake/:path*',
         destination: '/intake/partner/:path*?applicationId=:appId',
       },

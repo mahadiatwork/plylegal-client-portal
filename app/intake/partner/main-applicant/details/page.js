@@ -22,6 +22,17 @@ import { Download } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const formSchema = z.object({
+  is_main_applicant: z.enum(["yes", "no"]),
+
+  // Person completing questionnaire (shown only if is_main_applicant === "no")
+  completing_family_name: z.string().optional(),
+  completing_given_names: z.string().optional(),
+  completing_preferred_names: z.string().optional(),
+  completing_gender: z.string().optional(),
+  completing_birth_day: z.string().optional(),
+  completing_birth_month: z.string().optional(),
+  completing_birth_year: z.string().optional(),
+
   // Main applicant details
   prefix: z.string().optional(),
   family_name: z.string().optional(),
@@ -195,6 +206,14 @@ export default function Page() {
     resolver: zodResolver(formSchema),
     mode: "onChange",
     defaultValues: {
+      is_main_applicant: "yes",
+      completing_family_name: "",
+      completing_given_names: "",
+      completing_preferred_names: "",
+      completing_gender: "",
+      completing_birth_day: "",
+      completing_birth_month: "",
+      completing_birth_year: "",
       prefix: "",
       family_name: "",
       given_names: "",
@@ -280,6 +299,14 @@ export default function Page() {
 
       // 4. Prepare the clean data object
       const formData = {
+        is_main_applicant: safeStr(savedData.is_main_applicant) || "yes",
+        completing_family_name: safeStr(savedData.completing_family_name),
+        completing_given_names: safeStr(savedData.completing_given_names),
+        completing_preferred_names: safeStr(savedData.completing_preferred_names),
+        completing_gender: safeStr(savedData.completing_gender),
+        completing_birth_day: normalizeNumber(savedData.completing_birth_day),
+        completing_birth_month: normalizeMonth(savedData.completing_birth_month),
+        completing_birth_year: safeStr(savedData.completing_birth_year),
         prefix: safeStr(savedData.prefix),
         family_name: safeStr(savedData.family_name),
         given_names: safeStr(savedData.given_names),
@@ -334,9 +361,7 @@ export default function Page() {
 
     setIsSaving(true);
     try {
-      // Always set is_main_applicant to "yes"
-      const dataWithMainApplicant = { ...data, is_main_applicant: "yes" };
-      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "details", dataWithMainApplicant) : await draftStore.saveSectionData("mainApplicant.details", dataWithMainApplicant);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "details", data) : await draftStore.saveSectionData("mainApplicant.details", data);
 
       if (result.success) {
         if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/details'); } else { await draftStore.markPageComplete('partner/main-applicant/details'); }
@@ -372,10 +397,8 @@ export default function Page() {
     isSavingRef.current = true;
     try {
       const values = form.getValues();
-      // Always set is_main_applicant to "yes"
-      const valuesWithMainApplicant = { ...values, is_main_applicant: "yes" };
-      console.log("📦 Data saved to database:", valuesWithMainApplicant);
-      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "details", valuesWithMainApplicant) : await draftStore.saveSectionData("mainApplicant.details", valuesWithMainApplicant);
+      console.log("📦 Data saved to database:", values);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "details", values) : await draftStore.saveSectionData("mainApplicant.details", values);
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -474,6 +497,174 @@ export default function Page() {
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div>
+            <Label className="text-base font-medium text-gray-900">
+              Are you or will you be the Main Applicant in any application?
+            </Label>
+            <RadioGroup
+              value={form.watch("is_main_applicant")}
+              onValueChange={(value) => form.setValue("is_main_applicant", value)}
+              className="flex gap-4 mt-2"
+              data-testid="radio-is-main-applicant"
+            >
+              <div className="flex items-center">
+                <RadioGroupItem value="yes" id="partner-main-applicant-yes" data-testid="radio-yes" />
+                <Label htmlFor="partner-main-applicant-yes" className="ml-2 cursor-pointer font-normal">
+                  Yes
+                </Label>
+              </div>
+              <div className="flex items-center">
+                <RadioGroupItem value="no" id="partner-main-applicant-no" data-testid="radio-no" />
+                <Label htmlFor="partner-main-applicant-no" className="ml-2 cursor-pointer font-normal">
+                  No
+                </Label>
+              </div>
+            </RadioGroup>
+            {form.formState.errors.is_main_applicant?.message && (
+              <p className="text-sm text-red-600 mt-1">{form.formState.errors.is_main_applicant.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-6 border-gray-200">
+            <div className="space-y-1">
+              <Label className="mb-2 block">Prefix/Title</Label>
+            </div>
+            <RadioGroup
+              value={form.watch("prefix")}
+              onValueChange={(value) => form.setValue("prefix", value)}
+              className="flex flex-wrap gap-4"
+              data-testid="radio-prefix"
+            >
+              {["Mr", "Mrs", "Miss", "Ms", "Dr", "Other"].map((prefix) => (
+                <div key={prefix} className="flex items-center">
+                  <RadioGroupItem value={prefix} id={`partner-main-${prefix.toLowerCase()}`} />
+                  <Label htmlFor={`partner-main-${prefix.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                    {prefix}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+            {form.formState.errors.prefix?.message && (
+              <p className="text-sm text-red-600 mt-1">{form.formState.errors.prefix.message}</p>
+            )}
+          </div>
+
+          {form.watch("is_main_applicant") === "no" && (
+            <div className="space-y-6 border-b border-gray-200 pb-8">
+              <div className="space-y-1">
+                <p className="font-bold text-lg text-gray-900">Insert the details of the person who is completing this Questionnaire</p>
+              </div>
+
+              <div>
+                <Label>Family Name</Label>
+                <Input {...form.register("completing_family_name")} data-testid="input-completing-family-name" />
+                {form.formState.errors.completing_family_name?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_family_name.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label>Given Names</Label>
+                <Input {...form.register("completing_given_names")} data-testid="input-completing-given-names" />
+                {form.formState.errors.completing_given_names?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_given_names.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label>Preferred Names</Label>
+                <Input {...form.register("completing_preferred_names")} data-testid="input-completing-preferred-names" />
+                {form.formState.errors.completing_preferred_names?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_preferred_names.message}</p>
+                )}
+              </div>
+
+              <div>
+                <Label>Gender</Label>
+                <RadioGroup
+                  value={form.watch("completing_gender")}
+                  onValueChange={(value) => form.setValue("completing_gender", value)}
+                  className="flex gap-4 mt-2"
+                  data-testid="radio-completing-gender"
+                >
+                  {["Male", "Female", "Other"].map((gender) => (
+                    <div key={gender} className="flex items-center">
+                      <RadioGroupItem value={gender} id={`partner-completing-gender-${gender.toLowerCase()}`} />
+                      <Label htmlFor={`partner-completing-gender-${gender.toLowerCase()}`} className="ml-2 cursor-pointer font-normal">
+                        {gender}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+                {form.formState.errors.completing_gender?.message && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_gender.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Date of Birth - Day</Label>
+                  <Select
+                    onValueChange={(value) => form.setValue("completing_birth_day", value)}
+                    value={form.watch("completing_birth_day")}
+                  >
+                    <SelectTrigger data-testid="select-completing-birth-day">
+                      <SelectValue placeholder="Choose Day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {days.map((day) => (
+                        <SelectItem key={day} value={day}>{day}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.completing_birth_day?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_day.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Month</Label>
+                  <Select
+                    onValueChange={(value) => form.setValue("completing_birth_month", value)}
+                    value={form.watch("completing_birth_month")}
+                  >
+                    <SelectTrigger data-testid="select-completing-birth-month">
+                      <SelectValue placeholder="Choose Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map((month, idx) => (
+                        <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.completing_birth_month?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_month.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Year</Label>
+                  <Select
+                    onValueChange={(value) => form.setValue("completing_birth_year", value)}
+                    value={form.watch("completing_birth_year")}
+                  >
+                    <SelectTrigger data-testid="select-completing-birth-year">
+                      <SelectValue placeholder="Choose Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.completing_birth_year?.message && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.completing_birth_year.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-primary">Import existing details</p>
@@ -493,6 +684,10 @@ export default function Page() {
 
           {/* Main Applicant's Personal Details Section */}
           <div className="space-y-6 border-gray-200">
+            <div className="space-y-1">
+              <p className="font-bold text-lg text-gray-900">Main Applicant's Personal Details</p>
+            </div>
+
             <div>
               <Label>Family Name</Label>
               <Input {...form.register("family_name")} data-testid="input-family-name" />

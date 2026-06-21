@@ -13,7 +13,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { buildIntakeHref, getIntakeRoutes } from "@/lib/routes";
-import { formatVisaApplicationType, getApplicationSlug, normalizeApplicationSlug } from "@/lib/visaDisplay";
+import {
+  formatVisaApplicationType,
+  getApplicationSlug,
+  normalizeApplicationSlug,
+  PARTNER_PUBLIC_SLUG,
+  PROTECTION_PUBLIC_SLUG,
+} from "@/lib/visaDisplay";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 function getParamValue(value) {
@@ -28,8 +34,8 @@ function getVisaContext(slug) {
 
 function getInternalVisaType(slug, application) {
   if (slug === "186" || slug === "482") return "temporary-work";
-  if (slug === "820" || slug === "309" || slug === "partner") return "partner";
-  if (slug === "protection") return "protection";
+  if (slug === PARTNER_PUBLIC_SLUG || slug === "309" || slug === "partner") return "partner";
+  if (slug === PROTECTION_PUBLIC_SLUG || slug === "protection") return "protection";
 
   const text = [application?.type, application?.visaTypeCode].filter(Boolean).join(" ").toLowerCase();
   if (text.includes("protection")) return "protection";
@@ -91,9 +97,17 @@ export default function QuestionnairePage() {
   const applicationSlug = application
     ? getApplicationSlug(application)
     : normalizeApplicationSlug(slugFromUrl);
+  const normalizedSlugFromUrl = normalizeApplicationSlug(slugFromUrl);
   const visaContext = getVisaContext(applicationSlug);
   const visaType = getInternalVisaType(applicationSlug, application);
   const applicationTypeLabel = application ? formatVisaApplicationType(application) : "Visa application";
+
+  useEffect(() => {
+    if (!appId || !slugFromUrl || !applicationSlug) return;
+    if (normalizedSlugFromUrl === applicationSlug && slugFromUrl === applicationSlug) return;
+
+    router.replace(`/applications/${applicationSlug}/${appId}/questionnaire`);
+  }, [appId, slugFromUrl, normalizedSlugFromUrl, applicationSlug, router]);
 
   const routeSections = useMemo(
     () => getRouteSections(visaType, visaContext),

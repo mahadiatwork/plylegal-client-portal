@@ -5,6 +5,7 @@
 
 export const SKILLS_IN_DEMAND_TYPE_LABEL = "Skills in Demand (subclass 482)";
 export const PARTNER_PUBLIC_SLUG = "820";
+export const PROTECTION_PUBLIC_SLUG = "866";
 
 const SUBCLASS_PATTERN = /subclass\s*(\d{3})/i;
 
@@ -89,7 +90,8 @@ export function formatVisaApplicationType(app) {
 export function normalizeApplicationSlug(slug) {
   const value = String(slug || "").trim().toLowerCase();
   if (value === "partner" || value === "309") return PARTNER_PUBLIC_SLUG;
-  if (["186", "482", PARTNER_PUBLIC_SLUG, "protection"].includes(value)) return value;
+  if (value === "protection") return PROTECTION_PUBLIC_SLUG;
+  if (["186", "482", PARTNER_PUBLIC_SLUG, PROTECTION_PUBLIC_SLUG].includes(value)) return value;
   return value;
 }
 
@@ -104,7 +106,7 @@ export function getApplicationSlug(app) {
     ""
   ).trim().toLowerCase();
 
-  if (["186", "482", "partner", "309", PARTNER_PUBLIC_SLUG, "protection"].includes(explicitSlug)) {
+  if (["186", "482", "partner", "309", PARTNER_PUBLIC_SLUG, "protection", PROTECTION_PUBLIC_SLUG].includes(explicitSlug)) {
     return normalizeApplicationSlug(explicitSlug);
   }
 
@@ -117,7 +119,7 @@ export function getApplicationSlug(app) {
   const lower = text.toLowerCase();
 
   if (lower.includes("protection") || app.visaTypeCode === "protection") {
-    return "protection";
+    return PROTECTION_PUBLIC_SLUG;
   }
 
   const subclass = extractSubclass(text);

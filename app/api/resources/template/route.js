@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/firebase-admin";
 import { requireClient, verifyAuth } from "@/lib/serverAuth";
-import { getApplicationSlug } from "@/lib/visaDisplay";
+import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 
-const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", "482", "186"]);
+const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", PROTECTION_PUBLIC_SLUG, "482", "186"]);
 
 const DEFAULT_TEMPLATE_CATEGORIES = [
   { name: "Uncategorized", icon: "folder" },
@@ -79,7 +79,11 @@ export async function GET(request) {
       );
     }
 
-    const templateSlug = visaSlug === "820" ? "partner" : visaSlug;
+    const templateSlug = visaSlug === "820"
+      ? "partner"
+      : visaSlug === PROTECTION_PUBLIC_SLUG
+        ? "protection"
+        : visaSlug;
     const templateDoc = await db.collection("resourceTemplates").doc(templateSlug).get();
     if (!templateDoc.exists) {
       return NextResponse.json(

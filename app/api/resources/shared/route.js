@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/firebase-admin";
 import { requireClient, verifyAuth } from "@/lib/serverAuth";
-import { extractSubclass, getApplicationSlug } from "@/lib/visaDisplay";
+import { extractSubclass, getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
   "all",
@@ -150,8 +150,8 @@ function getApplicationTargetSet(application) {
     ["482", "subclass 482", "skills in demand", "temporary skill shortage", "tss", "temporary-work", "temporary work"].forEach((tag) => addTarget(targets, tag));
   } else if (slug === "820" || slug === "partner") {
     ["partner", "partner visa", "820", "309", "subclass 820", "subclass 309"].forEach((tag) => addTarget(targets, tag));
-  } else if (slug === "protection") {
-    ["protection", "protection visa"].forEach((tag) => addTarget(targets, tag));
+  } else if (slug === PROTECTION_PUBLIC_SLUG || slug === "protection") {
+    [PROTECTION_PUBLIC_SLUG, `subclass ${PROTECTION_PUBLIC_SLUG}`, "protection", "protection visa"].forEach((tag) => addTarget(targets, tag));
   }
 
   return targets;

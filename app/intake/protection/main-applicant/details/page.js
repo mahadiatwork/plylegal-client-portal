@@ -105,7 +105,9 @@ export default function Page() {
   });
 
   useEffect(() => {
-    const savedData = draftSnap.draft?.protection_details || {};
+    const savedData = profileId
+      ? (draftSnap.draft?.profiles_data?.[profileId]?.details || draftSnap.draft?.protection_details || {})
+      : (draftSnap.draft?.protection_details || {});
     if (Object.keys(savedData).length > 0) {
       const formData = {
         is_main_applicant: savedData.is_main_applicant || "yes",
@@ -140,12 +142,16 @@ export default function Page() {
         setIsMainApplicant(savedData.is_main_applicant);
       }
     }
-  }, [draftSnap.draft?.protection_details]);
+  }, [draftSnap.draft?.protection_details, draftSnap.draft?.profiles_data, profileId]);
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      await draftStore.saveSectionData("protection_details", data);
+      if (profileId) {
+        await draftStore.saveProfileSectionData(profileId, "details", data);
+      } else {
+        await draftStore.saveSectionData("protection_details", data);
+      }
       if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`); } else { await draftStore.markPageComplete(`${visaType}/main-applicant/details`); }
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       startNavigation(next);
@@ -168,7 +174,9 @@ export default function Page() {
     setIsSaving(true);
     try {
       const values = form.getValues();
-      const result = await draftStore.saveSectionData("protection_details", values);
+      const result = profileId
+        ? await draftStore.saveProfileSectionData(profileId, "details", values)
+        : await draftStore.saveSectionData("protection_details", values);
       if (result.success) {
         toast({
           title: "Draft saved",

@@ -66,7 +66,7 @@ import React from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
-import { getApplicationSlug } from "@/lib/visaDisplay";
+import { getApplicationSlug, normalizeApplicationSlug } from "@/lib/visaDisplay";
 import { useToast } from "@/hooks/use-toast";
 
 function getRouteIcon(route) {
@@ -118,6 +118,10 @@ export default function IntakeLayout({ children }) {
   const [deletingNmfId, setDeletingNmfId] = useState(null);
   const mobileActiveTabRef = React.useRef(null);
   const internalPathname = getInternalIntakeHref(pathname).split("?")[0];
+  const rawPathSlug =
+    typeof pathname === "string"
+      ? (pathname.match(/^\/applications\/([^/]+)\/[^/]+\/intake(?:\/|$)/) || [])[1] ?? null
+      : null;
   const pathSlug = getIntakeSlugFromPathname(pathname);
   const subclassFromQuery = searchParams.get("__subclass");
   const appIdFromUrl = getApplicationIdFromSearchParams(searchParams) ?? getApplicationIdFromPathname(pathname);
@@ -198,6 +202,17 @@ export default function IntakeLayout({ children }) {
   }, [urlSubclass, draftSnap.visaContext, appIdFromUrl]);
 
   useEffect(() => {
+    if (rawPathSlug && pathSlug && normalizeApplicationSlug(rawPathSlug) !== rawPathSlug) {
+      router.replace(buildIntakeHref({
+        slug: pathSlug,
+        appId: appIdFromUrl,
+        internalHref: `${internalPathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+        visaType,
+        visaContext: draftSnap.visaContext,
+      }));
+      return;
+    }
+
     const isLegacyIntakeUrl = typeof pathname === "string" && pathname.startsWith("/intake/");
     if (!isLegacyIntakeUrl || !appIdFromUrl || pathSlug || subclassFromQuery) return;
     if (visaType === "temporary-work" && !currentApp && !draftSnap.visaContext) return;
@@ -210,7 +225,7 @@ export default function IntakeLayout({ children }) {
       visaType,
       visaContext: draftSnap.visaContext,
     }));
-  }, [pathname, appIdFromUrl, pathSlug, subclassFromQuery, visaType, currentApp, draftSnap.visaContext, internalPathname, searchParams, router]);
+  }, [pathname, rawPathSlug, appIdFromUrl, pathSlug, subclassFromQuery, visaType, currentApp, draftSnap.visaContext, internalPathname, searchParams, router]);
 
   const INTAKE_ROUTES = getIntakeRoutes(visaType, draftSnap.visaContext);
 

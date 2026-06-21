@@ -18,7 +18,7 @@ function processFile(filePath) {
   // First, ensure getProfileIdFromSearchParams is imported.
   if (!content.includes('getProfileIdFromSearchParams')) {
     content = content.replace(
-      /import \{([^}]+)\} from "@/lib\/routes";/,
+      new RegExp('import \\{([^}]+)\\} from "@/lib/routes";'),
       `import {$1} from "@/lib/routes";\nimport { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";`
     );
   }

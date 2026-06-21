@@ -1,4 +1,12 @@
-import { normalizeApplicationSlug } from "./visaDisplay";
+import { normalizeApplicationSlug, PARTNER_PUBLIC_SLUG, PROTECTION_PUBLIC_SLUG } from "./visaDisplay";
+
+function getInternalIntakePrefixForSlug(slug) {
+  const normalizedSlug = normalizeApplicationSlug(slug);
+  if (normalizedSlug === "186" || normalizedSlug === "482") return "/intake/temporary-work";
+  if (normalizedSlug === PARTNER_PUBLIC_SLUG) return "/intake/partner";
+  if (normalizedSlug === PROTECTION_PUBLIC_SLUG) return "/intake/protection";
+  return `/intake/${normalizedSlug}`;
+}
 
 // Partner Visa Routes
 export const PARTNER_VISA_ROUTES = [
@@ -53,7 +61,6 @@ export const PARTNER_VISA_ROUTES = [
       { href: "/intake/partner/relationships/supporting-witnesses", title: "Supporting Witnesses" },
     ],
   },
-  { href: "/intake/partner/family", title: "Family" },
   {
     href: "/intake/partner/all-applicants/addresses",
     title: "All Applicants",
@@ -315,7 +322,7 @@ export function setNonMigratingMembersGetter(getter) {
 export function getIntakeSlugFromPathname(pathname) {
   if (!pathname || typeof pathname !== "string") return null;
   const match = pathname.match(/^\/applications\/([^/]+)\/[^/]+\/intake(?:\/|$)/);
-  return match?.[1] || null;
+  return match?.[1] ? normalizeApplicationSlug(match[1]) : null;
 }
 
 export function getApplicationIdFromPathname(pathname) {
@@ -332,19 +339,15 @@ export function getInternalIntakeHref(href) {
 
   const slug = match[1];
   const rest = match[2] || "start";
-  const prefix =
-    slug === "186" || slug === "482"
-      ? "/intake/temporary-work"
-      : slug === "820" || slug === "309" || slug === "partner"
-        ? "/intake/partner"
-      : `/intake/${slug}`;
+  const prefix = getInternalIntakePrefixForSlug(slug);
   return queryStr ? `${prefix}/${rest}?${queryStr}` : `${prefix}/${rest}`;
 }
 
 export function getIntakeSlugForContext(visaType, visaContext = null, explicitSlug = null) {
   if (explicitSlug) return normalizeApplicationSlug(explicitSlug);
   if (visaType === "temporary-work") return visaContext === "186" ? "186" : "482";
-  if (visaType === "partner") return "820";
+  if (visaType === "partner") return PARTNER_PUBLIC_SLUG;
+  if (visaType === "protection") return PROTECTION_PUBLIC_SLUG;
   return visaType || "820";
 }
 
@@ -378,10 +381,7 @@ export function buildIntakeHref({ slug, appId, internalHref, profileId, visaType
 
   const effectiveVisaType = visaType || getVisaTypeFromPath(pathOnly);
   const effectiveSlug = getIntakeSlugForContext(effectiveVisaType, visaContext, slug);
-  const prefix =
-    effectiveSlug === "186" || effectiveSlug === "482"
-      ? "/intake/temporary-work"
-      : `/intake/${effectiveSlug}`;
+  const prefix = getInternalIntakePrefixForSlug(effectiveSlug);
   const rest = pathOnly.startsWith(`${prefix}/`)
     ? pathOnly.slice(prefix.length + 1)
     : pathOnly.replace(/^\/intake\/[^/]+\//, "");
