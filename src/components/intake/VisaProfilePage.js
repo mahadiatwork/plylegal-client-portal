@@ -227,6 +227,15 @@ function getRelationshipColor(rel) {
   }
 }
 
+function getApplicationImportLabel(app) {
+  return [app?.reference, app?.type].filter(Boolean).join(" - ") || app?.id || "Previous application";
+}
+
+function isQuestionnaireImportCandidate(app, currentId) {
+  if (!app?.id || String(app.id) === String(currentId)) return false;
+  return true;
+}
+
 // ─── Profile Dialog ─────────────────────────────────────────────────────────
 
 function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant, mainApplicantPrefill, availableCrmDependents = [], isSaving = false, relationships }) {
@@ -509,6 +518,9 @@ export default function VisaProfilePage({
   const [isNavigating, setIsNavigating] = useState(false);
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const [settingPrimaryId, setSettingPrimaryId] = useState(null);
+  const [importSourceId, setImportSourceId] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState(null);
   // CRM dependents state
   const [crmDependents, setCrmDependents] = useState([]);
   const [crmContact, setCrmContact] = useState(null);
@@ -563,6 +575,9 @@ export default function VisaProfilePage({
   const hasMainApplicant = profiles.some(p => p.relationship === "main_applicant");
   const currentApp = appsSnap.applications.find((app) => String(app.id) === String(draftSnap.currentApplicationId));
   const isSubmitted = currentApp?.status === "submitted";
+  const importCandidates = appsSnap.applications.filter((app) =>
+    isQuestionnaireImportCandidate(app, draftSnap.currentApplicationId)
+  );
 
   const mainApplicantPrefill = useMemo(
     () => buildMainApplicantPrefill(draftSnap.draft, authSnap.userProfile, crmContact, detailsSectionKey),
@@ -649,6 +664,51 @@ export default function VisaProfilePage({
       }
     } finally {
       setSettingPrimaryId(null);
+    }
+  };
+
+  const handleImportQuestionnaire = async () => {
+    if (!importSourceId) {
+      toast({
+        title: "Select an application",
+        description: "Choose a previous application to import from.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!hasMainApplicant) {
+      toast({
+        title: "Add the primary applicant first",
+        description: "Complete the Included Applicants list before importing answers.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const result = await draftStore.importQuestionnaireFromApplication(importSourceId, {
+        targetProfiles: profiles,
+        targetVisaType: visaType,
+        targetVisaContext: draftSnap.visaContext,
+      });
+      if (result.success) {
+        setImportSummary(result.summary || null);
+        const matchedCount = result.summary?.matchedApplicants?.length || 0;
+        const unmatchedCount = result.summary?.unmatchedTargetApplicants?.length || 0;
+        toast({
+          title: "Answers imported",
+          description: `${matchedCount} applicant${matchedCount === 1 ? "" : "s"} matched.${unmatchedCount ? ` ${unmatchedCount} applicant${unmatchedCount === 1 ? "" : "s"} still need completion.` : " Review each section before submitting."}`,
+        });
+      } else {
+        toast({
+          title: "Import failed",
+          description: result.error || "Could not import questionnaire data.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -864,6 +924,69 @@ export default function VisaProfilePage({
             <Plus className="w-4 h-4 mr-2" />
             Add Person
           </Button>
+
+          {hasMainApplicant && !isSubmitted && importCandidates.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-800">Import Existing Information</p>
+                <p className="text-sm text-slate-600">
+                  If you have previously completed a Ply Legal questionnaire for another visa application, you may be able to import your information to save time. All details can be reviewed and edited after import.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="import-questionnaire-source">Previous visa application</Label>
+                  <Select value={importSourceId} onValueChange={setImportSourceId}>
+                    <SelectTrigger id="import-questionnaire-source" data-testid="select-import-questionnaire-source">
+                      <SelectValue placeholder="Select previous application..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {importCandidates.map((app) => (
+                        <SelectItem key={app.id} value={app.id}>
+                          {getApplicationImportLabel(app)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isImporting || !importSourceId}
+                  onClick={handleImportQuestionnaire}
+                  data-testid="button-import-questionnaire"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    "Import information"
+                  )}
+                </Button>
+              </div>
+
+              {importSummary && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Import summary</p>
+                      <p>
+                        {importSummary.matchedApplicants?.length || 0} matched - {importSummary.skippedSourceApplicants?.length || 0} skipped - {importSummary.unmatchedTargetApplicants?.length || 0} need completion
+                      </p>
+                    </div>
+                  </div>
+                  {importSummary.unmatchedTargetApplicants?.length > 0 && (
+                    <p className="text-xs text-emerald-800">
+                      Needs completion: {importSummary.unmatchedTargetApplicants.map((person) => person.name).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Extra content slot (e.g. 186 import section) */}
           {extraContent}

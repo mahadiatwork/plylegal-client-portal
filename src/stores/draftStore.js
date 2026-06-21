@@ -16,6 +16,22 @@ const TEMPORARY_WORK_PROFILE_SECTIONS = {
   other: ["details", "other", "identity", "contact_details", "employment", "education", "skills", "language"],
 };
 
+const IMPORTABLE_PROFILE_SECTIONS_BY_VISA_TYPE = {
+  "temporary-work": TEMPORARY_WORK_PROFILE_SECTIONS,
+  partner: {
+    main_applicant: ["details", "other", "identity", "employment", "education", "language", "family"],
+    spouse: ["details", "personal-details", "other", "identity"],
+    child: ["details", "other", "identity", "custody"],
+    other: ["details", "other", "identity"],
+  },
+  protection: {
+    main_applicant: ["details", "other", "identity", "employment", "education", "skills", "language", "family"],
+    spouse: ["details", "other", "identity"],
+    child: ["details", "other", "identity", "custody"],
+    other: ["details", "other", "identity"],
+  },
+};
+
 const TEMPORARY_WORK_LEGACY_SECTION_KEYS = {
   main_applicant: {
     details: "temporary_work_details",
@@ -36,12 +52,60 @@ const TEMPORARY_WORK_LEGACY_SECTION_KEYS = {
   },
 };
 
+const LEGACY_PROFILE_SECTION_KEYS = {
+  main_applicant: {
+    details: ["temporary_work_details", "mainApplicant.details", "protection_details"],
+    other: ["temporary_work_other", "mainApplicant.otherNames", "protection_other"],
+    identity: ["temporary_work_identity", "mainApplicant.identity", "protection_identity"],
+    contact_details: ["temporary_work_contact_details"],
+    employment: ["temporary_work_employment", "mainApplicant.employment", "protection_employment"],
+    education: ["temporary_work_education", "mainApplicant.education", "protection_education"],
+    skills: ["temporary_work_skills", "protection_skills"],
+    language: ["temporary_work_language", "mainApplicant.language", "protection_language"],
+    family: ["mainApplicant.family", "protection_family"],
+  },
+  spouse: {
+    details: ["temporary_work_spouse_details", "spousePartner.details", "protection_spouse_details"],
+    "personal-details": ["spousePartner.personalDetails"],
+    other: ["temporary_work_spouse_other", "partner_spouse_other", "protection_spouse_other"],
+    identity: ["temporary_work_spouse_identity", "partner_spouse_identity", "protection_spouse_identity"],
+    education: ["temporary_work_spouse_education"],
+    language: ["temporary_work_spouse_language"],
+  },
+};
+
 const TEMPORARY_WORK_SHARED_IMPORTERS = {
   temporary_work_visas: remapTemporaryWorkVisasSection,
   temporary_work_travel: remapTemporaryWorkTravelSection,
   temporary_work_countries_of_residence: remapTemporaryWorkResidenceSection,
   temporary_work_health: remapTemporaryWorkHealthSection,
   temporary_work_character: remapTemporaryWorkCharacterSection,
+};
+
+const SHARED_SECTION_KEYS_BY_VISA_TYPE = {
+  "temporary-work": Object.keys(TEMPORARY_WORK_SHARED_IMPORTERS),
+  partner: [
+    "partner_addresses",
+    "partner_contact_details",
+    "partner_visas",
+    "partner_travel",
+    "partner_future_travel",
+    "partner_future_addresses",
+    "partner_health",
+    "partner_character",
+    "partner_contacts",
+  ],
+  protection: [
+    "protection_addresses",
+    "protection_contact_details",
+    "protection_visas",
+    "protection_travel",
+    "protection_future_travel",
+    "protection_future_addresses",
+    "protection_health",
+    "protection_character",
+    "protection_contacts",
+  ],
 };
 
 const HEALTH_REPEATER_FLAG_BY_KEY = {
@@ -89,6 +153,13 @@ function firstTextValue(...values) {
     if (text) return text;
   }
   return "";
+}
+
+function getNestedDraftValue(source, path) {
+  return String(path || "")
+    .split(".")
+    .filter(Boolean)
+    .reduce((current, key) => current?.[key], source);
 }
 
 function normalizeTextValue(value) {
@@ -224,14 +295,29 @@ function getImportableSourceProfiles(sourceDraft) {
 
 function getProfileSectionsFromDraft(sourceDraft, sourceProfile) {
   const profileSections = cloneDraftValue(sourceDraft?.profiles_data?.[sourceProfile?.id] || {}) || {};
-  const legacySectionKeys = TEMPORARY_WORK_LEGACY_SECTION_KEYS[sourceProfile?.relationship] || {};
+  const legacySectionKeys = {
+    ...(TEMPORARY_WORK_LEGACY_SECTION_KEYS[sourceProfile?.relationship] || {}),
+  };
+  Object.entries(LEGACY_PROFILE_SECTION_KEYS[sourceProfile?.relationship] || {}).forEach(([sectionName, paths]) => {
+    if (!legacySectionKeys[sectionName]) legacySectionKeys[sectionName] = paths;
+  });
 
-  Object.entries(legacySectionKeys).forEach(([sectionName, legacyKey]) => {
+  Object.entries(legacySectionKeys).forEach(([sectionName, legacyKeys]) => {
     if (profileSections[sectionName] !== undefined) return;
-    if (hasMeaningfulValue(sourceDraft?.[legacyKey])) {
-      profileSections[sectionName] = cloneDraftValue(sourceDraft[legacyKey]);
+    const paths = Array.isArray(legacyKeys) ? legacyKeys : [legacyKeys];
+    const path = paths.find((candidatePath) => hasMeaningfulValue(getNestedDraftValue(sourceDraft, candidatePath)));
+    if (path) {
+      profileSections[sectionName] = cloneDraftValue(getNestedDraftValue(sourceDraft, path));
     }
   });
+
+  const legacyChildMatch = String(sourceProfile?.id || "").match(/^legacy_child_(\d+)$/);
+  const legacyChild = legacyChildMatch
+    ? sourceDraft?.temporary_work_children?.children?.[Number(legacyChildMatch[1])]
+    : null;
+  if (legacyChild && profileSections.details === undefined && hasMeaningfulValue(legacyChild)) {
+    profileSections.details = cloneDraftValue(legacyChild);
+  }
 
   return profileSections;
 }
@@ -462,17 +548,30 @@ function remapTemporaryWorkCharacterSection(sourceSection, applicantRemap) {
   return nextSection;
 }
 
-function copyMatchedProfileSections(sourceDraft, candidateDraft, matchedApplicants) {
+function getTargetProfileSections(visaType, visaContext, relationship) {
+  if (visaType === "temporary-work") {
+    if (relationship === "spouse" && visaContext !== "186") {
+      return ["details", "other", "identity"];
+    }
+  }
+  const sectionsByRelationship =
+    IMPORTABLE_PROFILE_SECTIONS_BY_VISA_TYPE[visaType] ||
+    IMPORTABLE_PROFILE_SECTIONS_BY_VISA_TYPE["temporary-work"];
+  return sectionsByRelationship[relationship] || sectionsByRelationship.other || [];
+}
+
+function copyMatchedProfileSections(sourceDraft, candidateDraft, matchedApplicants, options = {}) {
   const copiedSections = [];
   const nextProfilesData = cloneDraftValue(candidateDraft.profiles_data || {}) || {};
+  const targetVisaType = options.targetVisaType || "temporary-work";
+  const targetVisaContext = options.targetVisaContext || null;
 
   matchedApplicants.forEach(({ sourceProfile, targetProfile }) => {
     const sourceSections = getProfileSectionsFromDraft(sourceDraft, sourceProfile);
     const targetSections = cloneDraftValue(nextProfilesData[targetProfile.id] || {}) || {};
-    const targetAllowedSections = TEMPORARY_WORK_PROFILE_SECTIONS[targetProfile.relationship] || TEMPORARY_WORK_PROFILE_SECTIONS.other;
-    const sourceAllowedSections = TEMPORARY_WORK_PROFILE_SECTIONS[sourceProfile.relationship] || TEMPORARY_WORK_PROFILE_SECTIONS.other;
+    const targetAllowedSections = getTargetProfileSections(targetVisaType, targetVisaContext, targetProfile.relationship);
     const importableSections = targetAllowedSections.filter((sectionName) =>
-      sourceAllowedSections.includes(sectionName) && hasMeaningfulValue(sourceSections[sectionName])
+      hasMeaningfulValue(sourceSections[sectionName])
     );
 
     importableSections.forEach((sectionName) => {
@@ -504,6 +603,21 @@ function copySharedTemporaryWorkSections(sourceDraft, candidateDraft, applicantR
     copiedSharedSections.push(sectionKey);
   });
 
+  return copiedSharedSections;
+}
+
+function copySharedSections(sourceDraft, candidateDraft, targetVisaType, applicantRemap) {
+  if (targetVisaType === "temporary-work") {
+    return copySharedTemporaryWorkSections(sourceDraft, candidateDraft, applicantRemap);
+  }
+
+  const copiedSharedSections = [];
+  const targetKeys = SHARED_SECTION_KEYS_BY_VISA_TYPE[targetVisaType] || [];
+  targetKeys.forEach((sectionKey) => {
+    if (!hasMeaningfulValue(sourceDraft?.[sectionKey])) return;
+    candidateDraft[sectionKey] = cloneDraftValue(sourceDraft[sectionKey]);
+    copiedSharedSections.push(sectionKey);
+  });
   return copiedSharedSections;
 }
 
@@ -1212,10 +1326,8 @@ export const draftStore = proxy({
     if (!targetId) {
       return { success: false, error: 'No application selected' };
     }
+    const targetVisaType = options.targetVisaType || "temporary-work";
     const targetVisaContext = options.targetVisaContext ?? this.visaContext ?? this.draft?.visaContext;
-    if (targetVisaContext !== '186') {
-      return { success: false, error: 'Import is only available for Employer Nomination (subclass 186) applications' };
-    }
     if (!sourceApplicationId || sourceApplicationId === targetId) {
       return { success: false, error: 'Choose a different application to import from' };
     }
@@ -1246,10 +1358,17 @@ export const draftStore = proxy({
           ? this.draft.profiles
           : targetProfiles
       ) || [];
-      candidateDraft.visaContext = '186';
+      if (targetVisaType === "temporary-work") {
+        candidateDraft.visaContext = targetVisaContext || "482";
+      } else if (candidateDraft.visaContext && targetVisaContext) {
+        candidateDraft.visaContext = targetVisaContext;
+      }
 
-      const copiedProfileSections = copyMatchedProfileSections(sourceData, candidateDraft, matchSummary.matchedApplicants);
-      const copiedSharedSections = copySharedTemporaryWorkSections(sourceData, candidateDraft, applicantRemap);
+      const copiedProfileSections = copyMatchedProfileSections(sourceData, candidateDraft, matchSummary.matchedApplicants, {
+        targetVisaType,
+        targetVisaContext,
+      });
+      const copiedSharedSections = copySharedSections(sourceData, candidateDraft, targetVisaType, applicantRemap);
 
       const summary = {
         matchedApplicants: matchSummary.matchedApplicants.map((match) => ({
@@ -1266,7 +1385,9 @@ export const draftStore = proxy({
 
       const previousDraft = cloneDraftValue(this.draft);
       const previousVisaContext = this.visaContext;
-      this.visaContext = '186';
+      if (targetVisaType === "temporary-work") {
+        this.visaContext = targetVisaContext || "482";
+      }
       this.draft = candidateDraft;
       this.isSaving = true;
       const result = await db.saveDraft(this.draft, targetId);
@@ -1288,6 +1409,7 @@ export const draftStore = proxy({
   async importQuestionnaireFrom482Application(sourceApplicationId) {
     return this.importQuestionnaireFromApplication(sourceApplicationId, {
       targetProfiles: this.draft?.profiles || [],
+      targetVisaType: 'temporary-work',
       targetVisaContext: '186',
     });
   },
