@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { languageSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -140,6 +141,7 @@ export default function MainApplicantLanguagePage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
@@ -162,7 +164,7 @@ export default function MainApplicantLanguagePage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.language');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.language : draftStore.getSectionData('mainApplicant.language'));
 
   const form = useForm({
     resolver: zodResolver(languageSchema),
@@ -206,7 +208,7 @@ export default function MainApplicantLanguagePage() {
     saveTimeoutRef.current = setTimeout(() => {
       // Use form.getValues() to get the actual current state of all fields
       const currentFormValues = form.getValues();
-      const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.language : draftStore.getSectionData('mainApplicant.language')) || {};
       const mergedData = { ...existingData, ...currentFormValues };
       
       draftStore.saveSectionData('mainApplicant.language', mergedData);
@@ -232,13 +234,13 @@ export default function MainApplicantLanguagePage() {
     setIsSaving(true);
     try {
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.language : draftStore.getSectionData('mainApplicant.language')) || {};
       const mergedData = { ...existingData, ...data };
       
-      const result = await draftStore.saveSectionData('mainApplicant.language', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "language", mergedData) : await draftStore.saveSectionData("mainApplicant.language", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/language');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/language'); } else { await draftStore.markPageComplete('partner/main-applicant/language'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -295,14 +297,14 @@ export default function MainApplicantLanguagePage() {
       }
 
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.language : draftStore.getSectionData('mainApplicant.language')) || {};
       const currentData = form.getValues();
       const mergedData = { ...existingData, ...currentData };
       
-      const result = await draftStore.saveSectionData('mainApplicant.language', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "language", mergedData) : await draftStore.saveSectionData("mainApplicant.language", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/language');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/language'); } else { await draftStore.markPageComplete('partner/main-applicant/language'); }
         toast({
           title: "Draft saved",
           description: "Progress saved successfully.",
@@ -328,7 +330,7 @@ export default function MainApplicantLanguagePage() {
 
   const updateLanguages = (newLanguages) => {
     form.setValue("languages", newLanguages, { shouldValidate: true });
-    const existingData = draftStore.getSectionData('mainApplicant.language') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.language : draftStore.getSectionData('mainApplicant.language')) || {};
     const currentData = form.getValues();
     const mergedData = { ...existingData, ...currentData, languages: newLanguages };
     draftStore.saveSectionData('mainApplicant.language', mergedData);

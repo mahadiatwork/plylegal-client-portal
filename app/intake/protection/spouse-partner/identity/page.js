@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { buildIntakeHref, getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -387,22 +388,26 @@ function ResidencyDialog({ editingRow, onSave, onCancel }) {
 
 export default function IdentityPage() {
     const router = useRouter();
-  const { startNavigation } = useNavigationLoading();
+    const { startNavigation } = useNavigationLoading();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
     const { toast } = useToast();
     const draftSnap = useSnapshot(draftStore);
-    const draft = draftSnap.draft;
     const [isSaving, setIsSaving] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Profile awareness
+    const activeProfile = profileId ? draftSnap.draft?.profiles?.find((p) => p.id === profileId) : null;
+    const isSpouseProfile = activeProfile?.relationship === "spouse";
+
     useEffect(() => {
         const appIdFromUrl = searchParams.get('applicationId');
-        if (appIdFromUrl && appIdFromUrl !== draftStore.currentApplicationId) {
+        if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
             draftStore.setApplicationId(appIdFromUrl);
             draftStore.loadDraft(appIdFromUrl);
         }
-    }, [searchParams]);
+    }, [searchParams, draftSnap.currentApplicationId]);
 
     const form = useForm({
         defaultValues: {
@@ -424,25 +429,44 @@ export default function IdentityPage() {
     const previousCitizenships = form.watch("previous_citizenships") || [];
 
     // Get Spouse Name
-    const spouseDetails = draft.protection_spouse_partner?.details || {};
-    const spouseName = spouseDetails.given_names
-        ? `${spouseDetails.given_names} ${spouseDetails.family_name || ''}`.trim()
-        : "Spouse/Partner";
+    const spouseName = activeProfile
+        ? `${activeProfile.given_names || ""} ${activeProfile.family_name || ""}`.trim()
+        : (draftSnap.draft?.protection_spouse_details?.given_names
+            ? `${draftSnap.draft?.protection_spouse_details?.given_names} ${draftSnap.draft?.protection_spouse_details?.family_name || ''}`.trim()
+            : "Spouse/Partner");
 
     useEffect(() => {
-        const savedData = draft.protection_spouse_identity || {};
+        const savedData = profileId
+            ? draftSnap.draft?.profiles_data?.[profileId]?.identity || {}
+            : draftSnap.draft?.protection_spouse_identity || {};
+
         if (Object.keys(savedData).length > 0) {
-            form.reset(savedData);
+            form.reset({
+                is_current_citizen: savedData.is_current_citizen || "yes",
+                stateless_reason: savedData.stateless_reason || "",
+                citizenships: savedData.citizenships || [],
+                has_ever_been_citizen: savedData.has_ever_been_citizen || "no",
+                previous_citizenships: savedData.previous_citizenships || [],
+                has_permanent_residency_rights: savedData.has_permanent_residency_rights || "no",
+                permanent_residencies: savedData.permanent_residencies || [],
+            });
         }
-    }, []);
+    }, [draftSnap.draft?.protection_spouse_identity, draftSnap.draft?.profiles_data, profileId, form]);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
             const formData = form.getValues();
-            const result = await draftStore.saveSectionData("protection_spouse_identity", formData);
+            const result = profileId
+                ? await draftStore.saveProfileSectionData(profileId, "identity", formData)
+                : await draftStore.saveSectionData("protection_spouse_identity", formData);
 
             if (result.success) {
+                if (profileId) {
+                    await draftStore.markProfilePageComplete(profileId, `${getVisaTypeFromPath(pathname)}/spouse-partner/identity`);
+                } else {
+                    if (profileId) { await draftStore.markProfilePageComplete(profileId, `${getVisaTypeFromPath(pathname)}/spouse-partner/identity`); } else { await draftStore.markPageComplete(`${getVisaTypeFromPath(pathname)}/spouse-partner/identity`); }
+                }
                 toast({
                     title: "Draft saved",
                     description: "Your changes have been saved successfully",
@@ -465,18 +489,30 @@ export default function IdentityPage() {
     const onSubmit = async (data) => {
         setIsSubmitting(true);
         try {
-            await draftStore.saveSectionData("protection_spouse_identity", data);
             const visaType = getVisaTypeFromPath(pathname);
-            await draftStore.markPageComplete(`${visaType}/spouse-partner/identity`);
+            const result = profileId
+                ? await draftStore.saveProfileSectionData(profileId, "identity", data)
+                : await draftStore.saveSectionData("protection_spouse_identity", data);
 
-            // Manual navigation since getNextRoute might depend on exact array order
-            const nextHref = buildIntakeHref({
-                appId: draftStore.currentApplicationId,
-                internalHref: "/intake/protection/children",
-                visaType,
-            });
-            startNavigation(nextHref);
-            router.push(nextHref);
+            if (result.success) {
+                let completionResult;
+                if (profileId) {
+                    completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/identity`);
+                } else {
+                    completionResult = await draftStore.markPageComplete(`${visaType}/spouse-partner/identity`);
+                }
+
+                if (!completionResult.success) {
+                    toast({ title: "Error", description: completionResult.error || "Failed to mark complete", variant: "destructive" });
+                    return;
+                }
+
+                const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+                startNavigation(next);
+                if (next) router.push(next);
+            } else {
+                toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
+            }
         } catch (error) {
             console.error("Error submitting:", error);
             toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
@@ -486,13 +522,10 @@ export default function IdentityPage() {
     };
 
     const handlePrevious = () => {
-        const prevHref = buildIntakeHref({
-            appId: draftStore.currentApplicationId,
-            internalHref: "/intake/protection/spouse-partner/other-details",
-            visaType: getVisaTypeFromPath(pathname),
-        });
-        startNavigation(prevHref);
-        router.push(prevHref);
+        const visaType = getVisaTypeFromPath(pathname);
+        const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        startNavigation(prev);
+        if (prev) router.push(prev);
     };
 
     return (

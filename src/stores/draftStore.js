@@ -1482,6 +1482,33 @@ export const draftStore = proxy({
     // Map completion keys to section keys
     // e.g., "temporary-work/main-applicant/details" -> "temporary_work_details"
     const parts = pageKey.split('/');
+    const visa = parts[0];
+    const role = parts[1];
+    const section = parts[2];
+
+    if (visa === 'partner' && role === 'main-applicant') {
+      const sectionName = section === 'other' ? 'otherNames' : section;
+      return `mainApplicant.${sectionName}`;
+    }
+
+    if (visa === 'partner' && role === 'spouse-partner') {
+      const sectionName = section === 'other-details' ? 'otherNames' : section === 'personal-details' ? 'personalDetails' : section;
+      return `spousePartner.${sectionName}`;
+    }
+
+    if (visa === 'protection' && role === 'main-applicant') {
+      return `protection_${section}`;
+    }
+
+    if (visa === 'protection' && role === 'spouse-partner') {
+      const sectionName = section === 'other-details' ? 'other' : section;
+      return `protection_spouse_${sectionName}`;
+    }
+
+    if (visa === 'protection' && role === 'employment') {
+      return 'protection_employment_offer';
+    }
+
     return parts.join('_').replace(/-/g, '_');
   },
 

@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +56,7 @@ export default function Page() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
@@ -144,7 +146,7 @@ export default function Page() {
     setIsSubmitting(true);
     try {
       await draftStore.saveSectionData("protection_details", data);
-      await draftStore.markPageComplete(`${visaType}/main-applicant/details`);
+      if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`); } else { await draftStore.markPageComplete(`${visaType}/main-applicant/details`); }
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       startNavigation(next);
       if (next) router.push(next);

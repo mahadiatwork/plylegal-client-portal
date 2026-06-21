@@ -8,6 +8,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,11 +37,17 @@ export default function Page() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Profile awareness
+  const activeProfile = profileId ? draftSnap.draft?.profiles?.find((p) => p.id === profileId) : null;
+  const isSpouseProfile = activeProfile?.relationship === "spouse";
+
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -48,6 +55,7 @@ export default function Page() {
       draftStore.loadDraft(appIdFromUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId]);
+
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,32 +72,104 @@ export default function Page() {
       country_of_residence: "",
     },
   });
+
+  // Load section data
+  const sectionData = (profileId && isSpouseProfile)
+    ? draftSnap.draft?.profiles_data?.[profileId]?.details
+    : draftSnap.draft?.protection_spouse_details;
+
   useEffect(() => {
-    const savedData = draftSnap.draft?.protection_spouse_details || {};
-    if (Object.keys(savedData).length > 0) {
+    if (draftSnap.isLoading) return;
+
+    const monthsList = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const normalizeNumber = (val) => {
+      if (!val) return "";
+      const num = Number(val);
+      return isNaN(num) ? val : String(num);
+    };
+
+    const normalizeMonth = (val) => {
+      if (!val) return "";
+      if (!isNaN(Number(val))) return String(Number(val));
+      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
+      return monthIndex !== -1 ? String(monthIndex + 1) : val;
+    };
+
+    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+    const normalizeGender = (value) => {
+      const text = safeStr(value).trim();
+      if (!text) return "";
+      const lower = text.toLowerCase();
+      if (lower === "m" || lower === "male") return "Male";
+      if (lower === "f" || lower === "female") return "Female";
+      if (lower === "other") return "Other";
+      return "";
+    };
+
+    if (sectionData && Object.keys(sectionData).length > 0) {
       form.reset({
-        family_name: savedData.family_name || "",
-        given_names: savedData.given_names || "",
-        preferred_names: savedData.preferred_names || "",
-        gender: savedData.gender || "",
-        birth_day: savedData.birth_day || "",
-        birth_month: savedData.birth_month || "",
-        birth_year: savedData.birth_year || "",
-        intending_to_migrate: savedData.intending_to_migrate || "",
-        country_of_birth: savedData.country_of_birth || "",
-        city_of_birth: savedData.city_of_birth || "",
-        country_of_residence: savedData.country_of_residence || "",
+        family_name: safeStr(sectionData.family_name),
+        given_names: safeStr(sectionData.given_names),
+        preferred_names: safeStr(sectionData.preferred_names),
+        gender: normalizeGender(safeStr(sectionData.gender)),
+        birth_day: normalizeNumber(sectionData.birth_day),
+        birth_month: normalizeMonth(sectionData.birth_month),
+        birth_year: safeStr(sectionData.birth_year),
+        intending_to_migrate: safeStr(sectionData.intending_to_migrate),
+        country_of_birth: safeStr(sectionData.country_of_birth),
+        city_of_birth: safeStr(sectionData.city_of_birth),
+        country_of_residence: safeStr(sectionData.country_of_residence),
+      });
+    } else if (activeProfile) {
+      form.reset({
+        family_name: activeProfile.family_name || "",
+        given_names: activeProfile.given_names || "",
+        preferred_names: "",
+        gender: normalizeGender(activeProfile.gender) || "",
+        birth_day: normalizeNumber(activeProfile.birth_day),
+        birth_month: normalizeMonth(activeProfile.birth_month),
+        birth_year: safeStr(activeProfile.birth_year),
+        intending_to_migrate: "",
+        country_of_birth: "",
+        city_of_birth: "",
+        country_of_residence: "",
       });
     }
-  }, [draftSnap.draft?.protection_spouse_details]);
+  }, [draftSnap.isLoading, sectionData, activeProfile, form]);
+
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      await draftStore.saveSectionData("protection_spouse_details", data);
-      await draftStore.markPageComplete(`${visaType}/spouse-partner/details`);
-      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-      startNavigation(next);
-      if (next) router.push(next);
+      const existingData = (profileId && isSpouseProfile)
+        ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
+        : draftSnap.draft?.protection_spouse_details || {};
+      const mergedData = { ...existingData, ...data };
+
+      const result = (profileId && isSpouseProfile)
+        ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
+        : await draftStore.saveSectionData("protection_spouse_details", mergedData);
+
+      if (result.success) {
+        if (profileId && isSpouseProfile) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        } else {
+          if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`); } else { await draftStore.markPageComplete(`${visaType}/spouse-partner/details`); }
+        }
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        startNavigation(next);
+        if (next) router.push(next);
+      } else {
+        toast({
+          title: "Error saving draft",
+          description: result.error || "Failed to save draft. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error submitting:", error);
       toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
@@ -97,11 +177,13 @@ export default function Page() {
       setIsSubmitting(false);
     }
   };
+
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     startNavigation(prev);
     if (prev) router.push(prev);
   };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -114,16 +196,27 @@ export default function Page() {
         });
         return;
       }
-      const values = form.getValues();
-      console.log("Saving protection_spouse_details data:", values);
-      const result = await draftStore.saveSectionData("protection_spouse_details", values);
+      const existingData = (profileId && isSpouseProfile)
+        ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
+        : draftSnap.draft?.protection_spouse_details || {};
+      const currentData = form.getValues();
+      const mergedData = { ...existingData, ...currentData };
+
+      const result = (profileId && isSpouseProfile)
+        ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
+        : await draftStore.saveSectionData("protection_spouse_details", mergedData);
+
       if (result.success) {
+        if (profileId && isSpouseProfile) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        } else {
+          if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`); } else { await draftStore.markPageComplete(`${visaType}/spouse-partner/details`); }
+        }
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully",
         });
       } else {
-        console.error("Save failed:", result.error);
         toast({
           title: "Error",
           description: result.error || "Failed to save draft",
@@ -141,6 +234,7 @@ export default function Page() {
       setIsSaving(false);
     }
   };
+
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -159,10 +253,17 @@ export default function Page() {
     "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
     "Vietnam"
   ];
+
+  const titleName = activeProfile
+    ? `${activeProfile.given_names || ""} ${activeProfile.family_name || ""}`.trim()
+    : "";
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Spouse/Partner Personal Details</CardTitle>
+        <CardTitle className="text-2xl font-semibold">
+          {titleName ? `Details — ${titleName}` : "Spouse/Partner Personal Details"}
+        </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide information about your spouse or partner.
         </p>

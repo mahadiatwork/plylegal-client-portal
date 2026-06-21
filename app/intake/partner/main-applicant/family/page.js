@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { familyMainSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -76,7 +77,7 @@ const familyMemberDialogSchema = z.object({
 });
 
 function FamilyMemberDialog({ editingRow, onSave, onCancel, hasChildren }) {
-  const mainApplicantDetails = draftStore.getSectionData('mainApplicant.details') || {};
+  const mainApplicantDetails = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.family : draftStore.getSectionData('mainApplicant.details')) || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : null;
@@ -258,6 +259,7 @@ export default function MainApplicantFamilyPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
@@ -284,7 +286,7 @@ export default function MainApplicantFamilyPage() {
   const sectionData = draftStore.getSectionData('mainApplicant.family');
 
   // Get main applicant name for display
-  const mainApplicantDetails = draftStore.getSectionData('mainApplicant.details') || {};
+  const mainApplicantDetails = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.family : draftStore.getSectionData('mainApplicant.details')) || {};
   const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
     ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : null;
@@ -364,7 +366,7 @@ export default function MainApplicantFamilyPage() {
       const result = await draftStore.saveSectionData('mainApplicant.family', mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/family');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/family'); } else { await draftStore.markPageComplete('partner/main-applicant/family'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -428,7 +430,7 @@ export default function MainApplicantFamilyPage() {
       const result = await draftStore.saveSectionData('mainApplicant.family', mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/family');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/family'); } else { await draftStore.markPageComplete('partner/main-applicant/family'); }
         toast({
           title: "Draft saved",
           description: "Progress saved successfully.",

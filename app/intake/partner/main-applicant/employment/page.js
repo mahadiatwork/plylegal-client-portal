@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { employmentSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -307,6 +308,7 @@ export default function MainApplicantEmploymentPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
@@ -328,7 +330,7 @@ export default function MainApplicantEmploymentPage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.employment');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment'));
 
   const form = useForm({
     resolver: zodResolver(employmentSchema),
@@ -374,7 +376,7 @@ export default function MainApplicantEmploymentPage() {
     saveTimeoutRef.current = setTimeout(() => {
       // Use form.getValues() to get the actual current state of all fields
       const currentFormValues = form.getValues();
-      const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
       const mergedData = { ...existingData, ...currentFormValues };
       
       draftStore.saveSectionData('mainApplicant.employment', mergedData);
@@ -400,13 +402,13 @@ export default function MainApplicantEmploymentPage() {
     setIsSaving(true);
     try {
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
       const mergedData = { ...existingData, ...data };
       
-      const result = await draftStore.saveSectionData('mainApplicant.employment', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "employment", mergedData) : await draftStore.saveSectionData("mainApplicant.employment", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/employment');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/employment'); } else { await draftStore.markPageComplete('partner/main-applicant/employment'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -463,14 +465,14 @@ export default function MainApplicantEmploymentPage() {
       }
 
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
       const currentData = form.getValues();
       const mergedData = { ...existingData, ...currentData };
       
-      const result = await draftStore.saveSectionData('mainApplicant.employment', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "employment", mergedData) : await draftStore.saveSectionData("mainApplicant.employment", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/employment');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/employment'); } else { await draftStore.markPageComplete('partner/main-applicant/employment'); }
         toast({
           title: "Draft saved",
           description: "Progress saved successfully.",
@@ -496,7 +498,7 @@ export default function MainApplicantEmploymentPage() {
 
   const updateEmploymentHistory = (newHistory) => {
     form.setValue("employment_history", newHistory, { shouldValidate: true });
-    const existingData = draftStore.getSectionData('mainApplicant.employment') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
     const currentData = form.getValues();
     const mergedData = { ...existingData, ...currentData, employment_history: newHistory };
     draftStore.saveSectionData('mainApplicant.employment', mergedData);

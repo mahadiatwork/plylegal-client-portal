@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -90,6 +91,7 @@ export default function SpousePartnerDetailsPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
@@ -101,6 +103,10 @@ export default function SpousePartnerDetailsPage() {
 
   // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
+
+  // Profile awareness
+  const activeProfile = profileId ? draftSnap.draft?.profiles?.find((p) => p.id === profileId) : null;
+  const isSpouseProfile = activeProfile?.relationship === "spouse";
 
   // Set application ID from URL params if available
   useEffect(() => {
@@ -115,7 +121,9 @@ export default function SpousePartnerDetailsPage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
-  const sectionData = draftStore.getSectionData('spousePartner.details');
+  const sectionData = (profileId && isSpouseProfile)
+    ? draftSnap.draft?.profiles_data?.[profileId]?.details
+    : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('spousePartner.details'));
 
   const fetchCrmDependents = useCallback(async () => {
     const userId = authSnap.user?.id;
@@ -146,88 +154,78 @@ export default function SpousePartnerDetailsPage() {
     resolver: zodResolver(spousePartnerDetailsSchema),
     mode: "onChange",
     defaultValues: {
-      family_name: sectionData?.family_name || "",
-      given_names: sectionData?.given_names || "",
-      preferred_names: sectionData?.preferred_names || "",
-      gender: sectionData?.gender || "",
-      birth_day: sectionData?.birth_day || "",
-      birth_month: sectionData?.birth_month || "",
-      birth_year: sectionData?.birth_year || "",
-      intending_to_migrate: sectionData?.intending_to_migrate || "",
-      country_of_birth: sectionData?.country_of_birth || "",
-      suburb_of_birth: sectionData?.suburb_of_birth || "",
-      city_of_birth: sectionData?.city_of_birth || "",
-      state_of_birth: sectionData?.state_of_birth || "",
+      family_name: "",
+      given_names: "",
+      preferred_names: "",
+      gender: "",
+      birth_day: "",
+      birth_month: "",
+      birth_year: "",
+      intending_to_migrate: "",
+      country_of_birth: "",
+      suburb_of_birth: "",
+      city_of_birth: "",
+      state_of_birth: "",
     },
   });
   const { reset } = form;
 
-  // Watch all form values for auto-save
-  const watchedValues = useWatch({ control: form.control });
-
-  // Watch country_of_birth for debugging
-  const countryOfBirth = form.watch("country_of_birth");
-
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'spouse-partner/details/page.js:90', message: 'country_of_birth value changed', data: { countryValue: countryOfBirth, watchedValuesCountry: watchedValues?.country_of_birth, formStateValues: form.getValues("country_of_birth") }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C' }) }).catch(() => { });
-  }, [countryOfBirth, watchedValues?.country_of_birth, form]);
-  // #endregion
-
   // Sync form with store data once it's loaded from the database
   useEffect(() => {
-    // Only reset if we have an ID and aren't loading
-    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'spouse-partner/details/page.js:95', message: 'reset useEffect triggered', data: { countryOfBirthInSectionData: sectionData.country_of_birth, currentFormValue: form.getValues("country_of_birth"), isLoading: draftSnap.isLoading }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
-      // Use 'keepDefaultValues: true' to prevent flickering
+    if (draftSnap.isLoading) return;
+
+    const monthsList = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const normalizeNumber = (val) => {
+      if (!val) return "";
+      const num = Number(val);
+      return isNaN(num) ? val : String(num);
+    };
+
+    const normalizeMonth = (val) => {
+      if (!val) return "";
+      if (!isNaN(Number(val))) return String(Number(val));
+      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
+      return monthIndex !== -1 ? String(monthIndex + 1) : val;
+    };
+
+    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
+
+    if (sectionData && Object.keys(sectionData).length > 0) {
       reset({
-        family_name: sectionData.family_name || "",
-        given_names: sectionData.given_names || "",
-        preferred_names: sectionData.preferred_names || "",
-        gender: sectionData.gender || "",
-        birth_day: sectionData.birth_day || "",
-        birth_month: sectionData.birth_month || "",
-        birth_year: sectionData.birth_year || "",
-        intending_to_migrate: sectionData.intending_to_migrate || "",
-        country_of_birth: sectionData.country_of_birth || "",
-        suburb_of_birth: sectionData.suburb_of_birth || "",
-        city_of_birth: sectionData.city_of_birth || "",
-        state_of_birth: sectionData.state_of_birth || "",
+        family_name: safeStr(sectionData.family_name),
+        given_names: safeStr(sectionData.given_names),
+        preferred_names: safeStr(sectionData.preferred_names),
+        gender: normalizeGender(safeStr(sectionData.gender)),
+        birth_day: normalizeNumber(sectionData.birth_day),
+        birth_month: normalizeMonth(sectionData.birth_month),
+        birth_year: safeStr(sectionData.birth_year),
+        intending_to_migrate: safeStr(sectionData.intending_to_migrate),
+        country_of_birth: safeStr(sectionData.country_of_birth),
+        suburb_of_birth: safeStr(sectionData.suburb_of_birth),
+        city_of_birth: safeStr(sectionData.city_of_birth),
+        state_of_birth: safeStr(sectionData.state_of_birth),
       }, { keepDefaultValues: true });
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'spouse-partner/details/page.js:110', message: 'after reset', data: { countryOfBirthAfterReset: form.getValues("country_of_birth"), watchedValue: form.watch("country_of_birth") }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
+    } else if (activeProfile) {
+      reset({
+        family_name: activeProfile.family_name || "",
+        given_names: activeProfile.given_names || "",
+        preferred_names: "",
+        gender: normalizeGender(activeProfile.gender) || "",
+        birth_day: normalizeNumber(activeProfile.birth_day),
+        birth_month: normalizeMonth(activeProfile.birth_month),
+        birth_year: safeStr(activeProfile.birth_year),
+        intending_to_migrate: "",
+        country_of_birth: "",
+        suburb_of_birth: "",
+        city_of_birth: "",
+        state_of_birth: "",
+      }, { keepDefaultValues: true });
     }
-  }, [draftSnap.isLoading, sectionData, reset, form]);
-
-  // // Auto-save form data with debounce
-  // useEffect(() => {
-  //   if (!draftSnap.currentApplicationId) return;
-  //   if (!watchedValues || Object.keys(watchedValues).length === 0) return;
-  //   // Don't auto-save immediately after form reset or while loading
-  //   if (draftSnap.isLoading) return;
-
-  //   if (saveTimeoutRef.current) {
-  //     clearTimeout(saveTimeoutRef.current);
-  //   }
-
-  //   saveTimeoutRef.current = setTimeout(() => {
-  //     // Use form.getValues() to get the actual current state of all fields
-  //     const currentFormValues = form.getValues();
-  //     const existingData = draftStore.getSectionData('spousePartner.details') || {};
-  //     const mergedData = { ...existingData, ...currentFormValues };
-
-  //     draftStore.saveSectionData('spousePartner.details', mergedData);
-  //   }, 2000);
-
-  //   return () => {
-  //     if (saveTimeoutRef.current) {
-  //       clearTimeout(saveTimeoutRef.current);
-  //     }
-  //   };
-  // }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, form]);
+  }, [draftSnap.isLoading, sectionData, activeProfile, reset]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -242,14 +240,22 @@ export default function SpousePartnerDetailsPage() {
     setIsSaving(true);
     try {
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('spousePartner.details') || {};
+      const existingData = (profileId && isSpouseProfile)
+        ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
+        : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('spousePartner.details')) || {};
       const mergedData = { ...existingData, ...data };
 
-      const result = await draftStore.saveSectionData('spousePartner.details', mergedData);
+      const result = (profileId && isSpouseProfile)
+        ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
+        : profileId ? await draftStore.saveProfileSectionData(profileId, "details", mergedData) : await draftStore.saveSectionData("spousePartner.details", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/spouse-partner/details');
-        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
+        if (profileId && isSpouseProfile) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        } else {
+          if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/spouse-partner/details'); } else { await draftStore.markPageComplete('partner/spouse-partner/details'); }
+        }
+        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         startNavigation(next);
         if (next) router.push(next);
       } else {
@@ -271,7 +277,7 @@ export default function SpousePartnerDetailsPage() {
   };
 
   const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     startNavigation(prev);
     if (prev) router.push(prev);
   };
@@ -305,14 +311,22 @@ export default function SpousePartnerDetailsPage() {
       }
 
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('spousePartner.details') || {};
+      const existingData = (profileId && isSpouseProfile)
+        ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
+        : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('spousePartner.details')) || {};
       const currentData = form.getValues();
       const mergedData = { ...existingData, ...currentData };
 
-      const result = await draftStore.saveSectionData('spousePartner.details', mergedData);
+      const result = (profileId && isSpouseProfile)
+        ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
+        : profileId ? await draftStore.saveProfileSectionData(profileId, "details", mergedData) : await draftStore.saveSectionData("spousePartner.details", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/spouse-partner/details');
+        if (profileId && isSpouseProfile) {
+          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        } else {
+          if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/spouse-partner/details'); } else { await draftStore.markPageComplete('partner/spouse-partner/details'); }
+        }
         toast({
           title: "Draft saved",
           description: "Progress saved successfully.",

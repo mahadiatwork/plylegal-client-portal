@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -218,6 +219,7 @@ export default function FamilyPage() {
   const { startNavigation } = useNavigationLoading();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
     const { toast } = useToast();
     const draftSnap = useSnapshot(draftStore);
     const draft = draftSnap.draft;
@@ -278,7 +280,7 @@ export default function FamilyPage() {
         try {
             await draftStore.saveSectionData("protection_family", data);
             const visaType = getVisaTypeFromPath(pathname);
-            await draftStore.markPageComplete(`${visaType}/main-applicant/family`);
+            if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/family`); } else { await draftStore.markPageComplete(`${visaType}/main-applicant/family`); }
             const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
             if (nextRoute) {
                 startNavigation(nextRoute);

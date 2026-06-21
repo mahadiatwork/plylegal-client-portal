@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1187,6 +1188,7 @@ export default function IdentityPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const { toast } = useToast();
   const snapshot = useSnapshot(draftStore);
   const [isSaving, setIsSaving] = useState(false);
@@ -1302,7 +1304,7 @@ export default function IdentityPage() {
     try {
       const result = await draftStore.saveSectionData("protection_identity", data);
       if (result.success) {
-        await draftStore.markPageComplete(`${visaType}/main-applicant/identity`);
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/identity`); } else { await draftStore.markPageComplete(`${visaType}/main-applicant/identity`); }
         const nextRoute = getNextRoute(pathname, visaType, draftStore.currentApplicationId);
         if (nextRoute) {
           startNavigation(nextRoute);

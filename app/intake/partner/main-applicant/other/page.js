@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -561,6 +562,7 @@ export default function Page() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
@@ -603,7 +605,7 @@ export default function Page() {
   const watchedValues = useWatch({ control: form.control });
 
   // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.otherNames');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames'));
 
   // Populate Form
   useEffect(() => {
@@ -647,13 +649,13 @@ export default function Page() {
     setIsSaving(true);
     try {
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
       const mergedData = { ...existingData, ...data };
 
-      const result = await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "other", mergedData) : await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/other');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/other'); } else { await draftStore.markPageComplete('partner/main-applicant/other'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -696,11 +698,11 @@ export default function Page() {
       }
 
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
       const values = form.getValues();
       const mergedData = { ...existingData, ...values };
 
-      const result = await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "other", mergedData) : await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -733,7 +735,7 @@ export default function Page() {
 
     const timeoutId = setTimeout(() => {
       // Merge with existing section data
-      const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
       const mergedData = { ...existingData, ...watchedValues };
       draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
     }, 1000); // Debounce: save 1 second after last change
@@ -746,7 +748,7 @@ export default function Page() {
     form.setValue("other_names", newNames, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
     // FIX: Merge with existing section data
-    const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
     const currentValues = form.getValues();
     draftStore.saveSectionData("mainApplicant.otherNames", {
       ...existingData,
@@ -760,7 +762,7 @@ export default function Page() {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
 
     // FIX: Merge with existing section data
-    const existingData = draftStore.getSectionData('mainApplicant.otherNames') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
     const currentValues = form.getValues();
     draftStore.saveSectionData("mainApplicant.otherNames", {
       ...existingData,

@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -48,6 +49,7 @@ export default function SpousePartnerPersonalDetailsPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
@@ -70,7 +72,7 @@ export default function SpousePartnerPersonalDetailsPage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
-  const sectionData = draftStore.getSectionData('spousePartner.personalDetails');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.personal-details : draftStore.getSectionData('spousePartner.personalDetails'));
   const spousePartnerBasic = draftStore.getSectionData('spousePartner.details');
 
   const { control, handleSubmit, watch, setValue, getValues, formState: { errors, isValid } } = useForm({
@@ -130,10 +132,10 @@ export default function SpousePartnerPersonalDetailsPage() {
 
     setIsSaving(true);
     try {
-      const result = await draftStore.saveSectionData('spousePartner.personalDetails', data);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "personal-details", data) : await draftStore.saveSectionData("spousePartner.personalDetails", data);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/spouse-partner/personal-details');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/spouse-partner/personal-details'); } else { await draftStore.markPageComplete('partner/spouse-partner/personal-details'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -174,10 +176,10 @@ export default function SpousePartnerPersonalDetailsPage() {
     setIsSaving(true);
     try {
       const currentData = getValues();
-      const result = await draftStore.saveSectionData('spousePartner.personalDetails', currentData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "personal-details", currentData) : await draftStore.saveSectionData("spousePartner.personalDetails", currentData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/spouse-partner/personal-details');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/spouse-partner/personal-details'); } else { await draftStore.markPageComplete('partner/spouse-partner/personal-details'); }
         toast({
           title: "Draft saved",
           description: "Your changes have been saved successfully.",

@@ -10,6 +10,7 @@ import { draftStore } from "@/stores/draftStore";
 import { authStore } from "@/stores/authStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,6 +158,7 @@ export default function Page() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
@@ -212,7 +214,7 @@ export default function Page() {
   });
 
   // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.details');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('mainApplicant.details'));
 
   const fetchCrmContact = useCallback(async () => {
     const userId = authSnap.user?.id;
@@ -334,10 +336,10 @@ export default function Page() {
     try {
       // Always set is_main_applicant to "yes"
       const dataWithMainApplicant = { ...data, is_main_applicant: "yes" };
-      const result = await draftStore.saveSectionData("mainApplicant.details", dataWithMainApplicant);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "details", dataWithMainApplicant) : await draftStore.saveSectionData("mainApplicant.details", dataWithMainApplicant);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/details');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/details'); } else { await draftStore.markPageComplete('partner/main-applicant/details'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -373,7 +375,7 @@ export default function Page() {
       // Always set is_main_applicant to "yes"
       const valuesWithMainApplicant = { ...values, is_main_applicant: "yes" };
       console.log("📦 Data saved to database:", valuesWithMainApplicant);
-      const result = await draftStore.saveSectionData("mainApplicant.details", valuesWithMainApplicant);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "details", valuesWithMainApplicant) : await draftStore.saveSectionData("mainApplicant.details", valuesWithMainApplicant);
       if (result.success) {
         toast({
           title: "Draft saved",

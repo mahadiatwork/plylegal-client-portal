@@ -15,13 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// StickyNav import removed
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
-import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const REASON_OPTIONS = [
   "Adoption",
@@ -110,14 +109,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
+    <div className="space-y-4">
       <div>
         <Label htmlFor="family_name">Family Name <span className="text-red-500">*</span></Label>
         <Input
@@ -312,14 +304,15 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
           Cancel
         </Button>
         <Button
-          type="submit"
+          type="button"
+          onClick={dialogForm.handleSubmit(handleFormSubmit)}
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
           Ok
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
@@ -352,8 +345,6 @@ export default function Page() {
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -381,7 +372,7 @@ export default function Page() {
   useEffect(() => {
     const savedData = profileId
       ? draftSnap.draft?.profiles_data?.[profileId]?.other || {}
-      : draftSnap.draft?.protection_spouse_other || {};
+      : draftSnap.draft?.partner_spouse_other || {};
 
     if (Object.keys(savedData).length > 0) {
       Object.keys(savedData).forEach((key) => {
@@ -390,39 +381,31 @@ export default function Page() {
         }
       });
     }
-  }, [draftSnap.draft?.protection_spouse_other, draftSnap.draft?.profiles_data, profileId, form]);
+  }, [draftSnap.draft?.partner_spouse_other, draftSnap.draft?.profiles_data, profileId, form]);
 
   const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    try {
-      const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "other", data)
-        : await draftStore.saveSectionData("protection_spouse_other", data);
+    const result = profileId
+      ? await draftStore.saveProfileSectionData(profileId, "other", data)
+      : await draftStore.saveSectionData("partner_spouse_other", data);
 
-      if (result.success) {
-        let completionResult;
-        if (profileId) {
-          completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
-        } else {
-          completionResult = await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`);
-        }
-
-        if (!completionResult.success) {
-          toast({ title: "Error", description: completionResult.error || "Failed to mark complete", variant: "destructive" });
-          return;
-        }
-
-        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-        startNavigation(next);
-        if (next) router.push(next);
+    if (result.success) {
+      let completionResult;
+      if (profileId) {
+        completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
       } else {
-        toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
+        completionResult = await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`);
       }
-    } catch (error) {
-      console.error("Error submitting:", error);
-      toast({ title: "Error", description: "Failed to submit", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
+
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
+      }
+
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      startNavigation(next);
+      if (next) router.push(next);
+    } else {
+      toast({ title: "Error", description: result.error || "Failed to save", variant: "destructive" });
     }
   };
 
@@ -433,48 +416,27 @@ export default function Page() {
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const isValid = await form.trigger();
-      if (!isValid) {
-        toast({
-          title: "Validation Error",
-          description: "Please fix the errors in the form before saving",
-          variant: "destructive",
-        });
-        return;
-      }
-      const values = form.getValues();
-      const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "other", values)
-        : await draftStore.saveSectionData("protection_spouse_other", values);
+    const values = form.getValues();
+    const result = profileId
+      ? await draftStore.saveProfileSectionData(profileId, "other", values)
+      : await draftStore.saveSectionData("partner_spouse_other", values);
 
-      if (result.success) {
-        if (profileId) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
-        } else {
-          if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`); } else { await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`); }
-        }
-        toast({
-          title: "Draft saved",
-          description: "Your changes have been saved successfully",
-        });
+    if (result.success) {
+      if (profileId) {
+        await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`);
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to save draft",
-          variant: "destructive",
-        });
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/other-details`); } else { await draftStore.markPageComplete(`${visaType}/spouse-partner/other-details`); }
       }
-    } catch (error) {
-      console.error("Error in handleSave:", error);
+      toast({
+        title: "Draft saved",
+        description: "Your changes have been saved successfully",
+      });
+    } else {
       toast({
         title: "Error",
-        description: error.message || "An unexpected error occurred",
+        description: result.error || "Failed to save draft",
         variant: "destructive",
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -485,7 +447,7 @@ export default function Page() {
     if (profileId) {
       await draftStore.saveProfileSectionData(profileId, "other", { ...currentValues, other_names: newNames });
     } else {
-      await draftStore.saveSectionData("protection_spouse_other", { ...currentValues, other_names: newNames });
+      await draftStore.saveSectionData("partner_spouse_other", { ...currentValues, other_names: newNames });
     }
   };
 
@@ -506,12 +468,13 @@ export default function Page() {
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="space-y-8">
+            <h2 className="text-lg font-medium text-gray-900">Other Personal Details</h2>
 
             {/* Question 1: Other Names */}
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
+                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
                 </Label>
                 <RadioGroup
                   value={form.watch("has_other_names")}
@@ -540,7 +503,7 @@ export default function Page() {
               {hasOtherNames === "yes" && (
                 <div className="pl-0 mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of the other names your Spouse/Partner has been known by, including names before marriage
+                    Enter details of the other names you have been known by, including names before marriage
                   </p>
                   <RepeaterTable
                     data={otherNames}
@@ -569,7 +532,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Does your Spouse/Partner use a Chinese Commercial Code for their name?
+                  Do you use a Chinese Commercial Code for your name?
                 </Label>
                 <RadioGroup
                   value={form.watch("use_chinese_code")}
@@ -605,15 +568,14 @@ export default function Page() {
                 </div>
               )}
             </div>
-
           </div>
+
           <FormNavigation
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}
-            loading={isSaving}
-            submitting={isSubmitting}
-            disabledNext={!form.formState.isValid}
+            nextLabel="Continue"
+            loading={draftSnap.isSaving}
           />
         </form>
       </CardContent>

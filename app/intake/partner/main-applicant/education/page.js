@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { educationSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -328,6 +329,7 @@ export default function MainApplicantEducationPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
@@ -351,7 +353,7 @@ export default function MainApplicantEducationPage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.education');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education'));
 
   const form = useForm({
     resolver: zodResolver(educationSchema),
@@ -396,7 +398,7 @@ export default function MainApplicantEducationPage() {
     saveTimeoutRef.current = setTimeout(() => {
       // Use form.getValues() to get the actual current state of all fields
       const currentFormValues = form.getValues();
-      const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education')) || {};
       const mergedData = { ...existingData, ...currentFormValues };
       
       draftStore.saveSectionData('mainApplicant.education', mergedData);
@@ -422,13 +424,13 @@ export default function MainApplicantEducationPage() {
     setIsSaving(true);
     try {
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education')) || {};
       const mergedData = { ...existingData, ...data };
       
-      const result = await draftStore.saveSectionData('mainApplicant.education', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "education", mergedData) : await draftStore.saveSectionData("mainApplicant.education", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/education');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/education'); } else { await draftStore.markPageComplete('partner/main-applicant/education'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -485,14 +487,14 @@ export default function MainApplicantEducationPage() {
       }
 
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education')) || {};
       const currentData = form.getValues();
       const mergedData = { ...existingData, ...currentData };
       
-      const result = await draftStore.saveSectionData('mainApplicant.education', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "education", mergedData) : await draftStore.saveSectionData("mainApplicant.education", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/education');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/education'); } else { await draftStore.markPageComplete('partner/main-applicant/education'); }
         toast({
           title: "Draft saved",
           description: "Progress saved successfully.",
@@ -518,7 +520,7 @@ export default function MainApplicantEducationPage() {
 
   const updateEducationHistory = (newHistory) => {
     form.setValue("education_history", newHistory, { shouldValidate: true });
-    const existingData = draftStore.getSectionData('mainApplicant.education') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education')) || {};
     const currentData = form.getValues();
     const mergedData = { ...existingData, ...currentData, education_history: newHistory };
     draftStore.saveSectionData('mainApplicant.education', mergedData);

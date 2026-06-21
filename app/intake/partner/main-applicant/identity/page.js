@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { identitySchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Plus } from "lucide-react";
@@ -752,6 +753,7 @@ export default function MainApplicantIdentityPage() {
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
   const appsSnap = useSnapshot(applicationsStore);
   const saveTimeoutRef = useRef(null);
@@ -775,7 +777,7 @@ export default function MainApplicantIdentityPage() {
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
-  const sectionData = draftStore.getSectionData('mainApplicant.identity');
+  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity'));
 
   const form = useForm({
     resolver: zodResolver(identitySchema),
@@ -864,7 +866,7 @@ export default function MainApplicantIdentityPage() {
     saveTimeoutRef.current = setTimeout(() => {
       // Use form.getValues() to get the actual current state of all fields
       const currentFormValues = form.getValues();
-      const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
       const mergedData = { ...existingData, ...currentFormValues };
       
       draftStore.saveSectionData('mainApplicant.identity', mergedData);
@@ -890,13 +892,13 @@ export default function MainApplicantIdentityPage() {
     setIsSaving(true);
     try {
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
       const mergedData = { ...existingData, ...data };
       
-      const result = await draftStore.saveSectionData('mainApplicant.identity', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "identity", mergedData) : await draftStore.saveSectionData("mainApplicant.identity", mergedData);
 
       if (result.success) {
-        await draftStore.markPageComplete('partner/main-applicant/identity');
+        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/identity'); } else { await draftStore.markPageComplete('partner/main-applicant/identity'); }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
         startNavigation(next);
         if (next) router.push(next);
@@ -953,11 +955,11 @@ export default function MainApplicantIdentityPage() {
       }
 
       // Merge with existing section data to preserve other fields
-      const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
       const currentData = form.getValues();
       const mergedData = { ...existingData, ...currentData };
       
-      const result = await draftStore.saveSectionData('mainApplicant.identity', mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "identity", mergedData) : await draftStore.saveSectionData("mainApplicant.identity", mergedData);
 
       if (result.success) {
         toast({
@@ -987,7 +989,7 @@ export default function MainApplicantIdentityPage() {
     form.setValue("citizenships", newCitizenships, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     
     // Merge with existing section data
-    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
     const currentData = form.getValues();
     draftStore.saveSectionData('mainApplicant.identity', { 
       ...existingData,
@@ -1000,7 +1002,7 @@ export default function MainApplicantIdentityPage() {
     form.setValue("passports", newPassports, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     
     // Merge with existing section data
-    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
     const currentData = form.getValues();
     draftStore.saveSectionData('mainApplicant.identity', { 
       ...existingData,
@@ -1013,7 +1015,7 @@ export default function MainApplicantIdentityPage() {
     form.setValue("identity_docs", newDocs, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     
     // Merge with existing section data
-    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
     const currentData = form.getValues();
     draftStore.saveSectionData('mainApplicant.identity', { 
       ...existingData,
@@ -1026,7 +1028,7 @@ export default function MainApplicantIdentityPage() {
     form.setValue("pr_countries", newCountries, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     
     // Merge with existing section data
-    const existingData = draftStore.getSectionData('mainApplicant.identity') || {};
+    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.identity : draftStore.getSectionData('mainApplicant.identity')) || {};
     const currentData = form.getValues();
     draftStore.saveSectionData('mainApplicant.identity', { 
       ...existingData,

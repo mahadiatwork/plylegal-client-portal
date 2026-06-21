@@ -52,6 +52,14 @@ import {
   getIntakeSlugForContext,
   getIntakeSlugFromPathname,
   getVisaTypeFromPath,
+  PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES,
+  PARTNER_SPOUSE_PROFILE_SUBPAGES,
+  PARTNER_CHILD_PROFILE_SUBPAGES,
+  PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES,
+  PROTECTION_SPOUSE_PROFILE_SUBPAGES,
+  PROTECTION_CHILD_PROFILE_SUBPAGES,
+  buildPartnerChildHref,
+  buildProtectionChildHref,
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import React from "react";
@@ -120,7 +128,7 @@ export default function IntakeLayout({ children }) {
   // Child flows use `/temporary-work/children/:childId/details|identity|custody` — id is in the path, not only `?profileId=`.
   const childProfileIdFromPath =
     typeof pathname === "string"
-      ? (internalPathname.match(/^\/intake\/temporary-work\/children\/([^/]+)\/(?:details|other|identity|custody)/) || [])[1] ??
+      ? (internalPathname.match(/^\/intake\/(?:temporary-work|partner|protection)\/children\/([^/]+)\/(?:details|other|identity|custody)/) || [])[1] ??
         null
       : null;
 
@@ -234,9 +242,7 @@ export default function IntakeLayout({ children }) {
     profiles.find((profile) => String(profile.id) === String(profileId));
 
   const routeProfile = (() => {
-    if (visaType !== "temporary-work") return null;
-
-    if (internalPathname.startsWith("/intake/temporary-work/main-applicant/")) {
+    if (internalPathname.includes("/main-applicant/")) {
       return (
         (profileIdFromUrl ? findProfileById(profileIdFromUrl) : null) ||
         profiles.find((profile) => profile.relationship === "main_applicant") ||
@@ -244,7 +250,7 @@ export default function IntakeLayout({ children }) {
       );
     }
 
-    if (internalPathname.startsWith("/intake/temporary-work/spouse-partner/")) {
+    if (internalPathname.includes("/spouse-partner/")) {
       return (
         (profileIdFromUrl ? findProfileById(profileIdFromUrl) : null) ||
         profiles.find((profile) => profile.relationship === "spouse") ||
@@ -266,15 +272,38 @@ export default function IntakeLayout({ children }) {
   const getProfileSubpages = (profile) => {
     if (!profile) return [];
     if (profile.relationship === "child") {
-      return TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((subpage) => ({
-        href: buildTemporaryWorkChildHref(profile.id, subpage.pathSuffix),
+      const subpages =
+        visaType === "temporary-work"
+          ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES
+          : visaType === "partner"
+            ? PARTNER_CHILD_PROFILE_SUBPAGES
+            : PROTECTION_CHILD_PROFILE_SUBPAGES;
+      const buildHrefFn =
+        visaType === "temporary-work"
+          ? buildTemporaryWorkChildHref
+          : visaType === "partner"
+            ? buildPartnerChildHref
+            : buildProtectionChildHref;
+      return subpages.map((subpage) => ({
+        href: buildHrefFn(profile.id, subpage.pathSuffix),
         title: subpage.title,
       }));
     }
     if (profile.relationship === "spouse") {
-      return draftSnap.visaContext === "186"
-        ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES
-        : TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES;
+      if (visaType === "temporary-work") {
+        return draftSnap.visaContext === "186"
+          ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES
+          : TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES;
+      }
+      return visaType === "partner"
+        ? PARTNER_SPOUSE_PROFILE_SUBPAGES
+        : PROTECTION_SPOUSE_PROFILE_SUBPAGES;
+    }
+    if (visaType === "partner") {
+      return PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES;
+    }
+    if (visaType === "protection") {
+      return PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES;
     }
     return PROFILE_SUBPAGES;
   };
@@ -287,8 +316,9 @@ export default function IntakeLayout({ children }) {
     return "Dependent";
   };
 
+  const isProfileLed = ["temporary-work", "partner", "protection"].includes(visaType);
   const mobileSection =
-    visaType === "temporary-work" && activeProfile
+    isProfileLed && activeProfile
       ? {
           title: getProfileTitle(activeProfile),
           subpages: getProfileSubpages(activeProfile),
@@ -479,16 +509,16 @@ export default function IntakeLayout({ children }) {
 
                   // ── Replace applicant sections with per-profile sections for profile-led visas ──
                   const isProfileSection =
-                    visaType === 'temporary-work' && (
+                    ['temporary-work', 'partner', 'protection'].includes(visaType) && (
                       route.href.includes('/main-applicant') ||
                       route.href.includes('/spouse-partner') ||
-                      route.href === '/intake/temporary-work/children'
+                      route.href.includes('/children')
                     );
 
                   if (isProfileSection) return null; // replaced by dynamic profile sections below
 
                   // ── Profile sections injection point (after Application Profile route) ──
-                  if (visaType === 'temporary-work' && route.href === '/intake/temporary-work/profile' && profiles.length > 0) {
+                  if (['temporary-work', 'partner', 'protection'].includes(visaType) && route.href.endsWith('/profile') && profiles.length > 0) {
                     return (
                       <div key="profile-routes">
                         {/* Application Profile nav item */}
@@ -566,25 +596,33 @@ export default function IntakeLayout({ children }) {
                                 <CollapsibleContent className="overflow-hidden">
                                   <ul className="ml-6 mt-1 mb-1 space-y-1">
                                     {(profile.relationship === 'child'
-                                      ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES.map((sp) => ({
-                                          href: buildTemporaryWorkChildHref(profileKey, sp.pathSuffix),
+                                      ? (visaType === 'temporary-work' ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES : visaType === 'partner' ? PARTNER_CHILD_PROFILE_SUBPAGES : PROTECTION_CHILD_PROFILE_SUBPAGES).map((sp) => ({
+                                          href: visaType === 'temporary-work' ? buildTemporaryWorkChildHref(profileKey, sp.pathSuffix) : visaType === 'partner' ? buildPartnerChildHref(profileKey, sp.pathSuffix) : buildProtectionChildHref(profileKey, sp.pathSuffix),
                                           title: sp.title,
                                           pathSuffix: sp.pathSuffix,
                                         }))
-                                      : profile.relationship === 'spouse' && draftSnap.visaContext === '186'
+                                      : profile.relationship === 'spouse' && visaType === 'temporary-work' && draftSnap.visaContext === '186'
                                           ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                          : profile.relationship === 'spouse'
+                                          : profile.relationship === 'spouse' && visaType === 'temporary-work'
                                             ? TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                            : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                            : profile.relationship === 'spouse' && visaType === 'partner'
+                                              ? PARTNER_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                              : profile.relationship === 'spouse' && visaType === 'protection'
+                                                ? PROTECTION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                                : visaType === 'partner'
+                                                  ? PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                                  : visaType === 'protection'
+                                                    ? PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                                    : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
                                     ).map((subpage, index) => {
                                       const isActive =
                                         effectiveProfileId === profileKey &&
                                         (profile.relationship === 'child' && subpage.pathSuffix
-                                          ? internalPathname === buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix)
+                                          ? internalPathname === (visaType === 'temporary-work' ? buildTemporaryWorkChildHref(profileKey, subpage.pathSuffix) : visaType === 'partner' ? buildPartnerChildHref(profileKey, subpage.pathSuffix) : buildProtectionChildHref(profileKey, subpage.pathSuffix))
                                           : isRouteActive(subpage.href));
                                       const completionKey = (() => {
                                         if (profile.relationship === 'child') {
-                                          return `${getTemporaryWorkChildProfileCompletionKey(profileKey, subpage.pathSuffix)}__${profileKey}`;
+                                          return `${visaType}/children/${profileKey}/${subpage.pathSuffix}__${profileKey}`;
                                         }
                                         const section = profile.relationship === 'spouse' ? 'spouse-partner' : 'main-applicant';
                                         return `${visaType}/${section}/${subpage.href.split(/\/(?:main-applicant|spouse-partner)\//)[1]}__${profileKey}`;
