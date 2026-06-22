@@ -216,6 +216,7 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
     sawChildCitizenship: false,
     sawResidenceCoverageBlock: false,
     sawResidenceCoverageSuccess: false,
+    sawDynamicCharacter: false,
   };
   const seenRepeaters = new Set();
 
@@ -240,6 +241,14 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
       await expect(page.getByText("Is this applicant a citizen of any other country?")).toBeVisible();
       coverage.sawChildCitizenship = true;
     }
+    if (/\/all-applicants\/character/.test(url)) {
+      await expect(page.getByTestId("dynamic-questionnaire-page")).toHaveAttribute(
+        "data-questionnaire-page-id",
+        "all-applicants-character"
+      );
+      await expect(page.getByText("Has any applicant ever been charged with any offence that is currently awaiting legal action?")).toBeVisible();
+      coverage.sawDynamicCharacter = true;
+    }
     const isCountriesOfResidence = /\/all-applicants\/countries-of-residence/.test(url);
     if (isCountriesOfResidence && !coverage.sawResidenceCoverageBlock) {
       await expectResidenceCoverageBlocksIncomplete(page);
@@ -251,6 +260,7 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
       if (expectChild) expect(coverage.sawChild).toBe(true);
       expect(coverage.sawResidenceCoverageBlock).toBe(true);
       expect(coverage.sawResidenceCoverageSuccess).toBe(true);
+      expect(coverage.sawDynamicCharacter).toBe(true);
       return coverage;
     }
 

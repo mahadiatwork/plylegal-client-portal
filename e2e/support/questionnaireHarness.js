@@ -344,6 +344,12 @@ async function fillOpenDialog(page, branch) {
   if (/\/all-applicants\/travel-history/.test(new URL(page.url()).pathname)) {
     await expect(dialog.getByText("Is this the main applicant's current location?")).toHaveCount(0);
     await expect(dialog.getByText("Departure Date")).toBeVisible();
+    const applicantMultiSelect = dialog.getByTestId("multi-select-trigger");
+    if (await applicantMultiSelect.isVisible().catch(() => false)) {
+      await applicantMultiSelect.click();
+      await page.locator('[id^="ms-applicant-"]').first().click();
+      await applicantMultiSelect.click();
+    }
   }
 
   await fillVisibleTextControls(dialog, branch);
@@ -426,6 +432,46 @@ async function completeCountriesOfResidenceCoverage(page, seenRepeaters) {
   }
 }
 
+async function completeTravelHistory(page, branch, seenRepeaters) {
+  const currentUrl = new URL(page.url());
+  const repeaterKey = `${currentUrl.pathname}${currentUrl.search}:travel-history-record`;
+  if (branch !== "high") {
+    await page.getByTestId("radio-travel-history-no").click();
+    return;
+  }
+  if (seenRepeaters.has(repeaterKey)) return;
+  seenRepeaters.add(repeaterKey);
+
+  await page.getByTestId("radio-travel-history-yes").click();
+  if ((await page.getByRole("button", { name: /^Add$/ }).count()) === 0) return;
+
+  await page.getByTestId("button-add-travel").click();
+  const dialog = page.getByRole("dialog").last();
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByTestId("multi-select-trigger").click();
+  await page.evaluate(() => {
+    const checkbox = document.querySelector('[id^="ms-applicant-"]');
+    const option = checkbox?.closest(".relative.flex.items-center");
+    option?.click();
+    document.querySelector(".fixed.inset-0.z-40")?.click();
+  });
+
+  await selectRadixByTestId(page, "select-country", "Australia");
+  await selectRadixByTestId(page, "select-reason", "Business");
+  await selectRadixByTestId(page, "select-status", "Citizen");
+  await selectRadixByTestId(page, "select-arrived-day", "01");
+  await selectRadixByTestId(page, "select-arrived-month", "January");
+  await selectRadixByTestId(page, "select-arrived-year", String(new Date().getFullYear() - 1));
+  await selectRadixByTestId(page, "select-departure-day", "01");
+  await selectRadixByTestId(page, "select-departure-month", "February");
+  await selectRadixByTestId(page, "select-departure-year", String(new Date().getFullYear() - 1));
+
+  await dialog.getByTestId("button-ok").click();
+  await expect(dialog).toBeHidden({ timeout: 8_000 });
+  await expect(page.getByText("No entries added")).toHaveCount(0);
+}
+
 async function assertTemporaryWorkCorrectionExpectations(page) {
   const currentPath = new URL(page.url()).pathname;
 
@@ -442,6 +488,10 @@ async function assertTemporaryWorkCorrectionExpectations(page) {
 
   if (/\/all-applicants\/visas/.test(currentPath)) {
     await expect(page.getByText("Visa History")).toHaveCount(0);
+    await page.getByTestId("radio-australian-visa-grant-yes").click();
+    if ((await page.getByTestId("input-visa-grant-number-0").count()) === 0) {
+      await page.getByRole("button", { name: /Add Applicant Visa Record/i }).click();
+    }
     await expect(page.getByTestId("input-visa-grant-number-0")).toBeVisible();
     await expect(page.getByText("Person the visa relates to")).toBeVisible();
   }
@@ -462,6 +512,11 @@ export async function completeVisibleQuestionnairePage(page, branch, seenRepeate
 
   if (/\/all-applicants\/countries-of-residence/.test(new URL(page.url()).pathname)) {
     await completeCountriesOfResidenceCoverage(page, seenRepeaters);
+    return;
+  }
+
+  if (/\/all-applicants\/travel-history/.test(new URL(page.url()).pathname)) {
+    await completeTravelHistory(page, branch, seenRepeaters);
     return;
   }
 
