@@ -5,6 +5,7 @@ import { getAdapter } from "@/lib/adapters";
 import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
 import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
 import { authStore } from "./authStore";
+import { applicationsStore, syncZohoQuestionnaireStatus } from "./applicationsStore";
 
 // Get database adapter (Firebase or localStorage based on env)
 const db = getAdapter();
@@ -657,6 +658,27 @@ export const draftStore = proxy({
     this.visaContext = context;
   },
 
+  async syncQuestionnaireStatus(status, applicationId) {
+    try {
+      if (typeof window === "undefined") return null;
+
+      const appId = applicationId || this.currentApplicationId;
+      if (!appId) return null;
+
+      let application = applicationsStore.applications.find((app) => String(app.id) === String(appId));
+      if (!application && authStore.user?.id) {
+        await applicationsStore.loadApplications(authStore.user.id);
+        application = applicationsStore.applications.find((app) => String(app.id) === String(appId));
+      }
+
+      if (!application || (status !== "Submitted" && String(application.status || "").toLowerCase() === "submitted")) return null;
+      return syncZohoQuestionnaireStatus(application, status);
+    } catch (error) {
+      console.warn("Questionnaire status sync failed:", error.message);
+      return null;
+    }
+  },
+
   isZohoSyncableProfile(profile) {
     return ["spouse", "child", "other"].includes(profile?.relationship);
   },
@@ -858,6 +880,7 @@ export const draftStore = proxy({
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
     await this.persistCompletionPercentage(this.currentApplicationId);
+    await this.syncQuestionnaireStatus("In Progress", this.currentApplicationId);
     const action = newProfile.zohoDependentId ? "update" : "create";
     const zohoDependentId = await this.syncDependentProfileToZoho(newProfile, action);
     if (zohoDependentId) {
@@ -881,6 +904,7 @@ export const draftStore = proxy({
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
     await this.persistCompletionPercentage(this.currentApplicationId);
+    await this.syncQuestionnaireStatus("In Progress", this.currentApplicationId);
 
     if (existingProfile?.zohoDependentId && !this.isZohoSyncableProfile(updatedProfile)) {
       await this.syncDependentProfileToZoho(existingProfile, "delete");
@@ -968,6 +992,7 @@ export const draftStore = proxy({
     this.draft = newDraft;
     await db.saveDraft(this.draft, this.currentApplicationId);
     await this.persistCompletionPercentage(this.currentApplicationId);
+    await this.syncQuestionnaireStatus("In Progress", this.currentApplicationId);
     if (profileToDelete?.zohoDependentId && this.isZohoSyncableProfile(profileToDelete)) {
       await this.syncDependentProfileToZoho(profileToDelete, "delete");
     }
@@ -1177,6 +1202,9 @@ export const draftStore = proxy({
       if (result.success) {
         this.lastSaved = new Date().toISOString();
         this.isSaving = false;
+        if (data?.started === true) {
+          await this.syncQuestionnaireStatus("In Progress", appId);
+        }
         console.log(`[DEBUG draftStore] saveDraft total time: ${(performance.now() - startTime).toFixed(2)}ms`);
         return { success: true };
       }
@@ -1789,6 +1817,7 @@ export const draftStore = proxy({
     this.draft = newDraft;
     if (this.currentApplicationId) {
       await db.saveDraft(this.draft, this.currentApplicationId);
+      await this.syncQuestionnaireStatus("In Progress", this.currentApplicationId);
     }
   },
 

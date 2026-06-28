@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ZohoCRMClient } from '@/lib/zohoClient';
 
+const QUESTIONNAIRE_STATUSES = new Set(['Not Started', 'In Progress', 'Submitted']);
+
 export async function GET(request, { params }) {
   try {
     const { dealId } = params;
@@ -48,3 +50,39 @@ export async function GET(request, { params }) {
   }
 }
 
+export async function PATCH(request, { params }) {
+  try {
+    const { dealId } = params;
+    const { status } = await request.json();
+
+    if (!dealId) {
+      return NextResponse.json(
+        { success: false, error: 'Deal ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!QUESTIONNAIRE_STATUSES.has(status)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid questionnaire status' },
+        { status: 400 }
+      );
+    }
+
+    const zohoClient = new ZohoCRMClient();
+    const result = await zohoClient.updateRecord('Deals', dealId, {
+      Questionnaires_Status: status,
+    });
+
+    return NextResponse.json({
+      success: true,
+      result,
+    });
+  } catch (error) {
+    console.error('Error updating Deal questionnaire status:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to update questionnaire status' },
+      { status: 500 }
+    );
+  }
+}

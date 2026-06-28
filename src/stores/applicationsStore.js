@@ -14,6 +14,28 @@ const getDb = () => {
   }
 };
 
+export async function syncZohoQuestionnaireStatus(application, status) {
+  const zohoId = application?.zohoId;
+  if (typeof window === "undefined" || !zohoId) return null;
+
+  try {
+    const response = await fetch(`/api/deals/${zohoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      console.warn("Questionnaire status sync skipped/failed:", result);
+      return null;
+    }
+    return result;
+  } catch (error) {
+    console.warn("Questionnaire status sync failed:", error.message);
+    return null;
+  }
+}
+
 export const applicationsStore = proxy({
   applications: [],
   currentAppId: null,
@@ -75,6 +97,10 @@ export const applicationsStore = proxy({
       const result = await db.updateApplication(id, updates);
       
       if (result.success) {
+        if (updates.status === "submitted") {
+          await syncZohoQuestionnaireStatus(result.application, "Submitted");
+        }
+
         // Update local state (immutable update)
         this.applications = this.applications.map(app =>
           app.id === id ? result.application : app
