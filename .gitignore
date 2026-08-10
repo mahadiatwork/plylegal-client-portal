@@ -7,6 +7,10 @@ yarn-error.log*
 # Next.js
 .next
 .next-e2e
+.next-review/
+
+# Temp files
+.codex-temp/
 out
 build
 dist
