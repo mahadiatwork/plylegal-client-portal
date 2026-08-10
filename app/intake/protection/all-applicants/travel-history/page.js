@@ -93,7 +93,7 @@ const travelDialogSchema = z.object({
   arrival_date_day: z.string().min(1, "Day is required"),
   arrival_date_month: z.string().min(1, "Month is required"),
   arrival_date_year: z.string().min(1, "Year is required"),
-  arrival_city: z.string().optional(),
+  arrival_city: z.string().trim().min(1, "City is required"),
   intended_departure_date_day: z.string().optional(),
   intended_departure_date_month: z.string().optional(),
   intended_departure_date_year: z.string().optional(),
@@ -344,17 +344,19 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
-      {/* Arrival City - Only show if current location is Yes */}
-      {isCurrentLocation === "yes" && (
-        <div>
-          <Label htmlFor="arrival_city" className="mb-2 block">Arrival City</Label>
-          <Input
-            id="arrival_city"
-            {...dialogForm.register("arrival_city")}
-            data-testid="input-arrival-city"
-          />
-        </div>
-      )}
+      <div>
+        <Label htmlFor="arrival_city" className="mb-2 block">
+          City where the person spent most of their time <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          id="arrival_city"
+          {...dialogForm.register("arrival_city")}
+          data-testid="input-arrival-city"
+        />
+        {dialogForm.formState.errors.arrival_city && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.arrival_city.message}</p>
+        )}
+      </div>
 
       {/* Intended Departure Date */}
       <div>
@@ -465,11 +467,10 @@ export default function Page() {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      has_travel_history: "no",
+      has_travel_history: "yes",
       main_applicant_travel_history: [],
     },
   });
-  const hasTravelHistory = form.watch("has_travel_history");
   const mainApplicantTravelHistory = form.watch("main_applicant_travel_history") || [];
   // Get main applicant name from draft store
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
@@ -480,24 +481,34 @@ export default function Page() {
     const savedData = draftSnap.draft?.protection_travel || {};
     if (Object.keys(savedData).length > 0) {
       form.reset({
-        has_travel_history: savedData.has_travel_history || "no",
+        has_travel_history: "yes",
         main_applicant_travel_history: savedData.main_applicant_travel_history || [],
       });
     }
   }, [draftSnap.draft?.protection_travel]);
-  // Clear travel history data when "No" is selected
-  useEffect(() => {
-    if (hasTravelHistory === "no") {
-      form.setValue("main_applicant_travel_history", []);
-    }
-  }, [hasTravelHistory]);
   const updateMainApplicantTravelHistory = (newHistory) => {
-    form.setValue("main_applicant_travel_history", newHistory);
+    form.setValue("main_applicant_travel_history", newHistory, { shouldDirty: true });
+    form.clearErrors("main_applicant_travel_history");
   };
   const onSubmit = async (data) => {
+    if (!data.main_applicant_travel_history?.length) {
+      const message = "Add travel details for the last 30 years before continuing.";
+      form.setError("main_applicant_travel_history", { type: "manual", message });
+      toast({ title: "Travel history is required", description: message, variant: "destructive" });
+      return;
+    }
+
+    if (data.main_applicant_travel_history.some((row) => !row.arrival_city?.trim())) {
+      const message = "Add the city where the person spent most of their time to each travel entry.";
+      form.setError("main_applicant_travel_history", { type: "manual", message });
+      toast({ title: "Travel city is required", description: message, variant: "destructive" });
+      return;
+    }
+
+    form.clearErrors("main_applicant_travel_history");
     setIsSubmitting(true);
     try {
-      await draftStore.saveSectionData("protection_travel", data);
+      await draftStore.saveSectionData("protection_travel", { ...data, has_travel_history: "yes" });
       await draftStore.markPageComplete(`${visaType}/all-applicants/travel-history`, null, "protection_travel");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       startNavigation(next);
@@ -526,7 +537,7 @@ export default function Page() {
         });
         return;
       }
-      const formData = form.getValues();
+      const formData = { ...form.getValues(), has_travel_history: "yes" };
       console.log("Saving protection_travel data:", formData);
       const result = await draftStore.saveSectionData("protection_travel", formData);
 
@@ -557,6 +568,7 @@ export default function Page() {
   // Table column definitions
   const travelColumns = [
     { key: "country", label: "Country" },
+    { key: "arrival_city", label: "City" },
     {
       key: "arrival_date",
       label: "Arrival Date",
@@ -599,67 +611,36 @@ export default function Page() {
           </div>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="space-y-8 mb-5">
-              {/* Gate Question */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Has {mainApplicantName}:
-                </Label>
-                <ul className="list-disc list-inside mb-4 ml-4 space-y-1 text-gray-700">
-                  <li>travelled to any country in the last 10 years (since turning 16), OR</li>
-                  <li>ever previously travelled to Australia, OR</li>
-                  <li>spent more than 3 consecutive months outside of their usual country of passport in the last 5 years?</li>
-                </ul>
-                <RadioGroup
-                  value={hasTravelHistory}
-                  onValueChange={(value) => form.setValue("has_travel_history", value)}
-                  className="flex gap-4"
-                  data-testid="radio-has-travel-history"
-                >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="yes" id="has-travel-yes" />
-                    <Label htmlFor="has-travel-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="no" id="has-travel-no" />
-                    <Label htmlFor="has-travel-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Travel History for {mainApplicantName}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Enter all countries visited or lived in during the last 30 years, including the current location. Include the city where the person spent most of their time in each country.
+                </p>
+                <RepeaterTable
+                  data={mainApplicantTravelHistory}
+                  columns={travelColumns}
+                  onAdd={(newRow) => updateMainApplicantTravelHistory([...mainApplicantTravelHistory, newRow])}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...mainApplicantTravelHistory];
+                    updated[index] = updatedRow;
+                    updateMainApplicantTravelHistory(updated);
+                  }}
+                  onDelete={(index) => {
+                    const updated = mainApplicantTravelHistory.filter((_, i) => i !== index);
+                    updateMainApplicantTravelHistory(updated);
+                  }}
+                  DialogComponent={TravelHistoryDialog}
+                  addButtonText="Add"
+                  emptyMessage="No travel history added"
+                  dialogTitle="Travel History"
+                  testIdPrefix="travel"
+                />
+                {form.formState.errors.main_applicant_travel_history && (
+                  <p className="text-sm text-red-600">{form.formState.errors.main_applicant_travel_history.message}</p>
+                )}
               </div>
-              <br />
-              {/* Travel History Table - Only show when Yes */}
-              {hasTravelHistory === "yes" && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Travel History for {mainApplicantName}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Enter details of their current location and of previous travel including travel for work, study, holiday, leisure, business, military deployments and visits back to their own country:
-                  </p>
-                  <RepeaterTable
-                    data={mainApplicantTravelHistory}
-                    columns={travelColumns}
-                    onAdd={(newRow) => updateMainApplicantTravelHistory([...mainApplicantTravelHistory, newRow])}
-                    onEdit={(index, updatedRow) => {
-                      const updated = [...mainApplicantTravelHistory];
-                      updated[index] = updatedRow;
-                      updateMainApplicantTravelHistory(updated);
-                    }}
-                    onDelete={(index) => {
-                      const updated = mainApplicantTravelHistory.filter((_, i) => i !== index);
-                      updateMainApplicantTravelHistory(updated);
-                    }}
-                    DialogComponent={TravelHistoryDialog}
-                    addButtonText="Add"
-                    emptyMessage="No travel history added"
-                    dialogTitle="Travel History"
-                    testIdPrefix="travel"
-                  />
-                </div>
-              )}
             </div>
 
             <FormNavigation

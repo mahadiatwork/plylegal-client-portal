@@ -12,46 +12,8 @@ import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { Riple } from "react-loading-indicators";
 
-const DATE_FORMATTER = new Intl.DateTimeFormat("en-AU", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
-function getTimestampDate(value) {
-  if (!value) return null;
-
-  if (typeof value?.toDate === "function") {
-    const date = value.toDate();
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  if (typeof value === "object" && typeof value.seconds === "number") {
-    const date = new Date(value.seconds * 1000);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDisplayDate(value, fallback = "N/A") {
-  const date = getTimestampDate(value);
-  if (date) return DATE_FORMATTER.format(date);
-  if (typeof value === "string" && value.trim()) return value;
-  return fallback;
-}
-
-function getUpdatedValue(app) {
-  return app.updated || app.lastUpdated || app.updatedAt || app.createdAt || app.created;
-}
-
 function getStatusLabel(status) {
   return typeof status === "string" && status.trim() ? status.trim() : "Draft";
-}
-
-function getApplicationTitle(app) {
-  return app.reference || app.id || "Visa application";
 }
 
 function ApplicationsLoadingState() {
@@ -94,34 +56,16 @@ function ApplicationsTable({ applications, navigatingId, onOpen }) {
             <div className="flex flex-wrap items-start gap-x-3 gap-y-4">
               <div className="min-w-0 grow basis-[11rem]">
                 <p className="text-[0.75rem] font-medium uppercase tracking-[0.02em] text-slate-500 whitespace-nowrap break-normal">
-                  Reference
-                </p>
-                <p className="mt-1 text-[1rem] font-semibold leading-5 text-slate-950 break-words">
-                  {getApplicationTitle(app)}
-                </p>
-              </div>
-              <StatusBadge
-                status={getStatusLabel(app.status)}
-                className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#4F726B] shadow-none"
-              />
-
-              <div className="min-w-0 grow basis-[11rem]">
-                <p className="text-[0.75rem] font-medium uppercase tracking-[0.02em] text-slate-500 whitespace-nowrap break-normal">
                   Type
                 </p>
                 <p className="mt-1 text-[0.9375rem] leading-6 text-slate-700 break-words">
                   {formatVisaApplicationType(app)}
                 </p>
               </div>
-
-              <div className="min-w-[7.5rem] shrink-0">
-                <p className="text-[0.75rem] font-medium uppercase tracking-[0.02em] text-slate-500 whitespace-nowrap break-normal">
-                  Updated
-                </p>
-                <p className="mt-1 text-[0.9375rem] text-slate-700 whitespace-nowrap">
-                  {formatDisplayDate(getUpdatedValue(app))}
-                </p>
-              </div>
+              <StatusBadge
+                status={getStatusLabel(app.status)}
+                className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#4F726B] shadow-none"
+              />
 
               <div className="ml-auto self-end">
                 <button
@@ -146,25 +90,17 @@ function ApplicationsTable({ applications, navigatingId, onOpen }) {
       <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
         <table className="w-full table-fixed">
           <colgroup>
-            <col className="w-[34%]" />
-            <col className="w-[26%]" />
-            <col className="w-[18%]" />
-            <col className="w-[14%]" />
-            <col className="w-[8%]" />
+            <col className="w-[60%]" />
+            <col className="w-[25%]" />
+            <col className="w-[15%]" />
           </colgroup>
           <thead className="border-b border-slate-200 bg-slate-50/50">
             <tr>
-              <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
-                Reference
-              </th>
               <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
                 Type
               </th>
               <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
                 Status
-              </th>
-              <th className="px-4 py-4 text-left text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
-                Updated
               </th>
               <th className="px-4 py-4 text-right text-sm font-semibold text-slate-950 lg:px-6 lg:text-base">
                 Actions
@@ -175,11 +111,6 @@ function ApplicationsTable({ applications, navigatingId, onOpen }) {
             {applications.map((app) => (
               <tr key={app.id} className="transition-colors hover:bg-slate-50">
                 <td className="px-4 py-4 lg:px-6">
-                  <span className="block truncate text-sm font-semibold text-slate-950 lg:text-base">
-                    {getApplicationTitle(app)}
-                  </span>
-                </td>
-                <td className="px-4 py-4 lg:px-6">
                   <span className="block truncate text-sm text-slate-700 lg:text-base">
                     {formatVisaApplicationType(app)}
                   </span>
@@ -189,11 +120,6 @@ function ApplicationsTable({ applications, navigatingId, onOpen }) {
                     status={getStatusLabel(app.status)}
                     className="no-default-hover-elevate border-transparent bg-[#e8edf5] px-3 py-1 text-xs font-semibold text-[#4F726B] shadow-none lg:text-sm"
                   />
-                </td>
-                <td className="px-4 py-4 lg:px-6">
-                  <span className="whitespace-nowrap text-sm text-slate-700 lg:text-base">
-                    {formatDisplayDate(getUpdatedValue(app))}
-                  </span>
                 </td>
                 <td className="px-4 py-4 text-right lg:px-6">
                   <button

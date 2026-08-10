@@ -64,12 +64,19 @@ const formSchema = z.object({
   { message: "Please add at least one citizenship", path: ["citizenships"] }
 );
 
+const sectionKeys = {
+  partner: ["mainApplicant.details", "mainApplicant.identity"],
+  protection: ["protection_details", "protection_identity"],
+  "temporary-work": ["temporary_work_details", "temporary_work_identity"],
+};
+
 export default function Page() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const visaType = getVisaTypeFromPath(pathname);
+  const [detailsSectionKey, identitySectionKey] = sectionKeys[visaType] || sectionKeys["temporary-work"];
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
 
@@ -99,13 +106,13 @@ export default function Page() {
     const details =
       profileId != null
         ? draftSnap.draft?.profiles_data?.[profileId]?.details ?? null
-        : draftSnap.draft?.temporary_work_details ?? null;
+        : draftStore.getSectionData(detailsSectionKey) ?? null;
     const identity =
       profileId != null
         ? draftSnap.draft?.profiles_data?.[profileId]?.identity ?? null
-        : draftSnap.draft?.temporary_work_identity ?? null;
+        : draftStore.getSectionData(identitySectionKey) ?? null;
     return `${String(draftSnap.isLoading)}|${profileId ?? ""}|${JSON.stringify(details)}|${JSON.stringify(identity)}|${profileDobBirthSig}|${profileIdentitySig}`;
-  }, [draftSnap.isLoading, profileId, draftSnap.draft, profileDobBirthSig, profileIdentitySig]);
+  }, [draftSnap.isLoading, profileId, draftSnap.draft, profileDobBirthSig, profileIdentitySig, detailsSectionKey, identitySectionKey]);
   // ──────────────────────────────────────────────────────────────────────────
 
   // Set application ID from URL params if available
@@ -156,11 +163,11 @@ export default function Page() {
     // Resolve saved data: profile-specific first, fallback to legacy key
     const savedData = profileId
       ? (draftSnap.draft?.profiles_data?.[profileId]?.details || {})
-      : (draftSnap.draft?.temporary_work_details || {});
+      : draftStore.getSectionData(detailsSectionKey);
 
     const identityLegacy = profileId
       ? (draftSnap.draft?.profiles_data?.[profileId]?.identity || {})
-      : (draftSnap.draft?.temporary_work_identity || {});
+      : draftStore.getSectionData(identitySectionKey);
 
     const monthsList = [
       "January","February","March","April","May","June",
@@ -269,13 +276,13 @@ export default function Page() {
       if (profileId) {
         result = await draftStore.saveProfileSectionData(profileId, "details", data);
       } else {
-        result = await draftStore.saveSectionData("temporary_work_details", data);
+        result = await draftStore.saveSectionData(detailsSectionKey, data);
       }
 
       if (result.success) {
         const completionResult = profileId
           ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`)
-          : await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+          : await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, detailsSectionKey);
 
         if (!completionResult.success) {
           showCompletionIssuesToast(toast, completionResult);
@@ -314,8 +321,8 @@ export default function Page() {
         result = await draftStore.saveProfileSectionData(profileId, "details", values);
         await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
       } else {
-        result = await draftStore.saveSectionData("temporary_work_details", values);
-        await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, "temporary_work_details");
+        result = await draftStore.saveSectionData(detailsSectionKey, values);
+        await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, detailsSectionKey);
       }
       if (result.success) {
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });

@@ -26,7 +26,7 @@ const IMPORTABLE_PROFILE_SECTIONS_BY_VISA_TYPE = {
     other: ["details", "other", "identity"],
   },
   protection: {
-    main_applicant: ["details", "other", "identity", "employment", "education", "skills", "language", "family"],
+    main_applicant: ["details", "other", "identity", "employment", "education", "family"],
     spouse: ["details", "other", "identity"],
     child: ["details", "other", "identity", "custody"],
     other: ["details", "other", "identity"],

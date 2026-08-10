@@ -13,6 +13,7 @@ import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StickyNav } from "@/components/StickyNav";
@@ -21,6 +22,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { getContinuousHistoryIssues, getProtectionHistoryDate } from "@/lib/protectionHistoryCoverage";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   "Employed",
@@ -31,13 +33,19 @@ const EMPLOYMENT_STATUS_OPTIONS = [
   "Work Experience/Internships",
   "Unpaid Employment/Volunteer"
 ];
+const STATUSES_WITH_EMPLOYER_DETAILS = new Set([
+  "Employed",
+  "Self-Employed",
+  "Work Experience/Internships",
+  "Unpaid Employment/Volunteer",
+]);
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
-const YEARS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
+const YEARS = Array.from({ length: 130 }, (_, i) => String(new Date().getFullYear() - i));
 
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
@@ -73,7 +81,35 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     date_to_year: z.string().optional(),
     status: z.string().min(1, "Status is required"),
     position: z.string().optional(),
+    employer: z.string().optional(),
+    employer_address: z.string().optional(),
+    duties: z.string().trim().max(300, "Duties must be 300 characters or less").optional(),
     country: z.string().min(1, "Country is required"),
+  }).superRefine((data, ctx) => {
+    const hasDateTo = [data.date_to_day, data.date_to_month, data.date_to_year].filter(Boolean).length;
+    if (hasDateTo > 0 && hasDateTo < 3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["date_to_day"], message: "Complete all Date To fields or leave them blank." });
+    }
+
+    if (hasDateTo === 3) {
+      const from = getProtectionHistoryDate(data.date_from_day, data.date_from_month, data.date_from_year);
+      const to = getProtectionHistoryDate(data.date_to_day, data.date_to_month, data.date_to_year);
+      if (!to || !from || to < from) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["date_to_day"], message: "Date To cannot be before Date From." });
+      }
+    }
+
+    if (STATUSES_WITH_EMPLOYER_DETAILS.has(data.status)) {
+      [
+        ["employer", "Employer is required"],
+        ["employer_address", "Employer address is required"],
+        ["duties", "Duties are required"],
+      ].forEach(([field, message]) => {
+        if (!data[field]?.trim()) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message });
+        }
+      });
+    }
   });
 
   const dialogForm = useForm({
@@ -87,9 +123,15 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       date_to_year: "",
       status: "",
       position: "",
+      employer: "",
+      employer_address: "",
+      duties: "",
       country: "",
     }
   });
+
+  const status = dialogForm.watch("status");
+  const needsEmployerDetails = STATUSES_WITH_EMPLOYER_DETAILS.has(status);
 
   const handleSubmit = (data) => {
     onSave(data);
@@ -189,6 +231,9 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
             </SelectContent>
           </Select>
         </div>
+        {dialogForm.formState.errors.date_to_day && (
+          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_to_day.message}</p>
+        )}
       </div>
 
       <div>
@@ -210,6 +255,33 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.status.message}</p>
         )}
       </div>
+
+      {needsEmployerDetails && (
+        <>
+          <div>
+            <Label htmlFor="employer" className="mb-2 block">Employer <span className="text-red-500">*</span></Label>
+            <Input id="employer" {...dialogForm.register("employer")} data-testid="input-employer" />
+            {dialogForm.formState.errors.employer && (
+              <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.employer.message}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="employer_address" className="mb-2 block">Employer Address <span className="text-red-500">*</span></Label>
+            <Input id="employer_address" {...dialogForm.register("employer_address")} data-testid="input-employer-address" />
+            {dialogForm.formState.errors.employer_address && (
+              <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.employer_address.message}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="duties" className="mb-2 block">Duties <span className="text-red-500">*</span></Label>
+            <Textarea id="duties" maxLength={300} {...dialogForm.register("duties")} data-testid="input-duties" />
+            <p className="text-xs text-gray-500 mt-1">{(dialogForm.watch("duties") || "").length}/300 characters</p>
+            {dialogForm.formState.errors.duties && (
+              <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.duties.message}</p>
+            )}
+          </div>
+        </>
+      )}
 
       <div>
         <Label className="mb-2 block">Country</Label>
@@ -271,11 +343,20 @@ export default function EmploymentPage() {
   const isCurrentlyEmployed = form.watch("is_currently_employed");
   const employmentHistory = form.watch("employment_history") || [];
 
-  // Get Main Applicant Name
-  const mainApplicant = draft.protection_main_applicant?.details || {};
+  const activeProfile = draft?.profiles?.find((profile) =>
+    profileId ? String(profile.id) === String(profileId) : profile.relationship === "main_applicant"
+  );
+  const mainApplicant = profileId
+    ? draft?.profiles_data?.[profileId]?.details || {}
+    : draft?.protection_details || {};
   const mainApplicantName = mainApplicant.given_names
     ? `${mainApplicant.given_names} ${mainApplicant.family_name || ''}`.trim()
-    : "Main Applicant";
+    : [activeProfile?.given_names, activeProfile?.family_name].filter(Boolean).join(" ") || "Main Applicant";
+  const birthDate = getProtectionHistoryDate(
+    mainApplicant.birth_day || activeProfile?.birth_day,
+    mainApplicant.birth_month || activeProfile?.birth_month,
+    mainApplicant.birth_year || activeProfile?.birth_year
+  );
 
   useEffect(() => {
     const savedData = draft.protection_employment || {};
@@ -285,7 +366,12 @@ export default function EmploymentPage() {
         employment_history: savedData.employment_history || [],
       });
     }
-  }, []);
+  }, [draft?.protection_employment]);
+
+  const updateEmploymentHistory = (newHistory) => {
+    form.setValue("employment_history", newHistory, { shouldDirty: true });
+    form.clearErrors("employment_history");
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -314,6 +400,35 @@ export default function EmploymentPage() {
   };
 
   const onSubmit = async (data) => {
+    if (!birthDate) {
+      const message = "Complete the main applicant's date of birth before submitting employment history.";
+      form.setError("employment_history", { type: "manual", message });
+      toast({ title: "Date of birth is required", description: message, variant: "destructive" });
+      return;
+    }
+
+    const incompleteEmployerEntry = data.employment_history?.find((row) =>
+      STATUSES_WITH_EMPLOYER_DETAILS.has(row.status) &&
+      (!row.employer?.trim() || !row.employer_address?.trim() || !row.duties?.trim() || row.duties.length > 300)
+    );
+    if (incompleteEmployerEntry) {
+      const message = "Each employment entry needs an employer, employer address and duties of 300 characters or less.";
+      form.setError("employment_history", { type: "manual", message });
+      toast({ title: "Employment details are required", description: message, variant: "destructive" });
+      return;
+    }
+
+    const coverageIssues = getContinuousHistoryIssues(data.employment_history, {
+      startDate: birthDate,
+      label: "Employment history",
+    });
+    if (coverageIssues.length) {
+      form.setError("employment_history", { type: "manual", message: coverageIssues[0] });
+      toast({ title: "Employment history needs attention", description: coverageIssues[0], variant: "destructive" });
+      return;
+    }
+
+    form.clearErrors("employment_history");
     setIsSubmitting(true);
     try {
       await draftStore.saveSectionData("protection_employment", data);
@@ -381,7 +496,7 @@ export default function EmploymentPage() {
                   Employment History for the Main Applicant ({mainApplicantName})
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all of your employment and unemployment since birth
+                  Enter all employment, unemployment, study and other activities since birth. There can be no gaps in dates.
                 </p>
                 <RepeaterTable
                   data={employmentHistory}
@@ -390,25 +505,28 @@ export default function EmploymentPage() {
                     { key: "date_to_day", label: "Date To", format: (row) => (row.date_to_day && row.date_to_month && row.date_to_year) ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "" },
                     { key: "status", label: "Status" },
                     { key: "position", label: "Position" },
+                    { key: "employer", label: "Employer" },
                     { key: "country", label: "Country" },
                   ]}
                   onAdd={(newRow) => {
-                    const updated = [...employmentHistory, newRow];
-                    form.setValue("employment_history", updated);
+                    updateEmploymentHistory([...employmentHistory, newRow]);
                   }}
                   onEdit={(index, updatedRow) => {
                     const updated = [...employmentHistory];
                     updated[index] = updatedRow;
-                    form.setValue("employment_history", updated);
+                    updateEmploymentHistory(updated);
                   }}
                   onDelete={(index) => {
                     const updated = employmentHistory.filter((_, i) => i !== index);
-                    form.setValue("employment_history", updated);
+                    updateEmploymentHistory(updated);
                   }}
                   DialogComponent={EmploymentHistoryDialog}
                   addButtonText="Add"
                   testIdPrefix="employment"
                 />
+                {form.formState.errors.employment_history && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.employment_history.message}</p>
+                )}
               </div>
             </div>
 

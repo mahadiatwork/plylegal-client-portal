@@ -27,14 +27,11 @@ import { monthNames } from "@/reuseable/months";
 import { COUNTRIES } from "@/reuseable/countries";
 import { DateSelector } from "@/components/DateSelecters";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { PassportDocumentsSection } from "@/components/intake/PassportDocumentsSection";
 
 
 
 const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation"];
-const PASSPORT_TYPE_OPTIONS = ["Passport", "Emergency Passport", "Travel Document"];
-const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified"];
-const DOCUMENT_STATUS_OPTIONS = ["Current", "Expired", "Lost", "Stolen", "Cancelled", "Damaged"];
-
 const DOCUMENT_TYPE_OPTIONS = [
   "Aircrew Identity Document",
   "Alien Registration Number",
@@ -196,277 +193,6 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
           </div>
         </>
       )}
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
-        </Button>
-        <Button type="submit" className="bg-primary text-primary-foreground" data-testid="button-ok">
-          Ok
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-}
-
-function PassportDialog({ editingRow, onSave, onCancel }) {
-  const initialIsOriginal = editingRow?.is_original_date !== undefined ? (editingRow.is_original_date === "Yes" || editingRow.is_original_date === "yes" ? "Yes" : "No") : "Yes";
-  const [isOriginalDate, setIsOriginalDate] = useState(initialIsOriginal);
-
-  const dialogForm = useForm({
-    defaultValues: editingRow || {
-      document_type: "",
-      document_number: "",
-      passport_country: "",
-      place_of_issue: "",
-      nationality: "",
-      gender: "",
-      name: "",
-      date_issued_day: "",
-      date_issued_month: "",
-      date_issued_year: "",
-      is_original_date: "Yes",
-      original_date_day: "",
-      original_date_month: "",
-      original_date_year: "",
-      date_expiry_day: "",
-      date_expiry_month: "",
-      date_expiry_year: "",
-      document_status: "",
-    },
-  });
-
-  useEffect(() => {
-    if (editingRow?.is_original_date !== undefined) {
-      const value = editingRow.is_original_date === "Yes" || editingRow.is_original_date === "yes" ? "Yes" : "No";
-      setIsOriginalDate(value);
-      dialogForm.setValue("is_original_date", value);
-    }
-  }, [editingRow, dialogForm]);
-
-  const handleFormSubmit = (data) => {
-    onSave(data);
-  };
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4 pr-2"
-    >
-      <div>
-        <Label htmlFor="document_type">Type of Document</Label>
-        <Select
-          value={dialogForm.watch("document_type")}
-          onValueChange={(value) => dialogForm.setValue("document_type", value, { shouldValidate: true })}
-        >
-          <SelectTrigger data-testid="select-passport-type">
-            <SelectValue placeholder="Choose Type" />
-          </SelectTrigger>
-          <SelectContent>
-            {PASSPORT_TYPE_OPTIONS.map((type) => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.document_type && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.document_type.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="document_number">Passport/Document Number</Label>
-        <Input
-          id="document_number"
-          {...dialogForm.register("document_number")}
-          data-testid="input-passport-number"
-        />
-        {dialogForm.formState.errors.document_number && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.document_number.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="passport_country">Passport Country</Label>
-        <Input
-          id="passport_country"
-          {...dialogForm.register("passport_country")}
-          placeholder="Choose Country"
-          data-testid="input-passport-country"
-        />
-        {dialogForm.formState.errors.passport_country && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.passport_country.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="place_of_issue">Place of Issue / Issuing Authority</Label>
-        <Input
-          id="place_of_issue"
-          {...dialogForm.register("place_of_issue")}
-          data-testid="input-place-of-issue"
-        />
-        {dialogForm.formState.errors.place_of_issue && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.place_of_issue.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="nationality">Nationality</Label>
-        <Input
-          id="nationality"
-          {...dialogForm.register("nationality")}
-          placeholder="Choose Nationality"
-          data-testid="input-passport-nationality"
-        />
-        {dialogForm.formState.errors.nationality && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.nationality.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="gender">Gender as shown on this document</Label>
-        <Select
-          value={dialogForm.watch("gender")}
-          onValueChange={(value) => dialogForm.setValue("gender", value, { shouldValidate: true })}
-        >
-          <SelectTrigger data-testid="select-passport-gender">
-            <SelectValue placeholder="Choose Gender" />
-          </SelectTrigger>
-          <SelectContent>
-            {GENDER_OPTIONS.map((gender) => (
-              <SelectItem key={gender} value={gender}>{gender}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.gender && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label className="block mb-2">Name</Label>
-        <p className="text-sm text-gray-600 mb-2">
-          Enter the name that is shown on the document. The name entered <strong>must</strong> be the same as it appears on the document. If the correct name is not shown as an option it will need to be added in the Other Names question located on this person's Other tab.
-        </p>
-        <Input
-          id="name"
-          {...dialogForm.register("name")}
-          placeholder="Choose Applicant Name"
-          data-testid="input-passport-name"
-        />
-        {dialogForm.formState.errors.name && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
-        )}
-      </div>
-
-      <div className="pt-4 border-t border-gray-200">
-        <h3 className="text-base font-medium text-gray-900 mb-3">Dates and Status</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Enter the issue date, expiry date and status of the Document
-        </p>
-
-        <div>
-          <DateSelector
-            label="Date of Issue"
-            values={{
-              day: dialogForm.watch("date_issued_day") || "",
-              month: dialogForm.watch("date_issued_month") || "",
-              year: dialogForm.watch("date_issued_year") || "",
-            }}
-            onValueChange={(type, value) => {
-              const fieldName = `date_issued_${type}`;
-              dialogForm.setValue(fieldName, value, { shouldValidate: true });
-            }}
-            testIdPrefix="select-passport-issue"
-          />
-        </div>
-
-        <div className="mt-4">
-          <Label className="text-sm font-normal mb-2 block">
-            Is this the Original Date of Issue?
-          </Label>
-          <RadioGroup
-            value={isOriginalDate}
-            onValueChange={(value) => {
-              setIsOriginalDate(value);
-              dialogForm.setValue("is_original_date", value);
-            }}
-            className="flex gap-4"
-            data-testid="radio-original-date"
-          >
-            <div className="flex items-center" data-testid="radio-original-date-yes">
-              <RadioGroupItem value="Yes" id="original-date-yes" />
-              <Label htmlFor="original-date-yes" className="ml-2 cursor-pointer font-normal">
-                Yes
-              </Label>
-            </div>
-            <div className="flex items-center" data-testid="radio-original-date-no">
-              <RadioGroupItem value="No" id="original-date-no" />
-              <Label htmlFor="original-date-no" className="ml-2 cursor-pointer font-normal">
-                No
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        {isOriginalDate === "No" && (
-          <div className="mt-4">
-            <DateSelector
-              label="Original Date of Issue"
-              values={{
-                day: dialogForm.watch("original_date_day") || "",
-                month: dialogForm.watch("original_date_month") || "",
-                year: dialogForm.watch("original_date_year") || "",
-              }}
-              onValueChange={(type, value) => {
-                const fieldName = `original_date_${type}`;
-                dialogForm.setValue(fieldName, value);
-              }}
-              testIdPrefix="select-original"
-            />
-          </div>
-        )}
-
-        <div className="mt-4">
-          <DateSelector
-            label="Date of Expiry"
-            values={{
-              day: dialogForm.watch("date_expiry_day") || "",
-              month: dialogForm.watch("date_expiry_month") || "",
-              year: dialogForm.watch("date_expiry_year") || "",
-            }}
-            onValueChange={(type, value) => {
-              const fieldName = `date_expiry_${type}`;
-              dialogForm.setValue(fieldName, value, { shouldValidate: true });
-            }}
-            testIdPrefix="select-passport-expiry"
-          />
-        </div>
-
-        <div className="mt-4">
-          <Label htmlFor="document_status">Document Status</Label>
-          <Select
-            value={dialogForm.watch("document_status")}
-            onValueChange={(value) => dialogForm.setValue("document_status", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-passport-status">
-              <SelectValue placeholder="Choose Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {DOCUMENT_STATUS_OPTIONS.map((status) => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {dialogForm.formState.errors.document_status && (
-            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.document_status.message}</p>
-          )}
-        </div>
-      </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
@@ -1052,22 +778,6 @@ export default function MainApplicantIdentityPage() {
     { key: "still_citizen", label: "Current Citizen?" },
   ];
 
-  const passportColumns = [
-    { key: "document_number", label: "Passport/Document Number" },
-    { key: "name", label: "Name" },
-    { key: "nationality", label: "Nationality" },
-    {
-      key: "date_issued", label: "Date of Issue", format: (row) => {
-        if (row.date_issued_day && row.date_issued_month && row.date_issued_year) {
-          const monthIdx = parseInt(row.date_issued_month) - 1;
-          return `${monthNames[monthIdx]} ${row.date_issued_day}, ${row.date_issued_year}`;
-        }
-        return "";
-      }
-    },
-    { key: "document_status", label: "Status" },
-  ];
-
   const identityDocColumns = [
     { key: "document_type", label: "Document Type" },
     { key: "identification_number", label: "Identification Number" },
@@ -1214,45 +924,13 @@ export default function MainApplicantIdentityPage() {
               </div>
             )}
 
-            {/* Question 2: Do you currently hold or have you ever held a Passport or Travel Document? */}
-            <div>
-              <Field
-                type="radio"
-                name="has_passport"
-                control={form.control}
-                label="Do you currently hold or have you ever held a Passport or Travel Document?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-              />
-
-              {hasPassport === "Yes" && (
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Enter details of all passports ever held by you
-                  </p>
-                  <RepeaterTable
-                    data={passports}
-                    columns={passportColumns}
-                    onAdd={(row) => updatePassports([...passports, row])}
-                    onEdit={(index, row) => {
-                      const updated = [...passports];
-                      updated[index] = row;
-                      updatePassports(updated);
-                    }}
-                    onDelete={(index) => {
-                      const updated = passports.filter((_, i) => i !== index);
-                      updatePassports(updated);
-                    }}
-                    DialogComponent={PassportDialog}
-                    addButtonText="Add"
-                    testIdPrefix="passport"
-                    dialogTitle="Passport/Travel Document"
-                  />
-                </div>
-              )}
-            </div>
+            <PassportDocumentsSection
+              hasPassport={hasPassport}
+              passports={passports}
+              onHasPassportChange={(value) => form.setValue("has_passport", value === "yes" ? "Yes" : "No", { shouldValidate: true, shouldDirty: true, shouldTouch: true })}
+              onPassportsChange={updatePassports}
+              error={form.formState.errors.passports}
+            />
 
             {/* Question 3: Do you have or have you ever had a government issued Identity Document or Identity Number? */}
             <div>

@@ -23,6 +23,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const QUALIFICATION_LEVELS = [
+  "Primary",
   "Secondary",
   "Diploma/Certificate",
   "Bachelor's",
@@ -38,7 +39,7 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
-const YEARS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
+const YEARS = Array.from({ length: 130 }, (_, i) => String(new Date().getFullYear() - i));
 
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
@@ -353,12 +354,11 @@ export default function EducationPage() {
 
   const form = useForm({
     defaultValues: {
-      has_secondary_education: "no",
+      has_secondary_education: "yes",
       education_history: [],
     }
   });
 
-  const hasSecondaryEducation = form.watch("has_secondary_education");
   const educationHistory = form.watch("education_history") || [];
 
   useEffect(() => {
@@ -366,7 +366,7 @@ export default function EducationPage() {
     if (Object.keys(savedData).length > 0) {
       // Merge saved data with default values to ensure all fields are set
       const formData = {
-        has_secondary_education: savedData.has_secondary_education || "no",
+        has_secondary_education: "yes",
         education_history: savedData.education_history || [],
       };
 
@@ -374,6 +374,11 @@ export default function EducationPage() {
       form.reset(formData);
     }
   }, [draftSnap.draft?.protection_education]);
+
+  const updateEducationHistory = (newHistory) => {
+    form.setValue("education_history", newHistory, { shouldDirty: true });
+    form.clearErrors("education_history");
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -419,6 +424,16 @@ export default function EducationPage() {
   };
 
   const onSubmit = async (data) => {
+    const levels = new Set((data.education_history || []).map((row) => row.qualification));
+    const missingLevels = ["Primary", "Secondary"].filter((level) => !levels.has(level));
+    if (missingLevels.length) {
+      const message = `Add ${missingLevels.join(" and ")} school education details before continuing.`;
+      form.setError("education_history", { type: "manual", message });
+      toast({ title: "School education is required", description: message, variant: "destructive" });
+      return;
+    }
+
+    form.clearErrors("education_history");
     setIsSubmitting(true);
     try {
       await draftStore.saveSectionData("protection_education", data);
@@ -454,63 +469,34 @@ export default function EducationPage() {
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="space-y-8">
-              {/* Q1: Have you ever undertaken or enrolled in any studies */}
               <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Have you ever undertaken or enrolled in any studies or training at secondary level or above? (including: high school, college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)?
-                </Label>
-                <RadioGroup
-                  value={hasSecondaryEducation}
-                  onValueChange={(value) => form.setValue("has_secondary_education", value)}
-                  className="flex gap-4"
-                  data-testid="radio-secondary-education"
-                >
-                  <div className="flex items-center" data-testid="radio-secondary-education-yes">
-                    <RadioGroupItem value="yes" id="education-yes" />
-                    <Label htmlFor="education-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
-                  </div>
-                  <div className="flex items-center" data-testid="radio-secondary-education-no">
-                    <RadioGroupItem value="no" id="education-no" />
-                    <Label htmlFor="education-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-
-                {/* Education History Repeater (shown if Yes) */}
-                {hasSecondaryEducation === "yes" && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
-                    <RepeaterTable
-                      data={educationHistory}
-                      columns={[
-                        { key: "institution", label: "Institution" },
-                        { key: "qualification", label: "Qualification" },
-                        { key: "field", label: "Field" },
-                        { key: "date_from_day", label: "From", format: (row) => `${row.date_from_day}/${row.date_from_month}/${row.date_from_year}` },
-                        { key: "date_to_day", label: "To", format: (row) => `${row.date_to_day}/${row.date_to_month}/${row.date_to_year}` },
-                        { key: "country", label: "Country" },
-                      ]}
-                      onAdd={(newRow) => {
-                        const updated = [...educationHistory, newRow];
-                        form.setValue("education_history", updated);
-                      }}
-                      onEdit={(index, updatedRow) => {
-                        const updated = [...educationHistory];
-                        updated[index] = updatedRow;
-                        form.setValue("education_history", updated);
-                      }}
-                      onDelete={(index) => {
-                        const updated = educationHistory.filter((_, i) => i !== index);
-                        form.setValue("education_history", updated);
-                      }}
-                      DialogComponent={EducationDialog}
-                      addButtonText="Add"
-                      testIdPrefix="education"
-                    />
-                  </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Add primary and secondary school education details, followed by any further study or training.
+                </p>
+                <RepeaterTable
+                  data={educationHistory}
+                  columns={[
+                    { key: "institution", label: "Institution" },
+                    { key: "qualification", label: "Qualification" },
+                    { key: "field", label: "Field" },
+                    { key: "date_from_day", label: "From", format: (row) => `${row.date_from_day}/${row.date_from_month}/${row.date_from_year}` },
+                    { key: "date_to_day", label: "To", format: (row) => `${row.date_to_day}/${row.date_to_month}/${row.date_to_year}` },
+                    { key: "country", label: "Country" },
+                  ]}
+                  onAdd={(newRow) => updateEducationHistory([...educationHistory, newRow])}
+                  onEdit={(index, updatedRow) => {
+                    const updated = [...educationHistory];
+                    updated[index] = updatedRow;
+                    updateEducationHistory(updated);
+                  }}
+                  onDelete={(index) => updateEducationHistory(educationHistory.filter((_, i) => i !== index))}
+                  DialogComponent={EducationDialog}
+                  addButtonText="Add"
+                  testIdPrefix="education"
+                />
+                {form.formState.errors.education_history && (
+                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.education_history.message}</p>
                 )}
               </div>
             </div>

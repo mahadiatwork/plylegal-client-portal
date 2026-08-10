@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { getContinuousHistoryIssues, getYearsAgoDate } from "@/lib/protectionHistoryCoverage";
 // Country list for dropdowns
 const COUNTRY_OPTIONS = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
@@ -384,23 +385,26 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
   );
 }
 // Form schema
+const addressRowSchema = z.object({
+  address_line1: z.string(),
+  address_line2: z.string().optional(),
+  suburb: z.string(),
+  state: z.string().optional(),
+  postcode: z.string(),
+  country: z.string(),
+  date_from_day: z.string(),
+  date_from_month: z.string(),
+  date_from_year: z.string(),
+  date_to_day: z.string().optional(),
+  date_to_month: z.string().optional(),
+  date_to_year: z.string().optional(),
+  legal_status: z.string(),
+});
+
 const formSchema = z.object({
   all_same_address: z.enum(["yes", "no"]).optional(),
-  main_applicant_addresses: z.array(z.object({
-    address_line1: z.string(),
-    address_line2: z.string().optional(),
-    suburb: z.string(),
-    state: z.string().optional(),
-    postcode: z.string(),
-    country: z.string(),
-    date_from_day: z.string(),
-    date_from_month: z.string(),
-    date_from_year: z.string(),
-    date_to_day: z.string().optional(),
-    date_to_month: z.string().optional(),
-    date_to_year: z.string().optional(),
-    legal_status: z.string(),
-  })).optional(),
+  main_applicant_addresses: z.array(addressRowSchema).optional(),
+  addresses_by_applicant: z.record(z.array(addressRowSchema)).optional(),
 });
 export default function Page() {
   const router = useRouter();
@@ -428,27 +432,68 @@ export default function Page() {
   });
   const allSameAddress = form.watch("all_same_address");
   const mainApplicantAddresses = form.watch("main_applicant_addresses") || [];
-  // Get main applicant name from draft store
+  const addressesByApplicant = form.watch("addresses_by_applicant") || {};
+  const profiles = draftSnap.draft?.profiles || [];
+  const sortedProfiles = [...profiles].sort((a, b) => ({ main_applicant: 0, spouse: 1, child: 2 }[a.relationship] ?? 3) - ({ main_applicant: 0, spouse: 1, child: 2 }[b.relationship] ?? 3));
+  const mainApplicantProfile = sortedProfiles.find((profile) => profile.relationship === "main_applicant") || sortedProfiles[0];
+  const mainApplicantId = String(mainApplicantProfile?.id || "main-applicant");
+  const applicants = sortedProfiles.length > 0 ? sortedProfiles : [{ id: mainApplicantId, relationship: "main_applicant" }];
+
+  // Get the main applicant name from the profile first, then legacy draft data.
   const mainApplicantDetails = draftSnap.draft?.protection_details || {};
-  const mainApplicantName = mainApplicantDetails.family_name && mainApplicantDetails.given_names
-    ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
+  const mainApplicantName = mainApplicantProfile?.family_name && mainApplicantProfile?.given_names
+    ? `${mainApplicantProfile.given_names} ${mainApplicantProfile.family_name}`
+    : mainApplicantDetails.family_name && mainApplicantDetails.given_names
+      ? `${mainApplicantDetails.given_names} ${mainApplicantDetails.family_name}`
     : "the Main Applicant";
+
+  const getApplicantName = (profile) => `${profile.given_names || ""} ${profile.family_name || ""}`.trim() || "Applicant";
+  const getApplicantAddresses = (profileId) => addressesByApplicant[String(profileId)] || (String(profileId) === mainApplicantId ? mainApplicantAddresses : []);
+
   useEffect(() => {
     const savedData = draftSnap.draft?.protection_addresses || {};
     if (Object.keys(savedData).length > 0) {
+      const savedByApplicant = savedData.addresses_by_applicant && typeof savedData.addresses_by_applicant === "object"
+        ? savedData.addresses_by_applicant
+        : { [mainApplicantId]: savedData.main_applicant_addresses || [] };
       form.reset({
         all_same_address: savedData.all_same_address || "no",
         main_applicant_addresses: savedData.main_applicant_addresses || [],
+        addresses_by_applicant: savedByApplicant,
       });
     }
-  }, [draftSnap.draft?.protection_addresses]);
+  }, [draftSnap.draft?.protection_addresses, mainApplicantId]);
   const updateMainApplicantAddresses = (newAddresses) => {
-    form.setValue("main_applicant_addresses", newAddresses);
+    form.setValue("main_applicant_addresses", newAddresses, { shouldDirty: true, shouldValidate: true });
+    form.setValue("addresses_by_applicant", { ...form.getValues("addresses_by_applicant"), [mainApplicantId]: newAddresses }, { shouldDirty: true, shouldValidate: true });
+    form.clearErrors("main_applicant_addresses");
+  };
+  const updateApplicantAddresses = (profileId, newAddresses) => {
+    const id = String(profileId);
+    const updated = { ...form.getValues("addresses_by_applicant"), [id]: newAddresses };
+    form.setValue("addresses_by_applicant", updated, { shouldDirty: true, shouldValidate: true });
+    if (id === mainApplicantId) updateMainApplicantAddresses(newAddresses);
+    form.clearErrors("addresses_by_applicant");
   };
   const onSubmit = async (data) => {
+    const addressSets = allSameAddress === "yes"
+      ? { [mainApplicantId]: data.main_applicant_addresses || [] }
+      : Object.fromEntries(applicants.map((applicant) => [String(applicant.id), getApplicantAddresses(applicant.id)]));
+    const coverageIssues = Object.entries(addressSets).flatMap(([profileId, addresses]) => getContinuousHistoryIssues(addresses, {
+      startDate: getYearsAgoDate(20),
+      label: allSameAddress === "yes" ? "Shared address history" : `${getApplicantName(applicants.find((applicant) => String(applicant.id) === profileId) || {})}'s address history`,
+    }));
+    if (coverageIssues.length) {
+      form.setError(allSameAddress === "yes" ? "main_applicant_addresses" : "addresses_by_applicant", { type: "manual", message: coverageIssues[0] });
+      toast({ title: "Address history needs attention", description: coverageIssues[0], variant: "destructive" });
+      return;
+    }
+
+    form.clearErrors("main_applicant_addresses");
+    form.clearErrors("addresses_by_applicant");
     setIsSubmitting(true);
     try {
-      await draftStore.saveSectionData("protection_addresses", data);
+      await draftStore.saveSectionData("protection_addresses", { ...data, addresses_by_applicant: addressSets });
       await draftStore.markPageComplete(`${visaType}/all-applicants/addresses`, null, "protection_addresses");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       startNavigation(next);
@@ -579,34 +624,50 @@ export default function Page() {
                   </div>
                 </RadioGroup>
               </div>
-              {/* Address History Table - Only show when Yes */}
-              {allSameAddress === "yes" && (
+              {allSameAddress === "yes" ? (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Addresses for {mainApplicantName}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Enter details of every address this person has lived at during the previous 10 years (include current address)
-                  </p>
+                  <h3 className="text-lg font-semibold text-gray-900">Shared address history</h3>
+                  <p className="text-sm text-gray-600">Enter the shared residential history for the previous 20 years, including the current address. There can be no gaps in dates.</p>
                   <RepeaterTable
                     data={mainApplicantAddresses}
                     columns={addressColumns}
                     onAdd={(newRow) => updateMainApplicantAddresses([...mainApplicantAddresses, newRow])}
-                    onEdit={(index, updatedRow) => {
-                      const updated = [...mainApplicantAddresses];
-                      updated[index] = updatedRow;
-                      updateMainApplicantAddresses(updated);
-                    }}
-                    onDelete={(index) => {
-                      const updated = mainApplicantAddresses.filter((_, i) => i !== index);
-                      updateMainApplicantAddresses(updated);
-                    }}
+                    onEdit={(index, updatedRow) => updateMainApplicantAddresses(mainApplicantAddresses.map((row, rowIndex) => rowIndex === index ? updatedRow : row))}
+                    onDelete={(index) => updateMainApplicantAddresses(mainApplicantAddresses.filter((_, rowIndex) => rowIndex !== index))}
                     DialogComponent={AddressDialog}
-                    addButtonText="Add"
+                    addButtonText="Add address"
                     emptyMessage="No addresses added"
                     dialogTitle="Address"
                     testIdPrefix="address"
                   />
+                  {form.formState.errors.main_applicant_addresses && <p className="text-sm text-red-600">{form.formState.errors.main_applicant_addresses.message}</p>}
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <p className="text-sm text-gray-600">Enter every address lived at during the previous 20 years for each applicant, including the current address. There can be no gaps in dates.</p>
+                  {applicants.map((applicant) => {
+                    const profileId = String(applicant.id);
+                    const rows = getApplicantAddresses(profileId);
+                    const testId = profileId.replace(/[^a-z0-9_-]/gi, "-");
+                    return (
+                      <section key={profileId} className="border-b border-gray-200 pb-6 last:border-b-0" data-testid={`address-applicant-${testId}`}>
+                        <h3 className="mb-3 text-lg font-semibold text-gray-900">Addresses for {getApplicantName(applicant) || mainApplicantName}</h3>
+                        <RepeaterTable
+                          data={rows}
+                          columns={addressColumns}
+                          onAdd={(newRow) => updateApplicantAddresses(profileId, [...rows, newRow])}
+                          onEdit={(index, updatedRow) => updateApplicantAddresses(profileId, rows.map((row, rowIndex) => rowIndex === index ? updatedRow : row))}
+                          onDelete={(index) => updateApplicantAddresses(profileId, rows.filter((_, rowIndex) => rowIndex !== index))}
+                          DialogComponent={AddressDialog}
+                          addButtonText="Add address"
+                          emptyMessage="No addresses added"
+                          dialogTitle="Address"
+                          testIdPrefix={`address-${testId}`}
+                        />
+                      </section>
+                    );
+                  })}
+                  {form.formState.errors.addresses_by_applicant && <p className="text-sm text-red-600">{form.formState.errors.addresses_by_applicant.message}</p>}
                 </div>
               )}
             </div>

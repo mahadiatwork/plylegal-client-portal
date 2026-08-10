@@ -537,7 +537,7 @@ export default function ChildOtherNamesPage() {
                       updateOtherNames(updated);
                     }}
                     DialogComponent={OtherNameDialog}
-                    addButtonText="Add"
+                    addButtonText="Add another name"
                     emptyMessage="No other names added"
                     dialogTitle="Other Name"
                     testIdPrefix="other-name"

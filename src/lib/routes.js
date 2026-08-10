@@ -111,6 +111,7 @@ export const PROTECTION_VISA_ROUTES = [
     title: "All Applicants",
     subpages: [
       { href: "/intake/protection/all-applicants/addresses", title: "Addresses" },
+      { href: "/intake/protection/all-applicants/languages", title: "Languages" },
       { href: "/intake/protection/all-applicants/contact-details", title: "Contact Details" },
       { href: "/intake/protection/all-applicants/visas", title: "Visas" },
       { href: "/intake/protection/all-applicants/travel-history", title: "Travel History" },

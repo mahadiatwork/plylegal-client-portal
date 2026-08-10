@@ -90,8 +90,8 @@ function getRouteIcon(route) {
   return FileCheck2;
 }
 
-function SidebarRouteIcon({ route, className }) {
-  const Icon = getRouteIcon(route);
+function SidebarRouteIcon({ route, className, completed = false }) {
+  const Icon = completed ? Check : getRouteIcon(route);
   return <Icon className={cn("h-5 w-5 shrink-0", className)} />;
 }
 
@@ -935,7 +935,7 @@ export default function IntakeLayout({ children }) {
                         )}
                         data-testid={`nav-${route.href}`}
                       >
-                        <SidebarRouteIcon route={route} />
+                        <SidebarRouteIcon route={route} completed={isRouteCompleted(route.href)} />
                         {route.title}
                       </Button>
                     );
