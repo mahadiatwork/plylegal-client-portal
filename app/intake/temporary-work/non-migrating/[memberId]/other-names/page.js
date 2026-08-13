@@ -130,7 +130,7 @@ export default function NonMigratingOtherNamesPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Other Names â€?{displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Other Names â€”{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           List any other names or spellings used by this non-migrating family member.
         </p>

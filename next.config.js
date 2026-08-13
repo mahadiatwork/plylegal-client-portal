@@ -53,8 +53,8 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
-    serverComponentsExternalPackages: ['firebase-admin', 'firebase-admin/firestore', 'firebase-admin/auth'],
   },
+  serverExternalPackages: ['firebase-admin', 'firebase-admin/firestore', 'firebase-admin/auth'],
   env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

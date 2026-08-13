@@ -81,7 +81,7 @@ export default function NonMigratingHealthPage() {
       return;
     }
     await draftStore.markPageComplete(`${getNonMigratingCompletionPrefix(visaType)}/${memberId}/health__${memberId}`, null, false);
-    // Health is the last subpage â€?use global route to go to next in overall flow
+    // Health is the last subpage â€”use global route to go to next in overall flow
     const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
     startNavigation(next);
     if (next) router.push(next);
@@ -118,7 +118,7 @@ export default function NonMigratingHealthPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Health â€?{displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Health â€”{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide health examination information for this non-migrating family member.
         </p>

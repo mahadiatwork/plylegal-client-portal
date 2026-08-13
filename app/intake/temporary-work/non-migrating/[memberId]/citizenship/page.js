@@ -131,7 +131,7 @@ export default function NonMigratingCitizenshipPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Citizenship â€?{displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Citizenship â€”{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide citizenship information for this non-migrating family member.
         </p>

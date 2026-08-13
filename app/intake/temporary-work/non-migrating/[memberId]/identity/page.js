@@ -146,7 +146,7 @@ export default function NonMigratingIdentityPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Identity Documents â€?{displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Identity Documents â€”{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide information about identity documents held by this non-migrating family member.
         </p>
