@@ -7,7 +7,6 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/Field";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { Button } from "@/components/ui/button";
@@ -317,7 +316,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
-          Save
+          Ok
         </Button>
       </DialogFooter>
     </form>
@@ -359,14 +358,14 @@ export default function MainApplicantEducationPage() {
     resolver: zodResolver(educationSchema),
     mode: "onChange",
     defaultValues: {
-      has_education: sectionData?.has_education || "No",
+      has_secondary_education: sectionData?.has_secondary_education || sectionData?.has_education === "Yes" ? "yes" : "no",
       education_history: sectionData?.education_history || [],
     },
   });
   const { reset } = form;
 
   // Watch form values for conditional rendering
-  const hasEducation = form.watch("has_education");
+  const hasEducation = form.watch("has_secondary_education");
   const educationHistory = form.watch("education_history") || [];
 
   // Watch all form values for auto-save
@@ -376,9 +375,11 @@ export default function MainApplicantEducationPage() {
   useEffect(() => {
     // Only reset if we have an ID and aren't loading
     if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
-      // Use 'keepDefaultValues: true' to prevent flickering
+      // Migrate legacy has_education (Yes/No) to has_secondary_education (yes/no)
+      const migratedVal = sectionData.has_secondary_education
+        || (sectionData.has_education === "Yes" ? "yes" : sectionData.has_education === "No" ? "no" : "no");
       reset({
-        has_education: sectionData.has_education || "No",
+        has_secondary_education: migratedVal,
         education_history: sectionData.education_history || [],
       }, { keepDefaultValues: true });
     }
@@ -533,37 +534,20 @@ export default function MainApplicantEducationPage() {
     : null;
 
   const educationColumns = [
-    {
-      key: "date_from", label: "Date From", format: (row) => {
-        if (row.date_from_day && row.date_from_month && row.date_from_year) {
-          const monthIdx = parseInt(row.date_from_month) - 1;
-          return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
-        }
-        return "";
-      }
-    },
-    {
-      key: "date_to", label: "Date To", format: (row) => {
-        if (row.date_to_day && row.date_to_month && row.date_to_year) {
-          const monthIdx = parseInt(row.date_to_month) - 1;
-          return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
-        }
-        return "Ongoing";
-      }
-    },
+    { key: "institution_name", label: "Institution" },
+    { key: "qualification_type", label: "Qualification" },
     { key: "course_name", label: "Course Name" },
-    { key: "institution_name", label: "Institution Name" },
+    { key: "date_from_year", label: "Year Started" },
     { key: "country", label: "Country" },
-    { key: "course_status", label: "Status" },
   ];
 
   return (
     <>
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Education</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Main Applicant's Education</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            In this section, provide details about the main applicant's education history.
+            In this section, provide details about the main applicant&apos;s education history.
           </p>
         </CardHeader>
         <CardContent>
@@ -576,42 +560,36 @@ export default function MainApplicantEducationPage() {
             }}
             className="space-y-8"
           >
-            {Object.keys(form.formState.errors).length > 0 && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-red-800 mb-2">
-                  Please correct the following errors:
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(form.formState.errors).map(([field, error]) => (
-                    <li key={field}>{error.message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Question 1: Have you ever undertaken or enrolled in any education or course above secondary level? */}
+            {/* Question 1: Have you ever undertaken or enrolled in any studies or training at secondary level or above? */}
             <div>
-              <Field
-                type="radio"
-                name="has_education"
-                control={form.control}
-                label="Have you ever undertaken or enrolled in any education or course above secondary level? (Including: college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-              />
+              <Label className="text-base font-medium mb-3 block">
+                Have you ever undertaken or enrolled in any studies or training at secondary level or above? (including: high school, college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)?
+              </Label>
+              <RadioGroup
+                value={hasEducation}
+                onValueChange={(value) => form.setValue("has_secondary_education", value)}
+                className="flex gap-4"
+                data-testid="radio-secondary-education"
+              >
+                <div className="flex items-center" data-testid="radio-secondary-education-yes">
+                  <RadioGroupItem value="yes" id="education-yes" />
+                  <Label htmlFor="education-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-secondary-education-no">
+                  <RadioGroupItem value="no" id="education-no" />
+                  <Label htmlFor="education-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
 
             {/* Education History Section */}
-            {hasEducation === "Yes" && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Education History for the Main Applicant{mainApplicantName ? ` (${mainApplicantName})` : ""}
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all education and qualifications you have undertaken or are enrolled in above secondary level: (Includes: college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)
-                </p>
+            {hasEducation === "yes" && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
                 <RepeaterTable
                   data={educationHistory}
                   columns={educationColumns}
@@ -628,9 +606,6 @@ export default function MainApplicantEducationPage() {
                   DialogComponent={EducationHistoryDialog}
                   addButtonText="Add"
                   testIdPrefix="education"
-                  dialogTitle="Education History"
-                  dialogSubtitle="Enter details of all education and qualifications you have undertaken or are enrolled in above secondary level: (Includes: college/vocational schools, university, research/thesis, specialised training, skill/trade qualifications)"
-                  dialogClassName="max-w-4xl w-[90vw] max-h-[98vh] bg-white overflow-y-auto"
                 />
               </div>
             )}

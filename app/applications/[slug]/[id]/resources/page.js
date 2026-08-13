@@ -12,6 +12,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { auth } from "@/lib/firebase";
 import {
   BookOpen,
+  Download,
   ExternalLink,
   FileText,
   Folder,
@@ -125,10 +126,48 @@ function getResourceTestId(name) {
   return `link-resource-${String(name || "resource").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
 
-function ResourceTemplateItem({ item }) {
+function ResourceTemplateItem({ item, matterId }) {
   const isNote = item.kind === "note";
+  const isPdf = item.kind === "file" && (
+    String(item.mimeType || "").split(";", 1)[0].trim().toLowerCase() === "application/pdf" ||
+    (!item.mimeType && /\.pdf$/i.test(String(item.name || "")))
+  );
   const Icon = getItemIcon(item.kind);
   const fileSize = formatFileSize(item.size);
+  const previewUrl = `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(item.id)}/preview`;
+  const downloadUrl = item.downloadUrl || item.externalUrl;
+  const [previewState, setPreviewState] = useState(isPdf ? "preparing" : "idle");
+
+  useEffect(() => {
+    if (!isPdf) return undefined;
+
+    let active = true;
+    auth.currentUser?.getIdToken()
+      .then((idToken) => {
+        if (!idToken) throw new Error("Missing authentication token");
+        return fetch(previewUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+      })
+      .then((response) => {
+        if (!response.ok) throw new Error("Preview authorization failed");
+        if (active) setPreviewState("ready");
+      })
+      .catch(() => {
+        if (active) setPreviewState("failed");
+      });
+
+    return () => { active = false; };
+  }, [isPdf, previewUrl]);
+
+  useEffect(() => {
+    if (previewState !== "ready") return undefined;
+    const timeout = setTimeout(() => setPreviewState("failed"), 15000);
+    return () => clearTimeout(timeout);
+  }, [previewState]);
+
   const meta = [
     formatResourceKind(item.kind),
     item.kind === "file" ? item.mimeType : null,
@@ -150,17 +189,66 @@ function ResourceTemplateItem({ item }) {
         </div>
       </div>
 
-      {!isNote && item.externalUrl ? (
-        <a
-          href={item.externalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-9 flex-shrink-0 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] bg-white px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
-          data-testid={getResourceTestId(item.name)}
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open
-        </a>
+      {!isNote && (item.externalUrl || downloadUrl) ? (
+        <div className="flex flex-shrink-0 flex-wrap gap-2">
+          {item.externalUrl ? (
+            <a
+              href={item.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] bg-white px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
+              data-testid={getResourceTestId(item.name)}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open
+            </a>
+          ) : null}
+          {downloadUrl ? (
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] bg-white px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
+              data-testid={`${getResourceTestId(item.name)}-download`}
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isPdf ? (
+        <div className="basis-full overflow-hidden rounded-md border border-[#D7E3DD] bg-white">
+          {previewState === "ready" ? (
+            <iframe
+              src={previewUrl}
+              className="h-[32rem] w-full"
+              title="Document preview"
+              onLoad={() => setPreviewState("loaded")}
+              onError={() => setPreviewState("failed")}
+              data-testid={`iframe-${getResourceTestId(item.name)}`}
+            />
+          ) : previewState === "preparing" ? (
+            <div className="p-4 text-sm text-muted-foreground">Preparing document preview...</div>
+          ) : previewState === "loaded" ? (
+            <iframe
+              src={previewUrl}
+              className="h-[32rem] w-full"
+              title="Document preview"
+              data-testid={`iframe-${getResourceTestId(item.name)}`}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-muted-foreground" role="alert">
+              <span>Preview unavailable. Open or download the document instead.</span>
+              <div className="flex gap-2">
+                {item.externalUrl ? <a className="font-medium text-[#255E4A] underline" href={item.externalUrl} target="_blank" rel="noopener noreferrer">Open</a> : null}
+                {downloadUrl ? <a className="font-medium text-[#255E4A] underline" href={downloadUrl} target="_blank" rel="noopener noreferrer" download>Download</a> : null}
+              </div>
+            </div>
+          )}
+        </div>
       ) : null}
     </article>
   );
@@ -337,7 +425,7 @@ export default function ResourcesPage() {
 
                       <div className="mt-3 space-y-2 border-t border-[#DDE7E1] pt-3">
                         {category.items.map((item) => (
-                          <ResourceTemplateItem key={item.id} item={item} />
+                          <ResourceTemplateItem key={item.id} item={item} matterId={appId} />
                         ))}
                       </div>
                     </section>

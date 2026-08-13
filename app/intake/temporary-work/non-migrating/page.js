@@ -5,7 +5,7 @@ import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { authStore } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, getApplicationIdFromPathname, getNextRoute, getPreviousRoute } from "@/lib/routes";
+import { buildIntakeHref, getApplicationIdFromPathname, getNextRoute, getNonMigratingCompletionPrefix, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useState, useEffect, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -44,8 +44,11 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
 
 const NON_MIGRATING_RELATIONSHIPS = [
+  { value: "spouse", label: "Spouse" },
   { value: "partner", label: "Partner" },
   { value: "child", label: "Child" },
+  { value: "parent", label: "Parent" },
+  { value: "sibling", label: "Sibling" },
   { value: "other_dependent", label: "Other Dependent" },
 ];
 
@@ -79,6 +82,13 @@ const nmfSchema = z.object({
   place_of_birth_town: z.string().optional(),
   place_of_birth_state: z.string().optional(),
   place_of_birth_country: z.string().optional(),
+  contact_phone: z.string().optional(),
+  address_line_1: z.string().optional(),
+  address_line_2: z.string().optional(),
+  address_suburb: z.string().optional(),
+  address_state: z.string().optional(),
+  address_postcode: z.string().optional(),
+  address_country: z.string().optional(),
   other_names: z.array(z.object({
     family_name: z.string().optional(),
     given_names: z.string().optional(),
@@ -126,6 +136,13 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
       place_of_birth_town: "",
       place_of_birth_state: "",
       place_of_birth_country: "",
+      contact_phone: "",
+      address_line_1: "",
+      address_line_2: "",
+      address_suburb: "",
+      address_state: "",
+      address_postcode: "",
+      address_country: "",
       other_names: [],
       citizenship_has_other: "no",
       citizenship_countries: "",
@@ -159,6 +176,13 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
         place_of_birth_town: editingMember.place_of_birth?.town_city || "",
         place_of_birth_state: editingMember.place_of_birth?.state_province || "",
         place_of_birth_country: editingMember.place_of_birth?.country || "",
+        contact_phone: editingMember.contact?.phone || "",
+        address_line_1: editingMember.address?.line_1 || "",
+        address_line_2: editingMember.address?.line_2 || "",
+        address_suburb: editingMember.address?.suburb || "",
+        address_state: editingMember.address?.state || "",
+        address_postcode: editingMember.address?.postcode || "",
+        address_country: editingMember.address?.country || "",
         other_names: editingMember.other_names || [],
         citizenship_has_other: editingMember.citizenship?.has_other || "no",
         citizenship_countries: editingMember.citizenship?.countries?.join(", ") || "",
@@ -183,6 +207,13 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
         place_of_birth_town: "",
         place_of_birth_state: "",
         place_of_birth_country: "",
+        contact_phone: "",
+        address_line_1: "",
+        address_line_2: "",
+        address_suburb: "",
+        address_state: "",
+        address_postcode: "",
+        address_country: "",
         other_names: [],
         citizenship_has_other: "no",
         citizenship_countries: "",
@@ -199,7 +230,7 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
   const handleSelectCrm = (dep) => {
     setSelectedCrmId(dep.zohoDependentId);
     form.reset({
-      relationship: dep.relationship === "child" ? "child" : "other_relative",
+      relationship: dep.relationship === "child" ? "child" : dep.relationship === "spouse" ? "spouse" : "other_dependent",
       relationship_status: "",
       has_current_passport: "yes",
       passport_family_name: dep.family_name || "",
@@ -212,6 +243,13 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
       place_of_birth_town: "",
       place_of_birth_state: "",
       place_of_birth_country: dep.citizenship || "",
+      contact_phone: dep.phone || dep.mobile || "",
+      address_line_1: dep.address_line_1 || "",
+      address_line_2: dep.address_line_2 || "",
+      address_suburb: dep.suburb || dep.city || "",
+      address_state: dep.state || "",
+      address_postcode: dep.postcode || dep.zip || "",
+      address_country: dep.country || "",
       other_names: [],
       citizenship_has_other: dep.citizenship ? "yes" : "no",
       citizenship_countries: dep.citizenship || "",
@@ -236,6 +274,13 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
       place_of_birth_town: "",
       place_of_birth_state: "",
       place_of_birth_country: "",
+      contact_phone: "",
+      address_line_1: "",
+      address_line_2: "",
+      address_suburb: "",
+      address_state: "",
+      address_postcode: "",
+      address_country: "",
       other_names: [],
       citizenship_has_other: "no",
       citizenship_countries: "",
@@ -262,6 +307,17 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
         town_city: data.place_of_birth_town,
         state_province: data.place_of_birth_state,
         country: data.place_of_birth_country,
+      },
+      contact: {
+        phone: data.contact_phone,
+      },
+      address: {
+        line_1: data.address_line_1,
+        line_2: data.address_line_2,
+        suburb: data.address_suburb,
+        state: data.address_state,
+        postcode: data.address_postcode,
+        country: data.address_country,
       },
       other_names: data.other_names || [],
       citizenship: {
@@ -469,6 +525,45 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
             </div>
           </div>
 
+          {/* Contact Details */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Address and Phone</h3>
+            <div>
+              <Label className="mb-1 block font-medium">Phone Number</Label>
+              <Input {...form.register("contact_phone")} placeholder="Phone number" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block font-medium">Address Line 1</Label>
+                <Input {...form.register("address_line_1")} placeholder="Street address" />
+              </div>
+              <div>
+                <Label className="mb-1 block font-medium">Address Line 2</Label>
+                <Input {...form.register("address_line_2")} placeholder="Apartment, unit, etc." />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block font-medium">Suburb / City</Label>
+                <Input {...form.register("address_suburb")} placeholder="Suburb or city" />
+              </div>
+              <div>
+                <Label className="mb-1 block font-medium">State / Province</Label>
+                <Input {...form.register("address_state")} placeholder="State or province" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block font-medium">Postcode</Label>
+                <Input {...form.register("address_postcode")} placeholder="Postcode" />
+              </div>
+              <div>
+                <Label className="mb-1 block font-medium">Country</Label>
+                <Input {...form.register("address_country")} placeholder="Country" />
+              </div>
+            </div>
+          </div>
+
           {/* Other Names */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Other Names / Spellings</h3>
@@ -560,6 +655,8 @@ export default function NonMigratingMembersPage() {
   const authSnap = useSnapshot(authStore);
   const { toast } = useToast();
   const { startNavigation } = useNavigationLoading();
+  const visaType = getVisaTypeFromPath(pathname);
+  const completionPrefix = getNonMigratingCompletionPrefix(visaType);
 
   const [nmfDialogOpen, setNmfDialogOpen] = useState(false);
   const [editingNmf, setEditingNmf] = useState(null);
@@ -694,7 +791,7 @@ export default function NonMigratingMembersPage() {
 
   const handlePrevious = () => {
     setIsNavigating(true);
-    const prev = getPreviousRoute(pathname, "temporary-work", draftSnap.currentApplicationId, draftSnap.visaContext);
+    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
     if (prev) {
       startNavigation(prev);
       router.push(prev);
@@ -714,9 +811,9 @@ export default function NonMigratingMembersPage() {
     setIsNavigating(true);
     try {
       await draftStore.saveSectionData("temporary_work_non_migrating", { has_other_family: hasOtherFamily });
-      await draftStore.markPageComplete("temporary-work/non-migrating", null, false);
+      await draftStore.markPageComplete(completionPrefix, null, false);
 
-      const next = getNextRoute(pathname, "temporary-work", draftSnap.currentApplicationId, draftSnap.visaContext);
+      const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       if (next) {
         startNavigation(next);
         router.push(next);
@@ -749,13 +846,13 @@ export default function NonMigratingMembersPage() {
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">Other Family</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Add any members of your family unit who are not included in this visa application.
+          Add any non-migrating family members who are not included in this visa application, including children, parents and siblings.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
           <Label className="text-sm font-medium text-gray-900">
-            Do you have members of your family unit not included in the application who are not Australian citizens or Australian permanent residents?
+            Do you have any non-migrating family members not included in the application, such as a spouse or partner, child, parent or sibling?
           </Label>
           <RadioGroup
             value={hasOtherFamily || ""}
@@ -803,6 +900,8 @@ export default function NonMigratingMembersPage() {
                         </div>
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
                           {member.place_of_birth?.country && <span>Born in: {member.place_of_birth.country}</span>}
+                          {member.contact?.phone && <span>Phone: {member.contact.phone}</span>}
+                          {member.address?.country && <span>Address country: {member.address.country}</span>}
                         </div>
                         {isConfirmingDelete && (
                           <div className="mt-2 flex items-center gap-2 text-xs">

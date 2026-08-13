@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNextRoute, getPreviousRoute, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNonMigratingCompletionPrefix, getNextRoute, getPreviousRoute, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,7 +74,7 @@ export default function NonMigratingDetailsPage() {
   const toIntakeHref = (href) => buildIntakeHref({
     appId,
     internalHref: href,
-    visaType: "temporary-work",
+    visaType,
     visaContext: draftSnap.visaContext,
   });
 
@@ -139,7 +139,7 @@ export default function NonMigratingDetailsPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/details__${memberId}`, null, false);
+    await draftStore.markPageComplete(`${getNonMigratingCompletionPrefix(visaType)}/${memberId}/details__${memberId}`, null, false);
     // Use global route to navigate to next page in linear flow
     const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
     if (next) {
@@ -149,7 +149,7 @@ export default function NonMigratingDetailsPage() {
   };
 
   const onPrev = () => {
-    // Use global route â€” goes to previous migrating applicant page (or profile)
+    // Use global route â€?goes to previous migrating applicant page (or profile)
     const prev = getPreviousRoute(pathname, visaType, appId, draftSnap.visaContext);
     startNavigation(prev);
     if (prev) router.push(prev);
@@ -183,7 +183,7 @@ export default function NonMigratingDetailsPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Details â€” {displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Details â€?{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide personal details for this non-migrating family member.
         </p>

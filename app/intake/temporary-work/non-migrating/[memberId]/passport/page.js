@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNonMigratingCompletionPrefix, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,13 +51,14 @@ export default function NonMigratingPassportPage() {
   const draftSnap = useSnapshot(draftStore);
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const visaType = getVisaTypeFromPath(pathname);
 
   const memberId = getInternalIntakeHref(pathname).match(/\/non-migrating\/([^/]+)\/passport/)?.[1];
   const appId = getApplicationIdFromSearchParams(searchParams);
   const toIntakeHref = (href) => buildIntakeHref({
     appId,
     internalHref: href,
-    visaType: "temporary-work",
+    visaType,
     visaContext: draftSnap.visaContext,
   });
 
@@ -120,14 +121,14 @@ export default function NonMigratingPassportPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/passport__${memberId}`, null, false);
-    const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix);
+    await draftStore.markPageComplete(`${getNonMigratingCompletionPrefix(visaType)}/${memberId}/passport__${memberId}`, null, false);
+    const next = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex + 1]?.pathSuffix, visaType);
     startNavigation(toIntakeHref());
     if (next) router.push(toIntakeHref(next));
   };
 
   const onPrev = () => {
-    const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix);
+    const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix, visaType);
     startNavigation(toIntakeHref());
     if (prev) router.push(toIntakeHref(prev));
   };
@@ -160,7 +161,7 @@ export default function NonMigratingPassportPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Passport â€” {displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Passport â€?{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide passport details for this non-migrating family member.
         </p>

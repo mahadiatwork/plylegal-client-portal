@@ -21,6 +21,8 @@ const RELATIONSHIP_LABELS = {
   child: "Child",
   other: "Dependent",
   partner: "Partner",
+  parent: "Parent",
+  sibling: "Sibling",
   other_dependent: "Other Dependent",
   de_facto: "De Facto",
   never_married: "Never Married",
@@ -813,6 +815,8 @@ function getNonMigratingSubpageData(member, pathSuffix) {
       sex: member.passport?.sex,
       date_of_birth: formatDateParts(member.passport?.dob_day, member.passport?.dob_month, member.passport?.dob_year),
       place_of_birth: member.place_of_birth,
+      contact: member.contact,
+      address: member.address,
     };
   }
 
@@ -852,8 +856,6 @@ function getNonMigratingSubpageData(member, pathSuffix) {
 }
 
 function buildNonMigratingSections(draft, context, options) {
-  if (options.visaContext !== "186") return [];
-
   const members = Array.isArray(draft?.non_migrating_members) ? draft.non_migrating_members : [];
   if (members.length === 0) return [];
 

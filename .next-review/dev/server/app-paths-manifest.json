@@ -1,5 +1,5 @@
 {
   "/login/page": "app/login/page.js",
-  "/intake/protection/all-applicants/addresses/page": "app/intake/protection/all-applicants/addresses/page.js",
-  "/intake/protection/main-applicant/other/page": "app/intake/protection/main-applicant/other/page.js"
+  "/intake/protection/main-applicant/other/page": "app/intake/protection/main-applicant/other/page.js",
+  "/intake/protection/all-applicants/addresses/page": "app/intake/protection/all-applicants/addresses/page.js"
 }

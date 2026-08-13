@@ -19,12 +19,20 @@ function getTemporaryWorkApplicationType(visaContext) {
   return "Skills in Demand (subclass 482)";
 }
 
-export async function seedTemporaryWorkApplication(page, { appId, reference, visaContext = "482" }) {
+export async function seedIntakeApplication(page, { appId, reference, slug = "482", draft = {} }) {
+  const applicationBySlug = {
+    "186": { type: "Employer Nomination (subclass 186)", visaTypeCode: "temporary-work", visaContext: "186" },
+    "482": { type: "Skills in Demand (subclass 482)", visaTypeCode: "temporary-work", visaContext: "482" },
+    "820": { type: "Partner Visa (subclass 820)", visaTypeCode: "partner", visaContext: null },
+    "866": { type: "Protection Visa (subclass 866)", visaTypeCode: "protection", visaContext: null },
+  };
+  const config = applicationBySlug[slug] || applicationBySlug["482"];
   const app = {
     id: appId,
     reference,
-    type: getTemporaryWorkApplicationType(visaContext),
-    visaTypeCode: "temporary-work",
+    type: config.type,
+    visaTypeCode: config.visaTypeCode,
+    visaContext: config.visaContext,
     status: "Draft",
     userId: DEMO_USER.id,
     createdAt: TEST_DATE,
@@ -33,7 +41,7 @@ export async function seedTemporaryWorkApplication(page, { appId, reference, vis
 
   await page.goto("/login");
   await page.evaluate(
-    ({ user, application, appId: seededAppId, visaContext: seededVisaContext }) => {
+    ({ user, application, seededAppId, seededDraft }) => {
       localStorage.clear();
       localStorage.setItem("ply_session", "true");
       localStorage.setItem("ply_session_expires_at", String(Date.now() + 15 * 24 * 60 * 60 * 1000));
@@ -51,11 +59,20 @@ export async function seedTemporaryWorkApplication(page, { appId, reference, vis
         })
       );
       localStorage.setItem("ply:applications", JSON.stringify([application]));
-      localStorage.setItem(`ply:app:${seededAppId}:draft`, JSON.stringify({ visaContext: seededVisaContext }));
+      localStorage.setItem(`ply:app:${seededAppId}:draft`, JSON.stringify(seededDraft));
       localStorage.setItem(`ply:app:${seededAppId}:completion`, JSON.stringify({}));
     },
-    { user: DEMO_USER, application: app, appId, visaContext }
+    { user: DEMO_USER, application: app, seededAppId: appId, seededDraft: draft }
   );
+}
+
+export async function seedTemporaryWorkApplication(page, { appId, reference, visaContext = "482" }) {
+  await seedIntakeApplication(page, {
+    appId,
+    reference,
+    slug: visaContext === "186" ? "186" : "482",
+    draft: { visaContext },
+  });
 }
 
 export async function seed482Application(page, { appId, reference }) {
@@ -111,7 +128,7 @@ export function watchForClientCrashes(page) {
 }
 
 export async function startQuestionnaire(page, appId, slug = "482") {
-  const intakeSlug = slug === "186" ? "186" : "482";
+  const intakeSlug = ["186", "482", "820", "866"].includes(slug) ? slug : "482";
   await page.goto(`/applications/${intakeSlug}/${appId}/questionnaire`);
   await expect(page).not.toHaveURL(/\/login/);
   await expect(page.getByRole("heading", { name: /Questionnaire/i })).toBeVisible();

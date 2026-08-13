@@ -1,32 +1,29 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
-import { applicationsStore } from "@/stores/applicationsStore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/Field";
-import { FormNavigation } from "@/components/FormNavigation";
-import { RepeaterTable } from "@/components/RepeaterTable";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { employmentSchema } from "@/lib/validation";
+import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
-import { useEffect, useRef, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormNavigation } from "@/components/FormNavigation";
+import { RepeaterTable } from "@/components/RepeaterTable";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   "Employed",
@@ -37,6 +34,20 @@ const EMPLOYMENT_STATUS_OPTIONS = [
   "Work Experience/Internships",
   "Unpaid Employment/Volunteer"
 ];
+
+const EMPLOYMENT_TYPE_OPTIONS = [
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Self-Employed"
+];
+
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+const YEARS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
 
 const employmentHistoryDialogSchema = z.object({
   date_from_day: z.string().min(1, "Day is required"),
@@ -58,7 +69,6 @@ const employmentHistoryDialogSchema = z.object({
   financial_support: z.string().optional(),
   country: z.string().min(1, "Country is required"),
 }).superRefine((data, ctx) => {
-  // If status is employment-related, position is required
   const employmentStatuses = ["Employed", "Self-Employed", "Work Experience/Internships", "Unpaid Employment/Volunteer"];
   if (employmentStatuses.includes(data.status) && (!data.position || data.position.trim().length === 0)) {
     ctx.addIssue({
@@ -103,12 +113,6 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     onSave(data);
   };
 
-  const handleSaveClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dialogForm.handleSubmit(handleFormSubmit)(e);
-  };
-
   return (
     <form
       onSubmit={(e) => {
@@ -116,38 +120,61 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         e.stopPropagation();
         dialogForm.handleSubmit(handleFormSubmit)(e);
       }}
-      className="space-y-4"
+      className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
     >
-      <DateSelector
-        label="Date From"
-        values={{
-          day: dialogForm.watch("date_from_day") || "",
-          month: dialogForm.watch("date_from_month") || "",
-          year: dialogForm.watch("date_from_year") || "",
-        }}
-        onValueChange={(type, value) => {
-          const fieldName = `date_from_${type}`;
-          dialogForm.setValue(fieldName, value, { shouldValidate: true });
-        }}
-        testIdPrefix="select-date-from"
-      />
-      {(dialogForm.formState.errors.date_from_day || dialogForm.formState.errors.date_from_month || dialogForm.formState.errors.date_from_year) && (
-        <p className="text-sm text-red-600 mt-1">Date From is required</p>
-      )}
+      <div>
+        <Label className="mb-2 block">Date From</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_from_day")}
+            onValueChange={(value) => dialogForm.setValue("date_from_day", value)}
+          >
+            <SelectTrigger data-testid="select-date-from-day"><SelectValue placeholder="Day" /></SelectTrigger>
+            <SelectContent>{DAYS.map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_month")}
+            onValueChange={(value) => dialogForm.setValue("date_from_month", value)}
+          >
+            <SelectTrigger data-testid="select-date-from-month"><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectContent>{MONTHS.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_from_year")}
+            onValueChange={(value) => dialogForm.setValue("date_from_year", value)}
+          >
+            <SelectTrigger data-testid="select-date-from-year"><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectContent>{YEARS.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      <DateSelector
-        label="Date To (leave blank if ongoing)"
-        values={{
-          day: dialogForm.watch("date_to_day") || "",
-          month: dialogForm.watch("date_to_month") || "",
-          year: dialogForm.watch("date_to_year") || "",
-        }}
-        onValueChange={(type, value) => {
-          const fieldName = `date_to_${type}`;
-          dialogForm.setValue(fieldName, value);
-        }}
-        testIdPrefix="select-date-to"
-      />
+      <div>
+        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+        <div className="grid grid-cols-3 gap-2">
+          <Select
+            value={dialogForm.watch("date_to_day")}
+            onValueChange={(value) => dialogForm.setValue("date_to_day", value)}
+          >
+            <SelectTrigger data-testid="select-date-to-day"><SelectValue placeholder="Day" /></SelectTrigger>
+            <SelectContent>{DAYS.map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_month")}
+            onValueChange={(value) => dialogForm.setValue("date_to_month", value)}
+          >
+            <SelectTrigger data-testid="select-date-to-month"><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectContent>{MONTHS.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select
+            value={dialogForm.watch("date_to_year")}
+            onValueChange={(value) => dialogForm.setValue("date_to_year", value)}
+          >
+            <SelectTrigger data-testid="select-date-to-year"><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectContent>{YEARS.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
 
       <div>
         <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
@@ -189,16 +216,11 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
 
-      {/* Fields for Employed, Self-Employed, Work Experience/Internships, Unpaid Employment/Volunteer */}
       {isEmploymentStatus && (
         <>
           <div>
             <Label htmlFor="position">Position <span className="text-red-500">*</span></Label>
-            <Input
-              id="position"
-              {...dialogForm.register("position")}
-              data-testid="input-position"
-            />
+            <Input id="position" {...dialogForm.register("position")} data-testid="input-position" />
             {dialogForm.formState.errors.position && (
               <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.position.message}</p>
             )}
@@ -206,82 +228,35 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
           <div>
             <Label htmlFor="business_name">Business Name</Label>
-            <Input
-              id="business_name"
-              {...dialogForm.register("business_name")}
-              data-testid="input-business-name"
-            />
+            <Input id="business_name" {...dialogForm.register("business_name")} data-testid="input-business-name" />
           </div>
 
           <div>
             <Label className="mb-2 block">Business Address</Label>
             <div className="space-y-2">
-              <Input
-                id="business_address_street"
-                {...dialogForm.register("business_address_street")}
-                placeholder="Address (including Street Number and Name)"
-                data-testid="input-business-address-street"
-              />
-              <Input
-                id="business_address_street_line2"
-                {...dialogForm.register("business_address_street_line2")}
-                placeholder="Street Line 2"
-                data-testid="input-business-address-street-line2"
-              />
-              <Input
-                id="business_address_suburb"
-                {...dialogForm.register("business_address_suburb")}
-                placeholder="Suburb/Town/City"
-                data-testid="input-business-address-suburb"
-              />
-              <Input
-                id="business_address_state"
-                {...dialogForm.register("business_address_state")}
-                placeholder="State"
-                data-testid="input-business-address-state"
-              />
-              <Input
-                id="business_address_postcode"
-                {...dialogForm.register("business_address_postcode")}
-                placeholder="Postcode"
-                data-testid="input-business-address-postcode"
-              />
+              <Input id="business_address_street" {...dialogForm.register("business_address_street")} placeholder="Street Number and Name" />
+              <Input id="business_address_suburb" {...dialogForm.register("business_address_suburb")} placeholder="Suburb/Town/City" />
+              <Input id="business_address_state" {...dialogForm.register("business_address_state")} placeholder="State" />
+              <Input id="business_address_postcode" {...dialogForm.register("business_address_postcode")} placeholder="Postcode" />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="main_duties">Enter details of the main duties performed in this position</Label>
-            <Textarea
-              id="main_duties"
-              {...dialogForm.register("main_duties")}
-              rows={4}
-              data-testid="textarea-main-duties"
-            />
+            <Label htmlFor="main_duties">Main Duties</Label>
+            <Textarea id="main_duties" {...dialogForm.register("main_duties")} rows={3} />
           </div>
         </>
       )}
 
-      {/* Fields for Student, Retired, Unemployed */}
       {isNonEmploymentStatus && (
         <>
           <div>
             <Label htmlFor="occupied_time">Detail how you occupied your time</Label>
-            <Textarea
-              id="occupied_time"
-              {...dialogForm.register("occupied_time")}
-              rows={4}
-              data-testid="textarea-occupied-time"
-            />
+            <Textarea id="occupied_time" {...dialogForm.register("occupied_time")} rows={3} />
           </div>
-
           <div>
             <Label htmlFor="financial_support">Detail how you financially supported yourself</Label>
-            <Textarea
-              id="financial_support"
-              {...dialogForm.register("financial_support")}
-              rows={4}
-              data-testid="textarea-financial-support"
-            />
+            <Textarea id="financial_support" {...dialogForm.register("financial_support")} rows={3} />
           </div>
         </>
       )}
@@ -290,13 +265,8 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
           Cancel
         </Button>
-        <Button
-          type="button"
-          onClick={handleSaveClick}
-          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
-          data-testid="button-ok"
-        >
-          Save
+        <Button type="submit" className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-ok">
+          Ok
         </Button>
       </DialogFooter>
     </form>
@@ -310,14 +280,11 @@ export default function MainApplicantEmploymentPage() {
   const searchParams = useSearchParams();
   const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
-  const appsSnap = useSnapshot(applicationsStore);
-  const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Get visa type from pathname
   const visaType = getVisaTypeFromPath(pathname);
 
-  // Set application ID from URL params if available
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
@@ -329,289 +296,311 @@ export default function MainApplicantEmploymentPage() {
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
-  // Load section data
-  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment'));
-
   const form = useForm({
-    resolver: zodResolver(employmentSchema),
-    mode: "onChange",
     defaultValues: {
-      currently_employed: sectionData?.currently_employed || "",
-      employment_history: sectionData?.employment_history || [],
-    },
+      is_currently_employed: "no",
+      current_employer: "",
+      current_position: "",
+      current_country: "",
+      current_start_date_day: "",
+      current_start_date_month: "",
+      current_start_date_year: "",
+      current_employment_type: "",
+      current_address: "",
+      employment_history: [],
+    }
   });
-  const { reset } = form;
 
-  // Watch form values for conditional rendering
-  const currentlyEmployed = form.watch("currently_employed");
+  const isCurrentlyEmployed = String(form.watch("is_currently_employed") || "no").toLowerCase();
   const employmentHistory = form.watch("employment_history") || [];
 
-  // Watch all form values for auto-save
-  const watchedValues = useWatch({ control: form.control });
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Sync form with store data once it's loaded from the database
   useEffect(() => {
-    // Only reset if we have an ID and aren't loading
-    if (!draftSnap.isLoading && sectionData && Object.keys(sectionData).length > 0) {
-      // Use 'keepDefaultValues: true' to prevent flickering
-      reset({
-        currently_employed: sectionData.currently_employed || "",
-        employment_history: sectionData.employment_history || [],
-      }, { keepDefaultValues: true });
-    }
-  }, [draftSnap.isLoading, sectionData, reset]);
+    const savedData = profileId
+      ? draftSnap.draft?.profiles_data?.[profileId]?.employment || {}
+      : draftSnap.draft?.partner_employment || draftStore.getSectionData('mainApplicant.employment') || {};
 
-  // Auto-save form data with debounce
-  useEffect(() => {
-    if (!draftSnap.currentApplicationId) return;
-    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
-    // Don't auto-save immediately after form reset or while loading
-    if (draftSnap.isLoading) return;
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      // Use form.getValues() to get the actual current state of all fields
-      const currentFormValues = form.getValues();
-      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
-      const mergedData = { ...existingData, ...currentFormValues };
-      
-      draftStore.saveSectionData('mainApplicant.employment', mergedData);
-    }, 2000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, form]);
-
-  const onSubmit = async (data) => {
-    if (!draftSnap.currentApplicationId) {
-      toast({
-        title: "Error",
-        description: "Application ID required. Please return to the applications page and try again.",
-        variant: "destructive",
+    if (savedData && Object.keys(savedData).length > 0) {
+      const isEmployedNorm = savedData.is_currently_employed || (savedData.currently_employed === "Yes" ? "yes" : savedData.currently_employed === "No" ? "no" : "no");
+      form.reset({
+        is_currently_employed: isEmployedNorm,
+        current_employer: savedData.current_employer || "",
+        current_position: savedData.current_position || "",
+        current_country: savedData.current_country || "",
+        current_start_date_day: savedData.current_start_date_day || "",
+        current_start_date_month: savedData.current_start_date_month || "",
+        current_start_date_year: savedData.current_start_date_year || "",
+        current_employment_type: savedData.current_employment_type || "",
+        current_address: savedData.current_address || "",
+        employment_history: savedData.employment_history || [],
       });
-      return;
     }
-
-    setIsSaving(true);
-    try {
-      // Merge with existing section data to preserve other fields
-      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
-      const mergedData = { ...existingData, ...data };
-      
-      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "employment", mergedData) : await draftStore.saveSectionData("mainApplicant.employment", mergedData);
-
-      if (result.success) {
-        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/employment'); } else { await draftStore.markPageComplete('partner/main-applicant/employment'); }
-        const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
-        startNavigation(next);
-        if (next) router.push(next);
-      } else {
-        toast({
-          title: "Error saving draft",
-          description: result.error || "Failed to save draft. Please try again.",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-      }
-    } catch (error) {
-      toast({
-        title: "Error saving draft",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-      setIsSaving(false);
-    }
-  };
-
-  const handlePrevious = () => {
-    const prev = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId);
-    startNavigation(prev);
-    if (prev) router.push(prev);
-  };
+  }, [draftSnap.draft?.profiles_data, profileId, form]);
 
   const handleSave = async () => {
-    if (!draftSnap.currentApplicationId) {
-      toast({
-        title: "Error",
-        description: "Application ID required. Please return to the applications page and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSaving(true);
     try {
-      // Trigger validation and check for errors
-      const isValid = await form.trigger();
-      
-      if (!isValid) {
-        // DEBUG: This will show you exactly what is stopping the save in the browser console
-        console.log("Validation Errors:", form.formState.errors);
-        
-        toast({
-          title: "Validation error",
-          description: "Please check the console for specific field errors.",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-
-      // Merge with existing section data to preserve other fields
-      const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
-      const currentData = form.getValues();
-      const mergedData = { ...existingData, ...currentData };
-      
-      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "employment", mergedData) : await draftStore.saveSectionData("mainApplicant.employment", mergedData);
+      const formData = form.getValues();
+      const result = profileId
+        ? await draftStore.saveProfileSectionData(profileId, "employment", formData)
+        : await draftStore.saveSectionData("mainApplicant.employment", formData);
 
       if (result.success) {
-        if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/employment'); } else { await draftStore.markPageComplete('partner/main-applicant/employment'); }
         toast({
           title: "Draft saved",
-          description: "Progress saved successfully.",
+          description: "Your changes have been saved successfully",
         });
       } else {
         toast({
-          title: "Error saving draft",
-          description: result.error || "Failed to save draft. Please try again.",
+          title: "Error",
+          description: result.error || "Failed to save changes",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Save Error:", error);
-      toast({
-        title: "Error saving draft",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateEmploymentHistory = (newHistory) => {
-    form.setValue("employment_history", newHistory, { shouldValidate: true });
-    const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.employment : draftStore.getSectionData('mainApplicant.employment')) || {};
-    const currentData = form.getValues();
-    const mergedData = { ...existingData, ...currentData, employment_history: newHistory };
-    draftStore.saveSectionData('mainApplicant.employment', mergedData);
+  const onSubmit = async (data) => {
+    setIsSaving(true);
+    try {
+      const result = profileId
+        ? await draftStore.saveProfileSectionData(profileId, "employment", data)
+        : await draftStore.saveSectionData("mainApplicant.employment", data);
+
+      if (result.success) {
+        const completionResult = profileId
+          ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/employment`)
+          : await draftStore.markPageComplete(`${visaType}/main-applicant/employment`);
+
+        if (completionResult && !completionResult.success) {
+          showCompletionIssuesToast(toast, completionResult);
+          return;
+        }
+
+        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+        if (nextRoute) {
+          startNavigation(nextRoute);
+          router.push(nextRoute);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to save changes",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const employmentColumns = [
-    {
-      key: "date_from", label: "Date From", format: (row) => {
-        if (row.date_from_day && row.date_from_month && row.date_from_year) {
-          const monthIdx = parseInt(row.date_from_month) - 1;
-          return `${monthNames[monthIdx]} ${row.date_from_day}, ${row.date_from_year}`;
-        }
-        return "";
-      }
-    },
-    {
-      key: "date_to", label: "Date To", format: (row) => {
-        if (row.date_to_day && row.date_to_month && row.date_to_year) {
-          const monthIdx = parseInt(row.date_to_month) - 1;
-          return `${monthNames[monthIdx]} ${row.date_to_day}, ${row.date_to_year}`;
-        }
-        return "Ongoing";
-      }
-    },
-    { key: "status", label: "Status" },
-    { key: "position", label: "Position" },
-    { key: "country", label: "Country" },
-  ];
+  const handlePrevious = () => {
+    const previousRoute = getPreviousRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+    if (previousRoute) {
+      startNavigation(previousRoute);
+      router.push(previousRoute);
+    }
+  };
 
   return (
-    <>
-      <Card className="rounded-2xl shadow-md bg-white">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Employment</CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            In this section, provide details about the main applicant's employment.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-                e.preventDefault();
-              }
-            }}
-            className="space-y-8"
-          >
-            {Object.keys(form.formState.errors).length > 0 && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-red-800 mb-2">
-                  Please correct the following errors:
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
-                  {Object.entries(form.formState.errors).map(([field, error]) => (
-                    <li key={field}>{error.message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Question 1: Are you currently Employed in a paid position? */}
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Employment</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s employment history.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-8">
+            {/* Q1: Are you currently Employed in a paid position? */}
             <div>
-              <Field
-                type="radio"
-                name="currently_employed"
-                control={form.control}
-                label="Are you currently Employed in a paid position?"
-                options={[
-                  { value: "Yes", label: "Yes" },
-                  { value: "No", label: "No" },
-                ]}
-              />
+              <Label className="text-base font-medium mb-3 block">
+                Are you currently Employed in a paid position?
+              </Label>
+              <RadioGroup
+                value={isCurrentlyEmployed}
+                onValueChange={(value) => form.setValue("is_currently_employed", value)}
+                className="flex gap-4"
+                data-testid="radio-currently-employed"
+              >
+                <div className="flex items-center" data-testid="radio-currently-employed-yes">
+                  <RadioGroupItem value="yes" id="employed-yes" />
+                  <Label htmlFor="employed-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-currently-employed-no">
+                  <RadioGroupItem value="no" id="employed-no" />
+                  <Label htmlFor="employed-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {/* Current Job Fields (shown if Yes) */}
+              {isCurrentlyEmployed === "yes" && (
+                <div className="mt-6 space-y-6 p-6 bg-gray-50/50 rounded-xl border border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="current_employer" className="text-sm font-medium">
+                        Employer/Organization Name
+                      </Label>
+                      <Input
+                        id="current_employer"
+                        {...form.register("current_employer")}
+                        placeholder="Enter employer or organization name"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="current_position" className="text-sm font-medium">
+                        Position/Occupation
+                      </Label>
+                      <Input
+                        id="current_position"
+                        {...form.register("current_position")}
+                        placeholder="Enter your current position"
+                        className="bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Country</Label>
+                      <Select
+                        value={form.watch("current_country")}
+                        onValueChange={(value) => form.setValue("current_country", value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Employment Type</Label>
+                      <Select
+                        value={form.watch("current_employment_type")}
+                        onValueChange={(value) => form.setValue("current_employment_type", value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Employment Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Date Started</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Select
+                        value={form.watch("current_start_date_day")}
+                        onValueChange={(value) => form.setValue("current_start_date_day", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DAYS.map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={form.watch("current_start_date_month")}
+                        onValueChange={(value) => form.setValue("current_start_date_month", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={form.watch("current_start_date_year")}
+                        onValueChange={(value) => form.setValue("current_start_date_year", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEARS.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_address" className="text-sm font-medium">
+                      Current Workplace Address
+                    </Label>
+                    <Input
+                      id="current_address"
+                      {...form.register("current_address")}
+                      placeholder="Street, City, State, Postcode"
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Question 2: Employment History */}
+            {/* Q2: Employment History */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Enter details of all of your employment and unemployment since birth
+                Enter details of all of your employment and unemployment since birth. There can be no gaps in dates.
               </p>
               <RepeaterTable
                 data={employmentHistory}
-                columns={employmentColumns}
-                onAdd={(row) => updateEmploymentHistory([...employmentHistory, row])}
-                onEdit={(index, row) => {
+                columns={[
+                  { key: "date_from_day", label: "Date From", format: (row) => row.date_from_day ? `${row.date_from_day} ${row.date_from_month} ${row.date_from_year}` : row.date_from || "" },
+                  { key: "date_to_day", label: "Date To", format: (row) => row.date_to_day ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : row.date_to || "Ongoing" },
+                  { key: "status", label: "Status" },
+                  { key: "position", label: "Position" },
+                  { key: "country", label: "Country" },
+                ]}
+                onAdd={(newRow) => {
+                  const updated = [...employmentHistory, newRow];
+                  form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }}
+                onEdit={(index, updatedRow) => {
                   const updated = [...employmentHistory];
-                  updated[index] = row;
-                  updateEmploymentHistory(updated);
+                  updated[index] = updatedRow;
+                  form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                 }}
                 onDelete={(index) => {
                   const updated = employmentHistory.filter((_, i) => i !== index);
-                  updateEmploymentHistory(updated);
+                  form.setValue("employment_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                 }}
                 DialogComponent={EmploymentHistoryDialog}
                 addButtonText="Add"
                 testIdPrefix="employment"
-                dialogTitle="Employment History"
-                dialogSubtitle="Enter details of all of your employment and unemployment since birth"
-                dialogClassName="max-w-4xl w-[90vw] max-h-[98vh] bg-white overflow-y-auto"
               />
             </div>
+          </div>
 
-            <FormNavigation
-              onPrev={handlePrevious}
-              onSave={handleSave}
-              onNext={form.handleSubmit(onSubmit)}
-              disabledNext={!form.formState.isValid}
-              loading={isSaving}
-            />
-          </form>
-        </CardContent>
-      </Card>
-    </>
+          <FormNavigation
+            onPrev={handlePrevious}
+            onNext={form.handleSubmit(onSubmit)}
+            onSave={handleSave}
+            saveLabel="Save draft"
+            nextLabel="Continue"
+            loading={isSaving}
+          />
+        </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -46,6 +46,8 @@ import {
   getTemporaryWorkChildProfileCompletionKey,
   NON_MIGRATING_MEMBER_SUBPAGES,
   buildNonMigratingHref,
+  getNonMigratingBaseHref,
+  getNonMigratingCompletionPrefix,
   buildIntakeHref,
   getApplicationIdFromPathname,
   getInternalIntakeHref,
@@ -118,6 +120,9 @@ export default function IntakeLayout({ children }) {
   const [deletingNmfId, setDeletingNmfId] = useState(null);
   const mobileActiveTabRef = React.useRef(null);
   const internalPathname = getInternalIntakeHref(pathname).split("?")[0];
+  const visaType = getVisaTypeFromPath(pathname);
+  const nonMigratingBaseHref = getNonMigratingBaseHref(visaType);
+  const nonMigratingCompletionPrefix = getNonMigratingCompletionPrefix(visaType);
   const rawPathSlug =
     typeof pathname === "string"
       ? (pathname.match(/^\/applications\/([^/]+)\/[^/]+\/intake(?:\/|$)/) || [])[1] ?? null
@@ -167,7 +172,6 @@ export default function IntakeLayout({ children }) {
     }
   }, [childProfileIdFromPath]);
 
-  const visaType = getVisaTypeFromPath(pathname);
   const profiles = storedProfiles;
   const urlSubclass = pathSlug === "186" || pathSlug === "482"
     ? pathSlug
@@ -670,10 +674,13 @@ export default function IntakeLayout({ children }) {
                                               {subpage.title}
                                             </Button>
                                           </li>
-                                          {draftSnap.visaContext === '186' && profile.relationship === 'main_applicant' && subpage.title === 'Contact Details' && (
+                                          {profile.relationship === 'main_applicant' && (
+                                            (visaType === 'temporary-work' && subpage.title === 'Contact Details') ||
+                                            (visaType !== 'temporary-work' && subpage.title === 'Family')
+                                          ) && (
                                             (() => {
-                                              const isActive = internalPathname === '/intake/temporary-work/non-migrating';
-                                              const isComplete = draftSnap.completionStatus?.["temporary-work/non-migrating"] === true;
+                                              const isActive = internalPathname === nonMigratingBaseHref;
+                                              const isComplete = draftSnap.completionStatus?.[nonMigratingCompletionPrefix] === true;
 
                                               return (
                                                 <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
@@ -681,7 +688,7 @@ export default function IntakeLayout({ children }) {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => {
-                                                      navPush("/intake/temporary-work/non-migrating");
+                                                      navPush(buildHref(nonMigratingBaseHref));
                                                       setSidebarOpen(false);
                                                     }}
                                                     className={cn(
@@ -710,8 +717,8 @@ export default function IntakeLayout({ children }) {
                         });
                         })()}
 
-                        {/* Other Family — 186 only */}
-                        {draftSnap.visaContext === '186' && (draftSnap.draft?.non_migrating_members || []).map((member) => {
+                        {/* Other Family */}
+                        {(draftSnap.draft?.non_migrating_members || []).map((member) => {
                           const nmfKey = `nmf-${member.id}`;
                           const isNmfExpanded = isSectionExpanded(nmfKey);
                           const nmfName = [member.passport?.given_names, member.passport?.family_name]
@@ -719,7 +726,7 @@ export default function IntakeLayout({ children }) {
                           const dob = [member.passport?.dob_day, member.passport?.dob_month, member.passport?.dob_year]
                             .filter(Boolean).join(" ");
                           const isNmfActive = NON_MIGRATING_MEMBER_SUBPAGES.some(
-                            sub => internalPathname === buildNonMigratingHref(member.id, sub.pathSuffix)
+                            sub => internalPathname === buildNonMigratingHref(member.id, sub.pathSuffix, visaType)
                           );
                           const isConfirmingDelete = deletingNmfId === member.id;
 
@@ -753,7 +760,7 @@ export default function IntakeLayout({ children }) {
                                         tabIndex={0}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          navPush(`/intake/temporary-work/non-migrating?editNonMigratingId=${encodeURIComponent(member.id)}`);
+                                          navPush(buildHref(`${nonMigratingBaseHref}?editNonMigratingId=${encodeURIComponent(member.id)}`));
                                           setSidebarOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
@@ -822,7 +829,7 @@ export default function IntakeLayout({ children }) {
                                 <CollapsibleContent className="overflow-hidden">
                                   <ul className="ml-6 mt-1 mb-1 space-y-1">
                                     {NON_MIGRATING_MEMBER_SUBPAGES.map((sub) => {
-                                      const href = buildNonMigratingHref(member.id, sub.pathSuffix);
+                                      const href = buildNonMigratingHref(member.id, sub.pathSuffix, visaType);
                                       const isActive = internalPathname === href;
                                       return (
                                         <li key={sub.pathSuffix} className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">

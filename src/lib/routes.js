@@ -369,6 +369,18 @@ function firstTemporaryWorkChildDetailsIndex(allRoutes) {
   });
 }
 
+export function getNonMigratingBaseHref(visaType = "temporary-work") {
+  if (visaType === "partner") return "/intake/partner/non-migrating";
+  if (visaType === "protection") return "/intake/protection/non-migrating";
+  return "/intake/temporary-work/non-migrating";
+}
+
+export function getNonMigratingCompletionPrefix(visaType = "temporary-work") {
+  if (visaType === "partner") return "partner/non-migrating";
+  if (visaType === "protection") return "protection/non-migrating";
+  return "temporary-work/non-migrating";
+}
+
 export function buildIntakeHref({ slug, appId, internalHref, profileId, visaType, visaContext }) {
   if (!internalHref) return internalHref;
   const [pathOnly, queryStr] = getInternalIntakeHref(internalHref).split("?", 2);
@@ -434,8 +446,8 @@ export function getDynamicTemporaryWorkRoutes(visaContext) {
       TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.forEach((sub) => {
         allRoutes.push(`${sub.href}?profileId=${profile.id}`);
       });
-    } else if (profile.relationship === "main_applicant" && visaContext === "186") {
-      // 186 main applicant: split subpages around Other Family
+    } else if (profile.relationship === "main_applicant") {
+      // Main applicant: split subpages around Other Family.
       const beforeOtherFamily = PROFILE_SUBPAGES.slice(0, 4); // details, other, identity, contact-details
       const afterOtherFamily = PROFILE_SUBPAGES.slice(4); // employment, education, skills, language
 
@@ -444,21 +456,17 @@ export function getDynamicTemporaryWorkRoutes(visaContext) {
       });
 
       // Other Family index page
-      allRoutes.push("/intake/temporary-work/non-migrating");
+      allRoutes.push(getNonMigratingBaseHref("temporary-work"));
 
       // Non-migrating member subpages
       const nonMigratingMembers = nonMigratingMembersGetter();
       nonMigratingMembers.forEach((member) => {
         NON_MIGRATING_MEMBER_SUBPAGES.forEach((sub) => {
-          allRoutes.push(buildNonMigratingHref(member.id, sub.pathSuffix));
+          allRoutes.push(buildNonMigratingHref(member.id, sub.pathSuffix, "temporary-work"));
         });
       });
 
       afterOtherFamily.forEach((sub) => {
-        allRoutes.push(`${sub.href}?profileId=${profile.id}`);
-      });
-    } else {
-      PROFILE_SUBPAGES.forEach((sub) => {
         allRoutes.push(`${sub.href}?profileId=${profile.id}`);
       });
     }
@@ -476,7 +484,7 @@ export function getDynamicTemporaryWorkRoutes(visaContext) {
       });
     });
 
-  // Non-migrating members for 186 are now handled inline with the main applicant profile above.
+  // Non-migrating members are handled inline with the main applicant profile above.
 
   // Then static all-applicants sections
   const baseRoutes = visaContext === '186' ? EMPLOYER_NOMINATION_ROUTES : TEMPORARY_WORK_VISA_ROUTES;
@@ -510,6 +518,12 @@ export function getDynamicPartnerRoutes(visaContext) {
     } else if (profile.relationship === "main_applicant") {
       PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES.forEach((sub) => {
         allRoutes.push(`${sub.href}?profileId=${profile.id}`);
+      });
+      allRoutes.push(getNonMigratingBaseHref("partner"));
+      nonMigratingMembersGetter().forEach((member) => {
+        NON_MIGRATING_MEMBER_SUBPAGES.forEach((sub) => {
+          allRoutes.push(buildNonMigratingHref(member.id, sub.pathSuffix, "partner"));
+        });
       });
     } else {
       // other dependents - not explicitly handling subpages yet, defaulting to empty or maybe some generic ones
@@ -563,6 +577,12 @@ export function getDynamicProtectionRoutes(visaContext) {
     } else if (profile.relationship === "main_applicant") {
       PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES.forEach((sub) => {
         allRoutes.push(`${sub.href}?profileId=${profile.id}`);
+      });
+      allRoutes.push(getNonMigratingBaseHref("protection"));
+      nonMigratingMembersGetter().forEach((member) => {
+        NON_MIGRATING_MEMBER_SUBPAGES.forEach((sub) => {
+          allRoutes.push(buildNonMigratingHref(member.id, sub.pathSuffix, "protection"));
+        });
       });
     }
   });
@@ -651,10 +671,10 @@ export function getNextRoute(currentHref, visaType, applicationId = null, visaCo
   // Routes that embed IDs in the path have no query params in allRoutes
   if (internalCurrentHref.includes('/children/')) {
     searchHref = internalCurrentHref.split('?')[0];
-  } else if (visaType === 'temporary-work' && internalCurrentHref.includes('/non-migrating/')) {
+  } else if (internalCurrentHref.includes('/non-migrating/')) {
     searchHref = internalCurrentHref.split('?')[0];
-  } else if (visaType === 'temporary-work' && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/non-migrating") {
-    searchHref = "/intake/temporary-work/non-migrating";
+  } else if (getInternalIntakeHref(internalCurrentHref).split("?")[0] === getNonMigratingBaseHref(visaType)) {
+    searchHref = getNonMigratingBaseHref(visaType);
   } else if (currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
     const existingProfileId = new URLSearchParams(internalCurrentHref.split('?')[1] || '').get('profileId');
     if (!existingProfileId) {
@@ -705,10 +725,10 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
   // Routes that embed IDs in the path have no query params in allRoutes
   if (internalCurrentHref.includes('/children/')) {
     searchHref = internalCurrentHref.split('?')[0];
-  } else if (visaType === 'temporary-work' && internalCurrentHref.includes('/non-migrating/')) {
+  } else if (internalCurrentHref.includes('/non-migrating/')) {
     searchHref = internalCurrentHref.split('?')[0];
-  } else if (visaType === 'temporary-work' && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/non-migrating") {
-    searchHref = "/intake/temporary-work/non-migrating";
+  } else if (getInternalIntakeHref(internalCurrentHref).split("?")[0] === getNonMigratingBaseHref(visaType)) {
+    searchHref = getNonMigratingBaseHref(visaType);
   } else if (currentProfileId && (internalCurrentHref.includes('main-applicant') || internalCurrentHref.includes('spouse-partner'))) {
     const existingProfileId = new URLSearchParams(internalCurrentHref.split('?')[1] || '').get('profileId');
     if (!existingProfileId) {
@@ -742,10 +762,10 @@ export function calculateProgress(currentHref, visaType, visaContext = null) {
     }
   }
 
-  if (visaType === 'temporary-work' && internalCurrentHref.includes('/non-migrating/')) {
+  if (internalCurrentHref.includes('/non-migrating/')) {
     searchHref = internalCurrentHref.split('?')[0];
-  } else if (visaType === 'temporary-work' && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/non-migrating") {
-    searchHref = "/intake/temporary-work/non-migrating";
+  } else if (getInternalIntakeHref(internalCurrentHref).split("?")[0] === getNonMigratingBaseHref(visaType)) {
+    searchHref = getNonMigratingBaseHref(visaType);
   }
 
   if (visaType === "temporary-work" && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/children") {
@@ -770,8 +790,8 @@ export const NON_MIGRATING_MEMBER_SUBPAGES = [
   { pathSuffix: "health",      title: "Health" },
 ];
 
-export function buildNonMigratingHref(memberId, pathSuffix) {
-  return `/intake/temporary-work/non-migrating/${memberId}/${pathSuffix}`;
+export function buildNonMigratingHref(memberId, pathSuffix, visaType = "temporary-work") {
+  return `${getNonMigratingBaseHref(visaType)}/${memberId}/${pathSuffix}`;
 }
 
 /** Per dependent child under Application Profile — Skills in Demand (482) */

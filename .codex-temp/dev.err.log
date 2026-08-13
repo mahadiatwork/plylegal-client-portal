@@ -1,9 +1,0 @@
-⚠ Invalid next.config.js options detected: 
-⚠     Unrecognized key(s) in object: 'serverComponentsExternalPackages' at "experimental"
-⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
-⚠ `experimental.serverComponentsExternalPackages` has been moved to `serverExternalPackages`. Please update your next.config.js file accordingly.
-Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
-  npx update-browserslist-db@latest
-  Why you should do it regularly: https://github.com/browserslist/update-db#readme
-(node:64232) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
-(Use `node --trace-deprecation ...` to show where the warning was created)

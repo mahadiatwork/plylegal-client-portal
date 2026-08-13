@@ -326,7 +326,9 @@ export type ResourceTemplateItem = {
   name: string;
   category: string;
   order: number;
+  status?: "active" | "draft" | "archived";
   externalUrl: string;
+  downloadUrl?: string;
   noteText?: string;
   mimeType: string | null;
   size: number | null;

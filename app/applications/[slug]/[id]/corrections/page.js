@@ -273,13 +273,8 @@ export default function CorrectionsPage() {
                   <CardTitle className="text-lg">Document Preview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="aspect-[8.5/11] w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
-                    <iframe
-                      src="https://workdrive.zohoexternal.com/external/79e3de51fdf0de1b1e8ee5f9ad2d0ce041d27ac8d4d1e873eac828de0d162a55"
-                      className="w-full h-full"
-                      title="PDF Preview"
-                      data-testid="iframe-pdf-preview"
-                    />
+                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    Document previews are available from the Resources page.
                   </div>
                 </CardContent>
               </Card>

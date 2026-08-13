@@ -4,757 +4,324 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { Button } from "@/components/ui/button";
+import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
+import {
+  EMPTY_NATIONAL_ID_CARD,
+  getIdentityLegacyRoot,
+  getUnresolvedIdentityImports,
+  hasIdentityExtras,
+  normalizeIdentityForVisa,
+  resolveIdentityDraftData,
+  validateIdentityForVisa,
+} from "@/lib/mainApplicantIdentity";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DialogFooter } from "@/components/ui/dialog";
+import { FormNavigation } from "@/components/FormNavigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PassportDocumentsSection } from "@/components/intake/PassportDocumentsSection";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
-import { DialogFooter } from "@/components/ui/dialog";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SimplifiedOtherIdentityDialog } from "@/components/intake/temporary-work/SimplifiedOtherIdentityDialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { COUNTRIES } from "@/reuseable/countries";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
-const nationalIdCardSchema = z.object({
-  family_name: z.string().optional(),
-  given_names: z.string().optional(),
-  identification_number: z.string().optional(),
-  country_of_issue: z.string().optional(),
-  date_issued_day: z.string().optional(),
-  date_issued_month: z.string().optional(),
-  date_issued_year: z.string().optional(),
-  date_expiry_day: z.string().optional(),
-  date_expiry_month: z.string().optional(),
-  date_expiry_year: z.string().optional(),
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const DAYS = Array.from({ length: 31 }, (_, index) => String(index + 1));
+const YEARS = Array.from({ length: 100 }, (_, index) => String(new Date().getFullYear() - index));
+const CITIZENSHIP_METHODS = ["Birth", "Descent", "Naturalisation"];
+const CEASED_REASONS = ["Renounced", "Revoked", "Other"];
+const RESIDENCE_STATUSES = ["Permanent", "Temporary"];
+
+const requiredString = z.string().min(1, "Required");
+const formSchema = z.object({
+  has_passport: z.enum(["yes", "no"]),
+  passports: z.array(z.any()).optional(),
+  has_national_id: z.enum(["yes", "no"]),
+  national_id_card: z.object({
+    family_name: z.string().optional(),
+    given_names: z.string().optional(),
+    identification_number: z.string().optional(),
+    country_of_issue: z.string().optional(),
+    date_issued_day: z.string().optional(),
+    date_issued_month: z.string().optional(),
+    date_issued_year: z.string().optional(),
+    date_expiry_day: z.string().optional(),
+    date_expiry_month: z.string().optional(),
+    date_expiry_year: z.string().optional(),
+  }).optional(),
+  other_identity_documents: z.array(z.object({
+    family_name: requiredString,
+    given_names: requiredString,
+    document_type: requiredString,
+    identification_number: requiredString,
+    country_of_issue: requiredString,
+  })).optional(),
+  citizen_of_country: z.enum(["yes", "no"]).optional(),
+  stateless_explanation: z.string().optional(),
+  ever_been_citizen: z.enum(["yes", "no"]).optional(),
+  citizenships: z.array(z.any()).optional(),
+  permanent_residency_rights: z.enum(["yes", "no"]).optional(),
+  pr_countries: z.array(z.any()).optional(),
+  identity_import_review: z.array(z.any()).optional(),
+}).passthrough().superRefine((data, ctx) => {
+  validateIdentityForVisa(data, "temporary-work").forEach((issue) => {
+    if (issue === "Passport/travel document details") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please add at least one passport/travel document", path: ["passports"] });
+    }
+    if (issue === "National ID family name") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Family name is required", path: ["national_id_card", "family_name"] });
+    }
+    if (issue === "National ID given names") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Given names are required", path: ["national_id_card", "given_names"] });
+    }
+    if (issue === "National ID number") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Identification number is required", path: ["national_id_card", "identification_number"] });
+    }
+    if (issue === "National ID country of issue") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Country of issue is required", path: ["national_id_card", "country_of_issue"] });
+    }
+    if (issue.startsWith("Other identity document")) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Complete all other identity document rows", path: ["other_identity_documents"] });
+    }
+  });
 });
 
-const otherIdentityRowSchema = z.object({
-  family_name: z.string().min(1, "Required"),
-  given_names: z.string().min(1, "Required"),
-  document_type: z.string().min(1, "Required"),
-  identification_number: z.string().min(1, "Required"),
-  country_of_issue: z.string().min(1, "Required"),
-});
-
-const formSchema = z
-  .object({
-    has_passport: z.enum(["yes", "no"]),
-    passports: z
-      .array(
-        z.object({
-          document_type: z.string(),
-          document_number: z.string(),
-          passport_country: z.string(),
-          place_of_issue: z.string(),
-          nationality: z.string(),
-          gender: z.string(),
-          name: z.string(),
-          date_issued_day: z.string(),
-          date_issued_month: z.string(),
-          date_issued_year: z.string(),
-          is_original_date: z.string(),
-          original_date_day: z.string().optional(),
-          original_date_month: z.string().optional(),
-          original_date_year: z.string().optional(),
-          date_expiry_day: z.string().optional(),
-          date_expiry_month: z.string().optional(),
-          date_expiry_year: z.string().optional(),
-          document_status: z.string(),
-        })
-      )
-      .optional(),
-    has_national_id: z.enum(["yes", "no"]),
-    national_id_card: nationalIdCardSchema.optional(),
-    other_identity_documents: z.array(otherIdentityRowSchema).optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.has_passport === "yes" && (!data.passports || data.passports.length === 0)) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Please add at least one passport/travel document",
-      path: ["passports"],
-    }
-  )
-  .superRefine((data, ctx) => {
-    if (data.has_national_id !== "yes") return;
-    const n = data.national_id_card || {};
-    [
-      ["family_name", "Family name is required"],
-      ["given_names", "Given names are required"],
-      ["identification_number", "Identification number is required"],
-      ["country_of_issue", "Country of issue is required"],
-    ].forEach(([field, message]) => {
-      if (!String(n[field] || "").trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message,
-          path: ["national_id_card", field],
-        });
-      }
-    });
-  });
-
-function mapLegacyDocumentTypeToSimplified(t) {
-  const lower = String(t || "").toLowerCase();
-  if (lower.includes("birth")) return "Birth certificate";
-  if (lower.includes("driver")) return "Drivers licence";
-  if (lower.includes("marriage")) return "Marriage certificate";
-  if (lower.includes("change of name")) return "Change of name certificate";
-  if (lower.includes("military discharge")) return "Military discharge certificate";
-  return "Other";
+function SelectField({ value, onChange, placeholder = "Choose", options, testId }) {
+  return (
+    <Select value={value || ""} onValueChange={onChange}>
+      <SelectTrigger data-testid={testId}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 }
 
-function migrateLegacyIdentity(savedData) {
-  const emptyNational = {
-    family_name: "",
-    given_names: "",
-    identification_number: "",
-    country_of_issue: "",
-    date_issued_day: "",
-    date_issued_month: "",
-    date_issued_year: "",
-    date_expiry_day: "",
-    date_expiry_month: "",
-    date_expiry_year: "",
-  };
-
-  if (savedData?.has_national_id === "yes" || savedData?.has_national_id === "no") {
-    return {
-      has_passport: savedData.has_passport || "no",
-      passports: savedData.passports || [],
-      has_national_id: savedData.has_national_id,
-      national_id_card: { ...emptyNational, ...(savedData.national_id_card || {}) },
-      other_identity_documents: savedData.other_identity_documents || [],
-    };
-  }
-
-  const legacyDocs = savedData?.identity_documents;
-  if (!legacyDocs?.length) {
-    return {
-      has_passport: savedData?.has_passport || "no",
-      passports: savedData?.passports || [],
-      has_national_id: "no",
-      national_id_card: { ...emptyNational },
-      other_identity_documents: [],
-    };
-  }
-
-  const nationalRow = legacyDocs.find((d) => /national identity/i.test(String(d.document_type || "")));
-  const otherRows = legacyDocs.filter((d) => d !== nationalRow);
-
-  const splitName = (name) => {
-    const parts = String(name || "")
-      .trim()
-      .split(/\s+/);
-    return { family: parts[0] || "", given: parts.slice(1).join(" ") || "" };
-  };
-
-  let national_id_card = { ...emptyNational };
-  if (nationalRow) {
-    const { family, given } = splitName(nationalRow.name);
-    national_id_card = {
-      ...emptyNational,
-      family_name: family,
-      given_names: given,
-      identification_number: nationalRow.identification_number || "",
-      country_of_issue: nationalRow.country_of_issue || "",
-      date_issued_day: nationalRow.date_issued_day || "",
-      date_issued_month: nationalRow.date_issued_month || "",
-      date_issued_year: nationalRow.date_issued_year || "",
-      date_expiry_day: nationalRow.date_expiry_day || "",
-      date_expiry_month: nationalRow.date_expiry_month || "",
-      date_expiry_year: nationalRow.date_expiry_year || "",
-    };
-  }
-
-  const other_identity_documents = otherRows.map((d) => {
-    const { family, given } = splitName(d.name);
-    return {
-      family_name: family || "—",
-      given_names: given || "—",
-      document_type: mapLegacyDocumentTypeToSimplified(d.document_type),
-      identification_number: d.identification_number || "",
-      country_of_issue: d.country_of_issue || "",
-    };
-  });
-
-  return {
-    has_passport: savedData.has_passport || "no",
-    passports: savedData.passports || [],
-    has_national_id: nationalRow ? "yes" : "no",
-    national_id_card,
-    other_identity_documents,
-  };
+function DateSelects({ row, setValue, prefix, years = YEARS, testIdPrefix }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <SelectField value={row?.[`${prefix}_day`]} onChange={(value) => setValue(`${prefix}_day`, value)} placeholder="Day" options={DAYS} testId={testIdPrefix ? `${testIdPrefix}-day` : undefined} />
+      <SelectField value={row?.[`${prefix}_month`]} onChange={(value) => setValue(`${prefix}_month`, value)} placeholder="Month" options={MONTHS} testId={testIdPrefix ? `${testIdPrefix}-month` : undefined} />
+      <SelectField value={row?.[`${prefix}_year`]} onChange={(value) => setValue(`${prefix}_year`, value)} placeholder="Year" options={years} testId={testIdPrefix ? `${testIdPrefix}-year` : undefined} />
+    </div>
+  );
 }
 
-const PASSPORT_TYPE_OPTIONS = [
-  "Passport",
-  "Emergency Passport",
-  "Travel Document"
-];
-
-const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified"];
-
-const DOCUMENT_STATUS_OPTIONS = [
-  "Current",
-  "Expired",
-  "Lost",
-  "Stolen",
-  "Cancelled",
-  "Damaged"
-];
-
-const passportDialogSchema = z.object({
-  document_type: z.string().min(1, "Document type is required"),
-  document_number: z.string().min(1, "Document number is required"),
-  passport_country: z.string().min(1, "Passport country is required"),
-  place_of_issue: z.string().min(1, "Place of issue is required"),
-  nationality: z.string().min(1, "Nationality is required"),
-  gender: z.string().min(1, "Gender is required"),
-  name: z.string().min(1, "Name is required"),
-  date_issued_day: z.string().min(1, "Day is required"),
-  date_issued_month: z.string().min(1, "Month is required"),
-  date_issued_year: z.string().min(1, "Year is required"),
-  is_original_date: z.string(),
-  original_date_day: z.string().optional(),
-  original_date_month: z.string().optional(),
-  original_date_year: z.string().optional(),
-  date_expiry_day: z.string().optional(),
-  date_expiry_month: z.string().optional(),
-  date_expiry_year: z.string().optional(),
-  document_status: z.string().min(1, "Document status is required"),
-}).refine(
-  (data) => {
-    // If document status is Current, expiry date is required
-    if (data.document_status === "Current") {
-      return data.date_expiry_day && data.date_expiry_month && data.date_expiry_year;
-    }
-    return true;
-  },
-  {
-    message: "Expiry date is required for current documents",
-    path: ["date_expiry_day"],
-  }
-);
-
-function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
-  const initialIsOriginal = row?.is_original_date !== undefined ? row.is_original_date : "yes";
-  const [isOriginalDate, setIsOriginalDate] = useState(initialIsOriginal);
-
-  const dialogForm = useForm({
-    resolver: zodResolver(passportDialogSchema),
-    defaultValues: row || {
-      document_type: "",
-      document_number: "",
-      passport_country: "",
-      place_of_issue: "",
-      nationality: "",
-      gender: "",
-      name: "",
-      date_issued_day: "",
-      date_issued_month: "",
-      date_issued_year: "",
-      is_original_date: "yes",
-      original_date_day: "",
-      original_date_month: "",
-      original_date_year: "",
-      date_expiry_day: "",
-      date_expiry_month: "",
-      date_expiry_year: "",
-      document_status: "",
+function CitizenshipDialog({ editingRow, onSave, onCancel }) {
+  const form = useForm({
+    defaultValues: {
+      country: "",
+      how_obtained: "",
+      date_obtained_day: "",
+      date_obtained_month: "",
+      date_obtained_year: "",
+      still_citizen: "yes",
+      date_ceased_day: "",
+      date_ceased_month: "",
+      date_ceased_year: "",
+      reason_ceased: "",
+      ...editingRow,
     },
   });
-
-  useEffect(() => {
-    if (row?.is_original_date !== undefined) {
-      setIsOriginalDate(row.is_original_date);
-      dialogForm.setValue("is_original_date", row.is_original_date);
-    }
-  }, [row]);
-
-  const handleFormSubmit = (data) => {
-    onSubmit(data);
-  };
-
-  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-  const passportExpiryYears = Array.from({ length: currentYear + 50 - 2016 + 1 }, (_, i) => (2016 + i).toString());
+  const values = form.watch();
 
   return (
-    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <div>
-        <Label htmlFor="document_type">Type of Document</Label>
-        <Select
-          value={dialogForm.watch("document_type")}
-          onValueChange={(value) => dialogForm.setValue("document_type", value, { shouldValidate: true })}
-        >
-          <SelectTrigger data-testid="select-passport-type">
-            <SelectValue placeholder="Choose Type" />
-          </SelectTrigger>
-          <SelectContent>
-            {PASSPORT_TYPE_OPTIONS.map((type) => (
-              <SelectItem key={type} value={type}>{type}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.document_type && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.document_type.message}</p>
-        )}
+        <Label>Country of citizenship</Label>
+        <SelectField value={values.country} onChange={(value) => form.setValue("country", value)} options={COUNTRIES} testId="select-citizenship-country" />
       </div>
-
       <div>
-        <Label htmlFor="document_number">Passport/Document Number</Label>
-        <Input
-          id="document_number"
-          {...dialogForm.register("document_number")}
-          data-testid="input-passport-number"
-        />
-        {dialogForm.formState.errors.document_number && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.document_number.message}</p>
-        )}
+        <Label>How was this citizenship obtained?</Label>
+        <SelectField value={values.how_obtained} onChange={(value) => form.setValue("how_obtained", value)} options={CITIZENSHIP_METHODS} testId="select-citizenship-method" />
       </div>
-
       <div>
-        <Label htmlFor="passport_country">Passport Country</Label>
-        <Select
-          value={dialogForm.watch("passport_country")}
-          onValueChange={(value) => dialogForm.setValue("passport_country", value, { shouldValidate: true })}
-        >
-          <SelectTrigger id="passport_country" data-testid="select-passport-country">
-            <SelectValue placeholder="Choose Country" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((country) => (
-              <SelectItem key={country} value={country}>{country}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.passport_country && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.passport_country.message}</p>
-        )}
+        <Label>Date obtained <span className="text-gray-500 font-normal">(optional)</span></Label>
+        <DateSelects row={values} setValue={form.setValue} prefix="date_obtained" />
       </div>
-
       <div>
-        <Label htmlFor="place_of_issue">Place of Issue / Issuing Authority</Label>
-        <Input
-          id="place_of_issue"
-          {...dialogForm.register("place_of_issue")}
-          data-testid="input-place-of-issue"
-        />
-        {dialogForm.formState.errors.place_of_issue && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.place_of_issue.message}</p>
-        )}
+        <Label className="mb-2 block">Are you still a citizen of this country?</Label>
+        <RadioGroup value={values.still_citizen} onValueChange={(value) => form.setValue("still_citizen", value)} className="flex gap-4">
+          <div className="flex items-center"><RadioGroupItem value="yes" id="citizen-still-yes" /><Label htmlFor="citizen-still-yes" className="ml-2 font-normal">Yes</Label></div>
+          <div className="flex items-center"><RadioGroupItem value="no" id="citizen-still-no" /><Label htmlFor="citizen-still-no" className="ml-2 font-normal">No</Label></div>
+        </RadioGroup>
       </div>
-
-      <div>
-        <Label htmlFor="nationality">Nationality</Label>
-        <Select
-          value={dialogForm.watch("nationality")}
-          onValueChange={(value) => dialogForm.setValue("nationality", value, { shouldValidate: true })}
-        >
-          <SelectTrigger id="nationality" data-testid="select-passport-nationality">
-            <SelectValue placeholder="Choose Nationality" />
-          </SelectTrigger>
-          <SelectContent>
-            {COUNTRIES.map((country) => (
-              <SelectItem key={country} value={country}>{country}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.nationality && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.nationality.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="gender">Gender as shown on this document</Label>
-        <Select
-          value={dialogForm.watch("gender")}
-          onValueChange={(value) => dialogForm.setValue("gender", value, { shouldValidate: true })}
-        >
-          <SelectTrigger data-testid="select-passport-gender">
-            <SelectValue placeholder="Choose Gender" />
-          </SelectTrigger>
-          <SelectContent>
-            {GENDER_OPTIONS.map((gender) => (
-              <SelectItem key={gender} value={gender}>{gender}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {dialogForm.formState.errors.gender && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="passport_name">Name</Label>
-        <Input
-          id="passport_name"
-          {...dialogForm.register("name")}
-          data-testid="input-passport-name"
-          placeholder="Enter name exactly as shown on document"
-        />
-        {dialogForm.formState.errors.name && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.name.message}</p>
-        )}
-      </div>
-
-      <div className="pt-4 border-t border-gray-200">
-        <h3 className="text-base font-medium text-gray-900 mb-3">Dates and Status</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Enter the issue date, expiry date and status of the Document
-        </p>
-
-        <div>
-          <Label>Date of Issue</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_issued_day")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_day", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-issue-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_issued_month")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_month", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-issue-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month) => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_issued_year")}
-              onValueChange={(value) => dialogForm.setValue("date_issued_year", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-issue-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {values.still_citizen === "no" && (
+        <>
+          <div>
+            <Label>Date ceased</Label>
+            <DateSelects row={values} setValue={form.setValue} prefix="date_ceased" />
           </div>
-        </div>
-
-        <div className="mt-4">
-          <Label className="text-sm font-normal mb-2 block">
-            Is this the Original Date of Issue?
-          </Label>
-          <RadioGroup
-            value={isOriginalDate}
-            onValueChange={(value) => {
-              setIsOriginalDate(value);
-              dialogForm.setValue("is_original_date", value);
-            }}
-            className="flex gap-4"
-            data-testid="radio-original-date"
-          >
-            <div className="flex items-center" data-testid="radio-original-date-yes">
-              <RadioGroupItem value="yes" id="original-date-yes" />
-              <Label htmlFor="original-date-yes" className="ml-2 cursor-pointer font-normal">
-                Yes
-              </Label>
-            </div>
-            <div className="flex items-center" data-testid="radio-original-date-no">
-              <RadioGroupItem value="no" id="original-date-no" />
-              <Label htmlFor="original-date-no" className="ml-2 cursor-pointer font-normal">
-                No
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        {isOriginalDate === "no" && (
-          <div className="mt-4">
-            <Label>Original Date of Issue</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Select
-                value={dialogForm.watch("original_date_day")}
-                onValueChange={(value) => dialogForm.setValue("original_date_day", value)}
-              >
-                <SelectTrigger data-testid="select-original-day">
-                  <SelectValue placeholder="Choose Day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {days.map((day) => (
-                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("original_date_month")}
-                onValueChange={(value) => dialogForm.setValue("original_date_month", value)}
-              >
-                <SelectTrigger data-testid="select-original-month">
-                  <SelectValue placeholder="Choose Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month) => (
-                    <SelectItem key={month} value={month}>{month}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={dialogForm.watch("original_date_year")}
-                onValueChange={(value) => dialogForm.setValue("original_date_year", value)}
-              >
-                <SelectTrigger data-testid="select-original-year">
-                  <SelectValue placeholder="Choose Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label>Reason citizenship ceased</Label>
+            <SelectField value={values.reason_ceased} onChange={(value) => form.setValue("reason_ceased", value)} options={CEASED_REASONS} testId="select-citizenship-ceased-reason" />
           </div>
-        )}
-
-        <div className="mt-4">
-          <Label>Date of Expiry</Label>
-          <div className="grid grid-cols-3 gap-2">
-            <Select
-              value={dialogForm.watch("date_expiry_day")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_day", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-expiry-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_expiry_month")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_month", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-expiry-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month) => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={dialogForm.watch("date_expiry_year")}
-              onValueChange={(value) => dialogForm.setValue("date_expiry_year", value, { shouldValidate: true })}
-            >
-              <SelectTrigger data-testid="select-passport-expiry-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {passportExpiryYears.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <Label htmlFor="document_status">Document Status</Label>
-          <Select
-            value={dialogForm.watch("document_status")}
-            onValueChange={(value) => dialogForm.setValue("document_status", value, { shouldValidate: true })}
-          >
-            <SelectTrigger data-testid="select-passport-status">
-              <SelectValue placeholder="Choose Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {DOCUMENT_STATUS_OPTIONS.map((status) => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {dialogForm.formState.errors.document_status && (
-            <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.document_status.message}</p>
-          )}
-        </div>
-      </div>
-
+        </>
+      )}
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
-        </Button>
-        <Button type="button" onClick={dialogForm.handleSubmit(handleFormSubmit)} data-testid="button-ok">
-          OK
-        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={form.handleSubmit(onSave)}>OK</Button>
       </DialogFooter>
     </div>
   );
 }
 
-export default function IdentityPage() {
+function ResidenceRightDialog({ editingRow, onSave, onCancel }) {
+  const expiryYears = Array.from({ length: 80 }, (_, index) => String(new Date().getFullYear() + index));
+  const form = useForm({ defaultValues: { country: "", status: "", expiry_day: "", expiry_month: "", expiry_year: "", ...editingRow } });
+  const values = form.watch();
+
+  return (
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+      <div>
+        <Label>Country</Label>
+        <SelectField value={values.country} onChange={(value) => form.setValue("country", value)} options={COUNTRIES} testId="select-residence-country" />
+      </div>
+      <div>
+        <Label>Residence right</Label>
+        <SelectField value={values.status} onChange={(value) => form.setValue("status", value)} options={RESIDENCE_STATUSES} testId="select-residence-status" />
+      </div>
+      {values.status === "Temporary" && (
+        <div>
+          <Label>Expiry date</Label>
+          <DateSelects row={values} setValue={form.setValue} prefix="expiry" years={expiryYears} />
+        </div>
+      )}
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={form.handleSubmit(onSave)}>OK</Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function ImportReviewPanel({ rows }) {
+  if (!rows.length) return null;
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <h3 className="font-semibold">Imported identity documents need review</h3>
+      <p className="mt-1">
+        We found older government-ID answers that could not be safely converted. Add a National ID or Other Identity Document with the same identification number and country, then Continue.
+      </p>
+      <ul className="mt-3 list-disc pl-5">
+        {rows.map((row, index) => (
+          <li key={`${row.identification_number || row.id_number || "doc"}-${index}`}>
+            {[row.document_type || row.doc_type || "Identity document", row.identification_number || row.id_number, row.country_of_issue].filter(Boolean).join(" - ")}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function MainApplicantIdentityPage() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const profileId = getProfileIdFromSearchParams(searchParams);
+  const appIdParam = getApplicationIdFromSearchParams(searchParams);
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
-
-  const [isSaving, setIsSaving] = useState(false);
-  const profileId = searchParams.get("profileId");
-  const appIdParam = searchParams.get("applicationId");
   const visaType = getVisaTypeFromPath(pathname);
+  const showExtras = hasIdentityExtras(visaType);
 
-  // Set application ID from URL params if available
   useEffect(() => {
-    const appIdFromUrl = searchParams.get('applicationId');
-    if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
-      draftStore.setApplicationId(appIdFromUrl);
-      draftStore.loadDraft(appIdFromUrl);
+    if (appIdParam && appIdParam !== draftSnap.currentApplicationId) {
+      draftStore.setApplicationId(appIdParam);
+      draftStore.loadDraft(appIdParam);
     }
-  }, [searchParams, draftSnap.currentApplicationId]);
+  }, [appIdParam, draftSnap.currentApplicationId]);
 
-  const emptyNational = {
-    family_name: "",
-    given_names: "",
-    identification_number: "",
-    country_of_issue: "",
-    date_issued_day: "",
-    date_issued_month: "",
-    date_issued_year: "",
-    date_expiry_day: "",
-    date_expiry_month: "",
-    date_expiry_year: "",
-  };
+  const profile = profileId ? draftSnap.draft?.profiles?.find((item) => String(item.id) === String(profileId)) : null;
+  const rawIdentity = useMemo(
+    () => resolveIdentityDraftData(draftSnap.draft, visaType, profileId),
+    [draftSnap.draft, visaType, profileId]
+  );
+  const defaultValues = useMemo(
+    () => normalizeIdentityForVisa(rawIdentity, visaType, profile),
+    [rawIdentity, visaType, profile]
+  );
+  const form = useForm({ resolver: zodResolver(formSchema), defaultValues });
+  const values = form.watch();
+  const [isSaving, setIsSaving] = useState(false);
 
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      has_passport: "no",
-      passports: [],
-      has_national_id: "no",
-      national_id_card: { ...emptyNational },
-      other_identity_documents: [],
-    },
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
+
+  const mergePayload = (data) => ({
+    ...rawIdentity,
+    ...data,
+    national_id_card: { ...EMPTY_NATIONAL_ID_CARD, ...(data.national_id_card || {}) },
   });
 
-  useEffect(() => {
-    const savedData = profileId
-      ? (draftSnap.draft?.profiles_data?.[profileId]?.identity || {})
-      : (draftSnap.draft?.temporary_work_identity || {});
-
-    if (savedData && Object.keys(savedData).length > 0) {
-      const migrated = migrateLegacyIdentity(savedData);
-      form.reset({
-        ...migrated,
-        national_id_card: { ...emptyNational, ...(migrated.national_id_card || {}) },
-        other_identity_documents: migrated.other_identity_documents || [],
-      });
-    }
-  }, [
-    draftSnap.draft?.temporary_work_identity,
-    draftSnap.draft?.profiles_data,
-    profileId,
-    form,
-  ]);
-
-  const hasPassport = form.watch("has_passport");
-  const hasNationalId = form.watch("has_national_id");
-
-  const passports = form.watch("passports") || [];
-  const otherIdentityDocuments = form.watch("other_identity_documents") || [];
-
-
-  const nidDays = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-  const nidMonths = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-  const nidYears = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
-
-
+  const saveData = (data) => {
+    const payload = mergePayload(data);
+    if (profileId) return draftStore.saveProfileSectionData(profileId, "identity", payload);
+    return draftStore.saveSectionData(getIdentityLegacyRoot(visaType), payload);
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const data = form.getValues();
-      const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_identity", data);
-
-      if (result.success) {
-        toast({
-          title: "Draft saved",
-          description: "Your changes have been saved successfully",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to save changes",
-          variant: "destructive",
-        });
-      }
+      const result = await saveData(form.getValues());
+      toast(result.success
+        ? { title: "Draft saved", description: "Your changes have been saved successfully" }
+        : { title: "Error", description: result.error || "Failed to save changes", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
   const onSubmit = async (data) => {
+    const issues = validateIdentityForVisa(data, visaType);
+    if (issues.length > 0) {
+      toast({
+        title: "Identity section incomplete",
+        description: issues.join(", "),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_identity", data);
+      const result = await saveData(data);
+      if (!result.success) {
+        toast({ title: "Error", description: result.error || "Failed to save changes", variant: "destructive" });
+        return;
+      }
 
-      if (result.success) {
-        const completionResult = profileId
-          ? await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/identity`)
-          : await draftStore.markPageComplete(`${visaType}/main-applicant/identity`, null, "temporary_work_identity");
+      const pageKey = `${visaType}/main-applicant/identity`;
+      const completionResult = profileId
+        ? await draftStore.markProfilePageComplete(profileId, pageKey)
+        : await draftStore.markPageComplete(pageKey, null, getIdentityLegacyRoot(visaType));
 
-        if (!completionResult.success) {
-          showCompletionIssuesToast(toast, completionResult);
-          return;
-        }
+      if (!completionResult.success) {
+        showCompletionIssuesToast(toast, completionResult);
+        return;
+      }
 
-        const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
-        if (nextRoute) {
-          startNavigation(nextRoute);
-          router.push(nextRoute);
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to save changes",
-          variant: "destructive",
-        });
+      const nextRoute = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
+      if (nextRoute) {
+        startNavigation(nextRoute);
+        router.push(nextRoute);
       }
     } finally {
       setIsSaving(false);
@@ -769,224 +336,69 @@ export default function IdentityPage() {
     }
   };
 
+  const setArray = (name, value) => form.setValue(name, value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+  const unresolvedImports = getUnresolvedIdentityImports(values);
+
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">Main Applicant's Identity</CardTitle>
-        <p className="text-sm text-gray-600 mt-2">
-          In this section, provide details about the main applicant&apos;s identity.
-        </p>
+        <p className="text-sm text-gray-600 mt-2">In this section, provide details about the main applicant&apos;s identity.</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Passports / Travel Documents */}
-          <div>
-            <Label className="text-base font-medium mb-3 block">
-              Do you currently hold or have you ever held a Passport or Travel Document?
-            </Label>
-            <RadioGroup
-              value={hasPassport}
-              onValueChange={(value) => form.setValue("has_passport", value)}
-              className="flex gap-4"
-              data-testid="radio-passport"
-            >
-              <div className="flex items-center">
-                <RadioGroupItem value="yes" id="passport-yes" data-testid="radio-passport-yes" />
-                <Label htmlFor="passport-yes" className="ml-2 cursor-pointer font-normal">
-                  Yes
-                </Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="no" id="passport-no" data-testid="radio-passport-no" />
-                <Label htmlFor="passport-no" className="ml-2 cursor-pointer font-normal">
-                  No
-                </Label>
-              </div>
-            </RadioGroup>
+          <PassportDocumentsSection
+            hasPassport={values.has_passport}
+            passports={values.passports || []}
+            onHasPassportChange={(value) => form.setValue("has_passport", value, { shouldValidate: true, shouldDirty: true, shouldTouch: true })}
+            onPassportsChange={(value) => setArray("passports", value)}
+            error={form.formState.errors.passports}
+          />
 
-            {hasPassport === "yes" && (
-              <div className="mt-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Passports/Travel Documents</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  Enter details of all current passports.
-                </p>
-                <RepeaterTable
-                  data={passports}
-                  columns={[
-                    { key: "document_number", label: "Passport/Document Number" },
-                    { key: "name", label: "Name" },
-                    { key: "nationality", label: "Nationality" },
-                    { key: "date_issued_day", label: "Date of Issue", format: (row) => `${row.date_issued_day} ${row.date_issued_month} ${row.date_issued_year}` },
-                    { key: "document_status", label: "Status" },
-                  ]}
-                  onAdd={(newRow) => {
-                    const updated = [...passports, newRow];
-                    form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  onEdit={(index, updatedRow) => {
-                    const updated = [...passports];
-                    updated[index] = updatedRow;
-                    form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  onDelete={(index) => {
-                    const updated = passports.filter((_, i) => i !== index);
-                    form.setValue("passports", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-                  }}
-                  DialogComponent={PassportDialog}
-                  addButtonText="Add"
-                  testIdPrefix="passport"
-                />
-                {form.formState.errors.passports && (
-                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.passports.message}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* National Identity Document */}
           <div className="space-y-4 pt-6 border-t">
             <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">National Identity Document</h2>
-            <Label className="text-base font-medium mb-3 block">
-              Do you have a National ID card?
-            </Label>
+            <Label className="text-base font-medium mb-3 block">Do you have a National ID card?</Label>
             <RadioGroup
-              value={hasNationalId || ""}
+              value={values.has_national_id || "no"}
               onValueChange={(value) => {
-                form.setValue("has_national_id", value, { shouldValidate: true });
-                if (value === "no") {
-                  form.setValue("national_id_card", { ...emptyNational }, { shouldValidate: true });
-                  form.clearErrors("national_id_card");
-                }
+                form.setValue("has_national_id", value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                if (value === "no") form.setValue("national_id_card", { ...EMPTY_NATIONAL_ID_CARD }, { shouldValidate: true });
               }}
               className="flex gap-4"
+              data-testid="radio-national-id"
             >
-              <div className="flex items-center">
-                <RadioGroupItem value="yes" id="nid-yes" />
-                <Label htmlFor="nid-yes" className="ml-2 cursor-pointer font-normal">Yes</Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="no" id="nid-no" />
-                <Label htmlFor="nid-no" className="ml-2 cursor-pointer font-normal">No</Label>
-              </div>
+              <div className="flex items-center"><RadioGroupItem value="yes" id="nid-yes" /><Label htmlFor="nid-yes" className="ml-2 cursor-pointer font-normal">Yes</Label></div>
+              <div className="flex items-center"><RadioGroupItem value="no" id="nid-no" /><Label htmlFor="nid-no" className="ml-2 cursor-pointer font-normal">No</Label></div>
             </RadioGroup>
 
-            {hasNationalId === "yes" && (
+            {values.has_national_id === "yes" && (
               <div className="mt-4 space-y-4 rounded-lg border border-border p-4">
                 <h3 className="text-lg font-semibold text-gray-900">National identity card</h3>
-                <p className="text-sm text-gray-600">
-                  Enter details exactly as shown on the national identity card.
-                </p>
+                <p className="text-sm text-gray-600">Enter details exactly as shown on the national identity card.</p>
                 <div className="bg-blue-50 p-3 rounded-md mb-4 border border-blue-100">
-                  <p className="text-sm text-blue-800 italic">
-                    Note: If the National identity card does not have a Date of issue or a Date of expiry, do not enter a date. Leave the field/s blank.
-                  </p>
+                  <p className="text-sm text-blue-800 italic">Note: If the National identity card does not have a Date of issue or a Date of expiry, do not enter a date. Leave the field/s blank.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Family name</Label>
-                    <Input {...form.register("national_id_card.family_name")} />
-                    {form.formState.errors.national_id_card?.family_name && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.family_name.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label>Given names</Label>
-                    <Input {...form.register("national_id_card.given_names")} />
-                    {form.formState.errors.national_id_card?.given_names && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.given_names.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label>Identification number</Label>
-                    <Input {...form.register("national_id_card.identification_number")} />
-                    {form.formState.errors.national_id_card?.identification_number && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.identification_number.message}</p>
-                    )}
-                  </div>
+                  <div><Label>Family name</Label><Input {...form.register("national_id_card.family_name")} />{form.formState.errors.national_id_card?.family_name && <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.family_name.message}</p>}</div>
+                  <div><Label>Given names</Label><Input {...form.register("national_id_card.given_names")} />{form.formState.errors.national_id_card?.given_names && <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.given_names.message}</p>}</div>
+                  <div><Label>Identification number</Label><Input {...form.register("national_id_card.identification_number")} />{form.formState.errors.national_id_card?.identification_number && <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.identification_number.message}</p>}</div>
                   <div>
                     <Label>Country of issue</Label>
-                    <Select
-                      value={form.watch("national_id_card.country_of_issue") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.country_of_issue", v, { shouldValidate: true })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose Country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COUNTRIES.map((country) => (
-                          <SelectItem key={country} value={country}>{country}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {form.formState.errors.national_id_card?.country_of_issue && (
-                      <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.country_of_issue.message}</p>
-                    )}
+                    <SelectField value={values.national_id_card?.country_of_issue} onChange={(value) => form.setValue("national_id_card.country_of_issue", value, { shouldValidate: true })} options={COUNTRIES} />
+                    {form.formState.errors.national_id_card?.country_of_issue && <p className="text-sm text-red-600 mt-1">{form.formState.errors.national_id_card.country_of_issue.message}</p>}
                   </div>
                 </div>
-                <div>
-                  <Label>Date of issue <span className="text-gray-500 font-normal">(optional)</span></Label>
-                  <div className="grid grid-cols-3 gap-2 mt-1">
-                    <Select
-                      value={form.watch("national_id_card.date_issued_day") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.date_issued_day", v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-                      <SelectContent>{nidDays.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Select
-                      value={form.watch("national_id_card.date_issued_month") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.date_issued_month", v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
-                      <SelectContent>{nidMonths.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Select
-                      value={form.watch("national_id_card.date_issued_year") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.date_issued_year", v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
-                      <SelectContent>{nidYears.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label>Date of expiry <span className="text-gray-500 font-normal">(optional)</span></Label>
-                  <div className="grid grid-cols-3 gap-2 mt-1">
-                    <Select
-                      value={form.watch("national_id_card.date_expiry_day") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.date_expiry_day", v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-                      <SelectContent>{nidDays.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Select
-                      value={form.watch("national_id_card.date_expiry_month") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.date_expiry_month", v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
-                      <SelectContent>{nidMonths.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Select
-                      value={form.watch("national_id_card.date_expiry_year") || ""}
-                      onValueChange={(v) => form.setValue("national_id_card.date_expiry_year", v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
-                      <SelectContent>{nidYears.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <div><Label>Date of issue <span className="text-gray-500 font-normal">(optional)</span></Label><DateSelects row={values.national_id_card} setValue={(field, value) => form.setValue(`national_id_card.${field}`, value)} prefix="date_issued" /></div>
+                <div><Label>Date of expiry <span className="text-gray-500 font-normal">(optional)</span></Label><DateSelects row={values.national_id_card} setValue={(field, value) => form.setValue(`national_id_card.${field}`, value)} prefix="date_expiry" /></div>
               </div>
             )}
           </div>
 
-          {/* Other Identity Documents */}
           <div className="space-y-4 pt-6 border-t">
             <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Other Identity Documents</h2>
-            <p className="text-sm text-gray-600 mb-2">
-              Enter details of other identity documents you hold.
-            </p>
+            <p className="text-sm text-gray-600 mb-2">Enter details of other identity documents you hold.</p>
             <RepeaterTable
-              data={otherIdentityDocuments}
+              data={values.other_identity_documents || []}
               columns={[
                 { key: "document_type", label: "Type" },
                 { key: "family_name", label: "Family name" },
@@ -994,33 +406,84 @@ export default function IdentityPage() {
                 { key: "identification_number", label: "ID number" },
                 { key: "country_of_issue", label: "Country" },
               ]}
-              onAdd={(newRow) => {
-                const updated = [...otherIdentityDocuments, newRow];
-                form.setValue("other_identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-              }}
-              onEdit={(index, updatedRow) => {
-                const updated = [...otherIdentityDocuments];
-                updated[index] = updatedRow;
-                form.setValue("other_identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-              }}
-              onDelete={(index) => {
-                const updated = otherIdentityDocuments.filter((_, i) => i !== index);
-                form.setValue("other_identity_documents", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-              }}
+              onAdd={(row) => setArray("other_identity_documents", [...(values.other_identity_documents || []), row])}
+              onEdit={(index, row) => setArray("other_identity_documents", (values.other_identity_documents || []).map((item, itemIndex) => itemIndex === index ? row : item))}
+              onDelete={(index) => setArray("other_identity_documents", (values.other_identity_documents || []).filter((_, itemIndex) => itemIndex !== index))}
               DialogComponent={SimplifiedOtherIdentityDialog}
               addButtonText="Add document"
               testIdPrefix="other-identity"
             />
           </div>
-          {/* Desktop Navigation */}
-          <FormNavigation
-            loading={isSaving}
-            onPrev={handlePrevious}
-            onNext={form.handleSubmit(onSubmit)}
-            onSave={handleSave}
-            saveLabel="Save Draft"
-            nextLabel="Continue"
-          />
+
+          <ImportReviewPanel rows={unresolvedImports} />
+
+          {showExtras && (
+            <div className="space-y-6 pt-6 border-t">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Additional Citizenship and Residence Information</h2>
+              <div>
+                <Label className="text-base font-medium mb-3 block">Are you currently a Citizen of any Country?</Label>
+                <RadioGroup value={values.citizen_of_country || "no"} onValueChange={(value) => form.setValue("citizen_of_country", value, { shouldDirty: true })} className="flex gap-4" data-testid="radio-current-citizenship">
+                  <div className="flex items-center"><RadioGroupItem value="yes" id="citizen-current-yes" /><Label htmlFor="citizen-current-yes" className="ml-2 font-normal">Yes</Label></div>
+                  <div className="flex items-center"><RadioGroupItem value="no" id="citizen-current-no" /><Label htmlFor="citizen-current-no" className="ml-2 font-normal">No</Label></div>
+                </RadioGroup>
+              </div>
+              {values.citizen_of_country === "no" && (
+                <>
+                  <div>
+                    <Label>You have answered that you are not a Citizen of any Country. You must provide details of how, when and why you are stateless</Label>
+                    <Textarea rows={4} {...form.register("stateless_explanation")} data-testid="textarea-stateless-explanation" />
+                  </div>
+                  <div>
+                    <Label className="text-base font-medium mb-3 block">Have you ever been a Citizen of any Country?</Label>
+                    <RadioGroup value={values.ever_been_citizen || "no"} onValueChange={(value) => form.setValue("ever_been_citizen", value, { shouldDirty: true })} className="flex gap-4" data-testid="radio-ever-citizen">
+                      <div className="flex items-center"><RadioGroupItem value="yes" id="ever-citizen-yes" /><Label htmlFor="ever-citizen-yes" className="ml-2 font-normal">Yes</Label></div>
+                      <div className="flex items-center"><RadioGroupItem value="no" id="ever-citizen-no" /><Label htmlFor="ever-citizen-no" className="ml-2 font-normal">No</Label></div>
+                    </RadioGroup>
+                  </div>
+                </>
+              )}
+              {(values.citizen_of_country === "yes" || (values.citizen_of_country === "no" && values.ever_been_citizen === "yes")) && (
+                <RepeaterTable
+                  data={values.citizenships || []}
+                  columns={[
+                    { key: "country", label: "Country" },
+                    { key: "how_obtained", label: "How obtained" },
+                    { key: "still_citizen", label: "Still citizen" },
+                  ]}
+                  onAdd={(row) => setArray("citizenships", [...(values.citizenships || []), row])}
+                  onEdit={(index, row) => setArray("citizenships", (values.citizenships || []).map((item, itemIndex) => itemIndex === index ? row : item))}
+                  onDelete={(index) => setArray("citizenships", (values.citizenships || []).filter((_, itemIndex) => itemIndex !== index))}
+                  DialogComponent={CitizenshipDialog}
+                  addButtonText="Add citizenship"
+                  testIdPrefix="citizenship"
+                />
+              )}
+              <div>
+                <Label className="text-base font-medium mb-3 block">Do you have the right to temporary or permanently reside in any country of which you are not a citizen?</Label>
+                <RadioGroup value={values.permanent_residency_rights || "no"} onValueChange={(value) => form.setValue("permanent_residency_rights", value, { shouldDirty: true })} className="flex gap-4" data-testid="radio-residence-rights">
+                  <div className="flex items-center"><RadioGroupItem value="yes" id="residence-rights-yes" /><Label htmlFor="residence-rights-yes" className="ml-2 font-normal">Yes</Label></div>
+                  <div className="flex items-center"><RadioGroupItem value="no" id="residence-rights-no" /><Label htmlFor="residence-rights-no" className="ml-2 font-normal">No</Label></div>
+                </RadioGroup>
+              </div>
+              {values.permanent_residency_rights === "yes" && (
+                <RepeaterTable
+                  data={values.pr_countries || []}
+                  columns={[
+                    { key: "country", label: "Country" },
+                    { key: "status", label: "Status" },
+                  ]}
+                  onAdd={(row) => setArray("pr_countries", [...(values.pr_countries || []), row])}
+                  onEdit={(index, row) => setArray("pr_countries", (values.pr_countries || []).map((item, itemIndex) => itemIndex === index ? row : item))}
+                  onDelete={(index) => setArray("pr_countries", (values.pr_countries || []).filter((_, itemIndex) => itemIndex !== index))}
+                  DialogComponent={ResidenceRightDialog}
+                  addButtonText="Add country"
+                  testIdPrefix="residence-right"
+                />
+              )}
+            </div>
+          )}
+
+          <FormNavigation loading={isSaving} onPrev={handlePrevious} onNext={form.handleSubmit(onSubmit)} onSave={handleSave} saveLabel="Save Draft" nextLabel="Continue" />
         </form>
       </CardContent>
     </Card>

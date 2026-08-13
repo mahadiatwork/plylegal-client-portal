@@ -16,11 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNav } from "@/components/StickyNav";
+import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
-import { FormNavigation } from "@/components/FormNavigation";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getContinuousHistoryIssues, getProtectionHistoryDate } from "@/lib/protectionHistoryCoverage";
 
@@ -39,6 +38,13 @@ const STATUSES_WITH_EMPLOYER_DETAILS = new Set([
   "Work Experience/Internships",
   "Unpaid Employment/Volunteer",
 ]);
+
+const EMPLOYMENT_TYPE_OPTIONS = [
+  "Full-time",
+  "Part-time",
+  "Contract",
+  "Self-Employed"
+];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MONTHS = [
@@ -139,7 +145,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
+    <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
       <div>
         <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -336,11 +342,19 @@ export default function EmploymentPage() {
   const form = useForm({
     defaultValues: {
       is_currently_employed: "no",
+      current_employer: "",
+      current_position: "",
+      current_country: "",
+      current_start_date_day: "",
+      current_start_date_month: "",
+      current_start_date_year: "",
+      current_employment_type: "",
+      current_address: "",
       employment_history: [],
     }
   });
 
-  const isCurrentlyEmployed = form.watch("is_currently_employed");
+  const isCurrentlyEmployed = String(form.watch("is_currently_employed") || "no").toLowerCase();
   const employmentHistory = form.watch("employment_history") || [];
 
   const activeProfile = draft?.profiles?.find((profile) =>
@@ -359,14 +373,23 @@ export default function EmploymentPage() {
   );
 
   useEffect(() => {
-    const savedData = draft.protection_employment || {};
+    const savedData = draft?.protection_employment || {};
     if (Object.keys(savedData).length > 0) {
+      const isEmployedNorm = savedData.is_currently_employed || (savedData.currently_employed === "Yes" ? "yes" : savedData.currently_employed === "No" ? "no" : "no");
       form.reset({
-        is_currently_employed: savedData.is_currently_employed || "no",
+        is_currently_employed: isEmployedNorm,
+        current_employer: savedData.current_employer || "",
+        current_position: savedData.current_position || "",
+        current_country: savedData.current_country || "",
+        current_start_date_day: savedData.current_start_date_day || "",
+        current_start_date_month: savedData.current_start_date_month || "",
+        current_start_date_year: savedData.current_start_date_year || "",
+        current_employment_type: savedData.current_employment_type || "",
+        current_address: savedData.current_address || "",
         employment_history: savedData.employment_history || [],
       });
     }
-  }, [draft?.protection_employment]);
+  }, [draft?.protection_employment, form]);
 
   const updateEmploymentHistory = (newHistory) => {
     form.setValue("employment_history", newHistory, { shouldDirty: true });
@@ -457,92 +480,210 @@ export default function EmploymentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E4E9FF]">
+    <Card className="rounded-2xl shadow-md bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold">Main Applicant's Employment</CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          In this section, provide details about the main applicant&apos;s employment history.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="space-y-8">
+            {/* Q1: Are you currently Employed in a paid position? */}
+            <div>
+              <Label className="text-base font-medium mb-3 block">
+                Are you currently Employed in a paid position?
+              </Label>
+              <RadioGroup
+                value={isCurrentlyEmployed}
+                onValueChange={(value) => form.setValue("is_currently_employed", value)}
+                className="flex gap-4"
+                data-testid="radio-currently-employed"
+              >
+                <div className="flex items-center" data-testid="radio-currently-employed-yes">
+                  <RadioGroupItem value="yes" id="employed-yes" />
+                  <Label htmlFor="employed-yes" className="ml-2 cursor-pointer font-normal">
+                    Yes
+                  </Label>
+                </div>
+                <div className="flex items-center" data-testid="radio-currently-employed-no">
+                  <RadioGroupItem value="no" id="employed-no" />
+                  <Label htmlFor="employed-no" className="ml-2 cursor-pointer font-normal">
+                    No
+                  </Label>
+                </div>
+              </RadioGroup>
 
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="space-y-8">
-              {/* Q1: Are you currently Employed in a paid position? */}
-              <div>
-                <Label className="text-base font-medium mb-3 block">
-                  Are you currently Employed in a paid position?
-                </Label>
-                <RadioGroup
-                  value={isCurrentlyEmployed}
-                  onValueChange={(value) => form.setValue("is_currently_employed", value)}
-                  className="flex gap-4"
-                  data-testid="radio-currently-employed"
-                >
-                  <div className="flex items-center" data-testid="radio-currently-employed-yes">
-                    <RadioGroupItem value="yes" id="employed-yes" />
-                    <Label htmlFor="employed-yes" className="ml-2 cursor-pointer font-normal">
-                      Yes
-                    </Label>
+              {/* Current Job Fields (shown if Yes) */}
+              {isCurrentlyEmployed === "yes" && (
+                <div className="mt-6 space-y-6 p-6 bg-gray-50/50 rounded-xl border border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="current_employer" className="text-sm font-medium">
+                        Employer/Organization Name
+                      </Label>
+                      <Input
+                        id="current_employer"
+                        {...form.register("current_employer")}
+                        placeholder="Enter employer or organization name"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="current_position" className="text-sm font-medium">
+                        Position/Occupation
+                      </Label>
+                      <Input
+                        id="current_position"
+                        {...form.register("current_position")}
+                        placeholder="Enter your current position"
+                        className="bg-white"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center" data-testid="radio-currently-employed-no">
-                    <RadioGroupItem value="no" id="employed-no" />
-                    <Label htmlFor="employed-no" className="ml-2 cursor-pointer font-normal">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
 
-              {/* Q2: Employment History */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Employment History for the Main Applicant ({mainApplicantName})
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Enter all employment, unemployment, study and other activities since birth. There can be no gaps in dates.
-                </p>
-                <RepeaterTable
-                  data={employmentHistory}
-                  columns={[
-                    { key: "date_from_day", label: "Date From", format: (row) => `${row.date_from_day} ${row.date_from_month} ${row.date_from_year}` },
-                    { key: "date_to_day", label: "Date To", format: (row) => (row.date_to_day && row.date_to_month && row.date_to_year) ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "" },
-                    { key: "status", label: "Status" },
-                    { key: "position", label: "Position" },
-                    { key: "employer", label: "Employer" },
-                    { key: "country", label: "Country" },
-                  ]}
-                  onAdd={(newRow) => {
-                    updateEmploymentHistory([...employmentHistory, newRow]);
-                  }}
-                  onEdit={(index, updatedRow) => {
-                    const updated = [...employmentHistory];
-                    updated[index] = updatedRow;
-                    updateEmploymentHistory(updated);
-                  }}
-                  onDelete={(index) => {
-                    const updated = employmentHistory.filter((_, i) => i !== index);
-                    updateEmploymentHistory(updated);
-                  }}
-                  DialogComponent={EmploymentHistoryDialog}
-                  addButtonText="Add"
-                  testIdPrefix="employment"
-                />
-                {form.formState.errors.employment_history && (
-                  <p className="text-sm text-red-600 mt-2">{form.formState.errors.employment_history.message}</p>
-                )}
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Country</Label>
+                      <Select
+                        value={form.watch("current_country")}
+                        onValueChange={(value) => form.setValue("current_country", value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Employment Type</Label>
+                      <Select
+                        value={form.watch("current_employment_type")}
+                        onValueChange={(value) => form.setValue("current_employment_type", value)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose Employment Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Date Started</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Select
+                        value={form.watch("current_start_date_day")}
+                        onValueChange={(value) => form.setValue("current_start_date_day", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DAYS.map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={form.watch("current_start_date_month")}
+                        onValueChange={(value) => form.setValue("current_start_date_month", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((month) => <SelectItem key={month} value={month}>{month}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        value={form.watch("current_start_date_year")}
+                        onValueChange={(value) => form.setValue("current_start_date_year", value)}
+                      >
+                        <SelectTrigger className="bg-white text-xs sm:text-sm">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEARS.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_address" className="text-sm font-medium">
+                      Current Workplace Address
+                    </Label>
+                    <Input
+                      id="current_address"
+                      {...form.register("current_address")}
+                      placeholder="Street, City, State, Postcode"
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="mt-8 pt-6 border-t">
-              <FormNavigation
-                onPrev={handlePrevious}
-                onNext={form.handleSubmit(onSubmit)}
-                onSave={handleSave}
-                loading={isSaving}
-                submitting={isSubmitting}
-                disabledNext={!form.formState.isValid}
+            {/* Q2: Employment History */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Employment History for the Main Applicant ({mainApplicantName})
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Enter all employment, unemployment, study and other activities since birth. There can be no gaps in dates.
+              </p>
+              <RepeaterTable
+                data={employmentHistory}
+                columns={[
+                  { key: "date_from_day", label: "Date From", format: (row) => `${row.date_from_day} ${row.date_from_month} ${row.date_from_year}` },
+                  { key: "date_to_day", label: "Date To", format: (row) => (row.date_to_day && row.date_to_month && row.date_to_year) ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "" },
+                  { key: "status", label: "Status" },
+                  { key: "position", label: "Position" },
+                  { key: "employer", label: "Employer" },
+                  { key: "country", label: "Country" },
+                ]}
+                onAdd={(newRow) => {
+                  updateEmploymentHistory([...employmentHistory, newRow]);
+                }}
+                onEdit={(index, updatedRow) => {
+                  const updated = [...employmentHistory];
+                  updated[index] = updatedRow;
+                  updateEmploymentHistory(updated);
+                }}
+                onDelete={(index) => {
+                  const updated = employmentHistory.filter((_, i) => i !== index);
+                  updateEmploymentHistory(updated);
+                }}
+                DialogComponent={EmploymentHistoryDialog}
+                addButtonText="Add"
+                testIdPrefix="employment"
               />
+              {form.formState.errors.employment_history && (
+                <p className="text-sm text-red-600 mt-2">{form.formState.errors.employment_history.message}</p>
+              )}
             </div>
-          </form>
-        </div>
-      </div>
-    </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t">
+            <FormNavigation
+              onPrev={handlePrevious}
+              onNext={form.handleSubmit(onSubmit)}
+              onSave={handleSave}
+              loading={isSaving}
+              submitting={isSubmitting}
+              disabledNext={!form.formState.isValid}
+            />
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

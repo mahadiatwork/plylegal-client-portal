@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNextRoute, getPreviousRoute, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
+import { buildIntakeHref, buildNonMigratingHref, getInternalIntakeHref, getNonMigratingCompletionPrefix, getNextRoute, getPreviousRoute, getVisaTypeFromPath, NON_MIGRATING_MEMBER_SUBPAGES } from "@/lib/routes";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -37,7 +37,7 @@ export default function NonMigratingHealthPage() {
   const toIntakeHref = (href) => buildIntakeHref({
     appId,
     internalHref: href,
-    visaType: "temporary-work",
+    visaType,
     visaContext: draftSnap.visaContext,
   });
 
@@ -80,8 +80,8 @@ export default function NonMigratingHealthPage() {
       });
       return;
     }
-    await draftStore.markPageComplete(`temporary-work/non-migrating/${memberId}/health__${memberId}`, null, false);
-    // Health is the last subpage â€” use global route to go to next in overall flow
+    await draftStore.markPageComplete(`${getNonMigratingCompletionPrefix(visaType)}/${memberId}/health__${memberId}`, null, false);
+    // Health is the last subpage â€?use global route to go to next in overall flow
     const next = getNextRoute(pathname, visaType, appId, draftSnap.visaContext);
     startNavigation(next);
     if (next) router.push(next);
@@ -89,7 +89,7 @@ export default function NonMigratingHealthPage() {
 
   const onPrev = () => {
     // Go to previous subpage within this member
-    const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix);
+    const prev = buildNonMigratingHref(memberId, NON_MIGRATING_MEMBER_SUBPAGES[subpageIndex - 1]?.pathSuffix, visaType);
     startNavigation(toIntakeHref());
     if (prev) router.push(toIntakeHref(prev));
   };
@@ -118,7 +118,7 @@ export default function NonMigratingHealthPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Health â€” {displayName}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">Health â€?{displayName}</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Provide health examination information for this non-migrating family member.
         </p>

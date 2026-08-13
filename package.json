@@ -8,6 +8,7 @@
     "build": "next build --webpack",
     "start": "next start -p 5000",
     "check": "tsc",
+    "test": "node --test test/*.test.js src/lib/protectionHistoryCoverage.test.js src/lib/questionnaires/__tests__/validation.node.test.js",
     "test:e2e": "playwright test",
     "db:push": "drizzle-kit push",
     "questionnaires:seed": "node scripts/seed-questionnaire-definitions.js"

@@ -4,8 +4,14 @@ import {
   PROFILE_SUBPAGES,
   TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES,
   TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
+  getNonMigratingCompletionPrefix,
   getIntakeRoutes,
 } from "@/lib/routes";
+import {
+  normalizeIdentityForVisa,
+  resolveIdentityDraftData,
+  validateIdentityForVisa,
+} from "@/lib/mainApplicantIdentity";
 
 function getProfileDisplayName(profile) {
   const rawName = `${profile?.given_names || ""} ${profile?.family_name || ""}`.trim();
@@ -696,50 +702,7 @@ function validateLanguageSection(section, label, addIssue) {
 }
 
 function validateIdentitySection(section, label, addIssue) {
-  if (!hasAnswer(section?.has_passport)) {
-    addIssue(`${label}: Passport question`);
-  } else if (
-    isYes(section.has_passport) &&
-    !allRowsHaveFields(section?.passports, [
-      "document_type",
-      "document_number",
-      "passport_country",
-      "place_of_issue",
-      "nationality",
-      "gender",
-      "name",
-      "date_issued_day",
-      "date_issued_month",
-      "date_issued_year",
-      "document_status",
-    ], (row) => {
-      if (row?.document_status === "Current") {
-        return hasCompleteDate(row, ["date_expiry_day", "date_expiry_month", "date_expiry_year"]);
-      }
-      return true;
-    })
-  ) {
-    addIssue(`${label}: Passport/travel document details`);
-  }
-
-  if (!hasAnswer(section?.has_national_id)) {
-    addIssue(`${label}: National ID question`);
-  } else if (isYes(section.has_national_id)) {
-    const nationalId = section?.national_id_card || {};
-    if (!hasText(nationalId.family_name)) addIssue(`${label}: National ID family name`);
-    if (!hasText(nationalId.given_names)) addIssue(`${label}: National ID given names`);
-    if (!hasText(nationalId.identification_number)) addIssue(`${label}: National ID number`);
-    if (!hasText(nationalId.country_of_issue)) addIssue(`${label}: National ID country of issue`);
-  }
-
-  if (
-    hasRows(section?.other_identity_documents) &&
-    !section.other_identity_documents.every((row) =>
-      rowHasFields(row, ["family_name", "given_names", "document_type", "identification_number", "country_of_issue"])
-    )
-  ) {
-    addIssue(`${label}: Other identity document details`);
-  }
+  validateIdentityForVisa(section, "temporary-work").forEach((issue) => addIssue(`${label}: ${issue}`));
 }
 
 function hasBooleanAnswer(value) {
@@ -951,6 +914,21 @@ function appendTemporaryWorkValidationIssues(items, draft, visaContext) {
   });
 }
 
+function appendMainApplicantIdentityValidationIssues(items, draft, visaType) {
+  const itemSet = new Set(items);
+  const addIssue = (label) => addValidationIssue(items, itemSet, label);
+
+  (draft?.profiles || [])
+    .filter((profile) => profile?.relationship === "main_applicant")
+    .forEach((profile) => {
+      const raw = resolveIdentityDraftData(draft, visaType, profile.id);
+      const section = normalizeIdentityForVisa(raw, visaType, profile);
+      validateIdentityForVisa(section, visaType).forEach((issue) => {
+        addIssue(`${getProfileDisplayName(profile)}: ${issue}`);
+      });
+    });
+}
+
 export function getIncompleteChecklist({
   visaType,
   visaContext = null,
@@ -962,7 +940,7 @@ export function getIncompleteChecklist({
 
   const addIncomplete = (key, label) => {
     if (!key || !label) return;
-    const legacyPerMemberKey = key.startsWith("temporary-work/non-migrating/")
+    const legacyPerMemberKey = /(?:^|\/)non-migrating\//.test(key)
       ? key.split("__")[0]
       : null;
     if (completion[key] === true) return;
@@ -991,6 +969,27 @@ export function getIncompleteChecklist({
       const key = normalizeKeyFromPath(route.href, visaType);
       addIncomplete(key, route.title);
     });
+
+    const nonMigratingPrefix = getNonMigratingCompletionPrefix(visaType);
+    addIncomplete(nonMigratingPrefix, "Other Family");
+    (draft?.non_migrating_members || []).forEach((member) => {
+      const memberId = member?.id;
+      if (!memberId) return;
+
+      const name = [member?.passport?.given_names, member?.passport?.family_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || "Unnamed Member";
+
+      NON_MIGRATING_MEMBER_SUBPAGES.forEach((subpage) => {
+        const key = `${nonMigratingPrefix}/${memberId}/${subpage.pathSuffix}__${memberId}`;
+        addIncomplete(key, `Other Family (${name}): ${subpage.title}`);
+      });
+    });
+
+    if (visaType === "partner" || visaType === "protection") {
+      appendMainApplicantIdentityValidationIssues(items, draft, visaType);
+    }
 
     return items;
   }
@@ -1028,32 +1027,26 @@ export function getIncompleteChecklist({
 
       addIncomplete(key, `${profileLabel}: ${subpage.title}`);
 
-      if (
-        visaContext === "186" &&
-        profile.relationship === "main_applicant" &&
-        subpage.title === "Contact Details"
-      ) {
+      if (profile.relationship === "main_applicant" && subpage.title === "Contact Details") {
         addIncomplete("temporary-work/non-migrating", "Other Family");
       }
     });
   });
 
-  if (visaContext === "186") {
-    (draft?.non_migrating_members || []).forEach((member) => {
-      const memberId = member?.id;
-      if (!memberId) return;
+  (draft?.non_migrating_members || []).forEach((member) => {
+    const memberId = member?.id;
+    if (!memberId) return;
 
-      const name = [member?.passport?.given_names, member?.passport?.family_name]
-        .filter(Boolean)
-        .join(" ")
-        .trim() || "Unnamed Member";
+    const name = [member?.passport?.given_names, member?.passport?.family_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || "Unnamed Member";
 
-      NON_MIGRATING_MEMBER_SUBPAGES.forEach((subpage) => {
-        const key = `temporary-work/non-migrating/${memberId}/${subpage.pathSuffix}__${memberId}`;
-        addIncomplete(key, `Other Family (${name}): ${subpage.title}`);
-      });
+    NON_MIGRATING_MEMBER_SUBPAGES.forEach((subpage) => {
+      const key = `temporary-work/non-migrating/${memberId}/${subpage.pathSuffix}__${memberId}`;
+      addIncomplete(key, `Other Family (${name}): ${subpage.title}`);
     });
-  }
+  });
 
   const allApplicantsRoute = getIntakeRoutes("temporary-work", visaContext).find(
     (route) => route.title === "All Applicants"
