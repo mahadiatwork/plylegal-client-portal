@@ -28,15 +28,14 @@ class ZohoCRMClient {
         return null;
       }
 
-      console.log('🔑 Fetching fresh Zoho access token from:', tokenUrl);
+      console.log('🔑 Fetching fresh Zoho access token');
       const response = await axios.get(tokenUrl, {
         timeout: 30000, // 30 second timeout
         // Add retry for network issues
         validateStatus: (status) => status < 500, // Don't throw on 4xx/5xx
       });
       
-      // Log response for debugging
-      console.log('📦 Token response structure:', JSON.stringify(response.data, null, 2));
+      console.log('📦 Zoho token response received');
       
       // Handle different response formats:
       // 1. Simple format: { access_token: "..." }
@@ -791,6 +790,43 @@ class ZohoCRMClient {
       console.error('Error headers:', error.response?.headers);
       throw error;
     }
+  }
+
+  async listAttachments(moduleName, recordId, signal = undefined) {
+    const token = await this.getAccessToken();
+    if (!token) throw new Error('No Zoho access token available');
+
+    const datacenter = process.env.ZOHO_DATACENTER || 'com.au';
+    const response = await axios.get(
+      `https://www.zohoapis.${datacenter}/crm/v8/${encodeURIComponent(moduleName)}/${encodeURIComponent(recordId)}/Attachments`,
+      {
+        headers: { Authorization: `Zoho-oauthtoken ${token}` },
+        timeout: 30000,
+        signal,
+      },
+    );
+
+    return Array.isArray(response.data?.data) ? response.data.data : [];
+  }
+
+  async downloadAttachment(moduleName, recordId, attachmentId, { range, signal } = {}) {
+    const token = await this.getAccessToken();
+    if (!token) throw new Error('No Zoho access token available');
+
+    const datacenter = process.env.ZOHO_DATACENTER || 'com.au';
+    return axios.get(
+      `https://www.zohoapis.${datacenter}/crm/v8/${encodeURIComponent(moduleName)}/${encodeURIComponent(recordId)}/Attachments/${encodeURIComponent(attachmentId)}`,
+      {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          ...(range ? { Range: range } : {}),
+        },
+        responseType: 'stream',
+        timeout: 30000,
+        signal,
+        validateStatus: () => true,
+      },
+    );
   }
 }
 

@@ -129,14 +129,21 @@ export function getPreviewCookieName() {
   return PREVIEW_COOKIE;
 }
 
-export function getPreviewCookieOptions(request, matterId, resourceId) {
+export function getPreviewCookieOptionsForPath(request, path) {
   return {
     httpOnly: true,
     sameSite: "lax",
     secure: new URL(request.url).protocol === "https:",
     maxAge: PREVIEW_TOKEN_TTL_SECONDS,
-    path: `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(resourceId)}/preview`,
+    path,
   };
+}
+
+export function getPreviewCookieOptions(request, matterId, resourceId) {
+  return getPreviewCookieOptionsForPath(
+    request,
+    `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(resourceId)}/preview`,
+  );
 }
 
 export function buildPreviewHeaders({ filename, upstreamHeaders }) {

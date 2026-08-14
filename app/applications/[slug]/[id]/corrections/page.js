@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Save, Send, Trash2 } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { Download, ExternalLink, FileWarning, Loader2, Plus, Save, Send, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function statusClass(status) {
@@ -33,6 +34,7 @@ export default function CorrectionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savingCorrectionIds, setSavingCorrectionIds] = useState({});
   const [existingCorrections, setExistingCorrections] = useState([]);
+  const [documentPreview, setDocumentPreview] = useState({ status: "idle", fileName: "" });
   const [corrections, setCorrections] = useState([
     { id: '1', fieldName: '', details: '' }
   ]);
@@ -44,6 +46,45 @@ export default function CorrectionsPage() {
   const appId = params.id;
   const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
+  const documentPreviewUrl = `/api/matters/${encodeURIComponent(appId || "")}/document-preview`;
+
+  useEffect(() => {
+    if (!application?.zohoId) {
+      setDocumentPreview({ status: "failed", fileName: "" });
+      return undefined;
+    }
+
+    let active = true;
+    setDocumentPreview({ status: "loading", fileName: "" });
+
+    auth.currentUser?.getIdToken()
+      .then((idToken) => {
+        if (!idToken) throw new Error("Missing authentication token");
+        return fetch(documentPreviewUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+      })
+      .then(async (response) => {
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.error || "Preview unavailable");
+        if (active) setDocumentPreview({ status: "ready", fileName: result.fileName || "Document preview" });
+      })
+      .catch(() => {
+        if (active) setDocumentPreview({ status: "failed", fileName: "" });
+      });
+
+    return () => { active = false; };
+  }, [application?.zohoId, documentPreviewUrl]);
+
+  useEffect(() => {
+    if (documentPreview.status !== "ready") return undefined;
+    const timeout = setTimeout(() => setDocumentPreview((current) => (
+      current.status === "ready" ? { ...current, status: "failed" } : current
+    )), 15000);
+    return () => clearTimeout(timeout);
+  }, [documentPreview.status]);
 
   const fetchCorrections = useCallback(async () => {
     if (!application?.zohoId) {
@@ -271,10 +312,42 @@ export default function CorrectionsPage() {
               <Card className="border-gray-200">
                 <CardHeader>
                   <CardTitle className="text-lg">Document Preview</CardTitle>
+                  {documentPreview.fileName ? (
+                    <p className="text-sm text-gray-500">{documentPreview.fileName}</p>
+                  ) : null}
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                    Document previews are available from the Resources page.
+                  <div className="min-h-[32rem] overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    {documentPreview.status === "ready" ? (
+                      <iframe
+                        src={documentPreviewUrl}
+                        className="h-[32rem] w-full"
+                        title="Document preview"
+                        onLoad={() => setDocumentPreview((current) => ({ ...current, status: "loaded" }))}
+                        onError={() => setDocumentPreview((current) => ({ ...current, status: "failed" }))}
+                        data-testid="iframe-document-preview"
+                      />
+                    ) : documentPreview.status === "loading" ? (
+                      <div className="flex h-[32rem] items-center justify-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading document preview...
+                      </div>
+                    ) : (
+                      <div className="flex h-[32rem] flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600" role="alert">
+                        <FileWarning className="h-8 w-8 text-gray-400" />
+                        <p>We could not preview this PDF. You can open or download the uploaded document instead.</p>
+                        <div className="flex flex-wrap justify-center gap-3">
+                          <a href={documentPreviewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
+                            <ExternalLink className="h-4 w-4" />
+                            Open
+                          </a>
+                          <a href={documentPreviewUrl} download className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
+                            <Download className="h-4 w-4" />
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
