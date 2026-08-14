@@ -1,183 +1,112 @@
-import { Readable } from 'node:stream';
-import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/firebase-admin';
-import { requireClient, verifyAuth } from '@/lib/serverAuth';
-import { ZohoCRMClient } from '@/lib/zohoClient';
+import { NextResponse } from "next/server";
+import { getDb } from "@/lib/firebase-admin";
+import { requireClient, verifyAuth } from "@/lib/serverAuth";
 import {
-  buildPreviewHeaders,
   createPreviewToken,
   getPreviewCookieName,
-  getPreviewCookieOptionsForPath,
-  getPreviewTimeoutMs,
-  verifyPreviewToken,
-} from '@/lib/workdrivePreview';
+  getPreviewCookieOptions,
+  isDocumentReviewResource,
+  toWorkDriveDownloadUrl,
+} from "@/lib/workdrivePreview";
 
-export const runtime = 'nodejs';
-
-const MODULE = 'Matter_Documents';
-const PREVIEW_RESOURCE_ID = 'document-preview';
-const MATTER_DOCUMENT_FIELDS = [
-  'id',
-  'Matter_Document_Name',
-  'Document_Name',
-  'Name',
-  'Document_Status',
-  'File_Name',
-  'File_Size',
-  'document_Serial',
-].join(',');
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function errorResponse(error, status) {
-  return NextResponse.json({ success: false, error }, { status });
-}
-
-function getDocumentName(document = {}) {
-  return document.File_Name ||
-    document.file_name ||
-    document.Name ||
-    document.Matter_Document_Name ||
-    document.Document_Name ||
-    document.name ||
-    'document.pdf';
-}
-
-function getAttachmentName(attachment = {}) {
-  return attachment.File_Name || attachment.file_name || attachment.name || attachment.Name || '';
-}
-
-function isPdfName(name) {
-  return /\.pdf$/i.test(String(name || '').trim());
-}
-
-function isFileAttachment(attachment = {}) {
-  const type = String(attachment.Type || attachment.type || attachment.Attachment_Type || '').toLowerCase();
-  return !type || type === 'file';
-}
-
-function getAttachmentId(attachment = {}) {
-  const id = attachment.id || attachment.ID || attachment.attachment_id;
-  return typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id) ? id : null;
-}
-
-async function authenticate(request, matterId) {
-  if (request.headers.get('authorization')) {
-    const auth = await verifyAuth(request);
-    const clientCheck = requireClient(auth);
-    return clientCheck.authorized ? auth : { response: errorResponse(clientCheck.error, clientCheck.status) };
-  }
-
-  const token = request.cookies?.get(getPreviewCookieName())?.value;
-  const auth = verifyPreviewToken(token, { matterId, resourceId: PREVIEW_RESOURCE_ID });
-  return auth || { response: errorResponse('Authentication required', 401) };
-}
-
-async function resolveDocument(db, auth, matterId, zohoClient, signal) {
-  const applicationDoc = await db.collection('applications').doc(matterId).get();
-  if (!applicationDoc.exists) return { response: errorResponse('Matter not found', 404) };
-
-  const application = applicationDoc.data() || {};
-  if (auth.role !== 'admin' && application.userId !== auth.uid) {
-    return { response: errorResponse('Access denied', 403) };
-  }
-  if (!application.zohoId) return { response: errorResponse('Matter is not linked to Zoho', 404) };
-
-  const documents = await zohoClient.getRelatedRecords(
-    'Deals',
-    application.zohoId,
-    'Matter_Documents',
-    MATTER_DOCUMENT_FIELDS,
+  return NextResponse.json(
+    { success: false, error },
+    { status, headers: { "Cache-Control": "private, no-store" } },
   );
-
-  const pdfDocuments = documents.filter((item) => (
-    isPdfName(getDocumentName(item)) &&
-    String(item.Document_Status || '').toLowerCase() !== 'archived'
-  ));
-
-  for (const document of pdfDocuments) {
-    const attachments = await zohoClient.listAttachments(MODULE, document.id, signal);
-    const attachment = attachments.find((item) => (
-      isFileAttachment(item) &&
-      isPdfName(getAttachmentName(item) || getDocumentName(document))
-    ));
-    const attachmentId = getAttachmentId(attachment);
-    if (attachmentId) {
-      return {
-        documentId: document.id,
-        attachmentId,
-        fileName: getAttachmentName(attachment) || getDocumentName(document),
-      };
-    }
-  }
-
-  return { response: errorResponse('PDF attachment is not available', 404) };
 }
 
-function requestSignal(request) {
-  return AbortSignal.any([request.signal, AbortSignal.timeout(getPreviewTimeoutMs())]);
+function timestampMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-async function getResolvedRequest(request, matterId) {
-  const dbResult = getDb();
-  if (!dbResult.ok) return { response: errorResponse(dbResult.error, 500) };
-
-  const auth = await authenticate(request, matterId);
-  if (auth.response) return auth;
-
-  const signal = requestSignal(request);
-  try {
-    const resolved = await resolveDocument(dbResult.db, auth, matterId, new ZohoCRMClient(), signal);
-    return resolved.response ? resolved : { ...resolved, signal, auth };
-  } catch {
-    return { response: errorResponse('Unable to load document preview', 502) };
+function getStoredDownloadUrl(resource) {
+  for (const value of [
+    resource.downloadUrl,
+    resource.workDriveShareUrl,
+    resource.publicUrl,
+    resource.externalUrl,
+    resource.url,
+  ]) {
+    const downloadUrl = toWorkDriveDownloadUrl(value);
+    if (downloadUrl) return downloadUrl;
   }
+  return null;
+}
+
+async function resolveDocumentReviewResource(db, auth, matterId) {
+  const matterDoc = await db.collection("applications").doc(matterId).get();
+  if (!matterDoc.exists) return { response: errorResponse("Matter not found", 404) };
+
+  const matter = matterDoc.data() || {};
+  if (auth.role !== "admin" && matter.userId !== auth.uid) {
+    return { response: errorResponse("Access denied", 403) };
+  }
+
+  const snapshot = await matterDoc.ref.collection("resources").get();
+  const document = snapshot.docs
+    .map((doc) => ({ id: doc.id, resource: doc.data() || {} }))
+    .filter(({ resource }) => isDocumentReviewResource(resource))
+    .sort((left, right) => (
+      timestampMillis(right.resource.createdAt || right.resource.updatedAt) -
+      timestampMillis(left.resource.createdAt || left.resource.updatedAt)
+    ))[0];
+
+  if (!document) return { response: errorResponse("PDF review document is not available", 404) };
+
+  const downloadUrl = getStoredDownloadUrl(document.resource);
+  if (!downloadUrl) {
+    return { response: errorResponse("A WorkDrive preview is not available for this file", 502) };
+  }
+
+  return { ...document, downloadUrl };
 }
 
 export async function POST(request, { params }) {
   const { matterId } = await params;
-  if (!matterId) return errorResponse('Matter ID is required', 400);
+  if (!matterId) return errorResponse("Matter ID is required", 400);
 
-  const resolved = await getResolvedRequest(request, matterId);
-  if (resolved.response) return resolved.response;
+  const dbResult = getDb();
+  if (!dbResult.ok) return errorResponse(dbResult.error, 500);
 
-  const response = NextResponse.json({ success: true, fileName: resolved.fileName });
-  response.cookies.set(
-    getPreviewCookieName(),
-    createPreviewToken({ uid: resolved.auth?.uid, role: resolved.auth?.role, matterId, resourceId: PREVIEW_RESOURCE_ID }),
-    getPreviewCookieOptionsForPath(
-      request,
-      `/api/matters/${encodeURIComponent(matterId)}/document-preview`,
-    ),
-  );
-  return response;
-}
+  const auth = await verifyAuth(request);
+  const clientCheck = requireClient(auth);
+  if (!clientCheck.authorized) return errorResponse(clientCheck.error, clientCheck.status);
 
-export async function GET(request, { params }) {
-  const { matterId } = await params;
-  if (!matterId) return errorResponse('Matter ID is required', 400);
-
-  const resolved = await getResolvedRequest(request, matterId);
+  const resolved = await resolveDocumentReviewResource(dbResult.db, auth, matterId);
   if (resolved.response) return resolved.response;
 
   try {
-    const client = new ZohoCRMClient();
-    const upstream = await client.downloadAttachment(MODULE, resolved.documentId, resolved.attachmentId, {
-      range: request.headers.get('range'),
-      signal: resolved.signal,
+    const token = createPreviewToken({
+      uid: auth.uid,
+      role: auth.role,
+      matterId,
+      resourceId: resolved.id,
     });
-
-    if (![200, 206, 416].includes(upstream.status)) {
-      upstream.data?.destroy?.();
-      return errorResponse('Zoho attachment download failed', 502);
-    }
-
-    return new Response(Readable.toWeb(upstream.data), {
-      status: upstream.status,
-      headers: buildPreviewHeaders({
-        filename: resolved.fileName,
-        upstreamHeaders: new Headers(Object.entries(upstream.headers).map(([key, value]) => [key, String(value)])),
-      }),
+    const previewPath = `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(resolved.id)}/preview`;
+    const response = NextResponse.json({
+      success: true,
+      fileName: resolved.resource.fileName || resolved.resource.name || "Document preview",
+      previewUrl: previewPath,
+      downloadUrl: resolved.downloadUrl.toString(),
     });
+    response.headers.set("Cache-Control", "private, no-store");
+    response.cookies.set(
+      getPreviewCookieName(),
+      token,
+      getPreviewCookieOptions(request, matterId, resolved.id),
+    );
+    return response;
   } catch {
-    return errorResponse('Unable to preview document', 504);
+    return errorResponse("Unable to prepare document preview", 500);
   }
 }

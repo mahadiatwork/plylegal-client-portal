@@ -8,11 +8,12 @@ const EXTERNAL_HOSTS = new Set([
 const FILE_HOST_PATHS = new Map([
   ["files-accl.zohoexternal.com", /^\/public\/workdrive-external\/download\/[A-Za-z0-9_-]+$/],
   ["files.zohoexternal.com", /^\/public\/workdrive-external\/download\/[A-Za-z0-9_-]+$/],
+  ["files.zohopublic.com.au", /^\/public\/workdrive-public\/download\/[A-Za-z0-9_-]+$/],
 ]);
 
-const EXTERNAL_PATH = /^\/external\/([A-Za-z0-9_-]+)\/?$/;
+const EXTERNAL_PATH = /^\/external\/([A-Za-z0-9_-]+)(?:\/download)?\/?$/;
 const PREVIEW_COOKIE = "plylegal_workdrive_preview";
-const PREVIEW_TOKEN_TTL_SECONDS = 120;
+const PREVIEW_TOKEN_TTL_SECONDS = 60 * 60;
 
 function isPlainHttpsUrl(url) {
   return url.protocol === "https:" && !url.username && !url.password && !url.port;
@@ -50,18 +51,42 @@ export function validateWorkDriveRedirect(location) {
 }
 
 export function isPdfResource(resource) {
-  if (!resource || String(resource.kind || "").toLowerCase() !== "file") return false;
+  const resourceType = String(resource?.kind || resource?.type || "").toLowerCase();
+  if (!resource || resourceType !== "file") return false;
 
   const mimeType = String(resource.mimeType || "")
     .split(";", 1)[0]
     .trim()
     .toLowerCase();
 
-  return mimeType === "application/pdf" || (!mimeType && /\.pdf$/i.test(String(resource.name || "")));
+  const filename = resource.name || resource.fileName || resource.title || "";
+  return mimeType === "application/pdf" || (!mimeType && /\.pdf$/i.test(String(filename)));
 }
 
 export function isPreviewableResource(resource) {
   return String(resource?.status || "").toLowerCase() === "active" && isPdfResource(resource);
+}
+
+export function isDocumentReviewResource(resource) {
+  return String(resource?.source || "") === "documentReview" && isPreviewableResource(resource);
+}
+
+export function isValidRangeHeader(range) {
+  if (!range) return true;
+
+  const match = String(range).match(/^bytes=(\d*)-(\d*)$/);
+  if (!match || (!match[1] && !match[2])) return false;
+
+  const start = match[1] ? Number(match[1]) : null;
+  const end = match[2] ? Number(match[2]) : null;
+  if (
+    (start !== null && !Number.isSafeInteger(start)) ||
+    (end !== null && !Number.isSafeInteger(end))
+  ) {
+    return false;
+  }
+
+  return start === null || end === null || start <= end;
 }
 
 function getPreviewSecret() {

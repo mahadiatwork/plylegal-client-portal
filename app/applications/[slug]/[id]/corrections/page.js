@@ -34,7 +34,12 @@ export default function CorrectionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savingCorrectionIds, setSavingCorrectionIds] = useState({});
   const [existingCorrections, setExistingCorrections] = useState([]);
-  const [documentPreview, setDocumentPreview] = useState({ status: "idle", fileName: "" });
+  const [documentPreview, setDocumentPreview] = useState({
+    status: "idle",
+    fileName: "",
+    previewUrl: "",
+    downloadUrl: "",
+  });
   const [corrections, setCorrections] = useState([
     { id: '1', fieldName: '', details: '' }
   ]);
@@ -46,45 +51,47 @@ export default function CorrectionsPage() {
   const appId = params.id;
   const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
-  const documentPreviewUrl = `/api/matters/${encodeURIComponent(appId || "")}/document-preview`;
+  const documentPreviewBootstrapUrl = `/api/matters/${encodeURIComponent(appId || "")}/document-preview`;
 
   useEffect(() => {
-    if (!application?.zohoId) {
-      setDocumentPreview({ status: "failed", fileName: "" });
+    if (!application || !appId) {
       return undefined;
     }
 
     let active = true;
-    setDocumentPreview({ status: "loading", fileName: "" });
+    setDocumentPreview({ status: "loading", fileName: "", previewUrl: "", downloadUrl: "" });
 
-    auth.currentUser?.getIdToken()
-      .then((idToken) => {
+    async function preparePreview() {
+      try {
+        await auth.authStateReady?.();
+        const idToken = await auth.currentUser?.getIdToken();
         if (!idToken) throw new Error("Missing authentication token");
-        return fetch(documentPreviewUrl, {
+        const response = await fetch(documentPreviewBootstrapUrl, {
           method: "POST",
           credentials: "same-origin",
           headers: { Authorization: `Bearer ${idToken}` },
         });
-      })
-      .then(async (response) => {
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) throw new Error(result.error || "Preview unavailable");
-        if (active) setDocumentPreview({ status: "ready", fileName: result.fileName || "Document preview" });
-      })
-      .catch(() => {
-        if (active) setDocumentPreview({ status: "failed", fileName: "" });
-      });
+        if (active) {
+          setDocumentPreview({
+            status: "ready",
+            fileName: result.fileName || "Document preview",
+            previewUrl: result.previewUrl || "",
+            downloadUrl: result.downloadUrl || "",
+          });
+        }
+      } catch {
+        if (active) {
+          setDocumentPreview({ status: "failed", fileName: "", previewUrl: "", downloadUrl: "" });
+        }
+      }
+    }
+
+    preparePreview();
 
     return () => { active = false; };
-  }, [application?.zohoId, documentPreviewUrl]);
-
-  useEffect(() => {
-    if (documentPreview.status !== "ready") return undefined;
-    const timeout = setTimeout(() => setDocumentPreview((current) => (
-      current.status === "ready" ? { ...current, status: "failed" } : current
-    )), 15000);
-    return () => clearTimeout(timeout);
-  }, [documentPreview.status]);
+  }, [appId, application?.id, documentPreviewBootstrapUrl]);
 
   const fetchCorrections = useCallback(async () => {
     if (!application?.zohoId) {
@@ -310,20 +317,32 @@ export default function CorrectionsPage() {
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-gray-200">
-                <CardHeader>
-                  <CardTitle className="text-lg">Document Preview</CardTitle>
-                  {documentPreview.fileName ? (
-                    <p className="text-sm text-gray-500">{documentPreview.fileName}</p>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg">Document Preview</CardTitle>
+                    {documentPreview.fileName ? (
+                      <p className="mt-1 text-sm text-gray-500">{documentPreview.fileName}</p>
+                    ) : null}
+                  </div>
+                  {documentPreview.downloadUrl ? (
+                    <a
+                      href={documentPreview.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-[#4F726B] underline"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </a>
                   ) : null}
                 </CardHeader>
                 <CardContent>
                   <div className="min-h-[32rem] overflow-hidden rounded-lg border border-gray-200 bg-white">
                     {documentPreview.status === "ready" ? (
                       <iframe
-                        src={documentPreviewUrl}
+                        src={documentPreview.previewUrl}
                         className="h-[32rem] w-full"
                         title="Document preview"
-                        onLoad={() => setDocumentPreview((current) => ({ ...current, status: "loaded" }))}
                         onError={() => setDocumentPreview((current) => ({ ...current, status: "failed" }))}
                         data-testid="iframe-document-preview"
                       />
@@ -337,14 +356,18 @@ export default function CorrectionsPage() {
                         <FileWarning className="h-8 w-8 text-gray-400" />
                         <p>We could not preview this PDF. You can open or download the uploaded document instead.</p>
                         <div className="flex flex-wrap justify-center gap-3">
-                          <a href={documentPreviewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
-                            <ExternalLink className="h-4 w-4" />
-                            Open
-                          </a>
-                          <a href={documentPreviewUrl} download className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
-                            <Download className="h-4 w-4" />
-                            Download
-                          </a>
+                          {documentPreview.previewUrl ? (
+                            <a href={documentPreview.previewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
+                              <ExternalLink className="h-4 w-4" />
+                              Open
+                            </a>
+                          ) : null}
+                          {documentPreview.downloadUrl ? (
+                            <a href={documentPreview.downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
+                              <Download className="h-4 w-4" />
+                              Download
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     )}

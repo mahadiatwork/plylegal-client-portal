@@ -38,8 +38,6 @@ function initializeAdminSDK() {
       const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
       if (serviceAccountKey) {
-        console.log('🔑 Raw service account key length:', serviceAccountKey.length);
-        console.log('🔑 Raw service account key starts with:', serviceAccountKey.substring(0, 50));
         try {
           serviceAccount = JSON.parse(serviceAccountKey);
           // Fix for escaped newlines in private key
@@ -64,7 +62,6 @@ function initializeAdminSDK() {
             }
             
             serviceAccount.private_key = key;
-            console.log('🔑 Fixed private key length:', serviceAccount.private_key.length);
           }
           console.log('✅ Found Firebase service account credentials');
         } catch (parseError) {

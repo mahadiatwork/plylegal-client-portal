@@ -792,42 +792,6 @@ class ZohoCRMClient {
     }
   }
 
-  async listAttachments(moduleName, recordId, signal = undefined) {
-    const token = await this.getAccessToken();
-    if (!token) throw new Error('No Zoho access token available');
-
-    const datacenter = process.env.ZOHO_DATACENTER || 'com.au';
-    const response = await axios.get(
-      `https://www.zohoapis.${datacenter}/crm/v8/${encodeURIComponent(moduleName)}/${encodeURIComponent(recordId)}/Attachments`,
-      {
-        headers: { Authorization: `Zoho-oauthtoken ${token}` },
-        timeout: 30000,
-        signal,
-      },
-    );
-
-    return Array.isArray(response.data?.data) ? response.data.data : [];
-  }
-
-  async downloadAttachment(moduleName, recordId, attachmentId, { range, signal } = {}) {
-    const token = await this.getAccessToken();
-    if (!token) throw new Error('No Zoho access token available');
-
-    const datacenter = process.env.ZOHO_DATACENTER || 'com.au';
-    return axios.get(
-      `https://www.zohoapis.${datacenter}/crm/v8/${encodeURIComponent(moduleName)}/${encodeURIComponent(recordId)}/Attachments/${encodeURIComponent(attachmentId)}`,
-      {
-        headers: {
-          Authorization: `Zoho-oauthtoken ${token}`,
-          ...(range ? { Range: range } : {}),
-        },
-        responseType: 'stream',
-        timeout: 30000,
-        signal,
-        validateStatus: () => true,
-      },
-    );
-  }
 }
 
 // Export both the class and a singleton instance
