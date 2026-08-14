@@ -41,7 +41,7 @@ export default function CorrectionsPage() {
     downloadUrl: "",
   });
   const [corrections, setCorrections] = useState([
-    { id: '1', fieldName: '', details: '' }
+    { id: '1', fieldName: '', pageNumber: '', questionNumber: '', details: '' }
   ]);
   const { toast } = useToast();
   const nextIdRef = useRef(2);
@@ -158,7 +158,13 @@ export default function CorrectionsPage() {
   const addCorrection = () => {
     const newId = nextIdRef.current.toString();
     nextIdRef.current += 1;
-    setCorrections([...corrections, { id: newId, fieldName: '', details: '' }]);
+    setCorrections([...corrections, {
+      id: newId,
+      fieldName: '',
+      pageNumber: '',
+      questionNumber: '',
+      details: '',
+    }]);
   };
   
   const removeCorrection = (id) => {
@@ -202,6 +208,7 @@ export default function CorrectionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           correctionId: correction.id,
+          detailId: correction.detailId,
           issueDescription: correction.issueDescription,
         }),
       });
@@ -250,6 +257,7 @@ export default function CorrectionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dealId: application.zohoId,
+          subclass: slug,
           corrections: validCorrections,
         }),
       });
@@ -264,7 +272,13 @@ export default function CorrectionsPage() {
       });
 
       nextIdRef.current = 2;
-      setCorrections([{ id: '1', fieldName: '', details: '' }]);
+      setCorrections([{
+        id: '1',
+        fieldName: '',
+        pageNumber: '',
+        questionNumber: '',
+        details: '',
+      }]);
       await fetchCorrections();
     } catch (error) {
       console.error("Error submitting corrections:", error);
@@ -408,6 +422,14 @@ export default function CorrectionsPage() {
                             {correction.name && correction.name !== correction.fieldName && (
                               <p className="text-xs text-gray-500">{correction.name}</p>
                             )}
+                            {(correction.pageNumber || correction.questionNumber) && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                {[
+                                  correction.pageNumber ? `Page ${correction.pageNumber}` : null,
+                                  correction.questionNumber ? `Question ${correction.questionNumber}` : null,
+                                ].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
                           </div>
                           <Badge variant="outline" className={statusClass(correction.status)}>
                             {correction.status || "No Status"}
@@ -482,6 +504,36 @@ export default function CorrectionsPage() {
                           onChange={(e) => updateCorrection(correction.id, 'fieldName', e.target.value)}
                           data-testid={`input-field-name-${correction.id}`}
                         />
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor={`pageNumber-${correction.id}`} className="text-sm text-gray-700">
+                            Page No <span className="text-gray-400">(optional)</span>
+                          </Label>
+                          <Input
+                            id={`pageNumber-${correction.id}`}
+                            type="text"
+                            placeholder="e.g., 4"
+                            value={correction.pageNumber}
+                            onChange={(e) => updateCorrection(correction.id, 'pageNumber', e.target.value)}
+                            data-testid={`input-page-number-${correction.id}`}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`questionNumber-${correction.id}`} className="text-sm text-gray-700">
+                            Question No <span className="text-gray-400">(optional)</span>
+                          </Label>
+                          <Input
+                            id={`questionNumber-${correction.id}`}
+                            type="text"
+                            placeholder="e.g., 12A"
+                            value={correction.questionNumber}
+                            onChange={(e) => updateCorrection(correction.id, 'questionNumber', e.target.value)}
+                            data-testid={`input-question-number-${correction.id}`}
+                          />
+                        </div>
                       </div>
                       
                       <div className="space-y-2">
