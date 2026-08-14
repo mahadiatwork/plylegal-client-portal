@@ -52,6 +52,9 @@ export default function CorrectionsPage() {
   const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
   const documentPreviewBootstrapUrl = `/api/matters/${encodeURIComponent(appId || "")}/document-preview`;
+  const documentViewerUrl = documentPreview.previewUrl
+    ? `${documentPreview.previewUrl}#page=1&zoom=100&navpanes=0`
+    : "";
 
   useEffect(() => {
     if (!application || !appId) {
@@ -314,8 +317,8 @@ export default function CorrectionsPage() {
         </div>
         
         <main className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="mx-auto max-w-[100rem]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(26rem,1fr)]">
               <Card className="border-gray-200">
                 <CardHeader className="flex flex-row items-start justify-between gap-4">
                   <div>
@@ -337,27 +340,27 @@ export default function CorrectionsPage() {
                   ) : null}
                 </CardHeader>
                 <CardContent>
-                  <div className="min-h-[32rem] overflow-hidden rounded-lg border border-gray-200 bg-white">
+                  <div className="h-[72vh] min-h-[42rem] max-h-[58rem] overflow-hidden rounded-lg border border-gray-200 bg-white">
                     {documentPreview.status === "ready" ? (
                       <iframe
-                        src={documentPreview.previewUrl}
-                        className="h-[32rem] w-full"
+                        src={documentViewerUrl}
+                        className="h-full w-full"
                         title="Document preview"
                         onError={() => setDocumentPreview((current) => ({ ...current, status: "failed" }))}
                         data-testid="iframe-document-preview"
                       />
                     ) : documentPreview.status === "loading" ? (
-                      <div className="flex h-[32rem] items-center justify-center gap-2 text-sm text-gray-500">
+                      <div className="flex h-full items-center justify-center gap-2 text-sm text-gray-500">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading document preview...
                       </div>
                     ) : (
-                      <div className="flex h-[32rem] flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600" role="alert">
+                      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600" role="alert">
                         <FileWarning className="h-8 w-8 text-gray-400" />
                         <p>We could not preview this PDF. You can open or download the uploaded document instead.</p>
                         <div className="flex flex-wrap justify-center gap-3">
                           {documentPreview.previewUrl ? (
-                            <a href={documentPreview.previewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
+                            <a href={documentViewerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
                               <ExternalLink className="h-4 w-4" />
                               Open
                             </a>
