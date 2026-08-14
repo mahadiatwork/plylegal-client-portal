@@ -16,14 +16,13 @@ function getRecordId(result) {
   return result?.details?.id || result?.id || null;
 }
 
-function normalizeCorrection(record = {}) {
-  const detail = Array.isArray(record.Correction_Details)
-    ? record.Correction_Details[0] || {}
-    : {};
+function normalizeCorrection(record = {}, detail = {}) {
+  const correctionId = record.id || getRecordId(record);
   const fieldNameFromName = String(record.Name || '').replace(/^\d{3}\s+-\s+/, '');
 
   return {
-    id: record.id || getRecordId(record),
+    id: detail.id || correctionId,
+    correctionId,
     detailId: detail.id || '',
     name: record.Name || '',
     fieldName: record.Field_Name || fieldNameFromName,
@@ -37,6 +36,16 @@ function normalizeCorrection(record = {}) {
     createdTime: record.Created_Time || '',
     modifiedTime: record.Modified_Time || '',
   };
+}
+
+function normalizeCorrections(record = {}) {
+  const details = Array.isArray(record.Correction_Details)
+    ? record.Correction_Details
+    : [];
+
+  return details.length
+    ? details.map((detail) => normalizeCorrection(record, detail))
+    : [normalizeCorrection(record)];
 }
 
 async function loadCorrectionDetails(zohoClient, record) {
@@ -71,7 +80,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      corrections: corrections.map(normalizeCorrection),
+      corrections: corrections.flatMap(normalizeCorrections),
     });
   } catch (error) {
     console.error('Error fetching corrections:', error.message);
@@ -117,23 +126,17 @@ export async function POST(request) {
     }
 
     const zohoClient = new ZohoCRMClient();
-    const created = [];
-
-    for (const [index, correction] of validCorrections.entries()) {
-      const record = buildCorrectionRecord({
-        dealId,
-        subclass: subclassNumber,
-        correction,
-        number: index + 1,
-      });
-      const result = await zohoClient.createRecord(MODULE, record);
-
-      created.push(normalizeCorrection({
-        id: getRecordId(result),
-        ...record,
-        Status: CORRECTION_REQUESTED,
-      }));
-    }
+    const record = buildCorrectionRecord({
+      dealId,
+      subclass: subclassNumber,
+      corrections: validCorrections,
+    });
+    const result = await zohoClient.createRecord(MODULE, record);
+    const created = normalizeCorrections({
+      id: getRecordId(result),
+      ...record,
+      Status: CORRECTION_REQUESTED,
+    });
 
     return NextResponse.json({
       success: true,
@@ -186,10 +189,9 @@ export async function PATCH(request) {
       success: true,
       correction: normalizeCorrection({
         id: getRecordId(result) || correctionId,
-        Correction_Details: [{
-          id: detailId,
-          Details_of_Correction: description,
-        }],
+      }, {
+        id: detailId,
+        Details_of_Correction: description,
       }),
     });
   } catch (error) {

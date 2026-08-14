@@ -207,7 +207,7 @@ export default function CorrectionsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          correctionId: correction.id,
+          correctionId: correction.correctionId || correction.id,
           detailId: correction.detailId,
           issueDescription: correction.issueDescription,
         }),
