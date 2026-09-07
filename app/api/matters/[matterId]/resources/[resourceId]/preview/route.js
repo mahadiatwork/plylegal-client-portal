@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/firebase-admin";
 import { requireClient, verifyAuth } from "@/lib/serverAuth";
 import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import {
@@ -165,6 +164,7 @@ async function preview(request, context) {
 
   let resolved = resolveTokenBoundResource(auth);
   if (!resolved) {
+    const { getDb } = await import("@/lib/firebase-admin");
     const dbResult = getDb();
     if (!dbResult.ok) return errorResponse(dbResult.error, 500);
     resolved = await resolveAuthorizedResource(dbResult.db, auth, matterId, resourceId);
@@ -237,6 +237,7 @@ export async function POST(request, context) {
   const { matterId, resourceId } = await context.params;
   if (!matterId || !resourceId) return errorResponse("Matter and resource are required", 400);
 
+  const { getDb } = await import("@/lib/firebase-admin");
   const dbResult = getDb();
   if (!dbResult.ok) return errorResponse(dbResult.error, 500);
 

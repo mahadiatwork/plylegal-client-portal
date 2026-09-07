@@ -10,6 +10,7 @@
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { parseFirebaseServiceAccount } from './firebaseServiceAccount.js';
 
 let adminApp = null;
 let adminAuth = null;
@@ -24,7 +25,7 @@ function initializeAdminSDK() {
 
   try {
     // Check if already initialized
-    if (!admin.apps.length) {
+    if (!admin.apps.some((app) => app.name === '[DEFAULT]')) {
       console.log('🔧 Initializing Firebase Admin SDK...');
 
       const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -39,30 +40,7 @@ function initializeAdminSDK() {
 
       if (serviceAccountKey) {
         try {
-          serviceAccount = JSON.parse(serviceAccountKey);
-          // Fix for escaped newlines in private key
-          if (serviceAccount && serviceAccount.private_key) {
-            let key = serviceAccount.private_key;
-            
-            // 1. Replace literal \n string with actual newline
-            key = key.replace(/\\n/g, '\n');
-            
-            // 2. If it's still missing newlines in the body, add them (every 64 chars)
-            // But first, normalize by removing existing internal newlines if any
-            const header = '-----BEGIN PRIVATE KEY-----';
-            const footer = '-----END PRIVATE KEY-----';
-            
-            if (key.includes(header) && key.includes(footer)) {
-              let body = key.split(header)[1].split(footer)[0].replace(/\s+/g, '');
-              let formattedBody = '';
-              for (let i = 0; i < body.length; i += 64) {
-                formattedBody += body.substring(i, i + 64) + '\n';
-              }
-              key = `${header}\n${formattedBody}${footer}\n`;
-            }
-            
-            serviceAccount.private_key = key;
-          }
+          serviceAccount = parseFirebaseServiceAccount(serviceAccountKey);
           console.log('✅ Found Firebase service account credentials');
         } catch (parseError) {
           console.warn('⚠️ Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', parseError.message);
@@ -98,9 +76,9 @@ function initializeAdminSDK() {
 
     return { success: true, error: null };
   } catch (error) {
-    console.error('❌ Firebase Admin initialization failed:', error.message);
-    initError = error.message;
-    return { success: false, error: error.message };
+    initError = 'Firebase Admin initialization failed. Check the server service-account configuration.';
+    console.error(initError);
+    return { success: false, error: initError };
   }
 }
 

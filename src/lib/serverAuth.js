@@ -1,4 +1,4 @@
-import { getAdminAuth, getDb } from '@/lib/firebase-admin';
+import { getFirebaseIdentityAuth } from './firebaseIdentity.js';
 
 export function getBearerToken(request) {
   const authHeader = request.headers.get('authorization');
@@ -15,14 +15,8 @@ export async function verifyFirebaseIdentity(request) {
     return { authenticated: false, error: 'Missing or invalid Authorization header' };
   }
 
-  const authResult = getAdminAuth();
-  if (!authResult.ok) {
-    console.error('verifyFirebaseIdentity: Firebase Auth unavailable:', authResult.error);
-    return { authenticated: false, error: 'Server configuration error' };
-  }
-
   try {
-    const decoded = await authResult.adminAuth.verifyIdToken(idToken);
+    const decoded = await getFirebaseIdentityAuth().verifyIdToken(idToken);
     return {
       authenticated: true,
       uid: decoded.uid,
@@ -31,7 +25,7 @@ export async function verifyFirebaseIdentity(request) {
       profile: null,
     };
   } catch (error) {
-    console.error('Firebase ID token verification failed:', error.message);
+    console.error('Firebase ID token verification failed:', error.code || 'identity-configuration-error');
     return { authenticated: false, error: 'Invalid or expired token' };
   }
 }
@@ -41,6 +35,7 @@ export async function verifyAuth(request) {
   if (!identity.authenticated) return identity;
 
   try {
+    const { getDb } = await import('./firebase-admin.js');
     const dbResult = getDb();
     if (!dbResult.ok) {
       console.error('verifyAuth: Firestore unavailable:', dbResult.error);

@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { auth } from "@/lib/firebase";
-import { Download, ExternalLink, FileWarning, Loader2, Plus, Save, Send, Trash2 } from "lucide-react";
+import { Download, ExternalLink, FileWarning, Loader2, Plus, RotateCw, Save, Send, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function statusClass(status) {
@@ -75,11 +75,13 @@ export default function CorrectionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savingCorrectionIds, setSavingCorrectionIds] = useState({});
   const [existingCorrections, setExistingCorrections] = useState([]);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
   const [documentPreview, setDocumentPreview] = useState({
     status: "idle",
     fileName: "",
     previewUrl: "",
     downloadUrl: "",
+    error: "",
   });
   const [corrections, setCorrections] = useState([
     { id: '1', fieldName: '', pageNumber: '', questionNumber: '', details: '' }
@@ -106,13 +108,13 @@ export default function CorrectionsPage() {
     }
 
     let active = true;
-    setDocumentPreview({ status: "loading", fileName: "", previewUrl: "", downloadUrl: "" });
+    setDocumentPreview({ status: "loading", fileName: "", previewUrl: "", downloadUrl: "", error: "" });
 
     async function preparePreview() {
       try {
         await auth.authStateReady?.();
-        const idToken = await auth.currentUser?.getIdToken();
-        if (!idToken) throw new Error("Missing authentication token");
+        const idToken = await auth.currentUser?.getIdToken(previewAttempt > 0);
+        if (!idToken) throw new Error("Please sign in again to view this document.");
         const response = await fetch(documentPreviewBootstrapUrl, {
           method: "POST",
           credentials: "same-origin",
@@ -126,11 +128,15 @@ export default function CorrectionsPage() {
             fileName: result.fileName || "Document preview",
             previewUrl: result.previewUrl || "",
             downloadUrl: result.downloadUrl || "",
+            error: "",
           });
         }
-      } catch {
+      } catch (error) {
         if (active) {
-          setDocumentPreview({ status: "failed", fileName: "", previewUrl: "", downloadUrl: "" });
+          setDocumentPreview({
+            status: "failed", fileName: "", previewUrl: "", downloadUrl: "",
+            error: error.message || "Unable to load the document. Please try again.",
+          });
         }
       }
     }
@@ -138,7 +144,7 @@ export default function CorrectionsPage() {
     preparePreview();
 
     return () => { active = false; };
-  }, [appId, application?.id, documentPreviewBootstrapUrl]);
+  }, [appId, application?.id, documentPreviewBootstrapUrl, previewAttempt]);
 
   const fetchCorrections = useCallback(async () => {
     if (!application?.zohoId) {
@@ -417,8 +423,12 @@ export default function CorrectionsPage() {
                     ) : (
                       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600" role="alert">
                         <FileWarning className="h-8 w-8 text-gray-400" />
-                        <p>We could not preview this PDF. You can open or download the uploaded document instead.</p>
+                        <p>{documentPreview.error || "We could not preview this PDF. Please try again or open the document below."}</p>
                         <div className="flex flex-wrap justify-center gap-3">
+                          <Button type="button" variant="outline" onClick={() => setPreviewAttempt((attempt) => attempt + 1)}>
+                            <RotateCw className="mr-2 h-4 w-4" />
+                            Retry preview
+                          </Button>
                           {documentPreview.previewUrl ? (
                             <a href={documentViewerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-medium text-[#4F726B] underline">
                               <ExternalLink className="h-4 w-4" />
