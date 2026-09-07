@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/firebase-admin";
-import { requireClient, verifyAuth } from "@/lib/serverAuth";
+import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
+import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { extractSubclass, getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
@@ -27,7 +27,7 @@ function serializeTimestamp(value) {
 }
 
 function normalizeResource(docSnap) {
-  const data = docSnap.data() || {};
+  const data = docSnap.data;
   const type = String(data.type || "link").toLowerCase();
   const scope = String(data.scope || "shared").toLowerCase();
   const targetTags = getResourceTargetTags(data);
@@ -175,13 +175,7 @@ function resourceMatchesApplication(resource, applicationTargets) {
 
 export async function GET(request) {
   try {
-    const dbResult = getDb();
-    if (!dbResult.ok) {
-      return NextResponse.json({ success: false, error: dbResult.error }, { status: 500 });
-    }
-    const db = dbResult.db;
-
-    const auth = await verifyAuth(request);
+    const auth = await verifyFirebaseIdentity(request);
     const clientCheck = requireClient(auth);
     if (!clientCheck.authorized) {
       return NextResponse.json({ success: false, error: clientCheck.error }, { status: clientCheck.status });
@@ -189,36 +183,24 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get("applicationId");
+    const client = createFirestoreClient(getBearerToken(request), request.signal);
     let applicationTargets = null;
 
     if (applicationId) {
-      const appDoc = await db.collection("applications").doc(applicationId).get();
-
-      if (!appDoc.exists) {
-        return NextResponse.json({ success: false, error: "Application not found" }, { status: 404 });
-      }
-
-      const appData = appDoc.data();
-      if (auth.role !== "admin" && appData.userId !== auth.uid) {
-        return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
-      }
-
+      const appData = await getOwnedApplication(client, auth, applicationId);
       applicationTargets = getApplicationTargetSet(appData);
     }
 
-    const snapshot = await db.collection("resources").get();
-    const resources = snapshot.docs
+    const documents = await client.getActiveDocuments("resources");
+    const resources = documents
       .map(normalizeResource)
       .filter(isVisibleSharedResource)
       .filter((resource) => resourceMatchesApplication(resource, applicationTargets))
       .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
 
-    return NextResponse.json({ success: true, resources });
+    return NextResponse.json({ success: true, resources }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    console.error("Error fetching shared resources:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch shared resources" },
-      { status: 500 }
-    );
+    console.error("[resources/shared] Load failed", { status: error.status || 502, code: error.name });
+    return resourceErrorResponse(error);
   }
 }

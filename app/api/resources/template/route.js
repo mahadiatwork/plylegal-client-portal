@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/firebase-admin";
-import { requireClient, verifyAuth } from "@/lib/serverAuth";
+import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
+import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 
 const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", PROTECTION_PUBLIC_SLUG, "482", "186"]);
@@ -41,13 +41,7 @@ function normalizeStatus(value, fallback = "draft") {
 
 export async function GET(request) {
   try {
-    const dbResult = getDb();
-    if (!dbResult.ok) {
-      return NextResponse.json({ success: false, error: dbResult.error }, { status: 500 });
-    }
-    const db = dbResult.db;
-
-    const auth = await verifyAuth(request);
+    const auth = await verifyFirebaseIdentity(request);
     const clientCheck = requireClient(auth);
     if (!clientCheck.authorized) {
       return NextResponse.json({ success: false, error: clientCheck.error }, { status: clientCheck.status });
@@ -60,18 +54,9 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: "applicationId is required" }, { status: 400 });
     }
 
-    const appDoc = await db.collection("applications").doc(applicationId).get();
-    if (!appDoc.exists) {
-      return NextResponse.json({ success: false, error: "Application not found" }, { status: 404 });
-    }
-
-    const appData = appDoc.data();
-    if (auth.role !== "admin" && appData.userId !== auth.uid) {
-      return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
-    }
-
-    const questionnaireDoc = await appDoc.ref.collection("data").doc("questionnaire").get();
-    const questionnaireData = questionnaireDoc.exists ? questionnaireDoc.data() || {} : {};
+    const client = createFirestoreClient(getBearerToken(request), request.signal);
+    const appData = await getOwnedApplication(client, auth, applicationId);
+    const questionnaireData = await client.getDocument(`applications/${applicationId}/data/questionnaire`) || {};
     const visaSlug = getApplicationSlug({
       ...appData,
       questionnaireVisaContext: questionnaireData.visaContext,
@@ -88,15 +73,15 @@ export async function GET(request) {
       : visaSlug === PROTECTION_PUBLIC_SLUG
         ? "protection"
         : visaSlug;
-    const templateDoc = await db.collection("resourceTemplates").doc(templateSlug).get();
-    if (!templateDoc.exists) {
+    const [templateDoc] = await client.getActiveDocuments("resourceTemplates", templateSlug);
+    if (!templateDoc) {
       return NextResponse.json(
         { success: false, error: "No resource template found for this visa type" },
         { status: 404 }
       );
     }
 
-    const templateData = templateDoc.data() || {};
+    const templateData = templateDoc.data;
     const templateStatus = normalizeStatus(templateData.status);
     if (templateStatus !== "active") {
       return NextResponse.json(
@@ -105,15 +90,11 @@ export async function GET(request) {
       );
     }
 
-    const itemsSnapshot = await db
-      .collection("resourceTemplates")
-      .doc(templateSlug)
-      .collection("items")
-      .get();
+    const itemDocuments = await client.getActiveDocuments(`resourceTemplates/${templateSlug}/items`);
 
-    const items = itemsSnapshot.docs
+    const items = itemDocuments
       .map((doc) => {
-        const data = doc.data() || {};
+        const data = doc.data;
         return {
           id: doc.id,
           parentId: data.parentId || null,
@@ -151,12 +132,9 @@ export async function GET(request) {
         updatedAt: serializeTimestamp(templateData.updatedAt),
       },
       items,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    console.error("Error fetching resource template:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch resource template" },
-      { status: 500 }
-    );
+    console.error("[resources/template] Load failed", { status: error.status || 502, code: error.name });
+    return resourceErrorResponse(error);
   }
 }
