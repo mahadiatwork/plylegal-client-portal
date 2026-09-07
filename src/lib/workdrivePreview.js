@@ -116,14 +116,32 @@ function signToken(payload) {
   return `${encodedPayload}.${signature}`;
 }
 
-export function createPreviewToken({ uid, role, matterId, resourceId }) {
+export function createPreviewToken({
+  uid,
+  role,
+  matterId,
+  resourceId,
+  downloadUrl,
+  fileName,
+  fileSize,
+}) {
   if (!getPreviewSecret()) throw new Error("Preview token secret is not configured");
+
+  if (downloadUrl !== undefined && (typeof downloadUrl !== "string" || downloadUrl.length > 2048)) {
+    throw new Error("Preview download URL is invalid");
+  }
+  if (fileName !== undefined && (typeof fileName !== "string" || fileName.length > 255)) {
+    throw new Error("Preview filename is invalid");
+  }
 
   return signToken({
     uid,
     role,
     matterId,
     resourceId,
+    ...(downloadUrl ? { downloadUrl } : {}),
+    ...(fileName ? { fileName } : {}),
+    ...(fileSize !== undefined ? { fileSize } : {}),
     exp: Math.floor(Date.now() / 1000) + PREVIEW_TOKEN_TTL_SECONDS,
   });
 }
@@ -153,10 +171,20 @@ export function verifyPreviewToken(token, { matterId, resourceId }) {
       return null;
     }
 
+    if (
+      (payload.downloadUrl !== undefined && typeof payload.downloadUrl !== "string") ||
+      (payload.fileName !== undefined && typeof payload.fileName !== "string")
+    ) {
+      return null;
+    }
+
     return {
       authenticated: true,
       uid: payload.uid,
       role: payload.role || "client",
+      downloadUrl: payload.downloadUrl || "",
+      fileName: payload.fileName || "",
+      fileSize: payload.fileSize,
     };
   } catch {
     return null;

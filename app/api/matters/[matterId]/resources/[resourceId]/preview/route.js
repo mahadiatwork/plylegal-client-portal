@@ -121,6 +121,23 @@ function resourceFilename(resource) {
   return resource.fileName || resource.name || resource.title || "document.pdf";
 }
 
+function resolveTokenBoundResource(auth) {
+  if (!auth.downloadUrl) return null;
+
+  const downloadUrl = toWorkDriveDownloadUrl(auth.downloadUrl);
+  if (!downloadUrl) {
+    return { response: errorResponse("Preview authorization is invalid", 401) };
+  }
+
+  return {
+    downloadUrl,
+    resource: {
+      fileName: auth.fileName || "document.pdf",
+      fileSize: auth.fileSize,
+    },
+  };
+}
+
 function rangeNotSatisfiable(resource, contentRange = null) {
   const size = Number(resource.fileSize || resource.size);
   const upstreamHeaders = new Headers();
@@ -143,13 +160,15 @@ async function preview(request, context) {
   const { matterId, resourceId } = await context.params;
   if (!matterId || !resourceId) return errorResponse("Matter and resource are required", 400);
 
-  const dbResult = getDb();
-  if (!dbResult.ok) return errorResponse(dbResult.error, 500);
-
   const auth = await authenticatePreviewRequest(request, matterId, resourceId);
   if (auth.response) return auth.response;
 
-  const resolved = await resolveAuthorizedResource(dbResult.db, auth, matterId, resourceId);
+  let resolved = resolveTokenBoundResource(auth);
+  if (!resolved) {
+    const dbResult = getDb();
+    if (!dbResult.ok) return errorResponse(dbResult.error, 500);
+    resolved = await resolveAuthorizedResource(dbResult.db, auth, matterId, resourceId);
+  }
   if (resolved.response) return resolved.response;
 
   const range = request.headers.get("range");
@@ -228,7 +247,15 @@ export async function POST(request, context) {
   if (resolved.response) return resolved.response;
 
   try {
-    const token = createPreviewToken({ uid: auth.uid, role: auth.role, matterId, resourceId });
+    const token = createPreviewToken({
+      uid: auth.uid,
+      role: auth.role,
+      matterId,
+      resourceId,
+      downloadUrl: resolved.downloadUrl.toString(),
+      fileName: resourceFilename(resolved.resource),
+      fileSize: resolved.resource.fileSize || resolved.resource.size,
+    });
     const path = `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(resourceId)}/preview`;
     const response = NextResponse.json({
       success: true,

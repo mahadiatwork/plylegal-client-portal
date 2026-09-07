@@ -1,27 +1,46 @@
 import { getAdminAuth, getDb } from '@/lib/firebase-admin';
 
-export async function verifyAuth(request) {
+export function getBearerToken(request) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { authenticated: false, error: 'Missing or invalid Authorization header' };
+    return null;
   }
 
-  const idToken = authHeader.split('Bearer ')[1];
+  return authHeader.slice('Bearer '.length).trim() || null;
+}
+
+export async function verifyFirebaseIdentity(request) {
+  const idToken = getBearerToken(request);
   if (!idToken) {
-    return { authenticated: false, error: 'Missing token' };
+    return { authenticated: false, error: 'Missing or invalid Authorization header' };
   }
 
   const authResult = getAdminAuth();
   if (!authResult.ok) {
-    console.error('verifyAuth: Firebase Auth unavailable:', authResult.error);
+    console.error('verifyFirebaseIdentity: Firebase Auth unavailable:', authResult.error);
     return { authenticated: false, error: 'Server configuration error' };
   }
-  const adminAuth = authResult.adminAuth;
 
   try {
-    const decoded = await adminAuth.verifyIdToken(idToken);
-    const uid = decoded.uid;
+    const decoded = await authResult.adminAuth.verifyIdToken(idToken);
+    return {
+      authenticated: true,
+      uid: decoded.uid,
+      email: decoded.email,
+      role: 'client',
+      profile: null,
+    };
+  } catch (error) {
+    console.error('Firebase ID token verification failed:', error.message);
+    return { authenticated: false, error: 'Invalid or expired token' };
+  }
+}
 
+export async function verifyAuth(request) {
+  const identity = await verifyFirebaseIdentity(request);
+  if (!identity.authenticated) return identity;
+
+  try {
     const dbResult = getDb();
     if (!dbResult.ok) {
       console.error('verifyAuth: Firestore unavailable:', dbResult.error);
@@ -29,20 +48,18 @@ export async function verifyAuth(request) {
     }
     const db = dbResult.db;
 
-    const userDoc = await db.collection('users').doc(uid).get();
+    const userDoc = await db.collection('users').doc(identity.uid).get();
     const profile = userDoc.exists ? userDoc.data() : null;
     const role = profile?.role || 'client';
 
     return {
-      authenticated: true,
-      uid,
-      email: decoded.email,
+      ...identity,
       role,
       profile,
     };
   } catch (error) {
-    console.error('Token verification failed:', error.message);
-    return { authenticated: false, error: 'Invalid or expired token' };
+    console.error('Firebase user profile lookup failed:', error.message);
+    return { authenticated: false, error: 'Unable to load user profile' };
   }
 }
 

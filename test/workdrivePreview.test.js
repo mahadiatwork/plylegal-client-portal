@@ -106,8 +106,26 @@ test("scopes preview authorization to the matter and resource", () => {
   process.env.PREVIEW_TOKEN_SECRET = "test-preview-secret";
 
   try {
-    const token = createPreviewToken({ uid: "client-1", role: "client", matterId: "matter-1", resourceId: "resource-1" });
-    assert.equal(verifyPreviewToken(token, { matterId: "matter-1", resourceId: "resource-1" })?.uid, "client-1");
+    const token = createPreviewToken({
+      uid: "client-1",
+      role: "client",
+      matterId: "matter-1",
+      resourceId: "resource-1",
+      downloadUrl: "https://workdrive.zohoexternal.com/external/abc_123/download?directDownload=true",
+      fileName: "review.pdf",
+      fileSize: 1024,
+    });
+    const authorization = verifyPreviewToken(token, {
+      matterId: "matter-1",
+      resourceId: "resource-1",
+    });
+    assert.equal(authorization?.uid, "client-1");
+    assert.equal(authorization?.fileName, "review.pdf");
+    assert.equal(authorization?.fileSize, 1024);
+    assert.equal(
+      authorization?.downloadUrl,
+      "https://workdrive.zohoexternal.com/external/abc_123/download?directDownload=true",
+    );
     assert.equal(verifyPreviewToken(token, { matterId: "matter-2", resourceId: "resource-1" }), null);
     assert.equal(verifyPreviewToken(token, { matterId: "matter-1", resourceId: "resource-2" }), null);
   } finally {
