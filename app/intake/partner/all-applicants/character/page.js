@@ -1,4 +1,7 @@
 "use client";
+import { TARGET_CHARACTER_QUESTIONS as CHARACTER_QUESTIONS } from "@/lib/allApplicantsParity";
+import { CharacterInstructions } from "@/components/intake/CharacterInstructions";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,139 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
-];
-const CHARACTER_QUESTIONS = [
-  {
-    key: "police_check_last_12_months",
-    label: "Has anyone who is to be included in this application applied for a Police Clearance Certificate in the last 12 months?",
-  },
-  {
-    key: "immigration_detention",
-    label: "Has anyone who is to be included in this application previously been in Immigration Detention, a Refugee Camp or Centre for Refugees?",
-  },
-  {
-    key: "convicted_offence",
-    label: "Has any applicant ever been convicted of an offence in any country (including any conviction which is now removed from official records? If in doubt, click Yes.",
-  },
-  {
-    key: "awaiting_legal_action",
-    label: "Has any applicant ever been charged with any offence in any country that is currently awaiting legal action? If in doubt, click Yes.",
-  },
-  {
-    key: "domestic_violence_order",
-    label: "Has any applicant who is included in this application ever been the subject of a domestic violence or family violence order, or any other order, of a tribunal or court or other similar authority, for the personal protection of another person?",
-  },
-  {
-    key: "arrest_warrant",
-    label: "Has any applicant who is to be included in this application been the subject of an arrest warrant or Interpol Notice?",
-  },
-  {
-    key: "child_sex_offence",
-    label: "Has any applicant been found guilty of a sexually based offence involving a child (including where no conviction was recorded)?",
-  },
-  {
-    key: "sex_offender_register",
-    label: "Has any applicant who is to be included in this application ever been named on a sex offender register?",
-  },
-  {
-    key: "psychiatric_institution",
-    label: "Has any applicant been confined in a prison or psychiatric institution by order of a court in relation to criminal proceedings?",
-  },
-  {
-    key: "insanity_acquittal",
-    label: "Has any applicant ever been acquitted of any offence on the grounds of unsoundness of mind or insanity? If in doubt, click yes.",
-  },
-  {
-    key: "unfit_to_plead",
-    label: "Has any applicant who is to be included in this application ever been found by a court not fit to plead?",
-  },
-  {
-    key: "false_misleading_info",
-    label: "Has any applicant ever provided any information or a document to the Australian Immigration or Customs Authorities which was wrong, incorrect, false or misleading?",
-  },
-  {
-    key: "visa_refused",
-    label: "Has any applicant ever had a visa or entry permit for any country (including Australia) refused?",
-  },
-  {
-    key: "overstayed_visa",
-    label: "Has any applicant overstayed a visa or entry permit in any country (including Australia)?",
-  },
-  {
-    key: "deported_removed",
-    label: "Has any applicant been removed or deported from any country (including Australia)?",
-  },
-  {
-    key: "avoid_removal",
-    label: "Has any applicant left any country to avoid being removed or deported from that Country (including Australia)?",
-  },
-  {
-    key: "excluded_from_country",
-    label: "Has any applicant been excluded from or asked to leave any country (including Australia)?",
-  },
-  {
-    key: "citizenship_refusal",
-    label: "Has any applicant ever been refused, renounced or rescinded citizenship of any country?",
-  },
-  {
-    key: "war_crimes",
-    label: "Has any applicant been charged with, or indicted for: genocide, war crimes, crimes against humanity, torture, slavery, or any other crime that is otherwise of a serious international concern?",
-  },
-  {
-    key: "national_security_risk",
-    label: "Has any applicant been directly or indirectly involved in, or associated with, any activities that would represent a risk to Australian national security or any other country?",
-  },
-  {
-    key: "outstanding_debts",
-    label: "Has any applicant ever had any outstanding debts to the Australian Government or any public authority in Australia?",
-  },
-  {
-    key: "people_smuggling",
-    label: "Has any applicant ever been involved in people smuggling or people trafficking offences? If in doubt, click Yes.",
-  },
-  {
-    key: "associated_criminal_conduct",
-    label: "Has any applicant been associated with a person, group or organisation that has been/is involved in criminal conduct?",
-  },
-  {
-    key: "associated_violent_org",
-    label: "Has any applicant ever been associated with an organisation engaged in violence or engaged in acts of violence (including war, insurgency, freedom fighting, terrorism, protest) either overseas or in Australia?",
-  },
-  {
-    key: "military_training",
-    label: "Has any applicant undergone any military/paramilitary training, been trained in weapons/explosives or in the manufacture of chemical/biological products?",
-  },
-  {
-    key: "military_service",
-    label: "Has any applicant ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency?",
-  },
-  {
-    key: "sponsorship_payment",
-    label: "Has any person included in this application made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa?",
-  },
-];
+
+
 function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
@@ -170,7 +42,7 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
         organisation that has been/is involved in criminal conduct
       </p>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select
           value={dialogForm.watch("applicant_name")}
           onValueChange={(value) => dialogForm.setValue("applicant_name", value)}
@@ -202,8 +74,8 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -229,7 +101,7 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
         Enter details of association with an organisation engaged in violence
       </p>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -256,8 +128,8 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -283,7 +155,7 @@ function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions
         Enter details of involvement in activities representing a risk to national security
       </p>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -310,8 +182,8 @@ function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -337,7 +209,7 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
         Enter details of outstanding debts to the Australian Government
       </p>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -364,8 +236,8 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -431,7 +303,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Which applicant does this declaration apply to? <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -486,7 +358,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -539,7 +411,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -649,7 +521,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Which applicant does this declaration apply to? <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -703,7 +575,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_from_day")} onValueChange={(value) => dialogForm.setValue("date_from_day", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
-            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_from_month")} onValueChange={(value) => dialogForm.setValue("date_from_month", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
@@ -720,7 +592,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_to_day")} onValueChange={(value) => dialogForm.setValue("date_to_day", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
-            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectContent>{DAYS.map((d) => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_to_month")} onValueChange={(value) => dialogForm.setValue("date_to_month", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
@@ -733,8 +605,8 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         </div>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -792,7 +664,7 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
       </p>
       <div>
         <Label className="mb-2 block">
-          Applicant Name <span className="text-red-600">*</span>
+          Which applicant does this declaration apply to? <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -826,7 +698,7 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -876,7 +748,7 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -929,8 +801,8 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -1028,7 +900,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Which applicant does this declaration apply to? <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -1101,7 +973,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1151,7 +1023,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1216,7 +1088,7 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
       </div>
       <div>
         <Label className="mb-2 block">Description of Duties</Label>
-        <Textarea rows={3} {...dialogForm.register("duties_description")} />
+        <Textarea rows={3} {...dialogForm.register("duties_description")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -1287,7 +1159,7 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Which applicant does this declaration apply to? <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -1342,7 +1214,7 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1392,7 +1264,7 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1448,8 +1320,8 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -1480,7 +1352,7 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
       <div>
-        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -1503,7 +1375,7 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
           <Select value={dialogForm.watch("date_day")} onValueChange={(value) => dialogForm.setValue("date_day", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
             <SelectContent>
-              {DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              {DAYS.map((d) => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_month")} onValueChange={(value) => dialogForm.setValue("date_month", value)}>
@@ -1521,8 +1393,8 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
         </div>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -1550,7 +1422,7 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
       <div>
-        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -1573,7 +1445,7 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
           <Select value={dialogForm.watch("date_day")} onValueChange={(value) => dialogForm.setValue("date_day", value)}>
             <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
             <SelectContent>
-              {DAYS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              {DAYS.map((d) => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_month")} onValueChange={(value) => dialogForm.setValue("date_month", value)}>
@@ -1592,11 +1464,11 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
       </div>
       <div>
         <Label className="mb-2 block">Offence Type</Label>
-        <Input {...dialogForm.register("offence_type")} placeholder="Choose Offence Type" />
+        <Input {...dialogForm.register("offence_type")} placeholder="Enter offence type" />
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -1619,7 +1491,7 @@ function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions 
       <h3 className="text-base font-bold text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-4">{description}</p>
       <div>
-        <Label className="mb-2 block">Applicant Name <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("applicant_name")} onValueChange={(value) => dialogForm.setValue("applicant_name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -1628,8 +1500,8 @@ function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions 
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
-        <Textarea rows={3} {...dialogForm.register("details")} />
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={3} {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -1813,7 +1685,11 @@ export default function Page() {
         if (label) opts.push(label);
       });
     }
-    return opts;
+    for (const profile of draftSnap.draft?.profiles || []) {
+      const label = buildLabel(profile.family_name, profile.given_names, profile.birth_day, profile.birth_month, profile.birth_year);
+      if (label) opts.push(label);
+    }
+    return [...new Set(opts)];
   })();
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -1897,9 +1773,7 @@ export default function Page() {
     <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold">Character</CardTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            Provide character information for all applicants.
-          </p>
+          <CharacterInstructions />
         </CardHeader>
         <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -1970,7 +1844,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <PoliceClearanceDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add Details"
+                          addButtonText="Add"
                           testIdPrefix="police-clearance"
                         />
                       </div>
@@ -2019,7 +1893,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <ImmigrationDetentionDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add Details"
+                          addButtonText="Add"
                           testIdPrefix="immigration-detention"
                         />
                       </div>
@@ -2067,7 +1941,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <PrisonInstitutionDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add Details"
+                          addButtonText="Add"
                           testIdPrefix="prison-institution"
                         />
                       </div>
@@ -2117,7 +1991,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <MilitaryTrainingDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add Details"
+                          addButtonText="Add"
                           testIdPrefix="military-training"
                         />
                       </div>
@@ -2169,7 +2043,7 @@ export default function Page() {
                           DialogComponent={(props) => (
                             <MilitaryServiceDialog {...props} applicantOptions={applicantOptions} />
                           )}
-                          addButtonText="Add Details"
+                          addButtonText="Add"
                           testIdPrefix="military-service"
                         />
                       </div>
@@ -2195,10 +2069,10 @@ export default function Page() {
                             {...props}
                             applicantOptions={applicantOptions}
                             title={GENERIC_DIALOG_CONFIG[q.key].title}
-                            description={GENERIC_DIALOG_CONFIG[q.key].description}
+                            description={q.label}
                           />
                         )}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "convicted_offence" && (
@@ -2225,7 +2099,7 @@ export default function Page() {
                             description="Enter details of any applicant who is included in this application who has ever been convicted of an offence in any country (including any conviction which is now removed from official records). Please list each offence separately:"
                           />
                         )}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "awaiting_legal_action" && (
@@ -2252,7 +2126,7 @@ export default function Page() {
                             description="Enter details of any applicant who has ever been charged with any offence in any country that is currently awaiting legal action:"
                           />
                         )}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "false_misleading_info" && (
@@ -2277,7 +2151,7 @@ export default function Page() {
                             description="Enter details of any applicant who is included in this application who has ever provided any information or a document to the Australian Immigration or Customs Authorities which was wrong, incorrect, false or misleading"
                           />
                         )}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "sponsorship_payment" && (
@@ -2302,7 +2176,7 @@ export default function Page() {
                             description="Enter details of any person included in this application who made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa"
                           />
                         )}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "associated_criminal_conduct" && (
@@ -2317,7 +2191,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("criminal_conduct_details", (form.watch("criminal_conduct_details") || []).filter((_, idx) => idx !== i))}
                         DialogComponent={(props) => <CriminalConductDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "associated_violent_org" && (
@@ -2332,7 +2206,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("violent_org_details", (form.watch("violent_org_details") || []).filter((_, idx) => idx !== i))}
                         DialogComponent={(props) => <ViolentOrganizationDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "national_security_risk" && (
@@ -2347,7 +2221,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("national_security_details", (form.watch("national_security_details") || []).filter((_, idx) => idx !== i))}
                         DialogComponent={(props) => <NationalSecurityDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                     {q.key === "outstanding_debts" && (
@@ -2362,7 +2236,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("outstanding_debts_details", (form.watch("outstanding_debts_details") || []).filter((_, idx) => idx !== i))}
                         DialogComponent={(props) => <OutstandingDebtsDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                   </div>

@@ -1,4 +1,6 @@
 "use client";
+import { z } from "zod";
+import { COMMON_TRAVEL_REASONS, withCurrentOption } from "@/lib/allApplicantsParity";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,25 +11,22 @@ import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Field } from "@/components/Field";
 import { RepeaterTable } from "@/components/RepeaterTable";
-import { futureTravelSchema } from "@/lib/validation";
+import { futureTravelSchema as baseFutureTravelSchema } from "@/lib/validation";
 import { draftStore } from "@/stores/draftStore";
 import { useSnapshot } from "valtio";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
-import { DateSelector } from "@/components/DateSelecters";
-import { COUNTRIES } from "@/reuseable/countries";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const countryOptions = COUNTRIES.map((c) => ({ value: c, label: c }));
-const reasonOptions = [
-  { value: "Holiday", label: "Holiday" },
-  { value: "Business", label: "Business" },
-  { value: "Visit Family", label: "Visit Family" },
-  { value: "Work", label: "Work" },
-  { value: "Study", label: "Study" },
-  { value: "Other", label: "Other" },
-];
+const futureTravelSchema = baseFutureTravelSchema.extend({
+  future_travel: baseFutureTravelSchema.shape.future_travel.unwrap().element.extend({
+    other_reason_details: z.string().optional(),
+  }).passthrough().array().optional(),
+});
 
 function FutureTravelDialog({ editingRow, onSave, onCancel, applicantName }) {
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm({
@@ -44,6 +43,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel, applicantName }) {
       arrival_country: "",
       arrival_city: "",
       reason: "",
+      other_reason_details: "",
     },
   });
 
@@ -149,11 +149,14 @@ function FutureTravelDialog({ editingRow, onSave, onCancel, applicantName }) {
           control={control}
           label="Reason for Travel"
           placeholder="Choose Reason"
-          options={reasonOptions}
+          options={withCurrentOption(COMMON_TRAVEL_REASONS, watch("reason")).map((reason) => ({ value: reason, label: reason }))}
           required
         />
       </div>
 
+      {watch("reason") === "Other" && (
+        <Field type="textarea" name="other_reason_details" control={control} label="Please provide details" placeholder="Please describe the reason for visiting this country..." />
+      )}
       <DialogFooter className="gap-2 sm:gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
@@ -336,7 +339,7 @@ export default function FutureTravelPage() {
             type="radio"
             name="has_future_travel"
             control={control}
-            label="Do you have any proposed or booked travel to any Country?"
+            label="Does the main applicant have any proposed or booked travel to any Country?"
             options={[
               { value: "Yes", label: "Yes" },
               { value: "No", label: "No" },
@@ -366,7 +369,7 @@ export default function FutureTravelPage() {
                 }}
                 DialogComponent={FutureTravelDialog}
                 dialogProps={{ applicantName }}
-                addButtonText="Add Travel"
+                addButtonText="Add"
                 emptyMessage="No future travel added"
                 dialogTitle="Future Travel"
                 dialogSubtitle="Enter details of any proposed or booked travel to any Country"

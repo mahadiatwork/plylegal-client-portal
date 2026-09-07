@@ -1,3 +1,5 @@
+import { getTargetVisaPages, isTargetVisaPageComplete } from "./targetVisaPages.js";
+import { getTargetPersonalDetailsIssues } from "./targetVisaCompletion.js";
 import {
   EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES,
   NON_MIGRATING_MEMBER_SUBPAGES,
@@ -953,42 +955,15 @@ export function getIncompleteChecklist({
   };
 
   if (visaType !== "temporary-work") {
-    const routes = getIntakeRoutes(visaType, visaContext);
-
-    routes.forEach((route) => {
-      if (route.href.includes("/submit")) return;
-
-      if (route.subpages?.length) {
-        route.subpages.forEach((subpage) => {
-          const key = normalizeKeyFromPath(subpage.href, visaType);
-          addIncomplete(key, `${route.title}: ${subpage.title}`);
-        });
-        return;
-      }
-
-      const key = normalizeKeyFromPath(route.href, visaType);
-      addIncomplete(key, route.title);
+    getTargetVisaPages(visaType, draft).forEach((page) => {
+      if (!isTargetVisaPageComplete(page, completion)) items.push(page.title);
     });
-
-    const nonMigratingPrefix = getNonMigratingCompletionPrefix(visaType);
-    addIncomplete(nonMigratingPrefix, "Other Family");
-    (draft?.non_migrating_members || []).forEach((member) => {
-      const memberId = member?.id;
-      if (!memberId) return;
-
-      const name = [member?.passport?.given_names, member?.passport?.family_name]
-        .filter(Boolean)
-        .join(" ")
-        .trim() || "Unnamed Member";
-
-      NON_MIGRATING_MEMBER_SUBPAGES.forEach((subpage) => {
-        const key = `${nonMigratingPrefix}/${memberId}/${subpage.pathSuffix}__${memberId}`;
-        addIncomplete(key, `Other Family (${name}): ${subpage.title}`);
-      });
-    });
-
+    if (!(draft.profiles || []).some((profile) => profile.relationship === "main_applicant")) {
+      items.push("Included Applicants: Add the main applicant");
+    }
     if (visaType === "partner" || visaType === "protection") {
       appendMainApplicantIdentityValidationIssues(items, draft, visaType);
+      items.push(...getTargetPersonalDetailsIssues(visaType, draft));
     }
 
     return items;

@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { educationSchema } from "@/lib/validation";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useEffect, useRef, useState } from "react";
@@ -23,7 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
+import { COURSE_LANGUAGE_OPTIONS as LANGUAGES, COURSE_STATUS_OPTIONS, normalizeEducationRecord, optionsWithSavedValue } from "@/lib/partnerQuestionnaireAlignment";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const QUALIFICATION_TYPES = [
@@ -33,19 +33,6 @@ const QUALIFICATION_TYPES = [
   "Master's",
   "Doctorate/PhD",
   "Other"
-];
-
-const LANGUAGES = [
-  "English", "Spanish", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Korean", "Arabic",
-  "Hindi", "Russian", "Dutch", "Greek", "Turkish", "Polish", "Swedish", "Norwegian", "Danish", "Finnish",
-  "Other"
-];
-
-const COURSE_STATUS_OPTIONS = [
-  "Completed",
-  "Ongoing",
-  "Withdrawn",
-  "Deferred"
 ];
 
 const educationHistoryDialogSchema = z.object({
@@ -68,10 +55,23 @@ const educationHistoryDialogSchema = z.object({
   institution_postcode: z.string().optional(),
 });
 
+const educationSchema = z.object({
+  has_secondary_education: z.enum(["yes", "no"]),
+  education_history: z.array(educationHistoryDialogSchema.partial().passthrough()),
+}).passthrough().superRefine((data, ctx) => {
+  if (data.has_secondary_education === "yes" && data.education_history.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one education history entry is required",
+      path: ["education_history"],
+    });
+  }
+});
+
 function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
   const dialogForm = useForm({
     resolver: zodResolver(educationHistoryDialogSchema),
-    defaultValues: editingRow || {
+    defaultValues: normalizeEducationRecord(editingRow) || {
       date_from_day: "",
       date_from_month: "",
       date_from_year: "",
@@ -93,7 +93,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
   });
 
   const handleFormSubmit = (data) => {
-    onSave(data);
+    onSave({ ...editingRow, ...data });
   };
 
   const handleSaveClick = (e) => {
@@ -143,7 +143,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
       />
 
       <div>
-        <Label htmlFor="qualification_type">Qualification Type/Course Type <span className="text-red-500">*</span></Label>
+        <Label htmlFor="qualification_type">Qualification Type/Course Type</Label>
         <Select
           value={dialogForm.watch("qualification_type")}
           onValueChange={(value) => dialogForm.setValue("qualification_type", value, { shouldValidate: true })}
@@ -181,7 +181,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="course_name">Course Name or Research Description <span className="text-red-500">*</span></Label>
+        <Label htmlFor="course_name">Course Name or Research Description</Label>
         <Input
           id="course_name"
           {...dialogForm.register("course_name")}
@@ -193,7 +193,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="course_language">Course Language <span className="text-red-500">*</span></Label>
+        <Label htmlFor="course_language">Course Language</Label>
         <Select
           value={dialogForm.watch("course_language")}
           onValueChange={(value) => dialogForm.setValue("course_language", value, { shouldValidate: true })}
@@ -202,7 +202,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
             <SelectValue placeholder="Choose Language" />
           </SelectTrigger>
           <SelectContent>
-            {LANGUAGES.map((lang) => (
+            {optionsWithSavedValue(LANGUAGES, dialogForm.watch("course_language")).map((lang) => (
               <SelectItem key={lang} value={lang}>{lang}</SelectItem>
             ))}
           </SelectContent>
@@ -213,7 +213,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="course_status">Course Status <span className="text-red-500">*</span></Label>
+        <Label htmlFor="course_status">Course Status</Label>
         <Select
           value={dialogForm.watch("course_status")}
           onValueChange={(value) => dialogForm.setValue("course_status", value, { shouldValidate: true })}
@@ -222,7 +222,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
             <SelectValue placeholder="Choose Status" />
           </SelectTrigger>
           <SelectContent>
-            {COURSE_STATUS_OPTIONS.map((status) => (
+            {optionsWithSavedValue(COURSE_STATUS_OPTIONS, dialogForm.watch("course_status")).map((status) => (
               <SelectItem key={status} value={status}>{status}</SelectItem>
             ))}
           </SelectContent>
@@ -236,7 +236,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
         <Label className="mb-2 block font-semibold">Institution Details</Label>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="institution_name">Institution Name <span className="text-red-500">*</span></Label>
+            <Label htmlFor="institution_name">Institution Name</Label>
             <Input
               id="institution_name"
               {...dialogForm.register("institution_name")}
@@ -248,7 +248,7 @@ function EducationHistoryDialog({ editingRow, onSave, onCancel }) {
           </div>
 
           <div>
-            <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+            <Label htmlFor="country">Country</Label>
             <Select
               value={dialogForm.watch("country")}
               onValueChange={(value) => dialogForm.setValue("country", value, { shouldValidate: true })}
@@ -346,7 +346,9 @@ export default function MainApplicantEducationPage() {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("applicationId", draftSnap.currentApplicationId);
+      const newUrl = `${pathname}?${params.toString()}`;
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
@@ -358,8 +360,8 @@ export default function MainApplicantEducationPage() {
     resolver: zodResolver(educationSchema),
     mode: "onChange",
     defaultValues: {
-      has_secondary_education: sectionData?.has_secondary_education || sectionData?.has_education === "Yes" ? "yes" : "no",
-      education_history: sectionData?.education_history || [],
+      has_secondary_education: sectionData?.has_secondary_education || (sectionData?.has_education === "Yes" ? "yes" : "no"),
+      education_history: (sectionData?.education_history || []).map(normalizeEducationRecord),
     },
   });
   const { reset } = form;
@@ -380,7 +382,7 @@ export default function MainApplicantEducationPage() {
         || (sectionData.has_education === "Yes" ? "yes" : sectionData.has_education === "No" ? "no" : "no");
       reset({
         has_secondary_education: migratedVal,
-        education_history: sectionData.education_history || [],
+        education_history: (sectionData.education_history || []).map(normalizeEducationRecord),
       }, { keepDefaultValues: true });
     }
   }, [draftSnap.isLoading, sectionData, reset]);
@@ -402,7 +404,8 @@ export default function MainApplicantEducationPage() {
       const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education')) || {};
       const mergedData = { ...existingData, ...currentFormValues };
       
-      draftStore.saveSectionData('mainApplicant.education', mergedData);
+      if (profileId) draftStore.saveProfileSectionData(profileId, "education", mergedData);
+      else draftStore.saveSectionData("mainApplicant.education", mergedData);
     }, 2000);
 
     return () => {
@@ -480,7 +483,7 @@ export default function MainApplicantEducationPage() {
         
         toast({
           title: "Validation error",
-          description: "Please check the console for specific field errors.",
+          description: "Please complete the highlighted fields before saving.",
           variant: "destructive",
         });
         setIsSaving(false);
@@ -524,7 +527,8 @@ export default function MainApplicantEducationPage() {
     const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.education : draftStore.getSectionData('mainApplicant.education')) || {};
     const currentData = form.getValues();
     const mergedData = { ...existingData, ...currentData, education_history: newHistory };
-    draftStore.saveSectionData('mainApplicant.education', mergedData);
+    if (profileId) draftStore.saveProfileSectionData(profileId, "education", mergedData);
+    else draftStore.saveSectionData("mainApplicant.education", mergedData);
   };
 
   // Get main applicant name for display
@@ -611,6 +615,7 @@ export default function MainApplicantEducationPage() {
             )}
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

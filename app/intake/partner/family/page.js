@@ -249,6 +249,7 @@ export default function FamilyMembersPage() {
 
             {/* Desktop Navigation */}
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={handleSubmit(onSubmit)}

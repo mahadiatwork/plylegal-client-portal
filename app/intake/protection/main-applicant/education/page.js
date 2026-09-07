@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
+import { getProtectionHistoryDate } from "@/lib/protectionHistoryCoverage";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const QUALIFICATION_LEVELS = [
@@ -74,12 +75,21 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
     date_from_day: z.string().min(1, "Day is required"),
     date_from_month: z.string().min(1, "Month is required"),
     date_from_year: z.string().min(1, "Year is required"),
-    date_to_day: z.string().min(1, "Day is required"),
-    date_to_month: z.string().min(1, "Month is required"),
-    date_to_year: z.string().min(1, "Year is required"),
+    date_to_day: z.string().optional(),
+    date_to_month: z.string().optional(),
+    date_to_year: z.string().optional(),
     study_mode: z.string().min(1, "Study mode is required"),
     graduated: z.enum(["yes", "no"]),
     certificate_number: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    const parts = [data.date_to_day, data.date_to_month, data.date_to_year];
+    if (parts.some(Boolean) && !parts.every(Boolean)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["date_to_day"], message: "Complete all Date To fields or leave them blank if ongoing." });
+    } else if (parts.every(Boolean)) {
+      const from = getProtectionHistoryDate(data.date_from_day, data.date_from_month, data.date_from_year);
+      const to = getProtectionHistoryDate(...parts);
+      if (!to || !from || to < from) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["date_to_day"], message: "Date To cannot be before Date From." });
+    }
   });
 
   const dialogForm = useForm({
@@ -109,7 +119,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
   return (
     <form onSubmit={dialogForm.handleSubmit(handleSubmit)} className="space-y-4">
       <div>
-        <Label htmlFor="institution" className="mb-2 block">Institution Name *</Label>
+        <Label htmlFor="institution" className="mb-2 block">Institution Name</Label>
         <Input
           id="institution"
           {...dialogForm.register("institution")}
@@ -121,7 +131,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Country *</Label>
+        <Label className="mb-2 block">Country</Label>
         <Select
           value={dialogForm.watch("country")}
           onValueChange={(value) => dialogForm.setValue("country", value)}
@@ -141,7 +151,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Qualification/Level *</Label>
+        <Label className="mb-2 block">Qualification Type/Course Type</Label>
         <Select
           value={dialogForm.watch("qualification")}
           onValueChange={(value) => dialogForm.setValue("qualification", value)}
@@ -173,7 +183,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Date From *</Label>
+        <Label className="mb-2 block">Date From</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_from_day")}
@@ -221,7 +231,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Date To *</Label>
+        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_to_day")}
@@ -481,7 +491,7 @@ export default function EducationPage() {
                     { key: "qualification", label: "Qualification" },
                     { key: "field", label: "Field" },
                     { key: "date_from_day", label: "From", format: (row) => `${row.date_from_day}/${row.date_from_month}/${row.date_from_year}` },
-                    { key: "date_to_day", label: "To", format: (row) => `${row.date_to_day}/${row.date_to_month}/${row.date_to_year}` },
+                    { key: "date_to_day", label: "To", format: (row) => row.date_to_day ? `${row.date_to_day}/${row.date_to_month}/${row.date_to_year}` : "Ongoing" },
                     { key: "country", label: "Country" },
                   ]}
                   onAdd={(newRow) => updateEducationHistory([...educationHistory, newRow])}
@@ -502,6 +512,7 @@ export default function EducationPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

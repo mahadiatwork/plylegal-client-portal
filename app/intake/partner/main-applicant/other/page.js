@@ -1,4 +1,5 @@
 "use client";
+import { PreviousDOBDialog } from "@/components/intake/target-visas/PreviousDOBDialog";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
@@ -119,21 +120,6 @@ const dialogSchema = z.object({
   use_in_application: z.string().optional(),
 });
 
-const prevDobDialogSchema = z.object({
-  date_of_birth_day: z.string().optional(),
-  date_of_birth_month: z.string().optional(),
-  date_of_birth_year: z.string().optional(),
-  date_of_birth: z.string().optional(),
-}).refine((data) => {
-  // Either all three fields are provided OR date_of_birth is provided
-  if (data.date_of_birth) return true;
-  return !!(data.date_of_birth_day && data.date_of_birth_month && data.date_of_birth_year);
-}, {
-  message: "Please provide a complete date of birth",
-  path: ["date_of_birth"]
-});
-
-// Other Name Dialog Component
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
@@ -409,154 +395,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 }
 
 // Previous Date of Birth Dialog Component
-function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
-  const row = editingRow;
-
-  // Parse existing date_of_birth if it's in ISO format
-  const parseExistingDate = (dateStr) => {
-    if (!dateStr) return { day: "", month: "", year: "" };
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return { day: "", month: "", year: "" };
-      return {
-        day: String(date.getDate()),
-        month: String(date.getMonth() + 1),
-        year: String(date.getFullYear()),
-      };
-    } catch {
-      return { day: "", month: "", year: "" };
-    }
-  };
-
-  const existingDate = row?.date_of_birth ? parseExistingDate(row.date_of_birth) : { day: "", month: "", year: "" };
-
-  const dialogForm = useForm({
-    resolver: zodResolver(prevDobDialogSchema),
-    defaultValues: row ? {
-      date_of_birth_day: existingDate.day,
-      date_of_birth_month: existingDate.month,
-      date_of_birth_year: existingDate.year,
-      date_of_birth: row.date_of_birth || "",
-    } : {
-      date_of_birth_day: "",
-      date_of_birth_month: "",
-      date_of_birth_year: "",
-      date_of_birth: "",
-    },
-  });
-
-  const handleFormSubmit = (data) => {
-    // Construct date_of_birth from day/month/year if provided
-    let dateOfBirth = data.date_of_birth;
-    if (!dateOfBirth && data.date_of_birth_day && data.date_of_birth_month && data.date_of_birth_year) {
-      const month = data.date_of_birth_month.padStart(2, '0');
-      const day = data.date_of_birth_day.padStart(2, '0');
-      dateOfBirth = `${data.date_of_birth_year}-${month}-${day}`;
-    }
-    onSave({ date_of_birth: dateOfBirth });
-  };
-
-  const handleSaveClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dialogForm.handleSubmit(handleFormSubmit)(e);
-  };
-
-  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label>Date of Birth <span className="text-red-500">*</span></Label>
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          <div>
-            <Select
-              value={dialogForm.watch("date_of_birth_day") || ""}
-              onValueChange={(value) => {
-                dialogForm.setValue("date_of_birth_day", value);
-                dialogForm.setValue("date_of_birth", ""); // Clear the combined date when parts change
-              }}
-            >
-              <SelectTrigger data-testid="select-dob-day">
-                <SelectValue placeholder="Choose Day" />
-              </SelectTrigger>
-              <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
-                {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Select
-              value={dialogForm.watch("date_of_birth_month") || ""}
-              onValueChange={(value) => {
-                dialogForm.setValue("date_of_birth_month", value);
-                dialogForm.setValue("date_of_birth", ""); // Clear the combined date when parts change
-              }}
-            >
-              <SelectTrigger data-testid="select-dob-month">
-                <SelectValue placeholder="Choose Month" />
-              </SelectTrigger>
-              <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
-                {months.map((month, idx) => (
-                  <SelectItem key={month} value={(idx + 1).toString()}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Select
-              value={dialogForm.watch("date_of_birth_year") || ""}
-              onValueChange={(value) => {
-                dialogForm.setValue("date_of_birth_year", value);
-                dialogForm.setValue("date_of_birth", ""); // Clear the combined date when parts change
-              }}
-            >
-              <SelectTrigger data-testid="select-dob-year">
-                <SelectValue placeholder="Choose Year" />
-              </SelectTrigger>
-              <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
-                {years.map((year) => (
-                  <SelectItem key={year} value={year}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        {dialogForm.formState.errors.date_of_birth && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth.message}</p>
-        )}
-      </div>
-
-      <DialogFooter className="gap-2 sm:gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          data-testid="button-cancel-dob"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          onClick={handleSaveClick}
-          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
-          data-testid="button-save-dob"
-        >
-          Save
-        </Button>
-      </DialogFooter>
-    </div>
-  );
-}
-
 export default function Page() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -605,7 +443,10 @@ export default function Page() {
   const watchedValues = useWatch({ control: form.control });
 
   // Load section data
-  const sectionData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames'));
+  const sectionData = {
+    ...draftSnap.draft?.mainApplicant?.otherNames,
+    ...(profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : {}),
+  };
 
   // Populate Form
   useEffect(() => {
@@ -618,6 +459,7 @@ export default function Page() {
       const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
 
       const formData = {
+        ...savedData,
         // FIX: Ensure all fields are explicitly loaded and default to something safe
         has_other_names: safeStr(savedData.has_other_names) || "no",
         other_names: savedData.other_names || [],
@@ -636,6 +478,15 @@ export default function Page() {
     }
   }, [draftSnap.isLoading, JSON.stringify(sectionData), form]);
 
+  const persistOther = (values) => {
+    const existing = {
+      ...draftStore.draft?.mainApplicant?.otherNames,
+      ...(profileId ? draftStore.draft?.profiles_data?.[profileId]?.other : {}),
+    };
+    const data = { ...existing, ...values };
+    return profileId ? draftStore.saveProfileSectionData(profileId, "other", data) : draftStore.saveSectionData("mainApplicant.otherNames", data);
+  };
+
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
       toast({
@@ -650,9 +501,9 @@ export default function Page() {
     try {
       // Merge with existing section data to preserve other fields
       const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
-      const mergedData = { ...existingData, ...data };
+      const mergedData = { ...existingData, ...form.getValues() };
 
-      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "other", mergedData) : await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "other", mergedData) : await persistOther(mergedData);
 
       if (result.success) {
         if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/main-applicant/other'); } else { await draftStore.markPageComplete('partner/main-applicant/other'); }
@@ -702,7 +553,7 @@ export default function Page() {
       const values = form.getValues();
       const mergedData = { ...existingData, ...values };
 
-      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "other", mergedData) : await draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+      const result = profileId ? await draftStore.saveProfileSectionData(profileId, "other", mergedData) : await persistOther(mergedData);
       if (result.success) {
         toast({
           title: "Draft saved",
@@ -729,7 +580,7 @@ export default function Page() {
   // Auto-save form data when it changes (with debounce)
   useEffect(() => {
     if (!draftSnap.currentApplicationId) return;
-    if (!watchedValues || Object.keys(watchedValues).length === 0) return;
+    if (!watchedValues || Object.keys(watchedValues).length === 0 || !form.formState.isDirty) return;
     // Don't auto-save immediately after form reset or while loading
     if (draftSnap.isLoading) return;
 
@@ -737,11 +588,11 @@ export default function Page() {
       // Merge with existing section data
       const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
       const mergedData = { ...existingData, ...watchedValues };
-      draftStore.saveSectionData("mainApplicant.otherNames", mergedData);
+      persistOther(mergedData);
     }, 1000); // Debounce: save 1 second after last change
 
     return () => clearTimeout(timeoutId);
-  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading]);
+  }, [watchedValues, draftSnap.currentApplicationId, draftSnap.isLoading, profileId, form.formState.isDirty]);
 
   // FIX: Update the synchronization logic for other_names
   const updateOtherNames = (newNames) => {
@@ -750,7 +601,7 @@ export default function Page() {
     // FIX: Merge with existing section data
     const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
     const currentValues = form.getValues();
-    draftStore.saveSectionData("mainApplicant.otherNames", {
+    persistOther({
       ...existingData,
       ...currentValues,
       other_names: newNames // Pass the new array explicitly
@@ -764,7 +615,7 @@ export default function Page() {
     // FIX: Merge with existing section data
     const existingData = (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : draftStore.getSectionData('mainApplicant.otherNames')) || {};
     const currentValues = form.getValues();
-    draftStore.saveSectionData("mainApplicant.otherNames", {
+    persistOther({
       ...existingData,
       ...currentValues,
       prev_dobs: newDobs // Pass the new array explicitly
@@ -860,7 +711,7 @@ export default function Page() {
                     onAdd={(row) => updateOtherNames([...otherNames, row])}
                     onEdit={(index, row) => {
                       const updated = [...otherNames];
-                      updated[index] = row;
+                      updated[index] = { ...updated[index], ...row };
                       updateOtherNames(updated);
                     }}
                     onDelete={(index) => {
@@ -914,7 +765,7 @@ export default function Page() {
                     <Input
                       id="chinese_code"
                       {...form.register("chinese_code")}
-                      placeholder="Enter Chinese Commercial Code"
+                      placeholder="Enter your Chinese Commercial Code"
                       data-testid="input-chinese-code"
                       className="mt-2"
                     />
@@ -1032,7 +883,7 @@ export default function Page() {
                     onAdd={(row) => updatePrevDobs([...prevDobs, row])}
                     onEdit={(index, row) => {
                       const updated = [...prevDobs];
-                      updated[index] = row;
+                      updated[index] = { ...updated[index], ...row };
                       updatePrevDobs(updated);
                     }}
                     onDelete={(index) => {

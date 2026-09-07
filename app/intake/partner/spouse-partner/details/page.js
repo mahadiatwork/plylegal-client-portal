@@ -1,11 +1,12 @@
 "use client";
+import { PersonalDetailsFields } from "@/components/intake/target-visas/PersonalDetailsFields";
+import { targetPersonalDetailsSchema, normalizeTargetPersonalDetails } from "@/lib/targetVisaPersonalDetails";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
-import { applicationsStore } from "@/stores/applicationsStore";
 import { authStore } from "@/stores/authStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormNavigation } from "@/components/FormNavigation";
@@ -16,28 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
-import { DateSelector } from "@/components/DateSelecters";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { Download } from "lucide-react";
 
-const spousePartnerDetailsSchema = z.object({
-  family_name: z.string().optional(),
-  given_names: z.string().optional(),
-  preferred_names: z.string().optional(),
-  gender: z.enum(["Male", "Female", "Other"]).optional(),
-  birth_day: z.string().optional(),
-  birth_month: z.string().optional(),
-  birth_year: z.string().optional(),
-  intending_to_migrate: z.enum(["Yes", "No", "Other - they are my Sponsor"]).optional(),
-  country_of_birth: z.string().optional(),
-  suburb_of_birth: z.string().optional(),
-  city_of_birth: z.string().optional(),
-  state_of_birth: z.string().optional(),
-});
+const spousePartnerDetailsSchema = targetPersonalDetailsSchema;
 
 const firstText = (...values) => {
   for (const value of values) {
@@ -86,16 +72,16 @@ function buildSpouseImportValues(dependent) {
   };
 }
 
-export default function SpousePartnerDetailsPage() {
+export default function SpousePartnerDetailsPage({ sectionName = "details" } = {}) {
+  const legacyDetailsKey = sectionName === "personal-details" ? "spousePartner.personalDetails" : "spousePartner.details";
+  const pageKey = `partner/spouse-partner/${sectionName}`;
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const profileId = getProfileIdFromSearchParams(searchParams);
   const draftSnap = useSnapshot(draftStore);
-  const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
-  const saveTimeoutRef = useRef(null);
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [crmDependents, setCrmDependents] = useState([]);
@@ -114,16 +100,17 @@ export default function SpousePartnerDetailsPage() {
     if (appIdFromUrl && appIdFromUrl !== draftSnap.currentApplicationId) {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
-    } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
-      router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
 
   // Load section data
   const sectionData = (profileId && isSpouseProfile)
-    ? draftSnap.draft?.profiles_data?.[profileId]?.details
-    : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('spousePartner.details'));
+    ? draftSnap.draft?.profiles_data?.[profileId]?.[sectionName]
+    : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.[sectionName] : draftStore.getSectionData(legacyDetailsKey));
+
+  const basicDetails = sectionName === "personal-details"
+    ? (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftSnap.draft?.spousePartner?.details)
+    : null;
 
   const fetchCrmDependents = useCallback(async () => {
     const userId = authSnap.user?.id;
@@ -153,79 +140,14 @@ export default function SpousePartnerDetailsPage() {
   const form = useForm({
     resolver: zodResolver(spousePartnerDetailsSchema),
     mode: "onChange",
-    defaultValues: {
-      family_name: "",
-      given_names: "",
-      preferred_names: "",
-      gender: "",
-      birth_day: "",
-      birth_month: "",
-      birth_year: "",
-      intending_to_migrate: "",
-      country_of_birth: "",
-      suburb_of_birth: "",
-      city_of_birth: "",
-      state_of_birth: "",
-    },
+    defaultValues: normalizeTargetPersonalDetails({}, {}),
   });
   const { reset } = form;
 
-  // Sync form with store data once it's loaded from the database
   useEffect(() => {
     if (draftSnap.isLoading) return;
-
-    const monthsList = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-
-    const normalizeNumber = (val) => {
-      if (!val) return "";
-      const num = Number(val);
-      return isNaN(num) ? val : String(num);
-    };
-
-    const normalizeMonth = (val) => {
-      if (!val) return "";
-      if (!isNaN(Number(val))) return String(Number(val));
-      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
-      return monthIndex !== -1 ? String(monthIndex + 1) : val;
-    };
-
-    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
-
-    if (sectionData && Object.keys(sectionData).length > 0) {
-      reset({
-        family_name: safeStr(sectionData.family_name),
-        given_names: safeStr(sectionData.given_names),
-        preferred_names: safeStr(sectionData.preferred_names),
-        gender: normalizeGender(safeStr(sectionData.gender)),
-        birth_day: normalizeNumber(sectionData.birth_day),
-        birth_month: normalizeMonth(sectionData.birth_month),
-        birth_year: safeStr(sectionData.birth_year),
-        intending_to_migrate: safeStr(sectionData.intending_to_migrate),
-        country_of_birth: safeStr(sectionData.country_of_birth),
-        suburb_of_birth: safeStr(sectionData.suburb_of_birth),
-        city_of_birth: safeStr(sectionData.city_of_birth),
-        state_of_birth: safeStr(sectionData.state_of_birth),
-      }, { keepDefaultValues: true });
-    } else if (activeProfile) {
-      reset({
-        family_name: activeProfile.family_name || "",
-        given_names: activeProfile.given_names || "",
-        preferred_names: "",
-        gender: normalizeGender(activeProfile.gender) || "",
-        birth_day: normalizeNumber(activeProfile.birth_day),
-        birth_month: normalizeMonth(activeProfile.birth_month),
-        birth_year: safeStr(activeProfile.birth_year),
-        intending_to_migrate: "",
-        country_of_birth: "",
-        suburb_of_birth: "",
-        city_of_birth: "",
-        state_of_birth: "",
-      }, { keepDefaultValues: true });
-    }
-  }, [draftSnap.isLoading, sectionData, activeProfile, reset]);
+    form.reset(normalizeTargetPersonalDetails({ ...basicDetails, ...sectionData }, activeProfile || {}));
+  }, [draftSnap.isLoading, sectionData, basicDetails, activeProfile, form]);
 
   const onSubmit = async (data) => {
     if (!draftSnap.currentApplicationId) {
@@ -241,19 +163,19 @@ export default function SpousePartnerDetailsPage() {
     try {
       // Merge with existing section data to preserve other fields
       const existingData = (profileId && isSpouseProfile)
-        ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
-        : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('spousePartner.details')) || {};
-      const mergedData = { ...existingData, ...data };
+        ? draftSnap.draft?.profiles_data?.[profileId]?.[sectionName] || {}
+        : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.[sectionName] : draftStore.getSectionData(legacyDetailsKey)) || {};
+      const mergedData = { ...existingData, ...form.getValues() };
 
       const result = (profileId && isSpouseProfile)
-        ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
-        : profileId ? await draftStore.saveProfileSectionData(profileId, "details", mergedData) : await draftStore.saveSectionData("spousePartner.details", mergedData);
+        ? await draftStore.saveProfileSectionData(profileId, sectionName, mergedData)
+        : profileId ? await draftStore.saveProfileSectionData(profileId, sectionName, mergedData) : await draftStore.saveSectionData(legacyDetailsKey, mergedData);
 
       if (result.success) {
         if (profileId && isSpouseProfile) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+          await draftStore.markProfilePageComplete(profileId, pageKey);
         } else {
-          if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/spouse-partner/details'); } else { await draftStore.markPageComplete('partner/spouse-partner/details'); }
+          if (profileId) { await draftStore.markProfilePageComplete(profileId, pageKey); } else { await draftStore.markPageComplete(pageKey); }
         }
         const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
         startNavigation(next);
@@ -272,6 +194,8 @@ export default function SpousePartnerDetailsPage() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+      setIsSaving(false);
+    } finally {
       setIsSaving(false);
     }
   };
@@ -292,40 +216,26 @@ export default function SpousePartnerDetailsPage() {
       return;
     }
 
+    const isComplete = await form.trigger();
     setIsSaving(true);
     try {
-      // Trigger validation and check for errors
-      const isValid = await form.trigger();
-
-      if (!isValid) {
-        // DEBUG: This will show you exactly what is stopping the save in the browser console
-        console.log("Validation Errors:", form.formState.errors);
-
-        toast({
-          title: "Validation error",
-          description: "Please check the console for specific field errors.",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-
       // Merge with existing section data to preserve other fields
       const existingData = (profileId && isSpouseProfile)
-        ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
-        : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.details : draftStore.getSectionData('spousePartner.details')) || {};
+        ? draftSnap.draft?.profiles_data?.[profileId]?.[sectionName] || {}
+        : (profileId ? draftSnap.draft?.profiles_data?.[profileId]?.[sectionName] : draftStore.getSectionData(legacyDetailsKey)) || {};
       const currentData = form.getValues();
       const mergedData = { ...existingData, ...currentData };
 
       const result = (profileId && isSpouseProfile)
-        ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
-        : profileId ? await draftStore.saveProfileSectionData(profileId, "details", mergedData) : await draftStore.saveSectionData("spousePartner.details", mergedData);
+        ? await draftStore.saveProfileSectionData(profileId, sectionName, mergedData)
+        : profileId ? await draftStore.saveProfileSectionData(profileId, sectionName, mergedData) : await draftStore.saveSectionData(legacyDetailsKey, mergedData);
 
       if (result.success) {
-        if (profileId && isSpouseProfile) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        if (isComplete) {
+          if (profileId) await draftStore.markProfilePageComplete(profileId, pageKey);
+          else await draftStore.markPageComplete(pageKey);
         } else {
-          if (profileId) { await draftStore.markProfilePageComplete(profileId, 'partner/spouse-partner/details'); } else { await draftStore.markPageComplete('partner/spouse-partner/details'); }
+          await draftStore.markPageIncomplete(profileId ? `${pageKey}__${profileId}` : pageKey);
         }
         toast({
           title: "Draft saved",
@@ -385,9 +295,9 @@ export default function SpousePartnerDetailsPage() {
     <>
       <Card className="rounded-2xl shadow-md bg-white">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Personal Details</CardTitle>
+          <CardTitle className="text-2xl font-semibold">{activeProfile ? `Details — ${activeProfile.given_names} ${activeProfile.family_name}` : "Spouse/Partner's Details"}</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            In the Spouse/Partner section you are to provide details about the main applicant's spouse/partner. You are to provide information even if this person is not going to be included in the application.
+            Provide details for the spouse or partner. Include their details even if they are not included in this application.
           </p>
         </CardHeader>
         <CardContent>
@@ -430,183 +340,27 @@ export default function SpousePartnerDetailsPage() {
               </Button>
             </div>
 
-            {/* Family Name */}
-            <div>
-              <Label htmlFor="family_name">Family Name</Label>
-              <Input
-                id="family_name"
-                {...form.register("family_name")}
-                data-testid="input-family-name"
-              />
-              {form.formState.errors.family_name && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.family_name.message}</p>
-              )}
-            </div>
-
-            {/* Given Names */}
-            <div>
-              <Label htmlFor="given_names">Given Names</Label>
-              <Input
-                id="given_names"
-                {...form.register("given_names")}
-                data-testid="input-given-names"
-              />
-              {form.formState.errors.given_names && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.given_names.message}</p>
-              )}
-            </div>
-
-            {/* Preferred Names */}
-            <div>
-              <Label htmlFor="preferred_names">Preferred Names</Label>
-              <Input
-                id="preferred_names"
-                {...form.register("preferred_names")}
-                data-testid="input-preferred-names"
-              />
-              {form.formState.errors.preferred_names && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.preferred_names.message}</p>
-              )}
-            </div>
-
-            {/* Gender */}
-            <div>
-              <Label>Gender</Label>
-              <RadioGroup
-                value={form.watch("gender")}
-                onValueChange={(value) => form.setValue("gender", value, { shouldValidate: true })}
-                className="flex gap-4 mt-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Male" id="gender-male" />
-                  <Label htmlFor="gender-male" className="cursor-pointer">Male</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Female" id="gender-female" />
-                  <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
-                </div>
-              </RadioGroup>
-              {form.formState.errors.gender && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.gender.message}</p>
-              )}
-            </div>
-
-            {/* Date of Birth */}
-            <DateSelector
-              label="Date of Birth"
-              values={{
-                day: form.watch("birth_day") || "",
-                month: form.watch("birth_month") || "",
-                year: form.watch("birth_year") || "",
-              }}
-              onValueChange={(type, value) => {
-                const fieldName = `birth_${type}`;
-                form.setValue(fieldName, value, { shouldValidate: true });
-              }}
-              testIdPrefix="select-birth"
-            />
-            {(form.formState.errors.birth_day || form.formState.errors.birth_month || form.formState.errors.birth_year) && (
-              <p className="text-sm text-red-600 mt-1">Date of Birth is required</p>
-            )}
-
-            {/* Is your Spouse/Partner intending to migrate/travel to Australia? */}
-            <div>
-              <Label className="mb-2 block">Is your Spouse/Partner intending to migrate/travel to Australia as part of any application made by you?</Label>
-              <RadioGroup
-                value={form.watch("intending_to_migrate")}
-                onValueChange={(value) => form.setValue("intending_to_migrate", value, { shouldValidate: true })}
-                className="flex gap-4 mt-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Yes" id="intending-yes" />
-                  <Label htmlFor="intending-yes" className="cursor-pointer">Yes</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="No" id="intending-no" />
-                  <Label htmlFor="intending-no" className="cursor-pointer">No</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Other - they are my Sponsor" id="intending-other" />
-                  <Label htmlFor="intending-other" className="cursor-pointer">Other - they are my Sponsor</Label>
-                </div>
-              </RadioGroup>
-              {form.formState.errors.intending_to_migrate && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.intending_to_migrate.message}</p>
-              )}
-            </div>
-
-            {/* Country of Birth */}
-            <div>
-              <Label htmlFor="country_of_birth">Country of Birth</Label>
-              <Controller
-                control={form.control}
-                name="country_of_birth"
-                render={({ field }) => (
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger data-testid="select-country-of-birth">
-                      <SelectValue placeholder="Choose Country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COUNTRIES.map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.country_of_birth && (
-                <p className="text-sm text-red-600 mt-1">
-                  {form.formState.errors.country_of_birth.message}
-                </p>
-              )}
-            </div>
-
-            {/* Suburb of Birth */}
-            <div>
-              <Label htmlFor="suburb_of_birth">Suburb of Birth</Label>
-              <Input
-                id="suburb_of_birth"
-                {...form.register("suburb_of_birth")}
-                data-testid="input-suburb-of-birth"
-              />
-              {form.formState.errors.suburb_of_birth && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.suburb_of_birth.message}</p>
-              )}
-            </div>
-
-            {/* City or Town of Birth */}
-            <div>
-              <Label htmlFor="city_of_birth">City or Town of Birth</Label>
-              <Input
-                id="city_of_birth"
-                {...form.register("city_of_birth")}
-                data-testid="input-city-of-birth"
-              />
-              {form.formState.errors.city_of_birth && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.city_of_birth.message}</p>
-              )}
-            </div>
-
-            {/* State or Province of Birth */}
-            <div>
-              <Label htmlFor="state_of_birth">State or Province of Birth</Label>
-              <Input
-                id="state_of_birth"
-                {...form.register("state_of_birth")}
-                data-testid="input-state-of-birth"
-              />
-              {form.formState.errors.state_of_birth && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.state_of_birth.message}</p>
-              )}
+            <PersonalDetailsFields form={form} />
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium border-b pb-2">Migration and Additional Details</h3>
+              <div>
+                <Label className="mb-2 block">Is your Spouse/Partner intending to migrate/travel to Australia as part of any application made by you?</Label>
+                <RadioGroup value={form.watch("intending_to_migrate") || ""} onValueChange={(value) => form.setValue("intending_to_migrate", value, { shouldDirty: true })} className="flex flex-wrap gap-4 mt-2">
+                  {["Yes", "No", "Other - they are my Sponsor"].map((option, index) => <div key={option} className="flex items-center space-x-2"><RadioGroupItem value={option} id={`migration-${index}`} /><Label htmlFor={`migration-${index}`} className="cursor-pointer font-normal">{option}</Label></div>)}
+                </RadioGroup>
+              </div>
+              <div><Label>Suburb of Birth</Label><Input {...form.register("suburb_of_birth")} data-testid="input-suburb-of-birth" /></div>
+              {(sectionName === "personal-details" || form.watch("country_of_residence")) && <div>
+                <Label>Country of Current Residence</Label>
+                <Select value={form.watch("country_of_residence") || ""} onValueChange={(value) => form.setValue("country_of_residence", value, { shouldDirty: true })}>
+                  <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
+                  <SelectContent>{[...new Set([...COUNTRIES, ...(form.watch("country_of_residence") ? [form.watch("country_of_residence")] : [])])].map((country) => <SelectItem key={country} value={country}>{country}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>}
             </div>
 
             <FormNavigation
+            nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

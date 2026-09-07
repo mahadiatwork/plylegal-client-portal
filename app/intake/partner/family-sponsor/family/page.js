@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_OPTIONS = [
@@ -133,6 +133,10 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel }) {
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="Female" id="gender-female" />
             <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Other" id="gender-other" />
+            <Label htmlFor="gender-other" className="cursor-pointer">Other</Label>
           </div>
         </RadioGroup>
         {dialogForm.formState.errors.gender && (
@@ -492,6 +496,7 @@ export default function FamilySponsorFamilyPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

@@ -279,7 +279,7 @@ export default function LanguagesPage() {
               })}
             </div>
 
-            <FormNavigation
+            <FormNavigation nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={() => save(true)}
               onSave={() => save(false)}

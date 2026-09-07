@@ -9,7 +9,7 @@ import { applicationsStore } from "@/stores/applicationsStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/Field";
 import { FormNavigation } from "@/components/FormNavigation";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { Label } from "@/components/ui/label";
 import { COUNTRIES } from "@/reuseable/countries";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
@@ -323,7 +323,7 @@ export default function FamilySponsorDetailsPage() {
               type="radio"
               name="is_sponsor_correct"
               control={control}
-              label={`In a previous question you have indicated that application is to be sponsored by ${sponsorName}. Is this correct?`}
+              label={`In a previous question you have indicated that the application is to be sponsored by ${sponsorName}. Is this correct?`}
               options={[
                 { value: "Yes", label: "Yes" },
                 { value: "No", label: "No" },
@@ -358,6 +358,7 @@ export default function FamilySponsorDetailsPage() {
                   options={[
                     { value: "Male", label: "Male" },
                     { value: "Female", label: "Female" },
+                    { value: "Other", label: "Other" },
                   ]}
                 />
 
@@ -438,6 +439,7 @@ export default function FamilySponsorDetailsPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={handleSubmit(onSubmit)}

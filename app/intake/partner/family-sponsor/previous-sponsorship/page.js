@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const VISA_SUBCLASS_OPTIONS = [
@@ -532,6 +532,10 @@ function PreviousSponsorshipDialog({ editingRow, onSave, onCancel }) {
                   <RadioGroupItem value="Female" id="gender-female" />
                   <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Other" id="gender-other" />
+                  <Label htmlFor="gender-other" className="cursor-pointer">Other</Label>
+                </div>
               </RadioGroup>
               {dialogForm.formState.errors.gender && (
                 <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
@@ -953,7 +957,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
                     Previous Sponsorships for {sponsorName}
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of all Visitor/Tourist Visas your Sponsor has sponsored
+                    Enter details of all Australian visas your Sponsor has sponsored or nominated a person for
                   </p>
                   <RepeaterTable
                     data={previousSponsorships}
@@ -981,6 +985,7 @@ export default function FamilySponsorPreviousSponsorshipPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

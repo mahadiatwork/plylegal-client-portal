@@ -23,7 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
@@ -66,7 +66,7 @@ const RELATIONSHIP_OPTIONS = [
 const familyMemberDialogSchema = z.object({
   family_name: z.string().min(1, "Family Name is required"),
   given_names: z.string().min(1, "Given Names is required"),
-  gender: z.enum(["Male", "Female"]),
+  gender: z.enum(["Male", "Female", "Other"]),
   birth_day: z.string().optional(),
   birth_month: z.string().optional(),
   birth_year: z.string().optional(),
@@ -181,6 +181,10 @@ function FamilyMemberDialog({ editingRow, onSave, onCancel, hasChildren }) {
             <RadioGroupItem value="Female" id="gender-female" />
             <Label htmlFor="gender-female" className="cursor-pointer">Female</Label>
           </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="Other" id="gender-other" />
+            <Label htmlFor="gender-other" className="cursor-pointer">Other</Label>
+          </div>
         </RadioGroup>
         {dialogForm.formState.errors.gender && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.gender.message}</p>
@@ -277,7 +281,9 @@ export default function MainApplicantFamilyPage() {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("applicationId", draftSnap.currentApplicationId);
+      const newUrl = `${pathname}?${params.toString()}`;
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
@@ -570,6 +576,7 @@ export default function MainApplicantFamilyPage() {
             )}
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

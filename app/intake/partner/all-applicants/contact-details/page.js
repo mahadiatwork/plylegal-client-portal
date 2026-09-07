@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
-import { COUNTRIES } from "@/reuseable/countries";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 const formSchema = z.object({
@@ -223,7 +223,7 @@ export default function Page() {
           <div className="bg-card border border-border rounded-lg p-6 space-y-8">
 
             <div className="space-y-4">
-              <Label className="text-base font-medium">Does everyone included in this application share the same Contact Phone Numbers?</Label>
+              <Label className="text-base font-medium">Does everyone included in this application share the same contact phone numbers?</Label>
               <RadioGroup
                 value={form.watch("share_contact_phone_numbers")}
                 onValueChange={(val) => form.setValue("share_contact_phone_numbers", val)}
@@ -281,9 +281,9 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Mobile/Cell Phone Number */}
+                  {/* Mobile Number */}
                   <div className="space-y-2">
-                    <Label className="font-semibold">Mobile/Cell Phone Number</Label>
+                    <Label className="font-semibold">Mobile Number</Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <CountryCodeSelect
                         value={form.watch("mobile_country_code")}
@@ -325,6 +325,7 @@ export default function Page() {
 
                   <Input
                     id="shared_email"
+                      placeholder="Enter email address"
                     type="email"
                     {...form.register("shared_email")}
                     data-testid="input-shared-email"
@@ -356,7 +357,7 @@ export default function Page() {
               {form.watch("share_postal_address") === "Yes" && (
                 <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
                   <p className="text-sm text-gray-600">
-                    Enter the current Postal Address for the Main Applicant
+                    Enter the current postal address for the main applicant.
                   </p>
 
                   <div>
@@ -365,14 +366,15 @@ export default function Page() {
                     </Label>
                     <Input
                       id="postal_address"
-                      placeholder="Address (including Street Number and Name or Post Office Box)"
+                      placeholder="Address (including street number and name or post office box)"
                       {...form.register("postal_address")}
                       data-testid="input-postal-address"
                     />
                   </div>
 
                   <div>
-                    <Input
+                    <Label htmlFor="postal_address_line2" className="mb-2 block">Address Line 2</Label>
+                    <Input id="postal_address_line2"
                       placeholder="Address Line 2"
                       {...form.register("postal_address_line2")}
                       data-testid="input-postal-address-line2"
@@ -380,23 +382,26 @@ export default function Page() {
                   </div>
 
                   <div>
-                    <Input
-                      placeholder="Suburb/Town/City"
+                    <Label htmlFor="postal_suburb" className="mb-2 block">Suburb / Town</Label>
+                    <Input id="postal_suburb"
+                      placeholder="Suburb / Town"
                       {...form.register("postal_suburb")}
                       data-testid="input-postal-suburb"
                     />
                   </div>
 
                   <div>
-                    <Input
-                      placeholder="State"
+                    <Label htmlFor="postal_state" className="mb-2 block">State / Territory</Label>
+                    <Input id="postal_state"
+                      placeholder="State / Territory"
                       {...form.register("postal_state")}
                       data-testid="input-postal-state"
                     />
                   </div>
 
                   <div>
-                    <Input
+                    <Label htmlFor="postal_postcode" className="mb-2 block">Postcode</Label>
+                    <Input id="postal_postcode"
                       placeholder="Postcode"
                       {...form.register("postal_postcode")}
                       data-testid="input-postal-postcode"
@@ -404,6 +409,7 @@ export default function Page() {
                   </div>
 
                   <div>
+                    <Label className="mb-2 block">Country</Label>
                     <Select
                       value={form.watch("postal_country")}
                       onValueChange={(val) => form.setValue("postal_country", val)}

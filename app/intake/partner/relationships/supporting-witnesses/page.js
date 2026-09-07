@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_OPTIONS = [
@@ -295,7 +295,7 @@ function SupportingWitnessDialog({ editingRow, onSave, onCancel }) {
         </div>
 
         <div>
-          <Label className="mb-2 block">Mobile Phone Number</Label>
+          <Label className="mb-2 block">Mobile Number</Label>
           <div className="grid grid-cols-2 gap-2">
             <Input
               placeholder="Country Code"
@@ -346,7 +346,7 @@ function SupportingWitnessDialog({ editingRow, onSave, onCancel }) {
           type="text"
           name="suburb"
           control={dialogForm.control}
-          label="Suburb/Town/City"
+          label="Suburb / Town"
           data-testid="input-suburb"
         />
 
@@ -354,7 +354,7 @@ function SupportingWitnessDialog({ editingRow, onSave, onCancel }) {
           type="text"
           name="state"
           control={dialogForm.control}
-          label="State"
+          label="State / Territory"
           data-testid="input-state"
         />
 
@@ -370,7 +370,7 @@ function SupportingWitnessDialog({ editingRow, onSave, onCancel }) {
           type="select"
           name="country"
           control={dialogForm.control}
-          label="Choose Country"
+          label="Country"
           options={COUNTRIES.map(country => ({ value: country, label: country }))}
           placeholder="Choose Country"
           data-testid="select-country"
@@ -696,6 +696,7 @@ export default function SupportingWitnessesPage() {
             )}
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

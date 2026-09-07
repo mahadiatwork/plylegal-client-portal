@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
@@ -29,8 +29,9 @@ const EMPLOYMENT_STATUS_OPTIONS = [
   "Student",
   "Retired",
   "Self-Employed",
-  "Unpaid Employment/Volunteer",
-  "Work Experience/Internships"
+  "Unemployed",
+  "Work Experience/Internships",
+  "Unpaid Employment/Volunteer"
 ];
 
 const employmentHistoryDialogSchema = z.object({
@@ -122,7 +123,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
   const status = dialogForm.watch("status");
   const isEmploymentStatus = status === "Employed" || status === "Self-Employed" ||
     status === "Work Experience/Internships" || status === "Unpaid Employment/Volunteer";
-  const isNonEmploymentStatus = status === "Student" || status === "Retired";
+  const isNonEmploymentStatus = status === "Student" || status === "Retired" || status === "Unemployed";
 
   const handleFormSubmit = (data) => {
     onSave(data);
@@ -201,7 +202,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       {isEmploymentStatus && (
         <>
           <div>
-            <Label htmlFor="position">Position <span className="text-red-500">*</span></Label>
+            <Label htmlFor="position">Position / Occupation <span className="text-red-500">*</span></Label>
             <Input
               id="position"
               {...dialogForm.register("position")}
@@ -213,7 +214,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           </div>
 
           <div>
-            <Label htmlFor="business_name">Business Name</Label>
+            <Label htmlFor="business_name">Employer/Organization</Label>
             <Input
               id="business_name"
               {...dialogForm.register("business_name")}
@@ -239,13 +240,13 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
               <Input
                 id="business_address_suburb"
                 {...dialogForm.register("business_address_suburb")}
-                placeholder="Suburb/Town/City"
+                placeholder="Suburb / Town"
                 data-testid="input-business-address-suburb"
               />
               <Input
                 id="business_address_state"
                 {...dialogForm.register("business_address_state")}
-                placeholder="State"
+                placeholder="State / Territory"
                 data-testid="input-business-address-state"
               />
               <Input
@@ -615,13 +616,13 @@ export default function FamilySponsorCircumstancesPage() {
                 Financial Details for {sponsorName}
               </h3>
 
-              {/* Question 1: Is your Sponsor currently in paid employment? */}
+              {/* Question 1: Is your Sponsor currently Employed in a paid position? */}
               <div className="mb-6">
                 <Field
                   type="radio"
                   name="is_in_paid_employment"
                   control={form.control}
-                  label="Is your Sponsor currently in paid employment?"
+                  label="Is your Sponsor currently Employed in a paid position?"
                   options={[
                     { value: "Yes", label: "Yes" },
                     { value: "No", label: "No" },
@@ -674,6 +675,7 @@ export default function FamilySponsorCircumstancesPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

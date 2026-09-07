@@ -217,7 +217,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             </SelectTrigger>
             <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
               {DAYS.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
+                <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -269,7 +269,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
               <SelectItem value="none">None</SelectItem>
               {DAYS.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
+                <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -338,7 +338,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
           <div className="space-y-4">
             <div>
               <Label htmlFor="address_line1" className="mb-2 block">
-                Address (including Street Number and Name)
+                Address (including street number and name)
               </Label>
               <Input
                 id="address_line1"
@@ -352,7 +352,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
 
             <div>
               <Label htmlFor="address_line2" className="mb-2 block">
-                Street Line 2
+                Address Line 2
               </Label>
               <Input
                 id="address_line2"
@@ -363,7 +363,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
 
             <div>
               <Label htmlFor="city" className="mb-2 block">
-                City
+                Suburb / Town
               </Label>
               <Input
                 id="city"
@@ -377,7 +377,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
 
             <div>
               <Label htmlFor="state" className="mb-2 block">
-                State
+                State / Territory
               </Label>
               <Input
                 id="state"
@@ -427,7 +427,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
         </div>
 
         <div>
-          <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
+          <Label className="mb-2 block">Mobile Number</Label>
           <div className="grid grid-cols-2 gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("mobile_phone_country_code")}
@@ -616,7 +616,7 @@ export default function FutureAddressesPage() {
             type="radio"
             name="knows_future_address"
             control={control}
-            label="Do you know your intended address after arrival?"
+            label="Does the main applicant know their intended address after arrival?"
             options={[
               { value: "Yes", label: "Yes" },
               { value: "No", label: "No" },
@@ -643,7 +643,7 @@ export default function FutureAddressesPage() {
                   updateFutureAddresses(updated);
                 }}
                 DialogComponent={FutureAddressDialog}
-                addButtonText="Add Future Address"
+                addButtonText="Add"
                 emptyMessage="No future addresses added"
                 dialogTitle="Future Address"
               />

@@ -1,4 +1,5 @@
 "use client";
+import { APPLICANT_COUNTRIES as COUNTRY_OPTIONS } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,33 +23,7 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 // Country list for dropdowns
-const COUNTRY_OPTIONS = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
-  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
-  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
-  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
-  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
-  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
-  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
-  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
-  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
-  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
-  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
-  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
-  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
-  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -236,7 +211,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             </SelectTrigger>
             <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
               {days.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
+                <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -287,7 +262,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
               <SelectItem value="none">None</SelectItem>
               {days.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
+                <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -354,7 +329,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
           <div className="space-y-4">
             <div>
               <Label htmlFor="address_line1" className="mb-2 block">
-                Address (including Street Number and Name)
+                Address (including street number and name)
               </Label>
               <Input
                 id="address_line1"
@@ -367,7 +342,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             </div>
             <div>
               <Label htmlFor="address_line2" className="mb-2 block">
-                Street Line 2
+                Address Line 2
               </Label>
               <Input
                 id="address_line2"
@@ -377,7 +352,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             </div>
             <div>
               <Label htmlFor="city" className="mb-2 block">
-                City
+                Suburb / Town
               </Label>
               <Input
                 id="city"
@@ -390,7 +365,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
             </div>
             <div>
               <Label htmlFor="state" className="mb-2 block">
-                State
+                State / Territory
               </Label>
               <Input
                 id="state"
@@ -437,7 +412,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
         <div>
-          <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
+          <Label className="mb-2 block">Mobile Number</Label>
           <div className="grid grid-cols-2 gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("mobile_phone_country_code")}
@@ -695,7 +670,7 @@ export default function Page() {
               )}
             </div>
             {/* Desktop Navigation */}
-            <FormNavigation
+            <FormNavigation nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

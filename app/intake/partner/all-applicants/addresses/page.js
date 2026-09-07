@@ -1,4 +1,6 @@
 "use client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,29 +26,7 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 const YEARS = Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i));
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 const LEGAL_STATUSES = [
   "Citizen",
   "Permanent Resident",
@@ -60,11 +40,12 @@ const LEGAL_STATUSES = [
   "No Legal Status",
   "Other",
 ];
-function AddressDialog({ editingRow, onSave, onCancel }) {
+function AddressDialog({ editingRow, onSave, onCancel, applicants = [] }) {
   const dialogFormSchema = z.object({
+    applicant_ids: z.array(z.string()).optional(),
     address1: z.string().min(1, "Address is required"),
     address2: z.string().optional(),
-    suburb: z.string().min(1, "Suburb/Town/City is required"),
+    suburb: z.string().min(1, "Suburb / Town is required"),
     state: z.string().min(1, "State is required"),
     postcode: z.string().min(1, "Postcode is required"),
     country: z.string().min(1, "Country is required"),
@@ -79,6 +60,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
   const dialogForm = useForm({
     resolver: zodResolver(dialogFormSchema),
     defaultValues: editingRow || {
+      applicant_ids: [],
       address1: "",
       address2: "",
       suburb: "",
@@ -101,25 +83,26 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Address</h3>
-      <p className="text-sm text-gray-500 mb-4">Choose an address already entered, or enter a new address</p>
-      {/* Choose Address - Placeholder for now as implicit requirements suggest functionality that might need backend or store lookup */}
-      <div className="mb-4">
-        <Select disabled>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Address" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="placeholder">No saved addresses</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="space-y-2">
+        <Label>Which applicant(s) does this address apply to?</Label>
+        {applicants.map((applicant) => (
+          <label key={applicant.id} className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={(dialogForm.watch("applicant_ids") || []).includes(applicant.id)}
+              onCheckedChange={(checked) => {
+                const selected = dialogForm.getValues("applicant_ids") || [];
+                dialogForm.setValue("applicant_ids", checked ? [...new Set([...selected, applicant.id])] : selected.filter((id) => id !== applicant.id));
+              }}
+            />
+            {applicant.label}
+          </label>
+        ))}
       </div>
-      <div className="relative flex py-2 items-center">
-        <div className="flex-grow border-t border-gray-300"></div>
-        <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">Or</span>
-        <div className="flex-grow border-t border-gray-300"></div>
-      </div>
+
+      <p className="text-sm text-gray-500 mb-4">Enter details of the address where the applicant lived.</p>
+
       <div>
-        <Label htmlFor="address1" className="mb-2 block">Address (including Street Number and Name)</Label>
+        <Label htmlFor="address1" className="mb-2 block">Address (including street number and name)</Label>
         <Input
           id="address1"
           {...dialogForm.register("address1")}
@@ -138,7 +121,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         />
       </div>
       <div>
-        <Label htmlFor="suburb" className="mb-2 block">Suburb/Town/City</Label>
+        <Label htmlFor="suburb" className="mb-2 block">Suburb / Town</Label>
         <Input
           id="suburb"
           {...dialogForm.register("suburb")}
@@ -149,7 +132,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         )}
       </div>
       <div>
-        <Label htmlFor="state" className="mb-2 block">State</Label>
+        <Label htmlFor="state" className="mb-2 block">State / Territory</Label>
         <Input
           id="state"
           {...dialogForm.register("state")}
@@ -193,7 +176,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         <h3 className="text-base font-bold text-gray-900 mb-2">When</h3>
         <p className="text-sm text-gray-500 mb-4">Enter when you lived at this address</p>
         <div className="mb-4">
-          <Label className="mb-2 block">Date From</Label>
+          <Label className="mb-2 block">Date from</Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
               value={dialogForm.watch("date_from_day")}
@@ -204,7 +187,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               </SelectTrigger>
               <SelectContent>
                 {DAYS.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -240,7 +223,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
         <div className="mb-4">
-          <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+          <Label className="mb-2 block">Date to ('Date to' may be left blank if this address is current)</Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
               value={dialogForm.watch("date_to_day")}
@@ -251,7 +234,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               </SelectTrigger>
               <SelectContent>
                 {DAYS.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -286,8 +269,8 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       </div>
       <div className="pt-4 pb-2">
         <h3 className="text-base font-bold text-gray-900 mb-2">Legal Status</h3>
-        <p className="text-sm text-gray-500 mb-4">Enter your current legal status in this country</p>
-        <Label className="mb-2 block">Legal Status</Label>
+        <p className="text-sm text-gray-500 mb-4">Enter your legal status while living in this country.</p>
+        <Label className="mb-2 block">Legal Status in this Country</Label>
         <Select
           value={dialogForm.watch("legal_status")}
           onValueChange={(value) => dialogForm.setValue("legal_status", value)}
@@ -348,6 +331,14 @@ export default function Page() {
     },
   });
   const addressHistory = form.watch("address_history") || [];
+  const profiles = draftSnap.draft?.profiles || [];
+  const legacyMain = draftSnap.draft?.partner_details || {};
+  const applicants = profiles.length ? profiles.map((profile) => ({
+    id: String(profile.id),
+    label: [profile.given_names, profile.family_name].filter(Boolean).join(" ") || "Applicant",
+  })) : [{ id: "legacy_main", label: [legacyMain.given_names, legacyMain.family_name].filter(Boolean).join(" ") || "Main Applicant" }];
+  const applicantLabels = (ids) => (ids || []).map((id) => applicants.find((applicant) => applicant.id === id)?.label || id).join(", ") || "Not specified";
+
   useEffect(() => {
     const savedData = draftSnap.draft?.partner_addresses || {};
     if (Object.keys(savedData).length > 0 && !form.formState.isDirty) {
@@ -405,7 +396,7 @@ export default function Page() {
         <CardHeader>
           <CardTitle className="text-2xl font-semibold">Addresses</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            In this section you are to provide the residential history of the following included Applicants:
+            Provide the residential history of all applicants included in this application.
           </p>
         </CardHeader>
         <CardContent>
@@ -432,6 +423,7 @@ export default function Page() {
               <RepeaterTable
                 data={addressHistory}
                 columns={[
+                  { key: "applicant_ids", label: "Applicant(s)", format: (row) => applicantLabels(row.applicant_ids) },
                   { key: "address1", label: "Address" },
                   { key: "suburb", label: "Suburb" },
                   { key: "country", label: "Country" },
@@ -451,8 +443,8 @@ export default function Page() {
                   const updated = addressHistory.filter((_, i) => i !== index);
                   form.setValue("address_history", updated, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
                 }}
-                DialogComponent={AddressDialog}
-                addButtonText="Add Address"
+                DialogComponent={(props) => <AddressDialog {...props} applicants={applicants} />}
+                addButtonText="Add"
                 testIdPrefix="address"
               />
             </div>

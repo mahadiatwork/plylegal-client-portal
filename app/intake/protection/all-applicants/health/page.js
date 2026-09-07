@@ -176,7 +176,7 @@ export default function Page() {
               </RadioGroup>
             </div>
           </div>
-          <FormNavigation
+          <FormNavigation nextLabel="Continue"
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}

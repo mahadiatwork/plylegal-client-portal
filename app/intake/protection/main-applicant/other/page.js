@@ -1,4 +1,5 @@
 "use client";
+import { PreviousDOBDialog } from "@/components/intake/target-visas/PreviousDOBDialog";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -105,11 +106,6 @@ const dialogSchema = z.object({
   use_in_application: z.string().optional(),
 });
 
-const prevDobDialogSchema = z.object({
-  date_of_birth: z.string().min(1, "Date of birth is required"),
-});
-
-// Other Name Dialog Component
 function OtherNameDialog({ editingRow, onSave, onCancel }) {
   const row = editingRow;
   const initialHasEvidence = row?.has_evidence !== undefined ? row.has_evidence : "no";
@@ -385,64 +381,6 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 }
 
 // Previous Date of Birth Dialog Component
-function PreviousDOBDialog({ editingRow, onSave, onCancel }) {
-  const row = editingRow;
-
-  const dialogForm = useForm({
-    resolver: zodResolver(prevDobDialogSchema),
-    defaultValues: row || {
-      date_of_birth: "",
-    },
-  });
-
-  const handleFormSubmit = (data) => {
-    onSave(data);
-  };
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dialogForm.handleSubmit(handleFormSubmit)(e);
-      }}
-      className="space-y-4"
-    >
-      <div>
-        <Label htmlFor="date_of_birth">Date of Birth <span className="text-red-500">*</span></Label>
-        <Input
-          id="date_of_birth"
-          type="date"
-          {...dialogForm.register("date_of_birth")}
-          data-testid="input-date-of-birth"
-          className="w-full"
-        />
-        {dialogForm.formState.errors.date_of_birth && (
-          <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.date_of_birth.message}</p>
-        )}
-      </div>
-
-      <DialogFooter className="gap-2 sm:gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          data-testid="button-cancel-dob"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
-          data-testid="button-save-dob"
-        >
-          Save
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-}
-
 export default function Page() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -488,10 +426,11 @@ export default function Page() {
   const prevDobs = form.watch("prev_dobs") || [];
 
   useEffect(() => {
-    const savedData = draftSnap.draft?.protection_other || {};
+    const savedData = { ...draftSnap.draft?.protection_other, ...(profileId ? draftSnap.draft?.profiles_data?.[profileId]?.other : {}) };
     if (Object.keys(savedData).length > 0) {
       // Merge saved data with default values to ensure all fields are set
       const formData = {
+        ...savedData,
         has_other_names: savedData.has_other_names || "no",
         other_names: savedData.other_names || [],
         use_chinese_code: savedData.use_chinese_code || "no",
@@ -506,12 +445,19 @@ export default function Page() {
       // Use reset to properly update all form fields
       form.reset(formData);
     }
-  }, [draftSnap.draft?.protection_other]);
+  }, [draftSnap.draft?.protection_other, draftSnap.draft?.profiles_data, profileId]);
+
+  const persistOther = (values) => {
+    const existing = { ...draftStore.draft?.protection_other, ...(profileId ? draftStore.draft?.profiles_data?.[profileId]?.other : {}) };
+    const data = { ...existing, ...values };
+    return profileId ? draftStore.saveProfileSectionData(profileId, "other", data) : draftStore.saveSectionData("protection_other", data);
+  };
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      await draftStore.saveSectionData("protection_other", data);
+      const result = await persistOther(form.getValues());
+      if (!result.success) throw new Error(result.error || "Failed to save draft");
       if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/other`); } else { await draftStore.markPageComplete(`${visaType}/main-applicant/other`); }
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
       startNavigation(next);
@@ -545,8 +491,7 @@ export default function Page() {
       }
 
       const values = form.getValues();
-      console.log("Saving protection_other data:", values); // Debug log
-      const result = await draftStore.saveSectionData("protection_other", values);
+      const result = await persistOther(values);
 
       if (result.success) {
         toast({
@@ -575,12 +520,12 @@ export default function Page() {
 
   const updateOtherNames = (newNames) => {
     form.setValue("other_names", newNames, { shouldValidate: true });
-    draftStore.saveSectionData("protection_other", { ...form.getValues(), other_names: newNames });
+    persistOther({ ...form.getValues(), other_names: newNames });
   };
 
   const updatePrevDobs = (newDobs) => {
     form.setValue("prev_dobs", newDobs, { shouldValidate: true });
-    draftStore.saveSectionData("protection_other", { ...form.getValues(), prev_dobs: newDobs });
+    persistOther({ ...form.getValues(), prev_dobs: newDobs });
   };
 
   const otherNameColumns = [
@@ -659,7 +604,7 @@ export default function Page() {
                     onAdd={(row) => updateOtherNames([...otherNames, row])}
                     onEdit={(index, row) => {
                       const updated = [...otherNames];
-                      updated[index] = row;
+                      updated[index] = { ...updated[index], ...row };
                       updateOtherNames(updated);
                     }}
                     onDelete={(index) => {
@@ -667,7 +612,7 @@ export default function Page() {
                       updateOtherNames(updated);
                     }}
                     DialogComponent={OtherNameDialog}
-                    addButtonText="Add another name"
+                    addButtonText="Add"
                     emptyMessage="No other names added"
                     dialogTitle="Add other name"
                     testIdPrefix="other-name"
@@ -803,7 +748,7 @@ export default function Page() {
               {hasPrevDob === "yes" && (
                 <div className="pl-0 mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of your previous Birth Dates
+                    Enter details of your previous Birth Dates.
                   </p>
                   <RepeaterTable
                     data={prevDobs}
@@ -811,7 +756,7 @@ export default function Page() {
                     onAdd={(row) => updatePrevDobs([...prevDobs, row])}
                     onEdit={(index, row) => {
                       const updated = [...prevDobs];
-                      updated[index] = row;
+                      updated[index] = { ...updated[index], ...row };
                       updatePrevDobs(updated);
                     }}
                     onDelete={(index) => {
@@ -821,13 +766,14 @@ export default function Page() {
                     DialogComponent={PreviousDOBDialog}
                     addButtonText="Add"
                     emptyMessage="No previous birth dates added"
-                    dialogTitle="Add previous date of birth"
+                    dialogTitle="Previous Date of Birth"
                     testIdPrefix="prev-dob"
                   />
                 </div>
               )}
             </div>
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

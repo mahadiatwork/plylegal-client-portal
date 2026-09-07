@@ -1,4 +1,5 @@
 "use client";
+import { APPLICANT_COUNTRIES as COUNTRY_OPTIONS } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,33 +23,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getContinuousHistoryIssues, getYearsAgoDate } from "@/lib/protectionHistoryCoverage";
 // Country list for dropdowns
-const COUNTRY_OPTIONS = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
-  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
-  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
-  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
-  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
-  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
-  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
-  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
-  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
-  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
-  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
-  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
-  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
-  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 const LEGAL_STATUS_OPTIONS = [
   "Citizen",
   "Permanent Resident",
@@ -73,7 +48,7 @@ const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString()
 const addressDialogSchema = z.object({
   address_line1: z.string().min(1, "Address is required"),
   address_line2: z.string().optional(),
-  suburb: z.string().min(1, "Suburb/Town/City is required"),
+  suburb: z.string().min(1, "Suburb / Town is required"),
   state: z.string().optional(),
   postcode: z.string().min(1, "Postcode is required"),
   country: z.string().min(1, "Country is required"),
@@ -154,13 +129,13 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       className="space-y-4"
     >
       <p className="text-sm text-gray-600 mb-4">
-        Choose an address already entered, or enter a new address
+        Enter details of the address where the applicant lived.
       </p>
       {/* Address Block */}
       <div className="space-y-4">
         <div>
           <Label htmlFor="address_line1">
-            Address (including Street Number and Name) <span className="text-red-500">*</span>
+            Address (including street number and name) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="address_line1"
@@ -181,7 +156,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="suburb">
-            Suburb/Town/City <span className="text-red-500">*</span>
+            Suburb / Town <span className="text-red-500">*</span>
           </Label>
           <Input
             id="suburb"
@@ -193,7 +168,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
         <div>
-          <Label htmlFor="state">State</Label>
+          <Label htmlFor="state">State / Territory</Label>
           <Input
             id="state"
             {...dialogForm.register("state")}
@@ -215,7 +190,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            Choose Country <span className="text-red-500">*</span>
+            Country <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("country")}
@@ -242,7 +217,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
 
         <div>
           <Label className="mb-2 block">
-            Date From <span className="text-red-500">*</span>
+            Date from <span className="text-red-500">*</span>
           </Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
@@ -250,11 +225,11 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("date_from_day", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-date-from-day">
-                <SelectValue placeholder="Day" />
+                <SelectValue placeholder="Choose Day" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -263,7 +238,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("date_from_month", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-date-from-month">
-                <SelectValue placeholder="Month" />
+                <SelectValue placeholder="Choose Month" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {months.map((month, idx) => (
@@ -276,7 +251,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("date_from_year", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-date-from-year">
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {years.map((year) => (
@@ -290,18 +265,18 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
         <div>
-          <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+          <Label className="mb-2 block">Date to ('Date to' may be left blank if this address is current)</Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
               value={dialogForm.watch("date_to_day")}
               onValueChange={(value) => dialogForm.setValue("date_to_day", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-date-to-day">
-                <SelectValue placeholder="Day" />
+                <SelectValue placeholder="Choose Day" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -310,7 +285,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("date_to_month", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-date-to-month">
-                <SelectValue placeholder="Month" />
+                <SelectValue placeholder="Choose Month" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {months.map((month, idx) => (
@@ -323,7 +298,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("date_to_year", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-date-to-year">
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {years.map((year) => (
@@ -340,11 +315,11 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
       {/* Legal Status */}
       <div className="space-y-4 pt-4 border-t">
         <h3 className="text-base font-semibold text-gray-900">Legal Status</h3>
-        <p className="text-sm text-gray-600">Enter your current legal status in this country</p>
+        <p className="text-sm text-gray-600">Enter your legal status while living in this country.</p>
 
         <div>
           <Label className="mb-2 block">
-            Legal Status <span className="text-red-500">*</span>
+            Legal Status in this Country <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("legal_status")}
@@ -594,7 +569,7 @@ export default function Page() {
           <div className="mb-8">
             <CardTitle className="text-2xl font-semibold">Addresses</CardTitle>
             <p className="text-sm text-gray-600 mt-2">
-              In this section you are to provide the residential history of the following included Applicants:
+              Provide the residential history of all applicants included in this application.
             </p>
           </div>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -635,7 +610,7 @@ export default function Page() {
                     onEdit={(index, updatedRow) => updateMainApplicantAddresses(mainApplicantAddresses.map((row, rowIndex) => rowIndex === index ? updatedRow : row))}
                     onDelete={(index) => updateMainApplicantAddresses(mainApplicantAddresses.filter((_, rowIndex) => rowIndex !== index))}
                     DialogComponent={AddressDialog}
-                    addButtonText="Add address"
+                    addButtonText="Add"
                     emptyMessage="No addresses added"
                     dialogTitle="Address"
                     testIdPrefix="address"
@@ -659,7 +634,7 @@ export default function Page() {
                           onEdit={(index, updatedRow) => updateApplicantAddresses(profileId, rows.map((row, rowIndex) => rowIndex === index ? updatedRow : row))}
                           onDelete={(index) => updateApplicantAddresses(profileId, rows.filter((_, rowIndex) => rowIndex !== index))}
                           DialogComponent={AddressDialog}
-                          addButtonText="Add address"
+                          addButtonText="Add"
                           emptyMessage="No addresses added"
                           dialogTitle="Address"
                           testIdPrefix={`address-${testId}`}
@@ -671,7 +646,7 @@ export default function Page() {
                 </div>
               )}
             </div>
-            <FormNavigation
+            <FormNavigation nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

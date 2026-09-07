@@ -47,7 +47,7 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
-const YEARS = Array.from({ length: 50 }, (_, i) => String(new Date().getFullYear() - i));
+const YEARS = Array.from({ length: 130 }, (_, i) => String(new Date().getFullYear() - i));
 
 const employmentHistoryDialogSchema = z.object({
   date_from_day: z.string().min(1, "Day is required"),
@@ -219,7 +219,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       {isEmploymentStatus && (
         <>
           <div>
-            <Label htmlFor="position">Position <span className="text-red-500">*</span></Label>
+            <Label htmlFor="position">Position / Occupation <span className="text-red-500">*</span></Label>
             <Input id="position" {...dialogForm.register("position")} data-testid="input-position" />
             {dialogForm.formState.errors.position && (
               <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.position.message}</p>
@@ -227,7 +227,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           </div>
 
           <div>
-            <Label htmlFor="business_name">Business Name</Label>
+            <Label htmlFor="business_name">Employer/Organization</Label>
             <Input id="business_name" {...dialogForm.register("business_name")} data-testid="input-business-name" />
           </div>
 
@@ -235,15 +235,16 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
             <Label className="mb-2 block">Business Address</Label>
             <div className="space-y-2">
               <Input id="business_address_street" {...dialogForm.register("business_address_street")} placeholder="Street Number and Name" />
-              <Input id="business_address_suburb" {...dialogForm.register("business_address_suburb")} placeholder="Suburb/Town/City" />
-              <Input id="business_address_state" {...dialogForm.register("business_address_state")} placeholder="State" />
+              <Input id="business_address_suburb" {...dialogForm.register("business_address_suburb")} placeholder="Suburb / Town" />
+              <Input id="business_address_state" {...dialogForm.register("business_address_state")} placeholder="State / Territory" />
               <Input id="business_address_postcode" {...dialogForm.register("business_address_postcode")} placeholder="Postcode" />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="main_duties">Main Duties</Label>
-            <Textarea id="main_duties" {...dialogForm.register("main_duties")} rows={3} />
+            <Label htmlFor="main_duties">Duties/Notes <span className="text-sm font-normal text-gray-500">(max 300 characters)</span></Label>
+            <Textarea id="main_duties" {...dialogForm.register("main_duties")} rows={3} maxLength={Math.max(300, editingRow?.main_duties?.length || 0)} />
+            <p className="text-xs text-gray-500 mt-1">{(dialogForm.watch("main_duties") || "").length}/300 characters</p>
           </div>
         </>
       )}
@@ -291,7 +292,9 @@ export default function MainApplicantEmploymentPage() {
       draftStore.setApplicationId(appIdFromUrl);
       draftStore.loadDraft(appIdFromUrl);
     } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
-      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("applicationId", draftSnap.currentApplicationId);
+      const newUrl = `${pathname}?${params.toString()}`;
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);

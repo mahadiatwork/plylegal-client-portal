@@ -1,4 +1,8 @@
 "use client";
+import { TARGET_CHARACTER_QUESTIONS as CHARACTER_QUESTIONS } from "@/lib/allApplicantsParity";
+import { CharacterInstructions } from "@/components/intake/CharacterInstructions";
+import { AlignedDateSelector } from "@/components/intake/AlignedDateSelector";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,33 +26,7 @@ import { Loader2 } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 // Use Remote's updated Country List
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
-  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
-  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
-  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
-  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
-  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
-  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
-  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
-  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
-  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
-  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
-  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
-  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
-  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
@@ -66,116 +44,7 @@ const formatDate = (day, month, year) => {
 };
 
 // Character Questions List (HEAD)
-const CHARACTER_QUESTIONS = [
-  {
-    key: "police_check_last_12_months",
-    label: "Has anyone who is to be included in this application applied for a Police Clearance Certificate in the last 12 months?",
-  },
-  {
-    key: "immigration_detention",
-    label: "Has anyone who is to be included in this application previously been in Immigration Detention, a Refugee Camp or Centre for Refugees?",
-  },
-  {
-    key: "convicted_offence",
-    label: "Has any applicant ever been convicted of an offence in any country (including any conviction which is now removed from official records? If in doubt, click Yes.",
-  },
-  {
-    key: "awaiting_legal_action",
-    label: "Has any applicant ever been charged with any offence in any country that is currently awaiting legal action? If in doubt, click Yes.",
-  },
-  {
-    key: "domestic_violence_order",
-    label: "Has any applicant who is included in this application ever been the subject of a domestic violence or family violence order, or any other order, of a tribunal or court or other similar authority, for the personal protection of another person?",
-  },
-  {
-    key: "arrest_warrant",
-    label: "Has any applicant who is to be included in this application been the subject of an arrest warrant or Interpol Notice?",
-  },
-  {
-    key: "child_sex_offence",
-    label: "Has any applicant been found guilty of a sexually based offence involving a child (including where no conviction was recorded)?",
-  },
-  {
-    key: "sex_offender_register",
-    label: "Has any applicant who is to be included in this application ever been named on a sex offender register?",
-  },
-  {
-    key: "psychiatric_institution",
-    label: "Has any applicant been confined in a prison or psychiatric institution by order of a court in relation to criminal proceedings?",
-  },
-  {
-    key: "insanity_acquittal",
-    label: "Has any applicant ever been acquitted of any offence on the grounds of unsoundness of mind or insanity? If in doubt, click yes.",
-  },
-  {
-    key: "unfit_to_plead",
-    label: "Has any applicant who is to be included in this application ever been found by a court not fit to plead?",
-  },
-  {
-    key: "false_misleading_info",
-    label: "Has any applicant ever provided any information or a document to the Australian Immigration or Customs Authorities which was wrong, incorrect, false or misleading?",
-  },
-  {
-    key: "visa_refused",
-    label: "Has any applicant ever had a visa or entry permit for any country (including Australia) refused?",
-  },
-  {
-    key: "overstayed_visa",
-    label: "Has any applicant overstayed a visa or entry permit in any country (including Australia)?",
-  },
-  {
-    key: "deported_removed",
-    label: "Has any applicant been removed or deported from any country (including Australia)?",
-  },
-  {
-    key: "avoid_removal",
-    label: "Has any applicant left any country to avoid being removed or deported from that Country (including Australia)?",
-  },
-  {
-    key: "excluded_from_country",
-    label: "Has any applicant been excluded from or asked to leave any country (including Australia)?",
-  },
-  {
-    key: "citizenship_refusal",
-    label: "Has any applicant ever been refused, renounced or rescinded citizenship of any country?",
-  },
-  {
-    key: "war_crimes",
-    label: "Has any applicant been charged with, or indicted for: genocide, war crimes, crimes against humanity, torture, slavery, or any other crime that is otherwise of a serious international concern?",
-  },
-  {
-    key: "national_security_risk",
-    label: "Has any applicant been directly or indirectly involved in, or associated with, any activities that would represent a risk to Australian national security or any other country?",
-  },
-  {
-    key: "outstanding_debts",
-    label: "Has any applicant ever had any outstanding debts to the Australian Government or any public authority in Australia?",
-  },
-  {
-    key: "people_smuggling",
-    label: "Has any applicant ever been involved in people smuggling or people trafficking offences? If in doubt, click Yes.",
-  },
-  {
-    key: "associated_criminal_conduct",
-    label: "Has any applicant been associated with a person, group or organisation that has been/is involved in criminal conduct?",
-  },
-  {
-    key: "associated_violent_org",
-    label: "Has any applicant ever been associated with an organisation engaged in violence or engaged in acts of violence (including war, insurgency, freedom fighting, terrorism, protest) either overseas or in Australia?",
-  },
-  {
-    key: "military_training",
-    label: "Has any applicant undergone any military/paramilitary training, been trained in weapons/explosives or in the manufacture of chemical/biological products?",
-  },
-  {
-    key: "military_service",
-    label: "Has any applicant ever served in a military force, police force, state sponsored militia, private militia, secret police or intelligence agency?",
-  },
-  {
-    key: "sponsorship_payment",
-    label: "Has any person included in this application made or offered to make a payment or provide another benefit of any kind to another person or entity in return for the sponsorship, nomination or support for an Australian visa?",
-  },
-];
+
 
 // Dialog Schemas
 const basicEntrySchema = z.object({
@@ -261,32 +130,18 @@ const immigrationDetentionSchema = z.object({
 });
 const militaryTrainingSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  date_of_birth_day: z.string().min(1, "Day is required"),
-  date_of_birth_month: z.string().min(1, "Month is required"),
-  date_of_birth_year: z.string().min(1, "Year is required"),
-  date_from_day: z.string().min(1, "Day is required"),
-  date_from_month: z.string().min(1, "Month is required"),
-  date_from_year: z.string().min(1, "Year is required"),
-  date_to_day: z.string().optional(),
-  date_to_month: z.string().optional(),
-  date_to_year: z.string().optional(),
   country: z.string().min(1, "Country is required"),
-});
+  training_type: z.string().optional(),
+  details: z.string().optional(),
+}).passthrough();
 const militaryServiceSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  date_of_birth_day: z.string().min(1, "Day is required"),
-  date_of_birth_month: z.string().min(1, "Month is required"),
-  date_of_birth_year: z.string().min(1, "Year is required"),
-  date_from_day: z.string().min(1, "Day is required"),
-  date_from_month: z.string().min(1, "Month is required"),
-  date_from_year: z.string().min(1, "Year is required"),
-  date_to_day: z.string().optional(),
-  date_to_month: z.string().optional(),
-  date_to_year: z.string().optional(),
   country_of_service: z.string().min(1, "Country of Service is required"),
-  country_of_deployment: z.string().min(1, "Country of Deployment is required"),
-  position: z.string().min(1, "Position is required"),
-});
+  country_of_deployment: z.string().optional(),
+  service_type: z.string().optional(),
+  position: z.string().optional(),
+  details: z.string().optional(),
+}).passthrough();
 const paymentBenefitSchema = z.object({
   name: z.string().min(1, "Name is required"),
   date_of_birth_day: z.string().min(1, "Day is required"),
@@ -366,7 +221,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
         Enter details of the Police Certificate application
       </p>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("name")} onValueChange={(value) => dialogForm.setValue("name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -381,15 +236,15 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
         <Label className="mb-2 block">Date of Birth <span className="text-red-600">*</span></Label>
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_of_birth_day")} onValueChange={(v) => dialogForm.setValue("date_of_birth_day", v)}>
-            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_of_birth_month")} onValueChange={(v) => dialogForm.setValue("date_of_birth_month", v)}>
-            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
             <SelectContent>{months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_of_birth_year")} onValueChange={(v) => dialogForm.setValue("date_of_birth_year", v)}>
-            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
             <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -399,15 +254,15 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
         <Label className="mb-2 block">Date of Application <span className="text-red-600">*</span></Label>
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_of_application_day")} onValueChange={(v) => dialogForm.setValue("date_of_application_day", v)}>
-            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_of_application_month")} onValueChange={(v) => dialogForm.setValue("date_of_application_month", v)}>
-            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
             <SelectContent>{months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_of_application_year")} onValueChange={(v) => dialogForm.setValue("date_of_application_year", v)}>
-            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
             <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -416,7 +271,7 @@ function PoliceClearanceDialog({ editingRow, onSave, onCancel, applicantOptions 
       <div>
         <Label className="mb-2 block">Issuing Country <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("issuing_country")} onValueChange={(v) => dialogForm.setValue("issuing_country", v)}>
-          <SelectTrigger><SelectValue placeholder="Select Country" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
           <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       </div>
@@ -463,7 +318,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Immigration Detention Details</h3>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("name")} onValueChange={(value) => dialogForm.setValue("name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>
@@ -489,7 +344,7 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
       <div>
         <Label className="mb-2 block">Country <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("country")} onValueChange={(v) => dialogForm.setValue("country", v)}>
-          <SelectTrigger><SelectValue placeholder="Select Country" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
           <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       </div>
@@ -497,15 +352,15 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         <Label className="mb-2 block">Date From <span className="text-red-600">*</span></Label>
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_from_day")} onValueChange={(v) => dialogForm.setValue("date_from_day", v)}>
-            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_from_month")} onValueChange={(v) => dialogForm.setValue("date_from_month", v)}>
-            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
             <SelectContent>{months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_from_year")} onValueChange={(v) => dialogForm.setValue("date_from_year", v)}>
-            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
             <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -514,15 +369,15 @@ function ImmigrationDetentionDialog({ editingRow, onSave, onCancel, applicantOpt
         <Label className="mb-2 block">Date To</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_to_day")} onValueChange={(v) => dialogForm.setValue("date_to_day", v)}>
-            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_to_month")} onValueChange={(v) => dialogForm.setValue("date_to_month", v)}>
-            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
             <SelectContent>{months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_to_year")} onValueChange={(v) => dialogForm.setValue("date_to_year", v)}>
-            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
             <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -554,7 +409,7 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Prison / Psychiatric Institution</h3>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("name")} onValueChange={(value) => dialogForm.setValue("name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>{applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
@@ -563,7 +418,7 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
       <div>
         <Label className="mb-2 block">Country <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("country")} onValueChange={(v) => dialogForm.setValue("country", v)}>
-          <SelectTrigger><SelectValue placeholder="Select Country" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
           <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       </div>
@@ -571,15 +426,15 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
         <Label className="mb-2 block">Date From <span className="text-red-600">*</span></Label>
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_from_day")} onValueChange={(v) => dialogForm.setValue("date_from_day", v)}>
-            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_from_month")} onValueChange={(v) => dialogForm.setValue("date_from_month", v)}>
-            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
             <SelectContent>{months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_from_year")} onValueChange={(v) => dialogForm.setValue("date_from_year", v)}>
-            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
             <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -588,18 +443,22 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
         <Label className="mb-2 block">Date To</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select value={dialogForm.watch("date_to_day")} onValueChange={(v) => dialogForm.setValue("date_to_day", v)}>
-            <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
-            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose Day" /></SelectTrigger>
+            <SelectContent>{days.map(d => <SelectItem key={d} value={d}>{String(d).padStart(2, "0")}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_to_month")} onValueChange={(v) => dialogForm.setValue("date_to_month", v)}>
-            <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Month" /></SelectTrigger>
             <SelectContent>{months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={dialogForm.watch("date_to_year")} onValueChange={(v) => dialogForm.setValue("date_to_year", v)}>
-            <SelectTrigger><SelectValue placeholder="Year" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Choose Year" /></SelectTrigger>
             <SelectContent>{years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+      </div>
+      <div>
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={4} {...dialogForm.register("details")} placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -607,6 +466,18 @@ function PrisonInstitutionDialog({ editingRow, onSave, onCancel, applicantOption
       </DialogFooter>
     </div>
   );
+}
+
+function CharacterDateRange({ form }) {
+  return <>
+    {["from", "to"].map((direction) => <AlignedDateSelector
+      key={direction}
+      label={direction === "from" ? "Date From" : "Date To (leave blank if ongoing)"}
+      values={Object.fromEntries(["day", "month", "year"].map((part) => [part, form.watch(`date_${direction}_${part}`) || ""]))}
+      onValueChange={(part, value) => form.setValue(`date_${direction}_${part}`, value)}
+      testIdPrefix={`character-date-${direction}`}
+    />)}
+  </>;
 }
 
 function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
@@ -622,7 +493,7 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Training</h3>
       <div>
-        <Label className="mb-2 block">Name of Applicant <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("name")} onValueChange={(value) => dialogForm.setValue("name", value)}>
           <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>{applicantOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
@@ -631,17 +502,21 @@ function MilitaryTrainingDialog({ editingRow, onSave, onCancel, applicantOptions
       <div>
         <Label className="mb-2 block">Country <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("country")} onValueChange={(v) => dialogForm.setValue("country", v)}>
-          <SelectTrigger><SelectValue placeholder="Select Country" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
           <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-      {/* Dates omitted for brevity, adding Training Type */}
+      <CharacterDateRange form={dialogForm} />
       <div>
         <Label className="mb-2 block">Training Type</Label>
         <Select value={dialogForm.watch("training_type")} onValueChange={(v) => dialogForm.setValue("training_type", v)}>
           <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
           <SelectContent>{TRAINING_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
         </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={4} {...dialogForm.register("details")} placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -663,16 +538,16 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Military Service</h3>
       <div>
-        <Label className="mb-2 block">Name <span className="text-red-600">*</span></Label>
+        <Label className="mb-2 block">Which applicant does this declaration apply to? <span className="text-red-600">*</span></Label>
         <Select value={dialogForm.watch("name")} onValueChange={(v) => dialogForm.setValue("name", v)}>
-          <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
           <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div>
         <Label className="mb-2 block">Country of Service</Label>
         <Select value={dialogForm.watch("country_of_service")} onValueChange={(v) => dialogForm.setValue("country_of_service", v)}>
-          <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
           <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
         </Select>
       </div>
@@ -682,6 +557,22 @@ function MilitaryServiceDialog({ editingRow, onSave, onCancel, applicantOptions 
           <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
           <SelectContent>{SERVICE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
         </Select>
+      </div>
+      <div>
+        <Label className="mb-2 block">Country of Deployment</Label>
+        <Select value={dialogForm.watch("country_of_deployment")} onValueChange={(value) => dialogForm.setValue("country_of_deployment", value)}>
+          <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
+          <SelectContent>{COUNTRIES.map((country) => <SelectItem key={country} value={country}>{country}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <CharacterDateRange form={dialogForm} />
+      <div>
+        <Label className="mb-2 block">Position/Rank</Label>
+        <Input {...dialogForm.register("position")} />
+      </div>
+      <div>
+        <Label className="mb-2 block">Give details</Label>
+        <Textarea rows={4} {...dialogForm.register("details")} placeholder="Please provide full details as requested in the instructions above..." />
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -697,19 +588,19 @@ function CriminalConductDialog({ editingRow, onSave, onCancel, applicantOptions 
   return (
     <div className="space-y-4">
       <h3 className="font-bold">Criminal Conduct</h3>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Country</Label>
       <Select value={dialogForm.watch("country")} onValueChange={v => dialogForm.setValue("country", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
         <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -720,19 +611,19 @@ function ViolentOrganizationDialog({ editingRow, onSave, onCancel, applicantOpti
   return (
     <div className="space-y-4">
       <h3 className="font-bold">Violent Org</h3>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Country</Label>
       <Select value={dialogForm.watch("country")} onValueChange={v => dialogForm.setValue("country", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
         <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -743,19 +634,19 @@ function NationalSecurityDialog({ editingRow, onSave, onCancel, applicantOptions
   return (
     <div className="space-y-4">
       <h3 className="font-bold">National Security</h3>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Country</Label>
       <Select value={dialogForm.watch("country")} onValueChange={v => dialogForm.setValue("country", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
         <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -766,19 +657,19 @@ function OutstandingDebtsDialog({ editingRow, onSave, onCancel, applicantOptions
   return (
     <div className="space-y-4">
       <h3 className="font-bold">Outstanding Debts</h3>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Country</Label>
       <Select value={dialogForm.watch("country")} onValueChange={v => dialogForm.setValue("country", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
         <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -795,21 +686,21 @@ function GenericCharacterDialog({ editingRow, onSave, onCancel, applicantOptions
     <div className="space-y-4">
       <h3 className="font-bold">{title}</h3>
       <p className="text-sm">{description}</p>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Country</Label>
       <Select value={dialogForm.watch("country")} onValueChange={v => dialogForm.setValue("country", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
         <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Year</Label>
-      <Input {...dialogForm.register("date_year")} placeholder="Year" />
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Input {...dialogForm.register("date_year")} placeholder="Choose Year" />
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -821,21 +712,21 @@ function ConvictionDialog({ editingRow, onSave, onCancel, applicantOptions = [],
     <div className="space-y-4">
       <h3 className="font-bold">{title}</h3>
       <p className="text-sm">{description}</p>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Country</Label>
       <Select value={dialogForm.watch("country")} onValueChange={v => dialogForm.setValue("country", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Country" /></SelectTrigger>
         <SelectContent>{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
       </Select>
       <Label>Offence</Label>
       <Input {...dialogForm.register("offence_type")} />
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -847,14 +738,14 @@ function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions 
     <div className="space-y-4">
       <h3 className="font-bold">{title}</h3>
       <p className="text-sm">{description}</p>
-      <Label>Name</Label>
+      <Label>Which applicant does this declaration apply to?</Label>
       <Select value={dialogForm.watch("applicant_name")} onValueChange={v => dialogForm.setValue("applicant_name", v)}>
-        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+        <SelectTrigger><SelectValue placeholder="Choose Applicant" /></SelectTrigger>
         <SelectContent>{applicantOptions.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
       </Select>
-      <Label>Details</Label>
-      <Textarea {...dialogForm.register("details")} />
-      <DialogFooter><Button onClick={onCancel} variant="outline">Cancel</Button><Button onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
+      <Label>Give details</Label>
+      <Textarea {...dialogForm.register("details")}  placeholder="Please provide full details as requested in the instructions above..." />
+      <DialogFooter><Button type="button" onClick={onCancel} variant="outline">Cancel</Button><Button type="button" onClick={dialogForm.handleSubmit(onSave)}>Ok</Button></DialogFooter>
     </div>
   );
 }
@@ -1032,7 +923,11 @@ export default function Page() {
         if (label) opts.push(label);
       });
     }
-    return opts;
+    for (const profile of draftSnap.draft?.profiles || []) {
+      const label = buildLabel(profile.family_name, profile.given_names, profile.birth_day, profile.birth_month, profile.birth_year);
+      if (label) opts.push(label);
+    }
+    return [...new Set(opts)];
   })();
 
   const form = useForm({
@@ -1086,8 +981,12 @@ export default function Page() {
   }, [draftSnap.draft?.protection_character, form]);
 
   const onSubmit = async (data) => {
-    await draftStore.saveSectionData("protection_character", data);
-    // await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "protection_character");
+    const result = await draftStore.saveSectionData("protection_character", data);
+    if (!result.success) {
+      toast({ title: "Error", description: "Failed to save draft", variant: "destructive" });
+      return;
+    }
+    await draftStore.markPageComplete(`${visaType}/all-applicants/character`, null, "protection_character");
     const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId);
     startNavigation(next);
     if (next) router.push(next);
@@ -1113,9 +1012,7 @@ export default function Page() {
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">All Applicants' Character</CardTitle>
-        <p className="text-sm text-gray-600 mt-2">
-          Provide character information for all applicants.
-        </p>
+        <CharacterInstructions />
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -1153,7 +1050,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("police_check_details", (form.watch("police_check_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <PoliceClearanceDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1171,7 +1068,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("immigration_detention_details", (form.watch("immigration_detention_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <ImmigrationDetentionDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1189,7 +1086,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("psychiatric_institution_details", (form.watch("psychiatric_institution_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <PrisonInstitutionDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1207,7 +1104,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("military_training_details", (form.watch("military_training_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <MilitaryTrainingDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1225,7 +1122,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("military_service_details", (form.watch("military_service_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <MilitaryServiceDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1239,7 +1136,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("criminal_conduct_details", (form.watch("criminal_conduct_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <CriminalConductDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1253,7 +1150,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("violent_org_details", (form.watch("violent_org_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <ViolentOrganizationDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1267,7 +1164,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("national_security_details", (form.watch("national_security_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <NationalSecurityDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1281,7 +1178,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("outstanding_debts_details", (form.watch("outstanding_debts_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <OutstandingDebtsDialog {...props} applicantOptions={applicantOptions} />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1294,8 +1191,8 @@ export default function Page() {
                           const cur = [...(form.watch("convicted_offence_details") || [])]; cur[i] = row; form.setValue("convicted_offence_details", cur);
                         }}
                         onDelete={(i) => form.setValue("convicted_offence_details", (form.watch("convicted_offence_details") || []).filter((_, x) => x !== i))}
-                        DialogComponent={(props) => <ConvictionDialog {...props} applicantOptions={applicantOptions} title="Convictions" description="Details of conviction" />}
-                        addButtonText="Add Details"
+                        DialogComponent={(props) => <ConvictionDialog {...props} applicantOptions={applicantOptions} title="Convictions" description="Provide the date and nature of the offence, full details of the sentence, and dates of any imprisonment or other detention." />}
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1308,8 +1205,8 @@ export default function Page() {
                           const cur = [...(form.watch("awaiting_legal_action_details") || [])]; cur[i] = row; form.setValue("awaiting_legal_action_details", cur);
                         }}
                         onDelete={(i) => form.setValue("awaiting_legal_action_details", (form.watch("awaiting_legal_action_details") || []).filter((_, x) => x !== i))}
-                        DialogComponent={(props) => <ConvictionDialog {...props} applicantOptions={applicantOptions} title="Awaiting Legal Action" description="Details of pending action" />}
-                        addButtonText="Add Details"
+                        DialogComponent={(props) => <ConvictionDialog {...props} applicantOptions={applicantOptions} title="Awaiting Legal Action" description="Give details of the offence and the legal action awaiting a decision." />}
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1323,7 +1220,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("false_misleading_info_details", (form.watch("false_misleading_info_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <SimpleCharacterDialog {...props} applicantOptions={applicantOptions} title="False Information" description="Details of false information" />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1337,7 +1234,7 @@ export default function Page() {
                         }}
                         onDelete={(i) => form.setValue("sponsorship_payment_details", (form.watch("sponsorship_payment_details") || []).filter((_, x) => x !== i))}
                         DialogComponent={(props) => <SimpleCharacterDialog {...props} applicantOptions={applicantOptions} title="Sponsorship Payment" description="Details of payment" />}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
 
@@ -1355,10 +1252,10 @@ export default function Page() {
                             {...props}
                             applicantOptions={applicantOptions}
                             title={GENERIC_DIALOG_CONFIG[q.key].title}
-                            description={GENERIC_DIALOG_CONFIG[q.key].description}
+                            description={q.label}
                           />
                         )}
-                        addButtonText="Add Details"
+                        addButtonText="Add"
                       />
                     )}
                   </div>

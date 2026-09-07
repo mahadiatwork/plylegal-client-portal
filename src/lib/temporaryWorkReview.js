@@ -6,7 +6,7 @@ import {
   PROFILE_SUBPAGES,
   TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES,
   TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
-} from "@/lib/routes";
+} from "./routes.js";
 
 const PROFILE_RELATIONSHIP_ORDER = {
   main_applicant: 0,
@@ -591,7 +591,7 @@ function buildHref({ appId, slug, visaContext, internalHref, profileId }) {
   });
 }
 
-function mergeDatePartGroups(value) {
+export function mergeDatePartGroups(value) {
   const merged = {};
   const emittedGroups = new Set();
 

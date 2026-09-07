@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const RELATIONSHIP_TYPES = [
@@ -259,7 +259,7 @@ function PreviousRelationshipDialog({ editingRow, onSave, onCancel }) {
           type="number"
           name="number_of_children"
           control={dialogForm.control}
-          label="Number of Children from this Relationship"
+          label="Number of Children from this relationship"
           data-testid="input-number-of-children"
         />
 
@@ -710,6 +710,7 @@ export default function PreviousRelationshipsPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

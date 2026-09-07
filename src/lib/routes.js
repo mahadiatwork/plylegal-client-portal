@@ -1,4 +1,4 @@
-import { normalizeApplicationSlug, PARTNER_PUBLIC_SLUG, PROTECTION_PUBLIC_SLUG } from "./visaDisplay";
+import { normalizeApplicationSlug, PARTNER_PUBLIC_SLUG, PROTECTION_PUBLIC_SLUG } from "./visaDisplay.js";
 
 function getInternalIntakePrefixForSlug(slug) {
   const normalizedSlug = normalizeApplicationSlug(slug);
@@ -88,7 +88,7 @@ export const PROTECTION_VISA_ROUTES = [
     title: "Main Applicant",
     subpages: [
       { href: "/intake/protection/main-applicant/details", title: "Details" },
-      { href: "/intake/protection/main-applicant/other", title: "Other" },
+      { href: "/intake/protection/main-applicant/other", title: "Other Names" },
       { href: "/intake/protection/main-applicant/identity", title: "Identity" },
       { href: "/intake/protection/main-applicant/employment", title: "Employment" },
       { href: "/intake/protection/main-applicant/education", title: "Education" },
@@ -100,7 +100,7 @@ export const PROTECTION_VISA_ROUTES = [
     title: "Spouse/Partner",
     subpages: [
       { href: "/intake/protection/spouse-partner/details", title: "Details" },
-      { href: "/intake/protection/spouse-partner/other-details", title: "Other Details" },
+      { href: "/intake/protection/spouse-partner/other-details", title: "Other Names" },
       { href: "/intake/protection/spouse-partner/identity", title: "Identity" },
     ],
   },
@@ -257,7 +257,7 @@ export const PARTNER_SPOUSE_PROFILE_SUBPAGES = [
 // ── PROTECTION PROFILE SUBPAGES ──
 export const PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES = [
   { href: "/intake/protection/main-applicant/details", title: "Details" },
-  { href: "/intake/protection/main-applicant/other", title: "Other" },
+  { href: "/intake/protection/main-applicant/other", title: "Other Names" },
   { href: "/intake/protection/main-applicant/identity", title: "Identity" },
   { href: "/intake/protection/main-applicant/employment", title: "Employment" },
   { href: "/intake/protection/main-applicant/education", title: "Education" },
@@ -266,7 +266,7 @@ export const PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES = [
 
 export const PROTECTION_SPOUSE_PROFILE_SUBPAGES = [
   { href: "/intake/protection/spouse-partner/details", title: "Details" },
-  { href: "/intake/protection/spouse-partner/other-details", title: "Other Details" },
+  { href: "/intake/protection/spouse-partner/other-details", title: "Other Names" },
   { href: "/intake/protection/spouse-partner/identity", title: "Identity" },
 ];
 

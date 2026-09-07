@@ -26,6 +26,47 @@ function statusClass(status) {
   return "bg-yellow-100 text-yellow-800 border-yellow-200";
 }
 
+const CORRECTION_MADE_STATUS = "correction made - notify client";
+
+function isCompletedCorrection(correction) {
+  return [correction.status, correction.detailStatus].some((status) => (
+    String(status || "").trim().toLowerCase() === CORRECTION_MADE_STATUS
+  ));
+}
+
+function correctionStatusLabel(correction) {
+  return isCompletedCorrection(correction)
+    ? "Correction Completed"
+    : correction.status || correction.detailStatus || "No Status";
+}
+
+function correctionStatusClass(correction) {
+  return isCompletedCorrection(correction)
+    ? "bg-green-100 text-green-800 border-green-200"
+    : statusClass(correction.status || correction.detailStatus);
+}
+
+function sortCorrectionsNewestFirst(corrections) {
+  return corrections
+    .map((correction, index) => ({
+      correction,
+      index,
+      timestamp: Date.parse(correction.createdTime || correction.modifiedTime || ""),
+    }))
+    .sort((left, right) => {
+      const leftHasTimestamp = Number.isFinite(left.timestamp);
+      const rightHasTimestamp = Number.isFinite(right.timestamp);
+      if (leftHasTimestamp && rightHasTimestamp && left.timestamp !== right.timestamp) {
+        return right.timestamp - left.timestamp;
+      }
+      if (leftHasTimestamp !== rightHasTimestamp) {
+        return rightHasTimestamp ? 1 : -1;
+      }
+      return left.index - right.index;
+    })
+    .map(({ correction }) => correction);
+}
+
 export default function CorrectionsPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -51,6 +92,9 @@ export default function CorrectionsPage() {
   const appId = params.id;
   const slug = params.slug;
   const application = applicationsSnap.applications.find(app => app.id === appId);
+  const sortedExistingCorrections = sortCorrectionsNewestFirst(existingCorrections);
+  const requestedCorrections = sortedExistingCorrections.filter((correction) => !isCompletedCorrection(correction));
+  const completedCorrections = sortedExistingCorrections.filter(isCompletedCorrection);
   const documentPreviewBootstrapUrl = `/api/matters/${encodeURIComponent(appId || "")}/document-preview`;
   const documentViewerUrl = documentPreview.previewUrl
     ? `${documentPreview.previewUrl}#page=1&zoom=100&navpanes=0`
@@ -104,7 +148,9 @@ export default function CorrectionsPage() {
 
     setIsLoadingCorrections(true);
     try {
-      const response = await fetch(`/api/corrections?dealId=${application.zohoId}`);
+      const response = await fetch(`/api/corrections?dealId=${application.zohoId}`, {
+        cache: "no-store",
+      });
       const result = await response.json();
       if (!response.ok || !result.success) {
         throw new Error(result.error || "Failed to load corrections");
@@ -396,10 +442,124 @@ export default function CorrectionsPage() {
                 <CardHeader>
                   <CardTitle className="text-lg">Document Review</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
+                <CardContent className="space-y-8">
+                  <section aria-labelledby="new-corrections-heading" className="space-y-4">
+                    <h3 id="new-corrections-heading" className="text-sm font-semibold text-gray-900">
+                      New Corrections
+                    </h3>
+
+                    {corrections.map((correction, index) => (
+                      <div key={correction.id} className="space-y-4 border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium text-gray-900">
+                            Correction #{index + 1}
+                          </Label>
+                          {corrections.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeCorrection(correction.id)}
+                              data-testid={`button-remove-correction-${correction.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`fieldName-${correction.id}`} className="text-sm text-gray-700">
+                            Field Name
+                          </Label>
+                          <Input
+                            id={`fieldName-${correction.id}`}
+                            type="text"
+                            placeholder="e.g., Date of Birth"
+                            value={correction.fieldName}
+                            onChange={(e) => updateCorrection(correction.id, 'fieldName', e.target.value)}
+                            data-testid={`input-field-name-${correction.id}`}
+                          />
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor={`pageNumber-${correction.id}`} className="text-sm text-gray-700">
+                              Page No <span className="text-gray-400">(optional)</span>
+                            </Label>
+                            <Input
+                              id={`pageNumber-${correction.id}`}
+                              type="text"
+                              placeholder="e.g., 4"
+                              value={correction.pageNumber}
+                              onChange={(e) => updateCorrection(correction.id, 'pageNumber', e.target.value)}
+                              data-testid={`input-page-number-${correction.id}`}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`questionNumber-${correction.id}`} className="text-sm text-gray-700">
+                              Question No <span className="text-gray-400">(optional)</span>
+                            </Label>
+                            <Input
+                              id={`questionNumber-${correction.id}`}
+                              type="text"
+                              placeholder="e.g., 12A"
+                              value={correction.questionNumber}
+                              onChange={(e) => updateCorrection(correction.id, 'questionNumber', e.target.value)}
+                              data-testid={`input-question-number-${correction.id}`}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`details-${correction.id}`} className="text-sm text-gray-700">
+                            Details
+                          </Label>
+                          <Textarea
+                            id={`details-${correction.id}`}
+                            placeholder="Describe the correction needed..."
+                            value={correction.details}
+                            onChange={(e) => updateCorrection(correction.id, 'details', e.target.value)}
+                            rows={3}
+                            data-testid={`input-details-${correction.id}`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addCorrection}
+                        className="flex-1"
+                        data-testid="button-add-correction"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Another
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className="flex-1 bg-[#4F726B] hover:bg-[#4F726B]"
+                        data-testid="button-submit-corrections"
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4 mr-2" />
+                        )}
+                        {isSubmitting ? "Submitting..." : "Submit"}
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section aria-labelledby="requested-corrections-heading" className="space-y-4 border-t border-gray-200 pt-6">
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-sm font-semibold text-gray-900">Existing Corrections</h3>
+                      <h3 id="requested-corrections-heading" className="text-sm font-semibold text-gray-900">
+                        Requested Corrections
+                      </h3>
                       {isLoadingCorrections && (
                         <span className="flex items-center gap-2 text-xs text-gray-500">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -408,13 +568,13 @@ export default function CorrectionsPage() {
                       )}
                     </div>
 
-                    {!isLoadingCorrections && existingCorrections.length === 0 && (
+                    {!isLoadingCorrections && requestedCorrections.length === 0 && (
                       <div className="rounded-md border border-dashed border-gray-200 p-4 text-sm text-gray-600">
-                        No corrections submitted yet.
+                        No requested corrections.
                       </div>
                     )}
 
-                    {existingCorrections.map((correction) => (
+                    {requestedCorrections.map((correction) => (
                       <div key={correction.id} className="space-y-3 rounded-md border border-gray-200 bg-gray-50 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
@@ -431,8 +591,8 @@ export default function CorrectionsPage() {
                               </p>
                             )}
                           </div>
-                          <Badge variant="outline" className={statusClass(correction.status)}>
-                            {correction.status || "No Status"}
+                          <Badge variant="outline" className={correctionStatusClass(correction)}>
+                            {correctionStatusLabel(correction)}
                           </Badge>
                         </div>
 
@@ -467,117 +627,47 @@ export default function CorrectionsPage() {
                         </div>
                       </div>
                     ))}
-                  </div>
+                  </section>
 
-                  <div className="border-t border-gray-200 pt-6">
-                    <h3 className="mb-4 text-sm font-semibold text-gray-900">New Corrections</h3>
-                  </div>
+                  <section aria-labelledby="completed-corrections-heading" className="space-y-4 border-t border-gray-200 pt-6">
+                    <h3 id="completed-corrections-heading" className="text-sm font-semibold text-gray-900">
+                      Completed Corrections
+                    </h3>
 
-                  {corrections.map((correction, index) => (
-                    <div key={correction.id} className="space-y-4 pb-6 border-b border-gray-200 last:border-b-0 last:pb-0">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium text-gray-900">
-                          Correction #{index + 1}
-                        </Label>
-                        {corrections.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeCorrection(correction.id)}
-                            data-testid={`button-remove-correction-${correction.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        )}
+                    {!isLoadingCorrections && completedCorrections.length === 0 && (
+                      <div className="rounded-md border border-dashed border-gray-200 p-4 text-sm text-gray-600">
+                        No completed corrections yet.
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor={`fieldName-${correction.id}`} className="text-sm text-gray-700">
-                          Field Name
-                        </Label>
-                        <Input
-                          id={`fieldName-${correction.id}`}
-                          type="text"
-                          placeholder="e.g., Date of Birth"
-                          value={correction.fieldName}
-                          onChange={(e) => updateCorrection(correction.id, 'fieldName', e.target.value)}
-                          data-testid={`input-field-name-${correction.id}`}
-                        />
-                      </div>
+                    )}
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor={`pageNumber-${correction.id}`} className="text-sm text-gray-700">
-                            Page No <span className="text-gray-400">(optional)</span>
-                          </Label>
-                          <Input
-                            id={`pageNumber-${correction.id}`}
-                            type="text"
-                            placeholder="e.g., 4"
-                            value={correction.pageNumber}
-                            onChange={(e) => updateCorrection(correction.id, 'pageNumber', e.target.value)}
-                            data-testid={`input-page-number-${correction.id}`}
-                          />
+                    {completedCorrections.map((correction) => (
+                      <div key={correction.id} className="space-y-3 rounded-md border border-green-200 bg-green-50/40 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{correction.fieldName || correction.name || "Correction"}</p>
+                            {correction.name && correction.name !== correction.fieldName && (
+                              <p className="text-xs text-gray-500">{correction.name}</p>
+                            )}
+                            {(correction.pageNumber || correction.questionNumber) && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                {[
+                                  correction.pageNumber ? `Page ${correction.pageNumber}` : null,
+                                  correction.questionNumber ? `Question ${correction.questionNumber}` : null,
+                                ].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant="outline" className={correctionStatusClass(correction)}>
+                            {correctionStatusLabel(correction)}
+                          </Badge>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor={`questionNumber-${correction.id}`} className="text-sm text-gray-700">
-                            Question No <span className="text-gray-400">(optional)</span>
-                          </Label>
-                          <Input
-                            id={`questionNumber-${correction.id}`}
-                            type="text"
-                            placeholder="e.g., 12A"
-                            value={correction.questionNumber}
-                            onChange={(e) => updateCorrection(correction.id, 'questionNumber', e.target.value)}
-                            data-testid={`input-question-number-${correction.id}`}
-                          />
-                        </div>
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                          {correction.issueDescription || "No details provided."}
+                        </p>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor={`details-${correction.id}`} className="text-sm text-gray-700">
-                          Details
-                        </Label>
-                        <Textarea
-                          id={`details-${correction.id}`}
-                          placeholder="Describe the correction needed..."
-                          value={correction.details}
-                          onChange={(e) => updateCorrection(correction.id, 'details', e.target.value)}
-                          rows={3}
-                          data-testid={`input-details-${correction.id}`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addCorrection}
-                      className="flex-1"
-                      data-testid="button-add-correction"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Another
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      className="flex-1 bg-[#4F726B] hover:bg-[#4F726B]"
-                      data-testid="button-submit-corrections"
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
-                      {isSubmitting ? "Submitting..." : "Submit"}
-                    </Button>
-                  </div>
+                    ))}
+                  </section>
                 </CardContent>
               </Card>
             </div>

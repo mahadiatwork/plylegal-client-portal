@@ -323,9 +323,9 @@ export default function FamilySponsorContactDetailsPage() {
               </div>
             </div>
 
-            {/* Mobile/Cell Phone Number */}
+            {/* Mobile Number */}
             <div>
-              <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
+              <Label className="mb-2 block">Mobile Number</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   placeholder="Country Code"
@@ -379,7 +379,7 @@ export default function FamilySponsorContactDetailsPage() {
 
               <div>
                 <Label htmlFor="postal_suburb" className="mb-2 block">
-                  Suburb/Town/City
+                  Suburb / Town
                 </Label>
                 <Input
                   id="postal_suburb"
@@ -390,7 +390,7 @@ export default function FamilySponsorContactDetailsPage() {
 
               <div>
                 <Label htmlFor="postal_state" className="mb-2 block">
-                  State
+                  State / Territory
                 </Label>
                 <Input
                   id="postal_state"
@@ -411,7 +411,7 @@ export default function FamilySponsorContactDetailsPage() {
               </div>
 
               <div>
-                <Label className="mb-2 block">Choose Country</Label>
+                <Label className="mb-2 block">Country</Label>
                 <Select
                   value={form.watch("postal_country") || ""}
                   onValueChange={(value) => form.setValue("postal_country", value)}
@@ -429,6 +429,7 @@ export default function FamilySponsorContactDetailsPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

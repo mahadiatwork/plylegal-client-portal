@@ -66,7 +66,8 @@ test.describe("482 questionnaire @questionnaire-482", () => {
     await expect(page.getByTestId("input-family-name")).toHaveValue(MAIN_APPLICANT.familyName);
 
     await completeLinearFlowToSubmit(page, "low", { expectSpouse: false, expectChild: false });
-    await expectCompletionSummary(page, { completed: 15, total: 15, percentage: 100 });
+    // The accepted 482 flow includes the Other Family index even with no members.
+    await expectCompletionSummary(page, { completed: 16, total: 16, percentage: 100 });
     await expectTemporaryWorkSubmitReview(page, {
       mainApplicant: MAIN_APPLICANT,
     });
@@ -99,7 +100,8 @@ test.describe("482 questionnaire @questionnaire-482", () => {
     expect(routeCoverage.sawSpouseOtherDirectCopy).toBe(true);
     expect(routeCoverage.sawChildCitizenship).toBe(true);
 
-    await expectCompletionSummary(page, { completed: 22, total: 22, percentage: 100 });
+    // This branch adds one Other Family member and completes all six member pages.
+    await expectCompletionSummary(page, { completed: 29, total: 29, percentage: 100 });
     await expectTemporaryWorkSubmitReview(page, {
       mainApplicant: MAIN_APPLICANT,
       spouse: SPOUSE,

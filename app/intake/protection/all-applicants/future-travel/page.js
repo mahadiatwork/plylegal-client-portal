@@ -1,4 +1,7 @@
 "use client";
+import { COMMON_TRAVEL_REASONS, withCurrentOption } from "@/lib/allApplicantsParity";
+import { Textarea } from "@/components/ui/textarea";
+import { APPLICANT_COUNTRIES as COUNTRY_OPTIONS } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,51 +24,8 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 // Country list for dropdowns
-const COUNTRY_OPTIONS = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
-  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
-  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
-  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
-  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
-  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
-  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
-  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
-  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
-  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
-  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
-  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
-  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
-  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
-const FUTURE_TRAVEL_REASON_OPTIONS = [
-  "Visit Family",
-  "Visit Friends",
-  "Business",
-  "Holiday",
-  "Study",
-  "Work",
-  "Medical",
-  "Temporary Residence",
-  "Permanent Residence",
-  "Residence",
-  "Live There",
-  "Transit",
-  "Travel",
-  "Working Holiday",
-  "Military Deployment",
-  "Other"
-];
+
+
 const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -88,6 +48,7 @@ const futureTravelDialogSchema = z.object({
   arrival_country: z.string().min(1, "Arrival Country is required"),
   arrival_city: z.string().min(1, "Arrival City is required"),
   reason_for_travel: z.string().min(1, "Reason for Travel is required"),
+    other_reason_details: z.string().optional(),
 }).superRefine((data, ctx) => {
   // Validate that Intended Arrival Date is on or after Travel Start Date
   const startDate = new Date(
@@ -127,6 +88,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
       arrival_country: "",
       arrival_city: "",
       reason_for_travel: "",
+      other_reason_details: "",
     },
   });
   // Get main applicant name from draft store
@@ -164,11 +126,11 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("travel_start_date_day", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-start-day">
-                <SelectValue placeholder="Day" />
+                <SelectValue placeholder="Choose Day" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -177,7 +139,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("travel_start_date_month", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-start-month">
-                <SelectValue placeholder="Month" />
+                <SelectValue placeholder="Choose Month" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {months.map((month, idx) => (
@@ -190,7 +152,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("travel_start_date_year", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-start-year">
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {[...years, ...futureYears].map((year) => (
@@ -262,11 +224,11 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("intended_arrival_date_day", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-arrival-day">
-                <SelectValue placeholder="Day" />
+                <SelectValue placeholder="Choose Day" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -275,7 +237,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("intended_arrival_date_month", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-arrival-month">
-                <SelectValue placeholder="Month" />
+                <SelectValue placeholder="Choose Month" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {months.map((month, idx) => (
@@ -288,7 +250,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               onValueChange={(value) => dialogForm.setValue("intended_arrival_date_year", value, { shouldValidate: true })}
             >
               <SelectTrigger data-testid="select-arrival-year">
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="Choose Year" />
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {[...years, ...futureYears].map((year) => (
@@ -347,7 +309,7 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
               <SelectValue placeholder="Choose Reason" />
             </SelectTrigger>
             <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
-              {FUTURE_TRAVEL_REASON_OPTIONS.map((reason) => (
+              {withCurrentOption(COMMON_TRAVEL_REASONS, dialogForm.watch("reason_for_travel")).map((reason) => (
                 <SelectItem key={reason} value={reason}>{reason}</SelectItem>
               ))}
             </SelectContent>
@@ -357,6 +319,12 @@ function FutureTravelDialog({ editingRow, onSave, onCancel }) {
           )}
         </div>
       </div>
+      {dialogForm.watch("reason_for_travel") === "Other" && (
+        <div>
+          <Label className="mb-2 block">Please provide details</Label>
+          <Textarea {...dialogForm.register("other_reason_details")} rows={3} placeholder="Please describe the reason for visiting this country..." />
+        </div>
+      )}
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
           type="button"
@@ -393,6 +361,7 @@ const formSchema = z.object({
     arrival_country: z.string(),
     arrival_city: z.string(),
     reason_for_travel: z.string(),
+    other_reason_details: z.string().optional(),
   })).optional(),
 });
 export default function Page() {
@@ -591,7 +560,7 @@ export default function Page() {
                 </div>
               )}
             </div>
-            <FormNavigation
+            <FormNavigation nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

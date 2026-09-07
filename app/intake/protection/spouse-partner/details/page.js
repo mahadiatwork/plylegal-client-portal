@@ -1,37 +1,23 @@
 "use client";
+import { PersonalDetailsFields } from "@/components/intake/target-visas/PersonalDetailsFields";
+import { targetPersonalDetailsSchema, normalizeTargetPersonalDetails } from "@/lib/targetVisaPersonalDetails";
+import { COUNTRIES } from "@/reuseable/countries";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// StickyNav import removed
-import { Loader2 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
-const formSchema = z.object({
-  family_name: z.string().optional(),
-  given_names: z.string().optional(),
-  preferred_names: z.string().optional(),
-  gender: z.string().optional(),
-  birth_day: z.string().optional(),
-  birth_month: z.string().optional(),
-  birth_year: z.string().optional(),
-  intending_to_migrate: z.string().optional(),
-  country_of_birth: z.string().optional(),
-  city_of_birth: z.string().optional(),
-  country_of_residence: z.string().optional(),
-});
+const formSchema = targetPersonalDetailsSchema;
 export default function Page() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -58,19 +44,8 @@ export default function Page() {
 
   const form = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      family_name: "",
-      given_names: "",
-      preferred_names: "",
-      gender: "",
-      birth_day: "",
-      birth_month: "",
-      birth_year: "",
-      intending_to_migrate: "",
-      country_of_birth: "",
-      city_of_birth: "",
-      country_of_residence: "",
-    },
+    mode: "onChange",
+    defaultValues: normalizeTargetPersonalDetails(),
   });
 
   // Load section data
@@ -80,66 +55,7 @@ export default function Page() {
 
   useEffect(() => {
     if (draftSnap.isLoading) return;
-
-    const monthsList = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-
-    const normalizeNumber = (val) => {
-      if (!val) return "";
-      const num = Number(val);
-      return isNaN(num) ? val : String(num);
-    };
-
-    const normalizeMonth = (val) => {
-      if (!val) return "";
-      if (!isNaN(Number(val))) return String(Number(val));
-      const monthIndex = monthsList.findIndex(m => m.toLowerCase() === String(val).toLowerCase());
-      return monthIndex !== -1 ? String(monthIndex + 1) : val;
-    };
-
-    const safeStr = (val) => (val === null || val === undefined) ? "" : String(val);
-
-    const normalizeGender = (value) => {
-      const text = safeStr(value).trim();
-      if (!text) return "";
-      const lower = text.toLowerCase();
-      if (lower === "m" || lower === "male") return "Male";
-      if (lower === "f" || lower === "female") return "Female";
-      if (lower === "other") return "Other";
-      return "";
-    };
-
-    if (sectionData && Object.keys(sectionData).length > 0) {
-      form.reset({
-        family_name: safeStr(sectionData.family_name),
-        given_names: safeStr(sectionData.given_names),
-        preferred_names: safeStr(sectionData.preferred_names),
-        gender: normalizeGender(safeStr(sectionData.gender)),
-        birth_day: normalizeNumber(sectionData.birth_day),
-        birth_month: normalizeMonth(sectionData.birth_month),
-        birth_year: safeStr(sectionData.birth_year),
-        intending_to_migrate: safeStr(sectionData.intending_to_migrate),
-        country_of_birth: safeStr(sectionData.country_of_birth),
-        city_of_birth: safeStr(sectionData.city_of_birth),
-        country_of_residence: safeStr(sectionData.country_of_residence),
-      });
-    } else if (activeProfile) {
-      form.reset({
-        family_name: activeProfile.family_name || "",
-        given_names: activeProfile.given_names || "",
-        preferred_names: "",
-        gender: normalizeGender(activeProfile.gender) || "",
-        birth_day: normalizeNumber(activeProfile.birth_day),
-        birth_month: normalizeMonth(activeProfile.birth_month),
-        birth_year: safeStr(activeProfile.birth_year),
-        intending_to_migrate: "",
-        country_of_birth: "",
-        city_of_birth: "",
-        country_of_residence: "",
-      });
-    }
+    form.reset(normalizeTargetPersonalDetails(sectionData || {}, activeProfile || {}));
   }, [draftSnap.isLoading, sectionData, activeProfile, form]);
 
   const onSubmit = async (data) => {
@@ -148,7 +64,7 @@ export default function Page() {
       const existingData = (profileId && isSpouseProfile)
         ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
         : draftSnap.draft?.protection_spouse_details || {};
-      const mergedData = { ...existingData, ...data };
+      const mergedData = { ...existingData, ...form.getValues() };
 
       const result = (profileId && isSpouseProfile)
         ? await draftStore.saveProfileSectionData(profileId, "details", mergedData)
@@ -185,17 +101,9 @@ export default function Page() {
   };
 
   const handleSave = async () => {
+    const isComplete = await form.trigger();
     setIsSaving(true);
     try {
-      const isValid = await form.trigger();
-      if (!isValid) {
-        toast({
-          title: "Validation Error",
-          description: "Please fix the errors in the form before saving",
-          variant: "destructive",
-        });
-        return;
-      }
       const existingData = (profileId && isSpouseProfile)
         ? draftSnap.draft?.profiles_data?.[profileId]?.details || {}
         : draftSnap.draft?.protection_spouse_details || {};
@@ -207,10 +115,12 @@ export default function Page() {
         : await draftStore.saveSectionData("protection_spouse_details", mergedData);
 
       if (result.success) {
-        if (profileId && isSpouseProfile) {
-          await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
+        const pageKey = `${visaType}/spouse-partner/details`;
+        if (isComplete) {
+          if (profileId) await draftStore.markProfilePageComplete(profileId, pageKey);
+          else await draftStore.markPageComplete(pageKey);
         } else {
-          if (profileId) { await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`); } else { await draftStore.markPageComplete(`${visaType}/spouse-partner/details`); }
+          await draftStore.markPageIncomplete(profileId ? `${pageKey}__${profileId}` : pageKey);
         }
         toast({
           title: "Draft saved",
@@ -235,25 +145,6 @@ export default function Page() {
     }
   };
 
-  const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
-  const countries = [
-    "Afghanistan", "Albania", "Algeria", "Argentina", "Australia", "Austria",
-    "Bangladesh", "Belgium", "Brazil", "Canada", "Chile", "China", "Colombia",
-    "Denmark", "Egypt", "Finland", "France", "Germany", "Greece", "India",
-    "Indonesia", "Iran", "Iraq", "Ireland", "Italy", "Japan", "Kenya", "Malaysia",
-    "Mexico", "Netherlands", "New Zealand", "Nigeria", "Norway", "Pakistan",
-    "Philippines", "Poland", "Portugal", "Russia", "Saudi Arabia", "Singapore",
-    "South Africa", "South Korea", "Spain", "Sweden", "Switzerland", "Thailand",
-    "Turkey", "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
-    "Vietnam"
-  ];
-
   const titleName = activeProfile
     ? `${activeProfile.given_names || ""} ${activeProfile.family_name || ""}`.trim()
     : "";
@@ -262,164 +153,34 @@ export default function Page() {
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">
-          {titleName ? `Details — ${titleName}` : "Spouse/Partner Personal Details"}
+          {titleName ? `Details — ${titleName}` : "Spouse/Partner's Details"}
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Provide information about your spouse or partner.
+          Provide details for the spouse or partner included in this application.
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-foreground">Personal Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="family_name">Family Name *</Label>
-                <Input
-                  id="family_name"
-                  {...form.register("family_name")}
-                  placeholder="Enter family name"
-                  data-testid="input-family-name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="given_names">Given Names *</Label>
-                <Input
-                  id="given_names"
-                  {...form.register("given_names")}
-                  placeholder="Enter given names"
-                  data-testid="input-given-names"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="preferred_names">Preferred Names</Label>
-              <Input
-                id="preferred_names"
-                {...form.register("preferred_names")}
-                placeholder="Enter preferred names (optional)"
-                data-testid="input-preferred-names"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender *</Label>
-              <RadioGroup
-                value={form.watch("gender")}
-                onValueChange={(value) => form.setValue("gender", value)}
-              >
-                <div className="flex flex-wrap gap-4">
-                  {["Male", "Female"].map((gender) => (
-                    <div key={gender} className="flex items-center space-x-2">
-                      <RadioGroupItem value={gender} id={`gender-${gender}`} data-testid={`radio-gender-${gender.toLowerCase()}`} />
-                      <Label htmlFor={`gender-${gender}`}>{gender}</Label>
-                    </div>
-                  ))}
-                </div>
+          <PersonalDetailsFields form={form} />
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium border-b pb-2">Migration and Additional Details</h3>
+            <div>
+              <Label className="mb-2 block">Is your Spouse/Partner intending to migrate/travel to Australia as part of this application?</Label>
+              <RadioGroup value={form.watch("intending_to_migrate") || ""} onValueChange={(value) => form.setValue("intending_to_migrate", value, { shouldDirty: true })} className="flex gap-4 mt-2">
+                {["Yes", "No"].map((option) => <div key={option} className="flex items-center space-x-2"><RadioGroupItem value={option} id={`migration-${option}`} /><Label htmlFor={`migration-${option}`} className="cursor-pointer font-normal">{option}</Label></div>)}
               </RadioGroup>
             </div>
-            <div className="space-y-2">
-              <Label>Date of Birth *</Label>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="birth_day">Day</Label>
-                  <Select value={form.watch("birth_day")} onValueChange={(value) => form.setValue("birth_day", value)}>
-                    <SelectTrigger id="birth_day" data-testid="select-birth-day">
-                      <SelectValue placeholder="Day" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {days.map((day) => (
-                        <SelectItem key={day} value={day}>{day}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="birth_month">Month</Label>
-                  <Select value={form.watch("birth_month")} onValueChange={(value) => form.setValue("birth_month", value)}>
-                    <SelectTrigger id="birth_month" data-testid="select-birth-month">
-                      <SelectValue placeholder="Month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {months.map((month) => (
-                        <SelectItem key={month} value={month}>{month}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="birth_year">Year</Label>
-                  <Select value={form.watch("birth_year")} onValueChange={(value) => form.setValue("birth_year", value)}>
-                    <SelectTrigger id="birth_year" data-testid="select-birth-year">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {years.map((year) => (
-                        <SelectItem key={year} value={year}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-foreground">Residency & Migration Info</h2>
-            <div className="space-y-2">
-              <Label>Is your Spouse/Partner intending to migrate/travel to Australia as part of this application? *</Label>
-              <RadioGroup
-                value={form.watch("intending_to_migrate")}
-                onValueChange={(value) => form.setValue("intending_to_migrate", value)}
-              >
-                <div className="flex gap-4">
-                  {["Yes", "No"].map((option) => (
-                    <div key={option} className="flex items-center space-x-2">
-                      <RadioGroupItem value={option} id={`migrate-${option}`} data-testid={`radio-migrate-${option.toLowerCase()}`} />
-                      <Label htmlFor={`migrate-${option}`}>{option}</Label>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-foreground">Birth & Residence Details</h2>
-            <div className="space-y-2">
-              <Label htmlFor="country_of_birth">Country of Birth *</Label>
-              <Select value={form.watch("country_of_birth")} onValueChange={(value) => form.setValue("country_of_birth", value)}>
-                <SelectTrigger id="country_of_birth" data-testid="select-country-birth">
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countries.map((country) => (
-                    <SelectItem key={country} value={country}>{country}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city_of_birth">City or Town of Birth *</Label>
-              <Input
-                id="city_of_birth"
-                {...form.register("city_of_birth")}
-                placeholder="Enter city or town"
-                data-testid="input-city-birth"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="country_of_residence">Country of Current Residence *</Label>
-              <Select value={form.watch("country_of_residence")} onValueChange={(value) => form.setValue("country_of_residence", value)}>
-                <SelectTrigger id="country_of_residence" data-testid="select-country-residence">
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countries.map((country) => (
-                    <SelectItem key={country} value={country}>{country}</SelectItem>
-                  ))}
-                </SelectContent>
+            <div>
+              <Label>Country of Current Residence</Label>
+              <Select value={form.watch("country_of_residence") || ""} onValueChange={(value) => form.setValue("country_of_residence", value, { shouldDirty: true })}>
+                <SelectTrigger data-testid="select-country-of-residence"><SelectValue placeholder="Choose Country" /></SelectTrigger>
+                <SelectContent>{[...new Set([...COUNTRIES, ...(form.watch("country_of_residence") ? [form.watch("country_of_residence")] : [])])].map((country) => <SelectItem key={country} value={country}>{country}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>
+
           <FormNavigation
+            nextLabel="Continue"
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}

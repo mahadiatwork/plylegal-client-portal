@@ -316,7 +316,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
-          Ok
+          OK
         </Button>
       </DialogFooter>
     </form>
@@ -392,7 +392,9 @@ export default function Page() {
     }
   }, [draftSnap.draft?.protection_spouse_other, draftSnap.draft?.profiles_data, profileId, form]);
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (validatedData) => {
+    const existing = profileId ? draftStore.draft?.profiles_data?.[profileId]?.other : draftStore.draft?.protection_spouse_other;
+    const data = { ...existing, ...form.getValues() };
     setIsSubmitting(true);
     try {
       const result = profileId
@@ -511,7 +513,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Has your Spouse/Partner ever had or been known by any other Name or Alias, or had a different name spelling?
+                  Have you ever had or been known by any other Name or Alias, or had a different name spelling?
                 </Label>
                 <RadioGroup
                   value={form.watch("has_other_names")}
@@ -540,7 +542,7 @@ export default function Page() {
               {hasOtherNames === "yes" && (
                 <div className="pl-0 mt-4">
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of the other names your Spouse/Partner has been known by, including names before marriage
+                    Enter details of the other names you have been known by, including names before marriage
                   </p>
                   <RepeaterTable
                     data={otherNames}
@@ -548,7 +550,7 @@ export default function Page() {
                     onAdd={(row) => updateOtherNames([...otherNames, row])}
                     onEdit={(index, row) => {
                       const updated = [...otherNames];
-                      updated[index] = row;
+                      updated[index] = { ...updated[index], ...row };
                       updateOtherNames(updated);
                     }}
                     onDelete={(index) => {
@@ -556,7 +558,7 @@ export default function Page() {
                       updateOtherNames(updated);
                     }}
                     DialogComponent={OtherNameDialog}
-                      addButtonText="Add another name"
+                      addButtonText="Add"
                     emptyMessage="No other names added"
                     dialogTitle="Other Name"
                     testIdPrefix="other-name"
@@ -569,7 +571,7 @@ export default function Page() {
             <div className="space-y-4">
               <div>
                 <Label className="text-base font-normal text-gray-900">
-                  Does your Spouse/Partner use a Chinese Commercial Code for their name?
+                  Do you use a Chinese Commercial Code for your name?
                 </Label>
                 <RadioGroup
                   value={form.watch("use_chinese_code")}
@@ -608,6 +610,7 @@ export default function Page() {
 
           </div>
           <FormNavigation
+            nextLabel="Continue"
             onPrev={handlePrevious}
             onNext={form.handleSubmit(onSubmit)}
             onSave={handleSave}

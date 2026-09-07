@@ -15,7 +15,7 @@ import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/route
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const currentRelationshipSchema = z.object({
@@ -322,7 +322,7 @@ export default function CurrentRelationshipPage() {
               {relatedByBlood === "Yes" && (
                 <div className="mt-4">
                   <Label htmlFor="related_details" className="mb-2 block">
-                    Give Details
+                    Give details
                   </Label>
                   <Textarea
                     id="related_details"
@@ -389,10 +389,10 @@ export default function CurrentRelationshipPage() {
               )}
             </div>
 
-            {/* What date did your committed de-facto relationship begin? */}
+            {/* Date De Facto Relationship Began */}
             <div>
               <DateSelector
-                label="What date did your committed de-facto relationship begin?"
+                label="Date De Facto Relationship Began"
                 values={{
                   day: form.watch("committed_de_facto_date_day") || "",
                   month: form.watch("committed_de_facto_date_month") || "",
@@ -437,10 +437,10 @@ export default function CurrentRelationshipPage() {
               />
             </div>
 
-            {/* Number of Children from this Relationship */}
+            {/* Number of Children from this relationship */}
             <div>
               <Label htmlFor="number_of_children" className="mb-2 block">
-                Number of Children from this Relationship
+                Number of Children from this relationship
               </Label>
               <Input
                 id="number_of_children"
@@ -480,6 +480,7 @@ export default function CurrentRelationshipPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

@@ -243,7 +243,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Status</Label>
+        <Label className="mb-2 block">Status *</Label>
         <Select
           value={dialogForm.watch("status")}
           onValueChange={(value) => dialogForm.setValue("status", value)}
@@ -265,7 +265,11 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       {needsEmployerDetails && (
         <>
           <div>
-            <Label htmlFor="employer" className="mb-2 block">Employer <span className="text-red-500">*</span></Label>
+            <Label htmlFor="position" className="mb-2 block">Position / Occupation</Label>
+            <Input id="position" {...dialogForm.register("position")} data-testid="input-position" />
+          </div>
+          <div>
+            <Label htmlFor="employer" className="mb-2 block">Employer/Organization <span className="text-red-500">*</span></Label>
             <Input id="employer" {...dialogForm.register("employer")} data-testid="input-employer" />
             {dialogForm.formState.errors.employer && (
               <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.employer.message}</p>
@@ -279,7 +283,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
             )}
           </div>
           <div>
-            <Label htmlFor="duties" className="mb-2 block">Duties <span className="text-red-500">*</span></Label>
+            <Label htmlFor="duties" className="mb-2 block">Duties/Notes <span className="text-sm font-normal text-gray-500">(max 300 characters)</span></Label>
             <Textarea id="duties" maxLength={300} {...dialogForm.register("duties")} data-testid="input-duties" />
             <p className="text-xs text-gray-500 mt-1">{(dialogForm.watch("duties") || "").length}/300 characters</p>
             {dialogForm.formState.errors.duties && (
@@ -290,7 +294,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       )}
 
       <div>
-        <Label className="mb-2 block">Country</Label>
+        <Label className="mb-2 block">Country *</Label>
         <Select
           value={dialogForm.watch("country")}
           onValueChange={(value) => dialogForm.setValue("country", value)}
@@ -644,7 +648,7 @@ export default function EmploymentPage() {
                 data={employmentHistory}
                 columns={[
                   { key: "date_from_day", label: "Date From", format: (row) => `${row.date_from_day} ${row.date_from_month} ${row.date_from_year}` },
-                  { key: "date_to_day", label: "Date To", format: (row) => (row.date_to_day && row.date_to_month && row.date_to_year) ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "" },
+                  { key: "date_to_day", label: "Date To", format: (row) => (row.date_to_day && row.date_to_month && row.date_to_year) ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "Ongoing" },
                   { key: "status", label: "Status" },
                   { key: "position", label: "Position" },
                   { key: "employer", label: "Employer" },
@@ -674,6 +678,7 @@ export default function EmploymentPage() {
 
           <div className="mt-8 pt-6 border-t">
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

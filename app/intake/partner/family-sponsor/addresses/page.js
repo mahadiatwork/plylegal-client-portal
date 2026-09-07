@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const LEGAL_STATUS_OPTIONS = [
@@ -39,7 +39,7 @@ const LEGAL_STATUS_OPTIONS = [
 const addressDialogSchema = z.object({
   address_line1: z.string().min(1, "Address is required"),
   address_line2: z.string().optional(),
-  suburb: z.string().min(1, "Suburb/Town/City is required"),
+  suburb: z.string().min(1, "Suburb / Town is required"),
   state: z.string().optional(),
   postcode: z.string().min(1, "Postcode is required"),
   country: z.string().min(1, "Country is required"),
@@ -153,7 +153,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
 
         <div>
           <Label htmlFor="suburb">
-            Suburb/Town/City <span className="text-red-500">*</span>
+            Suburb / Town <span className="text-red-500">*</span>
           </Label>
           <Input
             id="suburb"
@@ -166,7 +166,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         </div>
 
         <div>
-          <Label htmlFor="state">State</Label>
+          <Label htmlFor="state">State / Territory</Label>
           <Input
             id="state"
             {...dialogForm.register("state")}
@@ -190,7 +190,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
 
         <div>
           <Label className="mb-2 block">
-            Choose Country <span className="text-red-500">*</span>
+            Country <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("country")}
@@ -217,7 +217,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         <p className="text-sm text-gray-600">Enter when the Sponsor lived at this address</p>
         
         <DateSelector
-          label="Date From"
+          label="Date from"
           values={{
             day: dialogForm.watch("date_from_day") || "",
             month: dialogForm.watch("date_from_month") || "",
@@ -235,7 +235,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         )}
 
         <DateSelector
-          label="Date To (leave blank if ongoing)"
+          label="Date to ('Date to' may be left blank if this address is current)"
           values={{
             day: dialogForm.watch("date_to_day") || "",
             month: dialogForm.watch("date_to_month") || "",
@@ -259,7 +259,7 @@ function AddressDialog({ editingRow, onSave, onCancel }) {
         
         <div>
           <Label className="mb-2 block">
-            Legal Status <span className="text-red-500">*</span>
+            Legal Status in this Country <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("legal_status")}
@@ -620,6 +620,7 @@ export default function FamilySponsorAddressesPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

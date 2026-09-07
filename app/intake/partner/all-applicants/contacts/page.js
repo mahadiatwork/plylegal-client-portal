@@ -36,15 +36,15 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { RepeaterTable } from "@/components/RepeaterTable";
-import { COUNTRIES } from "@/reuseable/countries";
-import { DateSelector } from "@/components/DateSelecters";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }) {
   const dialogSchema = z.object({
     family_name: z.string().min(1, "Family name is required"),
     given_names: z.string().min(1, "Given names are required"),
-    gender: z.enum(["Male", "Female"]).optional(),
+    gender: z.enum(["Male", "Female", "Other"]).optional(),
     relationship: z.string().min(1, "Relationship is required"),
     nationality: z.string().min(1, "Nationality is required"),
 
@@ -170,18 +170,18 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
       </div>
 
       <div>
-        <h4 className="font-semibold text-gray-900 mb-4">This Person's Personal Details</h4>
+        <h4 className="font-semibold text-gray-900 mb-4">Personal Details</h4>
         {/* ... (fields omitted for brevity, keeping existing) ... */}
         <div className="space-y-4">
           <Field
             control={dialogForm.control}
             name="family_name"
-            label="This Person's Family Name"
+            label="Family Name"
           />
           <Field
             control={dialogForm.control}
             name="given_names"
-            label="This Person's Given Names"
+            label="Given Names"
           />
 
           <div className="space-y-2">
@@ -199,17 +199,21 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
                 <RadioGroupItem value="Female" id="female" />
                 <Label htmlFor="female">Female</Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="Other" id="other" />
+                <Label htmlFor="other">Other</Label>
+              </div>
             </RadioGroup>
           </div>
 
           <div className="space-y-2">
-            <Label>Relationship to You</Label>
+            <Label>Relationship to the main applicant</Label>
             <Select
               value={dialogForm.watch("relationship")}
               onValueChange={(val) => dialogForm.setValue("relationship", val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Relationship" />
+                <SelectValue placeholder="Choose Relationship" />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
                 {[
@@ -232,7 +236,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
               onValueChange={(val) => dialogForm.setValue("nationality", val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Nationality" />
+                <SelectValue placeholder="Choose Nationality" />
               </SelectTrigger>
               <SelectContent>
                 {COUNTRIES.map((c) => (
@@ -271,7 +275,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
               onValueChange={(val) => dialogForm.setValue("country_of_birth", val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Country" />
+                <SelectValue placeholder="Choose Country" />
               </SelectTrigger>
               <SelectContent>
                 {COUNTRIES.map((c) => (
@@ -284,21 +288,21 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
           <Field
             control={dialogForm.control}
             name="suburb_of_birth"
-            label="Town/City of Birth"
+            label="City or Town of Birth"
           />
           <Field
             control={dialogForm.control}
             name="state_of_birth"
-            label="State/Province of Birth"
+            label="State or Province of Birth"
           />
         </div>
       </div>
 
       <div>
-        <h4 className="font-semibold text-gray-900 mb-4">This Person's Telephone and Email Contact</h4>
+        <h4 className="font-semibold text-gray-900 mb-4">Contact Information</h4>
 
         <div className="space-y-2">
-          <Label>This Person's After Hours Phone Number</Label>
+          <Label>After Hours Phone Number</Label>
           <div className="flex gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("phone_country_code_hours")}
@@ -311,7 +315,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
         </div>
 
         <div className="space-y-2">
-          <Label>This Person's Office Hours Phone Number</Label>
+          <Label>Office Hours Phone Number</Label>
           <div className="flex gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("phone_country_code_office")}
@@ -324,7 +328,7 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
         </div>
 
         <div className="space-y-2">
-          <Label>This Person's Mobile Phone Number</Label>
+          <Label>Mobile Number</Label>
           <div className="flex gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("phone_country_code_mobile")}
@@ -337,20 +341,20 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
         <Field
           control={dialogForm.control}
           name="email"
-          label="This Person's Email Address"
+          label="Email Address"
         />
       </div>
 
 
       <div>
-        <h4 className="font-semibold text-gray-900 mb-4">This Person's Residential Address</h4>
+        <h4 className="font-semibold text-gray-900 mb-4">Residential Address</h4>
         <p className="text-sm text-gray-500 mb-4">This must be a physical address, not a PO Box Number</p>
 
         <div className="space-y-4">
           <Field
             control={dialogForm.control}
             name="residential_address"
-            placeholder="Address (including Street Number and Name)"
+            placeholder="Address (including street number and name)"
           />
           <Field
             control={dialogForm.control}
@@ -360,18 +364,19 @@ function FamilyContactDialog({ editingRow, onSave, onCancel, mainApplicantName }
           <Field
             control={dialogForm.control}
             name="residential_suburb"
-            placeholder="Suburb/Town/City"
+            placeholder="Suburb / Town"
           />
           <Field
             control={dialogForm.control}
             name="residential_state"
-            placeholder="State"
+            placeholder="State / Territory"
           />
           <Field
             control={dialogForm.control}
             name="residential_postcode"
             placeholder="Postcode"
           />
+          <Label>Country</Label>
           <Select
             value={dialogForm.watch("residential_country")}
             onValueChange={(val) => dialogForm.setValue("residential_country", val)}
@@ -425,7 +430,7 @@ export default function ContactsPage() {
       draftStore.loadDraft(appIdFromUrl);
     } else if (!appIdFromUrl && draftSnap.currentApplicationId) {
       // If we have applicationId in store but not in URL, update URL to include it
-      const newUrl = `${pathname}?applicationId = ${draftSnap.currentApplicationId} `;
+      const newUrl = `${pathname}?applicationId=${draftSnap.currentApplicationId}`;
       router.replace(newUrl);
     }
   }, [searchParams, draftSnap.currentApplicationId, pathname, router]);
@@ -523,7 +528,7 @@ export default function ContactsPage() {
           Additional Contact Information
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Please provide any additional contact information or special instructions
+          Provide details of the main applicant's family contacts in Australia.
         </p>
       </CardHeader>
       <CardContent>
@@ -587,7 +592,7 @@ export default function ContactsPage() {
               DialogComponent={(props) => (
                 <FamilyContactDialog {...props} mainApplicantName={mainApplicantName} />
               )}
-              addButtonText="Add Contact"
+              addButtonText="Add"
               emptyMessage="No contacts added yet"
               dialogTitle="Personal Contact"
               dialogSubtitle="Enter as much information about this Contact Person as possible"

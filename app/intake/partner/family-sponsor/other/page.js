@@ -187,7 +187,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
-            Do you have identity documents for this name?
+            Does your sponsor have identity documents for this name?
           </Label>
           <RadioGroup
             value={hasEvidence}
@@ -244,7 +244,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
                   </SelectTrigger>
                   <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                     {days.map((day) => (
-                      <SelectItem key={day} value={day}>{day}</SelectItem>
+                      <SelectItem key={day} value={day}>{day.padStart(2, "0")}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

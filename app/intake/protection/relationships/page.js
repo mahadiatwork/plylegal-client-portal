@@ -134,7 +134,7 @@ export default function Page() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <div className="space-y-2">
-              <Label>What date did you marry? *</Label>
+              <Label>Date of Marriage</Label>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="marriage_day">Day</Label>
@@ -268,6 +268,7 @@ export default function Page() {
           </div>
           <div className="mt-8 pt-6 border-t">
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}

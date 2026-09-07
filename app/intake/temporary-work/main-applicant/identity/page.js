@@ -1,4 +1,5 @@
 "use client";
+import { TargetCitizenshipDialog } from "@/components/intake/target-visas/TargetCitizenshipDialog";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -41,8 +42,6 @@ const MONTHS = [
 ];
 const DAYS = Array.from({ length: 31 }, (_, index) => String(index + 1));
 const YEARS = Array.from({ length: 100 }, (_, index) => String(new Date().getFullYear() - index));
-const CITIZENSHIP_METHODS = ["Birth", "Descent", "Naturalisation"];
-const CEASED_REASONS = ["Renounced", "Revoked", "Other"];
 const RESIDENCE_STATUSES = ["Permanent", "Temporary"];
 
 const requiredString = z.string().min(1, "Required");
@@ -118,65 +117,6 @@ function DateSelects({ row, setValue, prefix, years = YEARS, testIdPrefix }) {
       <SelectField value={row?.[`${prefix}_day`]} onChange={(value) => setValue(`${prefix}_day`, value)} placeholder="Day" options={DAYS} testId={testIdPrefix ? `${testIdPrefix}-day` : undefined} />
       <SelectField value={row?.[`${prefix}_month`]} onChange={(value) => setValue(`${prefix}_month`, value)} placeholder="Month" options={MONTHS} testId={testIdPrefix ? `${testIdPrefix}-month` : undefined} />
       <SelectField value={row?.[`${prefix}_year`]} onChange={(value) => setValue(`${prefix}_year`, value)} placeholder="Year" options={years} testId={testIdPrefix ? `${testIdPrefix}-year` : undefined} />
-    </div>
-  );
-}
-
-function CitizenshipDialog({ editingRow, onSave, onCancel }) {
-  const form = useForm({
-    defaultValues: {
-      country: "",
-      how_obtained: "",
-      date_obtained_day: "",
-      date_obtained_month: "",
-      date_obtained_year: "",
-      still_citizen: "yes",
-      date_ceased_day: "",
-      date_ceased_month: "",
-      date_ceased_year: "",
-      reason_ceased: "",
-      ...editingRow,
-    },
-  });
-  const values = form.watch();
-
-  return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <div>
-        <Label>Country of citizenship</Label>
-        <SelectField value={values.country} onChange={(value) => form.setValue("country", value)} options={COUNTRIES} testId="select-citizenship-country" />
-      </div>
-      <div>
-        <Label>How was this citizenship obtained?</Label>
-        <SelectField value={values.how_obtained} onChange={(value) => form.setValue("how_obtained", value)} options={CITIZENSHIP_METHODS} testId="select-citizenship-method" />
-      </div>
-      <div>
-        <Label>Date obtained <span className="text-gray-500 font-normal">(optional)</span></Label>
-        <DateSelects row={values} setValue={form.setValue} prefix="date_obtained" />
-      </div>
-      <div>
-        <Label className="mb-2 block">Are you still a citizen of this country?</Label>
-        <RadioGroup value={values.still_citizen} onValueChange={(value) => form.setValue("still_citizen", value)} className="flex gap-4">
-          <div className="flex items-center"><RadioGroupItem value="yes" id="citizen-still-yes" /><Label htmlFor="citizen-still-yes" className="ml-2 font-normal">Yes</Label></div>
-          <div className="flex items-center"><RadioGroupItem value="no" id="citizen-still-no" /><Label htmlFor="citizen-still-no" className="ml-2 font-normal">No</Label></div>
-        </RadioGroup>
-      </div>
-      {values.still_citizen === "no" && (
-        <>
-          <div>
-            <Label>Date ceased</Label>
-            <DateSelects row={values} setValue={form.setValue} prefix="date_ceased" />
-          </div>
-          <div>
-            <Label>Reason citizenship ceased</Label>
-            <SelectField value={values.reason_ceased} onChange={(value) => form.setValue("reason_ceased", value)} options={CEASED_REASONS} testId="select-citizenship-ceased-reason" />
-          </div>
-        </>
-      )}
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="button" onClick={form.handleSubmit(onSave)}>OK</Button>
-      </DialogFooter>
     </div>
   );
 }
@@ -453,7 +393,7 @@ export default function MainApplicantIdentityPage() {
                   onAdd={(row) => setArray("citizenships", [...(values.citizenships || []), row])}
                   onEdit={(index, row) => setArray("citizenships", (values.citizenships || []).map((item, itemIndex) => itemIndex === index ? row : item))}
                   onDelete={(index) => setArray("citizenships", (values.citizenships || []).filter((_, itemIndex) => itemIndex !== index))}
-                  DialogComponent={CitizenshipDialog}
+                  DialogComponent={TargetCitizenshipDialog}
                   addButtonText="Add citizenship"
                   testIdPrefix="citizenship"
                 />

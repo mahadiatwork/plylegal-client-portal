@@ -14,7 +14,7 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function ReviewValue({ value }) {
+function ReviewValue({ value, formatLabel }) {
   if (!hasReviewValue(value)) return null;
 
   if (Array.isArray(value)) {
@@ -29,7 +29,7 @@ function ReviewValue({ value }) {
               Item {index + 1}
             </div>
             {isPlainObject(item) ? (
-              <NestedObject value={item} />
+              <NestedObject value={item} formatLabel={formatLabel} />
             ) : (
               <p className="whitespace-pre-wrap break-words text-sm text-slate-900">
                 {formatReviewValue(item)}
@@ -42,7 +42,7 @@ function ReviewValue({ value }) {
   }
 
   if (isPlainObject(value)) {
-    return <NestedObject value={value} />;
+    return <NestedObject value={value} formatLabel={formatLabel} />;
   }
 
   return (
@@ -52,7 +52,7 @@ function ReviewValue({ value }) {
   );
 }
 
-function NestedObject({ value }) {
+function NestedObject({ value, formatLabel }) {
   const entries = Object.entries(value || {}).filter(([, nestedValue]) =>
     hasReviewValue(nestedValue)
   );
@@ -64,16 +64,16 @@ function NestedObject({ value }) {
       {entries.map(([key, nestedValue]) => (
         <div key={key} className="min-w-0">
           <div className="mb-1 text-sm font-medium leading-5 text-slate-700">
-            {formatReviewLabel(key)}
+            {formatLabel(key)}
           </div>
-          <ReviewValue value={nestedValue} />
+          <ReviewValue value={nestedValue} formatLabel={formatLabel} />
         </div>
       ))}
     </div>
   );
 }
 
-function ReviewRow({ item }) {
+function ReviewRow({ item, formatLabel }) {
   if (!item || !hasReviewValue(item.value)) return null;
 
   return (
@@ -82,7 +82,7 @@ function ReviewRow({ item }) {
         {item.label}
       </dt>
       <dd className="min-w-0">
-        <ReviewValue value={item.value} />
+        <ReviewValue value={item.value} formatLabel={formatLabel} />
       </dd>
     </div>
   );
@@ -92,6 +92,7 @@ export function TemporaryWorkReviewSummary({
   sections,
   emptyMessage = "No questionnaire answers are available to review yet.",
   className,
+  formatLabel = formatReviewLabel,
 }) {
   const visibleSections = (sections || []).filter(
     (section) => Array.isArray(section.items) && section.items.some((item) => hasReviewValue(item.value))
@@ -142,7 +143,7 @@ export function TemporaryWorkReviewSummary({
               </div>
               <dl className="space-y-4">
                 {section.items.map((item, index) => (
-                  <ReviewRow key={`${item.label}-${index}`} item={item} />
+                  <ReviewRow key={`${item.label}-${index}`} item={item} formatLabel={section.formatLabel || formatLabel} />
                 ))}
               </dl>
             </article>

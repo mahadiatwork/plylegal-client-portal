@@ -1,6 +1,7 @@
 "use client";
 
 import { proxy } from "valtio";
+import { getTargetVisaProgress } from "@/lib/targetVisaPages";
 import { getAdapter } from "@/lib/adapters";
 import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
 import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
@@ -1710,6 +1711,10 @@ export const draftStore = proxy({
 
   // Get completion percentage
   getCompletionPercentage() {
+    const application = applicationsStore.applications.find((app) => String(app.id) === String(this.currentApplicationId));
+    if (["partner", "protection"].includes(application?.visaTypeCode)) {
+      return getTargetVisaProgress(application.visaTypeCode, this.draft, this.completionStatus);
+    }
     // Auto-detect visa type from existing completion keys
     let visaType = null;
     const completionKeys = getCompletionPageKeys(this.completionStatus);
@@ -1755,45 +1760,7 @@ export const draftStore = proxy({
       };
     }
 
-    // Get routes for the detected visa type (186 vs 482 order for temporary-work)
-    const routes = getIntakeRoutes(visaType, visaContextForRoutes);
-
-    // Extract all page paths from routes (excluding submit page)
-    const allPagePaths = [];
-    routes.forEach((route) => {
-      // Skip submit page
-      if (route.href.includes('/submit')) {
-        return;
-      }
-
-      if (route.subpages) {
-        // Add all subpages
-        route.subpages.forEach((sub) => {
-          allPagePaths.push(sub.href);
-        });
-      } else {
-        // Add main route
-        allPagePaths.push(route.href);
-      }
-    });
-
-    // Convert paths to completion keys format
-    // e.g., "/intake/protection/main-applicant/details" -> "protection/main-applicant/details"
-    const allPages = allPagePaths.map(path => {
-      // Remove "/intake/" prefix and visa type prefix
-      const pathWithoutPrefix = path.replace(`/intake/${visaType}/`, '');
-      return `${visaType}/${pathWithoutPrefix}`;
-    });
-
-    // Count completed pages
-    const completedCount = allPages.filter(page => this.isPageComplete(page)).length;
-    const totalPages = allPages.length;
-
-    return {
-      completed: completedCount,
-      total: totalPages,
-      percentage: totalPages > 0 ? Math.round((completedCount / totalPages) * 100) : 0
-    };
+    return getTargetVisaProgress(visaType, this.draft, this.completionStatus);
   },
   // ─── Dependent Selection Helpers ───────────────────────────────────────────
 

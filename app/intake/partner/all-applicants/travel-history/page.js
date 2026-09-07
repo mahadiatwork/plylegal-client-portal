@@ -1,4 +1,7 @@
 "use client";
+import { COMMON_TRAVEL_REASONS, withCurrentOption } from "@/lib/allApplicantsParity";
+import { Textarea } from "@/components/ui/textarea";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,47 +27,8 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 const YEARS = Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() - i));
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
-const REASONS = [
-  "Visit Family",
-  "Visit Friends",
-  "Business",
-  "Holiday",
-  "Study",
-  "Work",
-  "Medical",
-  "Temporary Residence",
-  "Permanent Residence",
-  "Residence",
-  "Live There",
-  "Transit",
-  "Travel",
-  "Working Holiday",
-  "Military Deployment",
-  "Other",
-];
+
+
 const LEGAL_STATUSES = [
   "Citizen",
   "Permanent Resident",
@@ -87,6 +51,7 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
     country: z.string().min(1, "Country is required"),
     is_current_location: z.enum(["Yes", "No"]).optional(),
     reason_for_visit: z.string().min(1, "Reason is required"),
+    other_reason_details: z.string().optional(),
     legal_status: z.string().min(1, "Legal Status is required"),
     date_arrived_day: z.string().min(1, "Day is required"),
     date_arrived_month: z.string().min(1, "Month is required"),
@@ -101,6 +66,7 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
       country: "",
       is_current_location: "",
       reason_for_visit: "",
+      other_reason_details: "",
       legal_status: "",
       date_arrived_day: "",
       date_arrived_month: "",
@@ -171,7 +137,7 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
             <SelectValue placeholder="Choose Reason" />
           </SelectTrigger>
           <SelectContent>
-            {REASONS.map((r) => (
+            {withCurrentOption(COMMON_TRAVEL_REASONS, dialogForm.watch("reason_for_visit")).map((r) => (
               <SelectItem key={r} value={r}>{r}</SelectItem>
             ))}
           </SelectContent>
@@ -180,6 +146,12 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_visit.message}</p>
         )}
       </div>
+      {dialogForm.watch("reason_for_visit") === "Other" && (
+        <div>
+          <Label className="mb-2 block">Please provide details</Label>
+          <Textarea {...dialogForm.register("other_reason_details")} rows={3} placeholder="Please describe the reason for visiting this country..." />
+        </div>
+      )}
       {/* Legal Status */}
       <div>
         <Label className="mb-2 block">Legal Status in this Country</Label>
@@ -213,7 +185,7 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
             </SelectTrigger>
             <SelectContent>
               {DAYS.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
+                <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -263,7 +235,7 @@ function TravelDialog({ editingRow, onSave, onCancel }) {
             </SelectTrigger>
             <SelectContent>
               {DAYS.map((day) => (
-                <SelectItem key={day} value={day}>{day}</SelectItem>
+                <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
               ))}
             </SelectContent>
           </Select>

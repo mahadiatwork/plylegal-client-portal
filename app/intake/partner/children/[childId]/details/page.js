@@ -1,10 +1,11 @@
 "use client";
+import { PersonalDetailsFields } from "@/components/intake/target-visas/PersonalDetailsFields";
+import { targetPersonalDetailsSchema, targetChildDetailsSchema, normalizeTargetPersonalDetails, mergeTargetPersonalDetails } from "@/lib/targetVisaPersonalDetails";
 
 import { useRouter, usePathname, useSearchParams, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { draftStore } from "@/stores/draftStore";
 import { useToast } from "@/hooks/use-toast";
@@ -19,10 +20,6 @@ import { FormNavigation } from "@/components/FormNavigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
-
-const childDetailsSchema = z.object({
-  relationship_to_spouse: z.string().min(1, "Relationship to Spouse/Partner is required"),
-});
 
 const RELATIONSHIP_OPTIONS = [
   "Child",
@@ -60,7 +57,9 @@ export default function PartnerChildDetailsPage() {
   }, [searchParams, draftSnap.currentApplicationId]);
 
   useEffect(() => {
-    if (!childId) return;
+    // The layout starts loading after the first render; do not redirect from that empty snapshot.
+    if (!childId || !draftSnap.currentApplicationId || draftSnap.isLoading || draftStore.isLoading) return;
+    if (appId && appId !== draftSnap.currentApplicationId) return;
     if (!activeProfile || activeProfile.relationship !== "child") {
       router.replace(
         profileReturnAppId
@@ -68,13 +67,12 @@ export default function PartnerChildDetailsPage() {
           : "/intake/partner/profile"
       );
     }
-  }, [childId, activeProfile, router, profileReturnAppId]);
+  }, [childId, activeProfile, router, appId, profileReturnAppId, draftSnap.currentApplicationId, draftSnap.isLoading]);
 
+  const spouseProfile = draftSnap.draft?.profiles?.find(p => p.relationship === "spouse");
   const form = useForm({
-    resolver: zodResolver(childDetailsSchema),
-    defaultValues: {
-      relationship_to_spouse: "",
-    },
+    resolver: zodResolver(spouseProfile ? targetChildDetailsSchema : targetPersonalDetailsSchema),
+    defaultValues: { ...normalizeTargetPersonalDetails(), relationship_to_spouse: "" },
   });
 
   useEffect(() => {
@@ -82,15 +80,11 @@ export default function PartnerChildDetailsPage() {
     if (!profileId) return;
 
     const savedData = draftSnap.draft?.profiles_data?.[profileId]?.details || {};
-    if (savedData && Object.keys(savedData).length > 0) {
-      form.reset({
-        relationship_to_spouse: savedData.relationship_to_spouse || "",
-      });
-    }
+    form.reset({ ...normalizeTargetPersonalDetails(savedData, activeProfile || {}), relationship_to_spouse: savedData.relationship_to_spouse || "" });
   }, [draftSnap.isLoading, profileId, draftSnap.draft]);
 
   const onSubmit = async () => {
-    const values = form.getValues();
+    const values = mergeTargetPersonalDetails(draftStore.draft?.profiles_data?.[profileId]?.details || {}, form.getValues());
     const result = await draftStore.saveProfileSectionData(profileId, "details", values);
     if (result.success) {
       const completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
@@ -116,12 +110,15 @@ export default function PartnerChildDetailsPage() {
   };
 
   const handleSave = async () => {
+    const isComplete = await form.trigger();
     setIsSaving(true);
     try {
-      const values = form.getValues();
+      const values = mergeTargetPersonalDetails(draftStore.draft?.profiles_data?.[profileId]?.details || {}, form.getValues());
       const result = await draftStore.saveProfileSectionData(profileId, "details", values);
       if (result.success) {
-        await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
+        const pageKey = `${visaType}/children/${childId}/details`;
+        if (isComplete) await draftStore.markProfilePageComplete(profileId, pageKey);
+        else await draftStore.markPageIncomplete(`${pageKey}__${profileId}`);
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
         toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
@@ -136,7 +133,6 @@ export default function PartnerChildDetailsPage() {
   }
 
   // Get spouse/partner name for label
-  const spouseProfile = draftSnap.draft?.profiles?.find(p => p.relationship === "spouse");
   const spouseName = spouseProfile?.given_names 
     ? `${spouseProfile.given_names}${spouseProfile.family_name ? ` ${spouseProfile.family_name}` : ''}`
     : spouseProfile?.family_name || "Spouse/Partner";
@@ -148,12 +144,13 @@ export default function PartnerChildDetailsPage() {
           Details — {activeProfile.given_names} {activeProfile.family_name}
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Basic details for this dependent child are collected in the Included Applicants section. Please provide relationship details here.
+          Provide details for this dependent child included in the application.
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           
+          <PersonalDetailsFields form={form} countrySelector={false} showPreferredNames={false} />
           <div className="space-y-6">
             <h3 className="text-lg font-medium border-b pb-2">Relationship Details</h3>
             
@@ -168,7 +165,7 @@ export default function PartnerChildDetailsPage() {
                     <SelectValue placeholder="Choose Relationship" />
                   </SelectTrigger>
                   <SelectContent>
-                    {RELATIONSHIP_OPTIONS.map((rel) => (
+                    {[...new Set([...RELATIONSHIP_OPTIONS, ...(form.watch("relationship_to_spouse") ? [form.watch("relationship_to_spouse")] : [])])].map((rel) => (
                       <SelectItem key={rel} value={rel}>{rel}</SelectItem>
                     ))}
                   </SelectContent>

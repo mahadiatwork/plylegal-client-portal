@@ -1,4 +1,6 @@
 "use client";
+import { HEALTH_CONDITIONS, withCurrentOption } from "@/lib/allApplicantsParity";
+import { APPLICANT_COUNTRIES as COUNTRIES } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,47 +63,10 @@ const MONTHS = [
   "December",
 ];
 const YEARS = Array.from({ length: 100 }, (_, i) => String(new Date().getFullYear() - i));
-const COUNTRIES = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
-  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
-  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
-  "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
-  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-  "North Korea", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
-  "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
-  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay",
-  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland",
-  "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
-];
-const HOSPITAL_REASONS = ["Give Birth", "Training", "Treatment", "Visiting", "Work", "Other"];
-const HEALTH_CONDITIONS = [
-  "Blood disorder",
-  "Cancer",
-  "Cardiac (heart) condition",
-  "Diabetes",
-  "Disability (physical or intellectual)",
-  "Hospitalisation (any cause)",
-  "Kidney disease (including dialysis)",
-  "Liver disease (including hepatitis or cirrhosis)",
-  "Mental illness",
-  "Neurological condition",
-  "Pregnancy",
-  "Respiratory condition (including asthma)",
-  "Other",
-];
+
+
 const HEALTH_CARE_ROLES = [
-  "Amb Ambulance Officer / Paramedic",
+  "Ambulance Officer / Paramedic",
   "Chiropractor",
   "Dentist",
   "Medical Practitioner",
@@ -114,7 +79,6 @@ const HEALTH_CARE_ROLES = [
   "Podiatrist",
   "Psychologist",
   "Speech Pathologist",
-  "Other",
   "Other",
 ];
 const AGED_CARE_ROLES = ["Aged Care", "Disability Care", "Other"];
@@ -167,12 +131,12 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <h3 className="text-base font-bold text-gray-900 mb-2">Health Examinations</h3>
       <p className="text-sm text-gray-500 mb-4">
-        Enter details of any applicant included in this application who has undertaken a Health Examination
+        Enter details of any applicant included in this application who has undertaken a health examination
         for an Australian visa in the past 12 months.
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -203,7 +167,7 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -276,7 +240,7 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
 function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
     applicant_name: z.string().min(1, "Name of applicant is required"),
-    reason: z.string().min(1, "Reason is required"),
+    reason: z.string().optional(),
     details: z.string().optional(),
   });
   const dialogForm = useForm({
@@ -294,7 +258,7 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Hospital and Health Care Details</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Hospital / health care facility details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to enter any Australian private or
         public Hospital or Health Care facilities including nursing homes as a patient, visitor, employee or a trainee.
@@ -302,7 +266,7 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -321,22 +285,11 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Reason</Label>
-        <Select value={dialogForm.watch("reason")} onValueChange={(value) => dialogForm.setValue("reason", value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose Reason" />
-          </SelectTrigger>
-          <SelectContent>
-            {HOSPITAL_REASONS.map((reason) => (
-              <SelectItem key={reason} value={reason}>
-                {reason}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label className="mb-2 block">Role</Label>
+        <Input {...dialogForm.register("reason")} placeholder="e.g. Patient, Visitor, Employee, Trainee" />
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -371,14 +324,14 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health Care Work</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Health care work details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to work as, or study or train to be, a
         health care worker or work within a health care facility while in Australia
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -403,7 +356,7 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
             <SelectValue placeholder="Choose Role" />
           </SelectTrigger>
           <SelectContent>
-            {HEALTH_CARE_ROLES.map((role) => (
+            {withCurrentOption(HEALTH_CARE_ROLES, dialogForm.watch("role")).map((role) => (
               <SelectItem key={role} value={role}>
                 {role}
               </SelectItem>
@@ -412,7 +365,7 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -447,14 +400,14 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Aged and Disability Care Work</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Aged care / disability care details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to work, study or train within aged care,
         or disability care while in Australia
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -488,7 +441,7 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -525,14 +478,14 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Childcare Details</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Child care centre details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to work, or be a trainee, at a Childcare
         Centre (including pre-schools and creches) while in Australia.
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -570,7 +523,7 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -625,14 +578,14 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Classroom Details</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Classroom details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to be in a Classroom situation for more
         than 3 months (as a student, teacher, lecturer, or observer, etc) in Australia
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -686,7 +639,7 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -736,7 +689,7 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -774,7 +727,7 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
         </div>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -807,14 +760,14 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis Details</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has ever had or currently has Tuberculosis or had a
         chest X-ray which showed an abnormality
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -833,7 +786,7 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -866,14 +819,14 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis Exposure Details</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis exposure details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has ever been in close contact at home or at work
         with a person who has had Tuberculosis
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -892,7 +845,7 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -927,7 +880,7 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health Conditions</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Health condition details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has any of the following Health Conditions that may
         incur medical costs, require treatment or medical follow up. Enter details of each condition including the expected
@@ -935,7 +888,7 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -954,13 +907,13 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Health Condition</Label>
+        <Label className="mb-2 block">Condition</Label>
         <Select value={dialogForm.watch("condition")} onValueChange={(value) => dialogForm.setValue("condition", value)}>
           <SelectTrigger>
             <SelectValue placeholder="Select Condition" />
           </SelectTrigger>
           <SelectContent>
-            {HEALTH_CONDITIONS.map((cond) => (
+            {withCurrentOption(HEALTH_CONDITIONS, dialogForm.watch("condition")).map((cond) => (
               <SelectItem key={cond} value={cond}>
                 {cond}
               </SelectItem>
@@ -969,7 +922,7 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -1002,13 +955,13 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Assistive Technology and Activities of Daily Living</h3>
+      <h3 className="text-base font-bold text-gray-900 mb-2">Ongoing medical care details</h3>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant who requires health or community care
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -1027,7 +980,7 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
         </Select>
       </div>
       <div>
-        <Label className="mb-2 block">Details</Label>
+        <Label className="mb-2 block">Give details</Label>
         <Textarea rows={3} {...dialogForm.register("details")} />
       </div>
       <DialogFooter>
@@ -1087,7 +1040,7 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
       </p>
       <div>
         <Label className="mb-2 block">
-          Name of Applicant <span className="text-red-600">*</span>
+          Name <span className="text-red-600">*</span>
         </Label>
         <Select
           value={dialogForm.watch("applicant_name")}
@@ -1130,7 +1083,7 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1180,7 +1133,7 @@ function HealthInsuranceDialog({ editingRow, onSave, onCancel, applicantOptions 
             <SelectContent>
               {DAYS.map((day) => (
                 <SelectItem key={day} value={day}>
-                  {day}
+                  {String(day).padStart(2, "0")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1285,7 +1238,11 @@ export default function Page() {
       }
     }
     // Fallback to a generic option if nothing available yet
-    return opts.length ? opts : ["Main Applicant"];
+    for (const profile of draftSnap.draft?.profiles || []) {
+      const label = buildLabel(profile.family_name, profile.given_names, profile.birth_day, profile.birth_month, profile.birth_year);
+      if (label) opts.push(label);
+    }
+    return opts.length ? [...new Set(opts)] : ["Main Applicant"];
   })();
   useEffect(() => {
     const appIdFromUrl = searchParams.get('applicationId');
@@ -1395,7 +1352,7 @@ export default function Page() {
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">Health</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          For everyone who is to be included in this application, provide the following details about their health.
+          Provide health information for all applicants.
         </p>
       </CardHeader>
       <CardContent>
@@ -1403,10 +1360,7 @@ export default function Page() {
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             {/* Health examinations */}
             <div className="space-y-2">
-              <Label>
-                Has anyone who is to be included in this application undertaken a Health Examination for an Australian
-                visa in the past 12 months?
-              </Label>
+              <Label>Has any applicant undertaken a health examination for an Australian visa in the past 12 months?</Label>
               <RadioGroup
                 value={form.watch("has_health_examinations")}
                 onValueChange={(value) => form.setValue("has_health_examinations", value)}
@@ -1424,7 +1378,7 @@ export default function Page() {
             {form.watch("has_health_examinations") === "yes" && (
               <div className="mt-4 space-y-3">
                 <p className="text-sm text-gray-600">
-                  Enter details of any applicant included in this application who has undertaken a Health Examination for
+                  Enter details of any applicant included in this application who has undertaken a health examination for
                   an Australian visa in the past 12 months.
                 </p>
                 <RepeaterTable
@@ -1470,10 +1424,7 @@ export default function Page() {
             )}
             {/* Hospital / Health care facility */}
             <div className="pt-4 space-y-2">
-              <Label>
-                Does any applicant intend to enter a Hospital or Health Care Facility (including nursing home) while in
-                Australia?
-              </Label>
+              <Label>Does any applicant intend to enter a hospital or a health care facility (including nursing homes) while in Australia?</Label>
               <RadioGroup
                 value={form.watch("intends_hospital_entry")}
                 onValueChange={(value) => form.setValue("intends_hospital_entry", value)}
@@ -1499,7 +1450,7 @@ export default function Page() {
                   data={form.watch("hospital_details") || []}
                   columns={[
                     { key: "applicant_name", label: "Name" },
-                    { key: "reason", label: "Reason" },
+                    { key: "reason", label: "Role" },
                   ]}
                   onAdd={(row) => {
                     const current = form.watch("hospital_details") || [];
@@ -1602,9 +1553,7 @@ export default function Page() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>
-                Does any applicant intend to work, study or train with aged care, or disability care while in Australia?
-              </Label>
+              <Label>Does any applicant intend to work, study or train within aged care or disability care while in Australia?</Label>
               <RadioGroup
                 value={form.watch("intends_aged_care")}
                 onValueChange={(value) => form.setValue("intends_aged_care", value)}
@@ -1666,10 +1615,7 @@ export default function Page() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>
-                Does any applicant intend to work at, or be a trainee at a Childcare Centre (including preschools and
-                creches) while in Australia?
-              </Label>
+              <Label>Does any applicant intend to work or be a trainee at a child care centre (including preschools and creches) while in Australia?</Label>
               <RadioGroup
                 value={form.watch("intends_childcare")}
                 onValueChange={(value) => form.setValue("intends_childcare", value)}
@@ -1732,10 +1678,7 @@ export default function Page() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>
-                Does any applicant intend to be in a Classroom situation for more than 3 months in their usual country
-                of passport in the last 5 years?
-              </Label>
+              <Label>Does any applicant intend to be in a classroom situation for more than 3 months (eg. as either a student, teacher, lecturer or observer)?</Label>
               <RadioGroup
                 value={form.watch("intends_classroom")}
                 onValueChange={(value) => form.setValue("intends_classroom", value)}
@@ -1799,10 +1742,7 @@ export default function Page() {
             )}
             {/* Tuberculosis questions */}
             <div className="space-y-2 pt-4">
-              <Label>
-                Has any applicant ever had or currently have Tuberculosis or had a chest X-ray which showed an
-                abnormality?
-              </Label>
+              <Label>Has any applicant ever had, or currently have, tuberculosis, or ever had a chest x-ray which showed an abnormality?</Label>
               <RadioGroup
                 value={form.watch("had_tuberculosis")}
                 onValueChange={(value) => form.setValue("had_tuberculosis", value)}
@@ -1864,9 +1804,7 @@ export default function Page() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>
-                Has any applicant been in close contact at home or at work with a person who has had Tuberculosis?
-              </Label>
+              <Label>Has any applicant ever been in close contact at home or at work with a person who has had tuberculosis?</Label>
               <RadioGroup
                 value={form.watch("close_contact_tb")}
                 onValueChange={(value) => form.setValue("close_contact_tb", value)}
@@ -1929,10 +1867,12 @@ export default function Page() {
             )}
             {/* Health conditions list */}
             <div className="space-y-3 pt-4">
-              <Label>
-                Does any applicant have any of the following Health Conditions that may incur medical costs, require
-                treatment or medical supervision while in Australia?
-              </Label>
+              <Label>During their proposed visit to Australia, does any applicant expect to incur medical costs, or require treatment or medical follow up for:</Label>
+              <ul className="list-disc pl-5 text-sm text-foreground space-y-1">
+                {HEALTH_CONDITIONS.map((condition) => (
+                  <li key={condition}>{condition === "Other" ? "other?" : condition.startsWith("HIV") ? condition : condition[0].toLowerCase() + condition.slice(1)}</li>
+                ))}
+              </ul>
               <RadioGroup
                 value={form.watch("medical_condition")}
                 onValueChange={(value) => form.setValue("medical_condition", value)}
@@ -2000,10 +1940,7 @@ export default function Page() {
             </div>
             {/* Ongoing medical care */}
             <div className="space-y-2 pt-4">
-              <Label>
-                Does any applicant require ongoing medical care or need special equipment, assistive technology or
-                assistance from others for their daily living?
-              </Label>
+              <Label>Does any applicant require ongoing medical care or need special equipment, assistive technology or assistance from others for daily living?</Label>
               <RadioGroup
                 value={form.watch("requires_assistance")}
                 onValueChange={(value) => form.setValue("requires_assistance", value)}
@@ -2066,9 +2003,7 @@ export default function Page() {
             </div>
             {/* Private health insurance */}
             {/* <div className="space-y-2">
-              <Label>
-                Does any applicant hold Private Health Insurance that will cover them during their stay in Australia?
-              </Label>
+              <Label>Does any applicant hold private health insurance that will cover them during their stay in Australia?</Label>
               <RadioGroup
                 value={form.watch("health_insurance")}
                 onValueChange={(value) => form.setValue("health_insurance", value)}

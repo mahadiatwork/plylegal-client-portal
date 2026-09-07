@@ -19,18 +19,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { getNextRoute, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
 import { z } from "zod";
 import { useForm as useDialogForm } from "react-hook-form";
+import { optionsWithSavedValue } from "@/lib/partnerQuestionnaireAlignment";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
-const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation", "Other"];
+const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation"];
 const PASSPORT_TYPE_OPTIONS = ["Passport", "Emergency Passport", "Travel Document"];
 const GENDER_OPTIONS = ["Male", "Female", "X/Unspecified"];
 const DOCUMENT_STATUS_OPTIONS = ["Current", "Expired", "Lost", "Stolen", "Cancelled", "Damaged"];
-const CITIZENSHIP_CEASED_REASON_OPTIONS = ["Renounced", "Cancelled", "Other"];
 
 const familySponsorIdentitySchema = z.object({
   citizen_of_country: z.enum(["Yes", "No"]).optional(),
@@ -158,7 +158,7 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
             <SelectValue placeholder="Choose Reason" />
           </SelectTrigger>
           <SelectContent>
-            {CITIZENSHIP_REASON_OPTIONS.map((reason) => (
+            {optionsWithSavedValue(CITIZENSHIP_REASON_OPTIONS, dialogForm.watch("obtained_method")).map((reason) => (
               <SelectItem key={reason} value={reason}>{reason}</SelectItem>
             ))}
           </SelectContent>
@@ -169,7 +169,7 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <DateSelector
-        label="Date Obtained"
+        label="Date Obtained (optional but recommended)"
         values={{
           day: dialogForm.watch("date_obtained_day") || "",
           month: dialogForm.watch("date_obtained_month") || "",
@@ -183,7 +183,7 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
       />
 
       <div>
-        <Label className="mb-2 block">Is your sponsor still a Citizen of this country?</Label>
+        <Label className="mb-2 block">Is your sponsor still a citizen of this country?</Label>
         <RadioGroup
           value={stillCitizen}
           onValueChange={(val) => {
@@ -221,15 +221,7 @@ function CitizenshipDialog({ editingRow, onSave, onCancel }) {
 
           <div>
             <Label>Reason</Label>
-            <Select
-              value={dialogForm.watch("reason")}
-              onValueChange={(value) => dialogForm.setValue("reason", value)}
-            >
-              <SelectTrigger><SelectValue placeholder="Choose Reason" /></SelectTrigger>
-              <SelectContent>
-                {CITIZENSHIP_CEASED_REASON_OPTIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Input {...dialogForm.register("reason")} placeholder="Enter reason citizenship ceased" />
           </div>
         </>
       )}
@@ -437,7 +429,7 @@ function PassportDialog({ editingRow, onSave, onCancel }) {
               }}
             >
               <SelectTrigger data-testid="select-passport-name">
-                <SelectValue placeholder="Choose Applicant Name" />
+                <SelectValue placeholder="Choose Sponsor Name" />
               </SelectTrigger>
               <SelectContent>
                 {nameOptions.map((name) => (
@@ -870,7 +862,7 @@ export default function FamilySponsorIdentityPage() {
         return "";
       }
     },
-    { key: "still_citizen", label: "Is your sponsor still a Citizen of this country?" },
+    { key: "still_citizen", label: "Is your sponsor still a citizen of this country?" },
   ];
 
   const passportColumns = [
@@ -946,7 +938,7 @@ export default function FamilySponsorIdentityPage() {
                     Citizenships for {sponsorName}
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of all Citizenships that your Sponsor holds or have previously held
+                    Enter details of all Citizenships that your Sponsor holds or has previously held
                   </p>
                   <RepeaterTable
                     data={citizenships}
@@ -992,7 +984,7 @@ export default function FamilySponsorIdentityPage() {
                     Passports/Travel Documents for {sponsorName}
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Enter details of your Sponsor's current Passport/Travel Documents
+                    Enter details of all current passports and travel documents held by your sponsor.
                   </p>
                   <RepeaterTable
                     data={passports}
@@ -1020,6 +1012,7 @@ export default function FamilySponsorIdentityPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

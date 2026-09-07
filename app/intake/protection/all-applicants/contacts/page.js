@@ -1,4 +1,5 @@
 "use client";
+import { APPLICANT_COUNTRIES as COUNTRY_OPTIONS } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,33 +23,7 @@ import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 // Country list for dropdowns
-const COUNTRY_OPTIONS = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
-  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
-  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
-  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
-  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
-  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
-  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
-  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
-  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
-  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
-  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
-  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
-  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
-  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 const RELATIONSHIP_OPTIONS = [
   "Adopted Child",
   "Adopted Parent",
@@ -109,7 +84,7 @@ const personalContactDialogSchema = z.object({
   // Address
   address_line1: z.string().min(1, "Address is required"),
   address_line2: z.string().optional(),
-  suburb: z.string().min(1, "Suburb/Town/City is required"),
+  suburb: z.string().min(1, "Suburb / Town is required"),
   state: z.string().optional(),
   postcode: z.string().min(1, "Postcode is required"),
   country: z.string().min(1, "Country is required"),
@@ -172,11 +147,11 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       </p>
       {/* Personal Details Section */}
       <div className="space-y-4 pt-4 border-t">
-        <h3 className="text-base font-semibold text-gray-900">This Person's Personal Details</h3>
+        <h3 className="text-base font-semibold text-gray-900">Personal Details</h3>
 
         <div>
           <Label htmlFor="family_name" className="mb-2 block">
-            This Person's Family Name <span className="text-red-500">*</span>
+            Family Name <span className="text-red-500">*</span>
           </Label>
           <Input
             id="family_name"
@@ -189,7 +164,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="given_names" className="mb-2 block">
-            This Person's Given Names <span className="text-red-500">*</span>
+            Given Names <span className="text-red-500">*</span>
           </Label>
           <Input
             id="given_names"
@@ -202,14 +177,14 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            This Person's Gender <span className="text-red-500">*</span>
+            Gender <span className="text-red-500">*</span>
           </Label>
           <RadioGroup
             value={dialogForm.watch("gender")}
             onValueChange={(value) => dialogForm.setValue("gender", value, { shouldValidate: true })}
             className="flex gap-4"
           >
-            {["Male", "Female"].map((option) => (
+            {["Male", "Female", "Other"].map((option) => (
               <div key={option} className="flex items-center space-x-2">
                 <RadioGroupItem value={option} id={`gender-${option.toLowerCase()}`} />
                 <Label htmlFor={`gender-${option.toLowerCase()}`} className="cursor-pointer font-normal">
@@ -224,7 +199,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            This person is {mainApplicantName}'s: <span className="text-red-500">*</span>
+            Relationship to {mainApplicantName} <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("relationship")}
@@ -245,7 +220,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            This Person's Nationality <span className="text-red-500">*</span>
+            Nationality <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("nationality")}
@@ -266,7 +241,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            This Person's Date of Birth <span className="text-red-500">*</span>
+            Date of Birth <span className="text-red-500">*</span>
           </Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
@@ -278,7 +253,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
               </SelectTrigger>
               <SelectContent position="popper" className="max-h-[200px] overflow-y-auto">
                 {days.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                  <SelectItem key={day} value={day}>{String(day).padStart(2, "0")}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -315,7 +290,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            This Person's Country of Birth <span className="text-red-500">*</span>
+            Country of Birth <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("country_of_birth")}
@@ -336,7 +311,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="suburb_of_birth" className="mb-2 block">
-            This Person's Suburb of Birth
+            Suburb of Birth
           </Label>
           <Input
             id="suburb_of_birth"
@@ -346,7 +321,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="city_of_birth" className="mb-2 block">
-            This Person's City or Town of Birth
+            City or Town of Birth
           </Label>
           <Input
             id="city_of_birth"
@@ -356,7 +331,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="state_of_birth" className="mb-2 block">
-            This Person's State or Province of Birth
+            State or Province of Birth
           </Label>
           <Input
             id="state_of_birth"
@@ -367,10 +342,10 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       </div>
       {/* Telephone and Email Contact Section */}
       <div className="space-y-4 pt-4 border-t">
-        <h3 className="text-base font-semibold text-gray-900">This Person's Telephone and Email Contact</h3>
+        <h3 className="text-base font-semibold text-gray-900">Contact Information</h3>
 
         <div>
-          <Label className="mb-2 block">This Person's After Hours Phone Number</Label>
+          <Label className="mb-2 block">After Hours Phone Number</Label>
           <div className="grid grid-cols-3 gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("after_hours_phone_country_code")}
@@ -390,7 +365,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
         <div>
-          <Label className="mb-2 block">This Person's Office Hours Phone Number</Label>
+          <Label className="mb-2 block">Office Hours Phone Number</Label>
           <div className="grid grid-cols-3 gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("office_hours_phone_country_code")}
@@ -410,7 +385,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
           </div>
         </div>
         <div>
-          <Label className="mb-2 block">This Person's Mobile Phone Number</Label>
+          <Label className="mb-2 block">Mobile Number</Label>
           <div className="grid grid-cols-2 gap-2">
             <CountryCodeSelect
               value={dialogForm.watch("mobile_phone_country_code")}
@@ -426,7 +401,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="email_address" className="mb-2 block">
-            This Person's Email Address
+            Email Address
           </Label>
           <Input
             id="email_address"
@@ -441,14 +416,14 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
       </div>
       {/* Residential Address Section */}
       <div className="space-y-4 pt-4 border-t">
-        <h3 className="text-base font-semibold text-gray-900">This Person's Residential Address</h3>
+        <h3 className="text-base font-semibold text-gray-900">Residential Address</h3>
         <p className="text-sm text-gray-600">
           This must be a physical address, not a PO Box Number
         </p>
 
         <div>
           <Label htmlFor="address_line1" className="mb-2 block">
-            Address (including Street Number and Name) <span className="text-red-500">*</span>
+            Address (including street number and name) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="address_line1"
@@ -471,7 +446,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="suburb" className="mb-2 block">
-            Suburb/Town/City <span className="text-red-500">*</span>
+            Suburb / Town <span className="text-red-500">*</span>
           </Label>
           <Input
             id="suburb"
@@ -484,7 +459,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label htmlFor="state" className="mb-2 block">
-            State
+            State / Territory
           </Label>
           <Input
             id="state"
@@ -507,7 +482,7 @@ function PersonalContactDialog({ editingRow, onSave, onCancel }) {
         </div>
         <div>
           <Label className="mb-2 block">
-            Choose Country <span className="text-red-500">*</span>
+            Country <span className="text-red-500">*</span>
           </Label>
           <Select
             value={dialogForm.watch("country")}
@@ -779,7 +754,7 @@ export default function Page() {
                 )}
               </div>
             </div>
-            <FormNavigation
+            <FormNavigation nextLabel="Continue"
               onPrev={handlePrevious}
               disabledNext={!form.formState.isValid}
               onNext={form.handleSubmit(onSubmit)}

@@ -381,6 +381,7 @@ export default function FamilyPage() {
 
                         <div className="mt-8 pt-6 border-t">
                             <FormNavigation
+              nextLabel="Continue"
                                 onPrev={handlePrevious}
                                 onNext={form.handleSubmit(onSubmit)}
                                 onSave={handleSave}

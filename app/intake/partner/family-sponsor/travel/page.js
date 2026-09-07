@@ -21,7 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { COUNTRIES } from "@/reuseable/countries";
 import { monthNames } from "@/reuseable/months";
-import { DateSelector } from "@/components/DateSelecters";
+import { AlignedDateSelector as DateSelector } from "@/components/intake/AlignedDateSelector";
+import { normalizeSponsorTravelReason, optionsWithSavedValue } from "@/lib/partnerQuestionnaireAlignment";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 
 const VISA_STATUS_OPTIONS = [
@@ -34,22 +35,9 @@ const VISA_STATUS_OPTIONS = [
 ];
 
 const TRAVEL_REASON_OPTIONS = [
-  "Visit Family",
-  "Visit Friends",
-  "Business",
-  "Holiday",
-  "Study",
-  "Work",
-  "Medical",
-  "Temporary Residence",
-  "Permanent Residence",
-  "Residence",
-  "Live There",
-  "Transit",
-  "Travel",
-  "Working Holiday",
-  "Military Deployment",
-  "Other"
+  "Work, study or training", "Business", "Visit Family", "Holiday or Leisure",
+  "Military Deployment", "Other", "Visit Friends", "Medical", "Temporary Residence",
+  "Permanent Residence", "Residence", "Live There", "Transit", "Travel", "Working Holiday",
 ];
 
 const LEGAL_STATUS_OPTIONS = [
@@ -96,6 +84,7 @@ const travelHistoryDialogSchema = z.object({
     required_error: "Please select Yes or No",
   }),
   reason_for_being: z.string().min(1, "Reason for being in this Country is required"),
+  reason_details: z.string().optional(),
   legal_status: z.string().min(1, "Legal Status in this Country is required"),
   arrival_date_day: z.string().optional(),
   arrival_date_month: z.string().optional(),
@@ -195,7 +184,7 @@ const australianVisaDialogSchema = z.object({
     if (issuedDate < appliedDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Date Issued must not be earlier than Date Applied",
+        message: "Date of Issue must not be earlier than Date Applied",
         path: ["date_issued_day"],
       });
     }
@@ -279,7 +268,7 @@ function AustralianVisaDialog({ editingRow, onSave, onCancel }) {
       )}
 
       <DateSelector
-        label="Date Issued"
+        label="Date of Issue"
         values={{
           day: dialogForm.watch("date_issued_day") || "",
           month: dialogForm.watch("date_issued_month") || "",
@@ -296,7 +285,7 @@ function AustralianVisaDialog({ editingRow, onSave, onCancel }) {
       )}
 
       <DateSelector
-        label="Date Expired"
+        label="Date of Expiry"
         values={{
           day: dialogForm.watch("date_expired_day") || "",
           month: dialogForm.watch("date_expired_month") || "",
@@ -435,14 +424,14 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           Reason for being in this Country <span className="text-red-500">*</span>
         </Label>
         <Select
-          value={dialogForm.watch("reason_for_being")}
+          value={normalizeSponsorTravelReason(dialogForm.watch("reason_for_being"))}
           onValueChange={(value) => dialogForm.setValue("reason_for_being", value, { shouldValidate: true })}
         >
           <SelectTrigger data-testid="select-reason">
             <SelectValue placeholder="Choose Reason" />
           </SelectTrigger>
           <SelectContent>
-            {TRAVEL_REASON_OPTIONS.map((reason) => (
+            {optionsWithSavedValue(TRAVEL_REASON_OPTIONS, normalizeSponsorTravelReason(dialogForm.watch("reason_for_being"))).map((reason) => (
               <SelectItem key={reason} value={reason}>{reason}</SelectItem>
             ))}
           </SelectContent>
@@ -451,6 +440,13 @@ function TravelHistoryDialog({ editingRow, onSave, onCancel }) {
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.reason_for_being.message}</p>
         )}
       </div>
+
+      {normalizeSponsorTravelReason(dialogForm.watch("reason_for_being")) === "Other" && (
+        <div>
+          <Label htmlFor="reason_details">Please provide details</Label>
+          <Input id="reason_details" {...dialogForm.register("reason_details")} />
+        </div>
+      )}
 
       <div>
         <Label htmlFor="legal_status">
@@ -865,7 +861,7 @@ export default function FamilySponsorTravelPage() {
   };
 
   const australianVisaColumns = [
-    { key: "visa_number", label: "Visa Grant Number" },
+    { key: "visa_number", label: "Visa Number" },
     {
       key: "date_issued", label: "Date of Issue", format: (row) => {
         if (row.date_issued_day && row.date_issued_month && row.date_issued_year) {
@@ -914,7 +910,7 @@ export default function FamilySponsorTravelPage() {
         }
       }
     },
-    { key: "reason_for_being", label: "Reason for Travel" },
+    { key: "reason_for_being", label: "Reason for Travel", format: (row) => normalizeSponsorTravelReason(row.reason_for_being) },
   ];
 
   return (
@@ -1066,6 +1062,7 @@ export default function FamilySponsorTravelPage() {
             </div>
 
             <FormNavigation
+              nextLabel="Continue"
               onPrev={handlePrevious}
               onSave={handleSave}
               onNext={form.handleSubmit(onSubmit)}

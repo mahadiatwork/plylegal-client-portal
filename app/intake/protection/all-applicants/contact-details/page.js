@@ -1,4 +1,5 @@
 "use client";
+import { APPLICANT_COUNTRIES as COUNTRY_OPTIONS } from "@/lib/allApplicantsParity";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,36 +21,10 @@ import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 // Country list for dropdowns
-const COUNTRY_OPTIONS = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia",
-  "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
-  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
-  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo",
-  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica",
-  "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea",
-  "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany",
-  "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
-  "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan",
-  "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
-  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand",
-  "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
-  "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland",
-  "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia",
-  "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia",
-  "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
-  "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste",
-  "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
-  "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+
 // Form schema
 const formSchema = z.object({
-  // Question 1: Shared Contact Phone Numbers
+  // Question 1: Shared contact phone numbers
   share_same_contact_phones: z.enum(["yes", "no"]).optional(),
   after_hours_phone_country_code: z.string().optional(),
   after_hours_phone_area_code: z.string().optional(),
@@ -62,13 +37,20 @@ const formSchema = z.object({
 
   // Question 2: Shared Email Address
   share_same_email: z.enum(["yes", "no"]).optional(),
-  shared_email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  shared_email: z.string().optional(),
 
   // Question 3: Shared Postal Address
   share_same_postal_address: z.enum(["yes", "no"]).optional(),
   postal_address: z.string().optional(),
+  postal_address_line2: z.string().optional(),
+  postal_suburb: z.string().optional(),
+  postal_state: z.string().optional(),
+  postal_postcode: z.string().optional(),
   postal_country: z.string().optional(),
 }).superRefine((data, ctx) => {
+  if (data.share_same_email === "yes" && data.shared_email && !z.string().email().safeParse(data.shared_email).success) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid email address", path: ["shared_email"] });
+  }
   // If shared phones is yes, at least one phone number should be provided
   if (data.share_same_contact_phones === "yes") {
     const hasAfterHours = data.after_hours_phone_country_code || data.after_hours_phone_area_code || data.after_hours_phone_number;
@@ -117,6 +99,10 @@ export default function Page() {
       shared_email: "",
       share_same_postal_address: "no",
       postal_address: "",
+      postal_address_line2: "",
+      postal_suburb: "",
+      postal_state: "",
+      postal_postcode: "",
       postal_country: "",
     },
   });
@@ -140,36 +126,14 @@ export default function Page() {
         shared_email: savedData.shared_email || "",
         share_same_postal_address: savedData.share_same_postal_address || "no",
         postal_address: savedData.postal_address || "",
+        postal_address_line2: savedData.postal_address_line2 || "",
+        postal_suburb: savedData.postal_suburb || "",
+        postal_state: savedData.postal_state || "",
+        postal_postcode: savedData.postal_postcode || "",
         postal_country: savedData.postal_country || "",
       });
     }
   }, [draftSnap.draft?.protection_contact_details]);
-  // Clear phone fields when "No" is selected
-  useEffect(() => {
-    if (shareSamePhones === "no") {
-      form.setValue("after_hours_phone_country_code", "");
-      form.setValue("after_hours_phone_area_code", "");
-      form.setValue("after_hours_phone_number", "");
-      form.setValue("office_hours_phone_country_code", "");
-      form.setValue("office_hours_phone_area_code", "");
-      form.setValue("office_hours_phone_number", "");
-      form.setValue("mobile_phone_country_code", "");
-      form.setValue("mobile_phone_number", "");
-    }
-  }, [shareSamePhones]);
-  // Clear email field when "No" is selected
-  useEffect(() => {
-    if (shareSameEmail === "no") {
-      form.setValue("shared_email", "");
-    }
-  }, [shareSameEmail]);
-  // Clear postal address fields when "No" is selected
-  useEffect(() => {
-    if (shareSamePostal === "no") {
-      form.setValue("postal_address", "");
-      form.setValue("postal_country", "");
-    }
-  }, [shareSamePostal]);
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
@@ -237,30 +201,20 @@ export default function Page() {
           <div className="mb-8">
             <CardTitle className="text-2xl font-semibold">Contact Details</CardTitle>
             <p className="text-sm text-gray-600 mt-2">
-              For everyone who is to be included in this application, provide the following details about their contact details:
+              Provide contact information for all applicants.
             </p>
           </div>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="space-y-8">
-              {/* Question 1: Shared Contact Phone Numbers */}
+              {/* Question 1: Shared contact phone numbers */}
               <div className="space-y-4">
                 <Label className="text-base font-medium mb-3 block">
-                  Does everyone included in this application share the same Contact Phone Numbers?
+                  Does everyone included in this application share the same contact phone numbers?
                 </Label>
                 <RadioGroup
                   value={shareSamePhones}
                   onValueChange={(value) => {
                     form.setValue("share_same_contact_phones", value);
-                    if (value === "no") {
-                      form.setValue("after_hours_phone_country_code", "");
-                      form.setValue("after_hours_phone_area_code", "");
-                      form.setValue("after_hours_phone_number", "");
-                      form.setValue("office_hours_phone_country_code", "");
-                      form.setValue("office_hours_phone_area_code", "");
-                      form.setValue("office_hours_phone_number", "");
-                      form.setValue("mobile_phone_country_code", "");
-                      form.setValue("mobile_phone_number", "");
-                    }
                   }}
                   className="flex gap-4"
                   data-testid="radio-share-phones"
@@ -322,7 +276,7 @@ export default function Page() {
                       </div>
                     </div>
                     <div>
-                      <Label className="mb-2 block">Mobile/Cell Phone Number</Label>
+                      <Label className="mb-2 block">Mobile Number</Label>
                       <div className="grid grid-cols-2 gap-2">
                         <CountryCodeSelect
                           value={form.watch("mobile_phone_country_code")}
@@ -353,9 +307,6 @@ export default function Page() {
                   value={shareSameEmail}
                   onValueChange={(value) => {
                     form.setValue("share_same_email", value);
-                    if (value === "no") {
-                      form.setValue("shared_email", "");
-                    }
                   }}
                   className="flex gap-4"
                   data-testid="radio-share-email"
@@ -379,6 +330,7 @@ export default function Page() {
                     <Label htmlFor="shared_email" className="mb-2 block">Email Address</Label>
                     <Input
                       id="shared_email"
+                      placeholder="Enter email address"
                       type="email"
                       {...form.register("shared_email")}
                       data-testid="input-shared-email"
@@ -400,10 +352,6 @@ export default function Page() {
                   value={shareSamePostal}
                   onValueChange={(value) => {
                     form.setValue("share_same_postal_address", value);
-                    if (value === "no") {
-                      form.setValue("postal_address", "");
-                      form.setValue("postal_country", "");
-                    }
                   }}
                   className="flex gap-4 mb-5"
                   data-testid="radio-share-postal"
@@ -426,7 +374,7 @@ export default function Page() {
                 {shareSamePostal === "yes" && (
                   <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-md">
                     <p className="text-sm text-gray-600">
-                      Enter the current Postal Address for the Main Applicant
+                      Enter the current postal address for the main applicant.
                     </p>
 
                     <div>
@@ -435,13 +383,29 @@ export default function Page() {
                       </Label>
                       <Input
                         id="postal_address"
-                        placeholder="Address (including Street Number and Name or Post Office Box)"
+                        placeholder="Address (including street number and name or post office box)"
                         {...form.register("postal_address")}
                         data-testid="input-postal-address"
                       />
                     </div>
                     <div>
-                      <Label className="mb-2 block">Choose Country</Label>
+                      <Label htmlFor="postal_address_line2" className="mb-2 block">Address Line 2</Label>
+                      <Input id="postal_address_line2" {...form.register("postal_address_line2")} />
+                    </div>
+                    <div>
+                      <Label htmlFor="postal_suburb" className="mb-2 block">Suburb / Town</Label>
+                      <Input id="postal_suburb" {...form.register("postal_suburb")} />
+                    </div>
+                    <div>
+                      <Label htmlFor="postal_state" className="mb-2 block">State / Territory</Label>
+                      <Input id="postal_state" {...form.register("postal_state")} />
+                    </div>
+                    <div>
+                      <Label htmlFor="postal_postcode" className="mb-2 block">Postcode</Label>
+                      <Input id="postal_postcode" {...form.register("postal_postcode")} />
+                    </div>
+                    <div>
+                      <Label className="mb-2 block">Country</Label>
                       <Select
                         value={form.watch("postal_country")}
                         onValueChange={(value) => form.setValue("postal_country", value)}
@@ -460,9 +424,8 @@ export default function Page() {
                 )}
               </div>
             </div>
-            <FormNavigation
+            <FormNavigation nextLabel="Continue"
               onPrev={handlePrevious}
-              disabledNext={!form.formState.isValid}
               onNext={form.handleSubmit(onSubmit)}
               onSave={handleSave}
               loading={isSaving}
