@@ -21,6 +21,10 @@ test("converts only an allowed WorkDrive external share URL", () => {
     toWorkDriveDownloadUrl("https://workdrive.zohopublic.com.au/external/abc_123/download").toString(),
     "https://workdrive.zohopublic.com.au/external/abc_123/download?directDownload=true",
   );
+  assert.equal(
+    toWorkDriveDownloadUrl("https://workdrive.zohoexternal.com.au/external/abc_123").toString(),
+    "https://workdrive.zohoexternal.com.au/external/abc_123/download?directDownload=true",
+  );
   assert.equal(toWorkDriveDownloadUrl("https://attacker.example/external/abc_123"), null);
   assert.equal(toWorkDriveDownloadUrl("https://workdrive.zohoexternal.com/external/abc_123/file.pdf"), null);
   assert.equal(toWorkDriveDownloadUrl("http://workdrive.zohoexternal.com/external/abc_123"), null);
@@ -32,6 +36,9 @@ test("allows only the WorkDrive file redirect destination", () => {
   ));
   assert.ok(validateWorkDriveRedirect(
     "https://files.zohopublic.com.au/public/workdrive-public/download/file-token?x=1",
+  ));
+  assert.ok(validateWorkDriveRedirect(
+    "https://files.zohoexternal.com.au/public/workdrive-external/download/file-token?x=1",
   ));
   assert.equal(
     validateWorkDriveRedirect("https://files.zohopublic.com.au/public/workdrive-external/download/file-token"),
@@ -48,6 +55,8 @@ test("rejects archived, non-file, and non-PDF resources", () => {
   assert.equal(isPdfResource({ kind: "file", mimeType: "application/msword" }), false);
   assert.equal(isPdfResource({ kind: "file", name: "guide.pdf" }), true);
   assert.equal(isPdfResource({ type: "file", fileName: "review.pdf" }), true);
+  assert.equal(isPdfResource({ type: "file", fileName: "review.pdf", mimeType: "application/octet-stream" }), true);
+  assert.equal(isPdfResource({ type: "file", fileName: "review.pdf", mimeType: "application/msword" }), false);
   assert.equal(isDocumentReviewResource({
     type: "file",
     source: "documentReview",

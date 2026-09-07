@@ -35,6 +35,10 @@ function normalizeCategories(categories) {
     .filter((category) => category.name);
 }
 
+function normalizeStatus(value, fallback = "draft") {
+  return String(value || fallback).trim().toLowerCase();
+}
+
 export async function GET(request) {
   try {
     const dbResult = getDb();
@@ -93,7 +97,8 @@ export async function GET(request) {
     }
 
     const templateData = templateDoc.data() || {};
-    if (templateData.status !== "active") {
+    const templateStatus = normalizeStatus(templateData.status);
+    if (templateStatus !== "active") {
       return NextResponse.json(
         { success: false, error: "Resource template is not currently active" },
         { status: 404 }
@@ -104,7 +109,6 @@ export async function GET(request) {
       .collection("resourceTemplates")
       .doc(templateSlug)
       .collection("items")
-      .where("status", "==", "active")
       .get();
 
     const items = itemsSnapshot.docs
@@ -117,9 +121,9 @@ export async function GET(request) {
           name: data.name || data.fileName || "Untitled resource",
           category: data.category || "Uncategorized",
           order: typeof data.order === "number" ? data.order : 0,
-          status: String(data.status || "draft").toLowerCase(),
-          externalUrl: data.externalUrl || data.publicUrl || data.url || "",
-          downloadUrl: data.downloadUrl || data.downloadURL || data.workdriveDownloadUrl || data.workDriveDownloadUrl || data.download_url || "",
+          status: normalizeStatus(data.status),
+          externalUrl: data.externalUrl || data.publicUrl || data.workDriveShareUrl || data.workdriveShareUrl || data.url || "",
+          downloadUrl: data.downloadUrl || data.downloadURL || data.workdriveDownloadUrl || data.workDriveDownloadUrl || data.workDriveShareUrl || data.workdriveShareUrl || data.download_url || "",
           noteText: data.noteText || data.body || data.content || data.description || "",
           mimeType: data.mimeType || null,
           size: typeof data.size === "number" ? data.size : null,
@@ -127,8 +131,9 @@ export async function GET(request) {
           updatedAt: serializeTimestamp(data.updatedAt),
         };
       })
+      .filter((item) => item.status === "active")
       .filter((item) => item.kind !== "folder")
-      .filter((item) => item.kind === "note" || item.externalUrl)
+      .filter((item) => item.kind === "note" || item.externalUrl || item.downloadUrl)
       .sort((a, b) => {
         const orderDiff = a.order - b.order;
         if (orderDiff !== 0) return orderDiff;
@@ -141,7 +146,7 @@ export async function GET(request) {
         visaSlug,
         templateSlug,
         title: templateData.title || "",
-        status: templateData.status,
+        status: templateStatus,
         categories: normalizeCategories(templateData.categories),
         updatedAt: serializeTimestamp(templateData.updatedAt),
       },

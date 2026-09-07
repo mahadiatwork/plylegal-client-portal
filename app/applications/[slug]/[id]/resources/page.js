@@ -28,6 +28,12 @@ const DEFAULT_TEMPLATE_CATEGORIES = [
   { name: "Helpful Links", icon: "link" },
 ];
 
+const MISSING_TEMPLATE_ERRORS = new Set([
+  "No resource template available for this application type",
+  "No resource template found for this visa type",
+  "Resource template is not currently active",
+]);
+
 const CATEGORY_ICONS = {
   folder: Folder,
   guide: BookOpen,
@@ -68,7 +74,7 @@ function groupResourcesByCategory(categories, items) {
 
   items.forEach((item) => {
     if (item.status && item.status !== "active") return;
-    if (item.kind !== "note" && !item.externalUrl) return;
+    if (item.kind !== "note" && !item.externalUrl && !item.downloadUrl) return;
 
     const categoryName = item.category || "Uncategorized";
     const key = categoryName.toLowerCase();
@@ -122,13 +128,48 @@ function formatFileSize(size) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isMissingTemplateResponse(response, data) {
+  return response.status === 404 && MISSING_TEMPLATE_ERRORS.has(data?.error);
+}
+
+function normalizeSharedResourceKind(type) {
+  const value = String(type || "link").toLowerCase();
+  if (value === "file" || value === "note") return value;
+  return "link";
+}
+
+function mapSharedResourcesToItems(resources) {
+  if (!Array.isArray(resources)) return [];
+
+  return resources.map((resource, index) => {
+    const kind = normalizeSharedResourceKind(resource.type);
+    return {
+      id: resource.id,
+      parentId: null,
+      kind,
+      name: resource.title || resource.name || "Untitled resource",
+      category: resource.category || "Uncategorized",
+      order: index,
+      status: resource.status || "active",
+      externalUrl: resource.url || resource.externalUrl || "",
+      downloadUrl: resource.downloadUrl || "",
+      noteText: resource.noteText || resource.description || "",
+      mimeType: resource.mimeType || null,
+      size: typeof resource.size === "number" ? resource.size : null,
+      previewable: false,
+      createdAt: resource.createdAt || null,
+      updatedAt: resource.updatedAt || null,
+    };
+  });
+}
+
 function getResourceTestId(name) {
   return `link-resource-${String(name || "resource").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
 
 function ResourceTemplateItem({ item, matterId }) {
   const isNote = item.kind === "note";
-  const isPdf = item.kind === "file" && (
+  const isPdf = item.previewable !== false && item.kind === "file" && (
     String(item.mimeType || "").split(";", 1)[0].trim().toLowerCase() === "application/pdf" ||
     (!item.mimeType && /\.pdf$/i.test(String(item.name || "")))
   );
@@ -290,12 +331,35 @@ export default function ResourcesPage() {
         throw new Error("Missing authentication token");
       }
 
-      const response = await fetch(`/api/resources/template?applicationId=${appId}`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+      const headers = {
+        Authorization: `Bearer ${idToken}`,
+      };
+      const applicationId = encodeURIComponent(appId);
+      const response = await fetch(`/api/resources/template?applicationId=${applicationId}`, {
+        headers,
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+
+      if ((!response.ok || !data.success) && isMissingTemplateResponse(response, data)) {
+        const sharedResponse = await fetch(`/api/resources/shared?applicationId=${applicationId}`, {
+          headers,
+        });
+        const sharedData = await sharedResponse.json().catch(() => ({}));
+
+        if (!sharedResponse.ok || !sharedData.success) {
+          throw new Error(sharedData.error || data.error || "Failed to load resources");
+        }
+
+        setTemplate({
+          visaSlug: slug,
+          templateSlug: null,
+          title: "",
+          status: "active",
+          categories: DEFAULT_TEMPLATE_CATEGORIES,
+        });
+        setItems(mapSharedResourcesToItems(sharedData.resources || []));
+        return;
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Failed to load resources");
@@ -309,7 +373,7 @@ export default function ResourcesPage() {
     } finally {
       setResourcesLoading(false);
     }
-  }, [appId]);
+  }, [appId, slug]);
 
   useEffect(() => {
     const loadData = async () => {

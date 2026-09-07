@@ -1,14 +1,23 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const EXTERNAL_HOSTS = new Set([
-  "workdrive.zohoexternal.com",
-  "workdrive.zohopublic.com.au",
-]);
-
-const FILE_HOST_PATHS = new Map([
-  ["files-accl.zohoexternal.com", /^\/public\/workdrive-external\/download\/[A-Za-z0-9_-]+$/],
-  ["files.zohoexternal.com", /^\/public\/workdrive-external\/download\/[A-Za-z0-9_-]+$/],
-  ["files.zohopublic.com.au", /^\/public\/workdrive-public\/download\/[A-Za-z0-9_-]+$/],
+const ZOHO_PUBLIC_DOMAIN_PATTERN = String.raw`(?:com|com\.au|eu|in|jp|ca|sa|com\.cn)`;
+const WORKDRIVE_SHARE_HOST = new RegExp(
+  `^workdrive\\.(?:zohoexternal|zohopublic)\\.${ZOHO_PUBLIC_DOMAIN_PATTERN}$`,
+);
+const WORKDRIVE_FILE_HOST = new RegExp(
+  `^files(?:-accl)?\\.(zohoexternal|zohopublic)\\.${ZOHO_PUBLIC_DOMAIN_PATTERN}$`,
+);
+const FILE_DOWNLOAD_PATHS = {
+  zohoexternal: /^\/public\/workdrive-external\/download\/[A-Za-z0-9_-]+$/,
+  zohopublic: /^\/public\/workdrive-public\/download\/[A-Za-z0-9_-]+$/,
+};
+const GENERIC_FILE_MIME_TYPES = new Set([
+  "",
+  "application/octet-stream",
+  "application/download",
+  "application/force-download",
+  "application/x-download",
+  "binary/octet-stream",
 ]);
 
 const EXTERNAL_PATH = /^\/external\/([A-Za-z0-9_-]+)(?:\/download)?\/?$/;
@@ -24,7 +33,9 @@ export function toWorkDriveDownloadUrl(storedExternalUrl) {
 
   try {
     const source = new URL(storedExternalUrl);
-    if (!isPlainHttpsUrl(source) || !EXTERNAL_HOSTS.has(source.hostname)) return null;
+    if (!isPlainHttpsUrl(source) || !WORKDRIVE_SHARE_HOST.test(source.hostname.toLowerCase())) {
+      return null;
+    }
 
     const match = source.pathname.match(EXTERNAL_PATH);
     if (!match) return null;
@@ -40,8 +51,9 @@ export function validateWorkDriveRedirect(location) {
 
   try {
     const destination = new URL(location);
-    const pathPattern = FILE_HOST_PATHS.get(destination.hostname);
-    if (!isPlainHttpsUrl(destination) || !pathPattern || !pathPattern.test(destination.pathname)) {
+    const hostMatch = destination.hostname.toLowerCase().match(WORKDRIVE_FILE_HOST);
+    const pathPattern = hostMatch ? FILE_DOWNLOAD_PATHS[hostMatch[1]] : null;
+    if (!isPlainHttpsUrl(destination) || !pathPattern?.test(destination.pathname)) {
       return null;
     }
     return destination;
@@ -60,7 +72,8 @@ export function isPdfResource(resource) {
     .toLowerCase();
 
   const filename = resource.name || resource.fileName || resource.title || "";
-  return mimeType === "application/pdf" || (!mimeType && /\.pdf$/i.test(String(filename)));
+  return mimeType === "application/pdf" ||
+    (GENERIC_FILE_MIME_TYPES.has(mimeType) && /\.pdf$/i.test(String(filename)));
 }
 
 export function isPreviewableResource(resource) {
