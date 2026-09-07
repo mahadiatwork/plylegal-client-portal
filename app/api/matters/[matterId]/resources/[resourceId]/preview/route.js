@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireClient, verifyAuth } from "@/lib/serverAuth";
+import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
+import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import {
   buildPreviewHeaders,
@@ -41,18 +42,12 @@ function getStoredDownloadUrl(resource) {
   return null;
 }
 
-async function resolveAuthorizedResource(db, auth, matterId, resourceId) {
-  const matterDoc = await db.collection("applications").doc(matterId).get();
-  if (!matterDoc.exists) return { response: errorResponse("Matter not found", 404) };
-
-  const matter = matterDoc.data() || {};
-  if (auth.role !== "admin" && matter.userId !== auth.uid) {
-    return { response: errorResponse("Access denied", 403) };
-  }
-
-  const matterResourceDoc = await matterDoc.ref.collection("resources").doc(resourceId).get();
-  if (matterResourceDoc.exists) {
-    const resource = matterResourceDoc.data() || {};
+async function resolveAuthorizedResource(client, auth, matterId, resourceId) {
+  if (!resourceId || resourceId.includes("/")) return { response: errorResponse("A valid resource ID is required", 400) };
+  const matter = await getOwnedApplication(client, auth, matterId);
+  const matterResource = await client.getDocument(`applications/${matterId}/resources/${resourceId}`);
+  if (matterResource) {
+    const resource = matterResource;
     if (!isDocumentReviewResource(resource)) {
       return { response: errorResponse("Resource not found", 404) };
     }
@@ -65,8 +60,7 @@ async function resolveAuthorizedResource(db, auth, matterId, resourceId) {
     return { resource, downloadUrl };
   }
 
-  const questionnaireDoc = await matterDoc.ref.collection("data").doc("questionnaire").get();
-  const questionnaire = questionnaireDoc.exists ? questionnaireDoc.data() || {} : {};
+  const questionnaire = await client.getDocument(`applications/${matterId}/data/questionnaire`) || {};
   const visaSlug = getApplicationSlug({
     ...matter,
     questionnaireVisaContext: questionnaire.visaContext,
@@ -80,15 +74,15 @@ async function resolveAuthorizedResource(db, auth, matterId, resourceId) {
     : visaSlug === PROTECTION_PUBLIC_SLUG
       ? "protection"
       : visaSlug;
-  const templateDoc = await db.collection("resourceTemplates").doc(templateSlug).get();
-  if (!templateDoc.exists || String(templateDoc.data()?.status || "").toLowerCase() !== "active") {
+  const [templateDoc] = await client.getActiveDocuments("resourceTemplates", templateSlug);
+  if (!templateDoc || String(templateDoc.data.status || "").toLowerCase() !== "active") {
     return { response: errorResponse("Resource not found", 404) };
   }
 
-  const resourceDoc = await templateDoc.ref.collection("items").doc(resourceId).get();
-  if (!resourceDoc.exists) return { response: errorResponse("Resource not found", 404) };
+  const [resourceDoc] = await client.getActiveDocuments(`resourceTemplates/${templateSlug}/items`, resourceId);
+  if (!resourceDoc) return { response: errorResponse("Resource not found", 404) };
 
-  const resource = resourceDoc.data() || {};
+  const resource = resourceDoc.data;
   if (!isPreviewableResource(resource)) {
     return { response: errorResponse("Only active PDF files can be previewed", 415) };
   }
@@ -99,9 +93,19 @@ async function resolveAuthorizedResource(db, auth, matterId, resourceId) {
   return { resource, downloadUrl };
 }
 
+async function resolveRequestResource(request, auth, matterId, resourceId) {
+  try {
+    const client = createFirestoreClient(getBearerToken(request), request.signal);
+    return await resolveAuthorizedResource(client, auth, matterId, resourceId);
+  } catch (error) {
+    console.error("[resource-preview] Load failed", { status: error.status || 502, code: error.name });
+    return { response: resourceErrorResponse(error) };
+  }
+}
+
 async function authenticatePreviewRequest(request, matterId, resourceId) {
   if (request.headers.get("authorization")) {
-    const auth = await verifyAuth(request);
+    const auth = await verifyFirebaseIdentity(request);
     const clientCheck = requireClient(auth);
     return clientCheck.authorized ? auth : { response: errorResponse(clientCheck.error, clientCheck.status) };
   }
@@ -164,10 +168,7 @@ async function preview(request, context) {
 
   let resolved = resolveTokenBoundResource(auth);
   if (!resolved) {
-    const { getDb } = await import("@/lib/firebase-admin");
-    const dbResult = getDb();
-    if (!dbResult.ok) return errorResponse(dbResult.error, 500);
-    resolved = await resolveAuthorizedResource(dbResult.db, auth, matterId, resourceId);
+    resolved = await resolveRequestResource(request, auth, matterId, resourceId);
   }
   if (resolved.response) return resolved.response;
 
@@ -237,14 +238,10 @@ export async function POST(request, context) {
   const { matterId, resourceId } = await context.params;
   if (!matterId || !resourceId) return errorResponse("Matter and resource are required", 400);
 
-  const { getDb } = await import("@/lib/firebase-admin");
-  const dbResult = getDb();
-  if (!dbResult.ok) return errorResponse(dbResult.error, 500);
-
   const auth = await authenticatePreviewRequest(request, matterId, resourceId);
   if (auth.response) return auth.response;
 
-  const resolved = await resolveAuthorizedResource(dbResult.db, auth, matterId, resourceId);
+  const resolved = await resolveRequestResource(request, auth, matterId, resourceId);
   if (resolved.response) return resolved.response;
 
   try {
