@@ -100,7 +100,7 @@ function getStoredDownloadUrl(resource) {
   return null;
 }
 
-async function resolveDocumentReviewResource(idToken, auth, matterId, signal) {
+async function resolveDocumentReviewResource(idToken, auth, matterId, resourceId, signal) {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   if (!projectId) {
     return { response: errorResponse("Firebase project is not configured", 500) };
@@ -154,7 +154,7 @@ async function resolveDocumentReviewResource(idToken, auth, matterId, signal) {
     return { response: errorResponse("Unable to load the review document", 502) };
   }
 
-  const document = resourceDocuments
+  const documents = resourceDocuments
     .map((resourceDocument) => ({
       id: String(resourceDocument.name || "").split("/").pop(),
       resource: decodeFirestoreFields(resourceDocument.fields),
@@ -163,7 +163,11 @@ async function resolveDocumentReviewResource(idToken, auth, matterId, signal) {
     .sort((left, right) => (
       timestampMillis(right.resource.createdAt || right.resource.updatedAt) -
       timestampMillis(left.resource.createdAt || left.resource.updatedAt)
-    ))[0];
+    ));
+
+  const document = resourceId
+    ? documents.find((candidate) => candidate.id === resourceId)
+    : documents[0];
 
   if (!document) return { response: errorResponse("PDF review document is not available", 404) };
 
@@ -172,7 +176,14 @@ async function resolveDocumentReviewResource(idToken, auth, matterId, signal) {
     return { response: errorResponse("A WorkDrive preview is not available for this file", 502) };
   }
 
-  return { ...document, downloadUrl };
+  return {
+    ...document,
+    downloadUrl,
+    documents: documents.map(({ id, resource }) => ({
+      id,
+      fileName: resource.fileName || resource.name || resource.title || "Document preview",
+    })),
+  };
 }
 
 export async function POST(request, { params }) {
@@ -186,10 +197,18 @@ export async function POST(request, { params }) {
   if (!idToken) return errorResponse("Authentication required", 401);
 
   try {
+    const body = await request.json().catch(() => ({}));
+    const resourceId = body?.resourceId;
+    if (resourceId != null && (
+      typeof resourceId !== "string" || !resourceId.trim() || resourceId.includes("/")
+    )) {
+      return errorResponse("A valid resource ID is required", 400);
+    }
+
     const signal = request.signal
       ? AbortSignal.any([request.signal, AbortSignal.timeout(15_000)])
       : AbortSignal.timeout(15_000);
-    const resolved = await resolveDocumentReviewResource(idToken, auth, matterId, signal);
+    const resolved = await resolveDocumentReviewResource(idToken, auth, matterId, resourceId, signal);
     if (resolved.response) return resolved.response;
 
     const fileName = resolved.resource.fileName || resolved.resource.name || "Document preview";
@@ -199,6 +218,7 @@ export async function POST(request, { params }) {
       role: auth.role,
       matterId,
       resourceId: resolved.id,
+      purpose: "documentReview",
       downloadUrl,
       fileName,
       fileSize: resolved.resource.fileSize || resolved.resource.size,
@@ -206,6 +226,8 @@ export async function POST(request, { params }) {
     const previewPath = `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(resolved.id)}/preview`;
     const response = NextResponse.json({
       success: true,
+      resourceId: resolved.id,
+      documents: resolved.documents,
       fileName,
       previewUrl: previewPath,
       downloadUrl,

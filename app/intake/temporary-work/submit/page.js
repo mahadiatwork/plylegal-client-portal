@@ -29,6 +29,11 @@ import { TemporaryWorkReviewSummary } from "@/components/intake/TemporaryWorkRev
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getIncompleteChecklist } from "@/lib/submitCompletion";
 import { buildTemporaryWorkReviewSections } from "@/lib/temporaryWorkReview";
+import {
+  useActiveQuestionnaireDefinition,
+  useActiveQuestionnaireDefinitionController,
+} from "@/components/questionnaire/DynamicQuestionnaireOverride";
+import { getRemoteQuestionnaireDefinitionStrict } from "@/lib/questionnaires";
 
 const COMPLETE_DOCUMENT_STATUSES = new Set([
   "approved",
@@ -88,12 +93,13 @@ export default function SubmitPage() {
   const pathname = usePathname();
   const visaType = getVisaTypeFromPath(pathname);
   const { toast } = useToast();
+  const questionnaireDefinition = useActiveQuestionnaireDefinition();
+  const { replaceDefinition } = useActiveQuestionnaireDefinitionController();
   const draftSnap = useSnapshot(draftStore);
   const applicationsSnap = useSnapshot(applicationsStore);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingRequirements, setIsCheckingRequirements] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [completionData, setCompletionData] = useState({ percentage: 0, completed: 0, total: 0 });
   const [documentIncompleteItems, setDocumentIncompleteItems] = useState([]);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetReferenceInput, setResetReferenceInput] = useState("");
@@ -101,18 +107,11 @@ export default function SubmitPage() {
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
-    const data = draftStore.getCompletionPercentage();
-    setCompletionData(data);
-  }, [draftSnap.completionStatus]);
-
-  useEffect(() => {
     if (draftSnap.currentApplicationId) {
       appDataStore.loadUploads(draftSnap.currentApplicationId);
     }
   }, [draftSnap.currentApplicationId]);
 
-  const completionPercentage = completionData.percentage;
-  const isFullyComplete = completionPercentage === 100;
   const intakeSlug = getIntakeSlugForContext(visaType, draftSnap.visaContext);
   const questionnaireIncompleteItems = useMemo(
     () =>
@@ -121,9 +120,11 @@ export default function SubmitPage() {
         visaContext: draftSnap.visaContext,
         completionStatus: draftSnap.completionStatus,
         draft: draftSnap.draft,
+        questionnaireDefinition,
       }),
-    [visaType, draftSnap.visaContext, draftSnap.completionStatus, draftSnap.draft]
+    [visaType, draftSnap.visaContext, draftSnap.completionStatus, draftSnap.draft, questionnaireDefinition]
   );
+  const isFullyComplete = questionnaireIncompleteItems.length === 0;
   const incompleteItems = useMemo(
     () => [...questionnaireIncompleteItems, ...documentIncompleteItems],
     [questionnaireIncompleteItems, documentIncompleteItems]
@@ -152,8 +153,9 @@ export default function SubmitPage() {
         visaContext: draftSnap.visaContext,
         appId: draftSnap.currentApplicationId,
         slug: intakeSlug,
+        questionnaireDefinition,
       }),
-    [draftSnap.draft, draftSnap.visaContext, draftSnap.currentApplicationId, intakeSlug]
+    [draftSnap.draft, draftSnap.visaContext, draftSnap.currentApplicationId, intakeSlug, questionnaireDefinition]
   );
 
   const handlePrevious = () => {
@@ -192,15 +194,30 @@ export default function SubmitPage() {
   };
 
   const getCurrentIncompleteItems = async () => {
+    let currentDefinition;
+    try {
+      currentDefinition = await getRemoteQuestionnaireDefinitionStrict({
+        visaType,
+        visaContext: draftStore.visaContext ?? draftStore.draft?.visaContext,
+      });
+    } catch (error) {
+      console.error("Questionnaire definition verification failed:", error);
+      throw new Error("We could not verify the current questionnaire version. Please refresh and try again.");
+    }
+    replaceDefinition(currentDefinition);
     const questionnaireItems = getIncompleteChecklist({
       visaType,
       visaContext: draftStore.visaContext ?? draftStore.draft?.visaContext,
       completionStatus: draftStore.completionStatus,
       draft: draftStore.draft,
+      questionnaireDefinition: currentDefinition,
     });
     const documentItems = await getDocumentUploadIncompleteItems();
     setDocumentIncompleteItems(documentItems);
-    return [...questionnaireItems, ...documentItems];
+    return {
+      definition: currentDefinition,
+      items: [...questionnaireItems, ...documentItems],
+    };
   };
 
   const blockSubmission = (items) => {
@@ -215,10 +232,7 @@ export default function SubmitPage() {
     return true;
   };
 
-  const submitApplication = async () => {
-    const currentIncompleteItems = await getCurrentIncompleteItems();
-    if (blockSubmission(currentIncompleteItems)) return;
-
+  const submitApplication = async (currentDefinition) => {
     setIsSubmitting(true);
     try {
       const appId = draftSnap.currentApplicationId;
@@ -230,6 +244,13 @@ export default function SubmitPage() {
       const result = await applicationsStore.updateApplication(appId, {
         status: "submitted",
         submittedAt: new Date().toISOString(),
+        questionnaireDefinitionRef: currentDefinition
+          ? {
+              id: currentDefinition.id,
+              revision: currentDefinition.revision,
+              version: currentDefinition.version,
+            }
+          : null,
       });
 
       if (!result.success) {
@@ -266,10 +287,16 @@ export default function SubmitPage() {
 
     setIsCheckingRequirements(true);
     try {
-      const currentIncompleteItems = await getCurrentIncompleteItems();
-      if (blockSubmission(currentIncompleteItems)) return;
+      const current = await getCurrentIncompleteItems();
+      if (blockSubmission(current.items)) return;
 
-      await submitApplication();
+      await submitApplication(current.definition);
+    } catch (error) {
+      toast({
+        title: "Submission blocked",
+        description: error.message || "We could not verify the questionnaire. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsCheckingRequirements(false);
     }

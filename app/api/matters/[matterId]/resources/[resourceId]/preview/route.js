@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
-import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import {
   buildPreviewHeaders,
   createPreviewToken,
@@ -9,7 +8,6 @@ import {
   getPreviewCookieOptions,
   getPreviewTimeoutMs,
   isDocumentReviewResource,
-  isPreviewableResource,
   isValidRangeHeader,
   toWorkDriveDownloadUrl,
   validateWorkDriveRedirect,
@@ -18,8 +16,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", PROTECTION_PUBLIC_SLUG, "482", "186"]);
 
 function errorResponse(error, status) {
   return NextResponse.json(
@@ -44,7 +40,7 @@ function getStoredDownloadUrl(resource) {
 
 async function resolveAuthorizedResource(client, auth, matterId, resourceId) {
   if (!resourceId || resourceId.includes("/")) return { response: errorResponse("A valid resource ID is required", 400) };
-  const matter = await getOwnedApplication(client, auth, matterId);
+  await getOwnedApplication(client, auth, matterId);
   const matterResource = await client.getDocument(`applications/${matterId}/resources/${resourceId}`);
   if (matterResource) {
     const resource = matterResource;
@@ -60,37 +56,8 @@ async function resolveAuthorizedResource(client, auth, matterId, resourceId) {
     return { resource, downloadUrl };
   }
 
-  const questionnaire = await client.getDocument(`applications/${matterId}/data/questionnaire`) || {};
-  const visaSlug = getApplicationSlug({
-    ...matter,
-    questionnaireVisaContext: questionnaire.visaContext,
-  });
-  if (!visaSlug || !SUPPORTED_SLUGS.has(visaSlug)) {
-    return { response: errorResponse("Resource not found", 404) };
-  }
-
-  const templateSlug = visaSlug === "820"
-    ? "partner"
-    : visaSlug === PROTECTION_PUBLIC_SLUG
-      ? "protection"
-      : visaSlug;
-  const [templateDoc] = await client.getActiveDocuments("resourceTemplates", templateSlug);
-  if (!templateDoc || String(templateDoc.data.status || "").toLowerCase() !== "active") {
-    return { response: errorResponse("Resource not found", 404) };
-  }
-
-  const [resourceDoc] = await client.getActiveDocuments(`resourceTemplates/${templateSlug}/items`, resourceId);
-  if (!resourceDoc) return { response: errorResponse("Resource not found", 404) };
-
-  const resource = resourceDoc.data;
-  if (!isPreviewableResource(resource)) {
-    return { response: errorResponse("Only active PDF files can be previewed", 415) };
-  }
-
-  const downloadUrl = getStoredDownloadUrl(resource);
-  if (!downloadUrl) return { response: errorResponse("Resource not found", 404) };
-
-  return { resource, downloadUrl };
+  // Resource Center files use their download-disabled WorkDrive viewer only.
+  return { response: errorResponse("Resource not found", 404) };
 }
 
 async function resolveRequestResource(request, auth, matterId, resourceId) {
@@ -112,7 +79,9 @@ async function authenticatePreviewRequest(request, matterId, resourceId) {
 
   const token = request.cookies?.get(getPreviewCookieName())?.value;
   const auth = verifyPreviewToken(token, { matterId, resourceId });
-  return auth || { response: errorResponse("Authentication required", 401) };
+  return auth?.purpose === "documentReview"
+    ? auth
+    : { response: errorResponse("Authentication required", 401) };
 }
 
 function requestSignal(request) {
@@ -250,6 +219,7 @@ export async function POST(request, context) {
       role: auth.role,
       matterId,
       resourceId,
+      purpose: "documentReview",
       downloadUrl: resolved.downloadUrl.toString(),
       fileName: resourceFilename(resolved.resource),
       fileSize: resolved.resource.fileSize || resolved.resource.size,

@@ -3,17 +3,30 @@
 import { ConditionalBlock } from "@/components/questionnaire/ConditionalBlock";
 import { QuestionField } from "@/components/questionnaire/QuestionField";
 
-function getFieldNames(question) {
-  const names = [question.answerKey].filter(Boolean);
-  if (question.type === "dateParts" && question.parts) {
-    names.push(...Object.values(question.parts).filter(Boolean));
+function getFieldDefaults(question) {
+  const fields = {};
+  if (question.type === "dateParts") {
+    const parts = question.parts || {
+      day: `${question.answerKey}_day`,
+      month: `${question.answerKey}_month`,
+      year: `${question.answerKey}_year`,
+    };
+    Object.values(parts).filter(Boolean).forEach((name) => {
+      fields[name] = "";
+    });
+  } else if (question.answerKey) {
+    fields[question.answerKey] = question.type === "checkbox"
+      ? false
+      : question.type === "repeater"
+        ? []
+        : "";
   }
   if (Array.isArray(question.followUps)) {
     question.followUps.forEach((followUp) => {
-      names.push(...getFieldNames(followUp));
+      Object.assign(fields, getFieldDefaults(followUp));
     });
   }
-  return names;
+  return fields;
 }
 
 export function QuestionRenderer({ form, optionSources, questions = [], repeaterRegistry = {}, values }) {
@@ -23,7 +36,7 @@ export function QuestionRenderer({ form, optionSources, questions = [], repeater
         <ConditionalBlock
           key={question.id}
           clearWhenHidden={question.clearWhenHidden}
-          fieldNames={getFieldNames(question)}
+          fieldDefaults={getFieldDefaults(question)}
           form={form}
           values={values}
           visibleIf={question.visibleIf}

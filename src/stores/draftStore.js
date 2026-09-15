@@ -5,6 +5,7 @@ import { getTargetVisaProgress } from "@/lib/targetVisaPages";
 import { getAdapter } from "@/lib/adapters";
 import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
 import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
+import { DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY } from "@/lib/questionnaires/answers";
 import { authStore } from "./authStore";
 import { applicationsStore, syncZohoQuestionnaireStatus } from "./applicationsStore";
 
@@ -1045,6 +1046,54 @@ export const draftStore = proxy({
     return this.markPageComplete(fullKey, applicationId, false);
   },
 
+  /** Mark a JSON-driven page complete after its definition has validated it. */
+  async markDynamicQuestionnairePageComplete(pageKey, stamp, profileId = null, applicationId = null) {
+    const appId = applicationId || this.currentApplicationId;
+    if (!appId) return { success: false, error: "Application ID required" };
+    const fullKey = profileId ? `${pageKey}__${profileId}` : pageKey;
+    const previousCompletionStatus = this.completionStatus;
+    const stamps = this.completionStatus?.[DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY] || {};
+    this.completionStatus = {
+      ...this.completionStatus,
+      [fullKey]: true,
+      [DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY]: {
+        ...stamps,
+        [fullKey]: stamp,
+      },
+    };
+    try {
+      const result = await this.persistCompletionPercentage(appId);
+      if (!result?.success) this.completionStatus = previousCompletionStatus;
+      return result;
+    } catch (error) {
+      this.completionStatus = previousCompletionStatus;
+      return { success: false, error: error.message };
+    }
+  },
+
+  /** Invalidate stale JSON-driven completion after an incomplete draft edit. */
+  async markDynamicQuestionnairePageIncomplete(pageKey, profileId = null, applicationId = null) {
+    const appId = applicationId || this.currentApplicationId;
+    if (!appId) return { success: false, error: "Application ID required" };
+    const fullKey = profileId ? `${pageKey}__${profileId}` : pageKey;
+    const previousCompletionStatus = this.completionStatus;
+    const stamps = { ...(this.completionStatus?.[DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY] || {}) };
+    delete stamps[fullKey];
+    this.completionStatus = {
+      ...this.completionStatus,
+      [fullKey]: false,
+      [DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY]: stamps,
+    };
+    try {
+      const result = await this.persistCompletionPercentage(appId);
+      if (!result?.success) this.completionStatus = previousCompletionStatus;
+      return result;
+    } catch (error) {
+      this.completionStatus = previousCompletionStatus;
+      return { success: false, error: error.message };
+    }
+  },
+
   /** Check if a per-profile page is complete */
   isProfilePageComplete(profileId, pageKey) {
     const fullKey = `${pageKey}__${profileId}`;
@@ -1611,12 +1660,25 @@ export const draftStore = proxy({
 
       // Update completion status
       console.log(`[DEBUG draftStore] Updating local completion status...`);
-      this.completionStatus = { ...this.completionStatus, [pageKey]: true };
+      const previousCompletionStatus = this.completionStatus;
+      const dynamicStamps = {
+        ...(this.completionStatus?.[DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY] || {}),
+      };
+      delete dynamicStamps[pageKey];
+      this.completionStatus = {
+        ...this.completionStatus,
+        [pageKey]: true,
+        [DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY]: dynamicStamps,
+      };
 
       // Save to Firebase
       console.log(`[DEBUG draftStore] Saving completion status to database...`);
       const dbStartTime = performance.now();
-      await this.persistCompletionPercentage(appId);
+      const persistResult = await this.persistCompletionPercentage(appId);
+      if (!persistResult?.success) {
+        this.completionStatus = previousCompletionStatus;
+        return { success: false, error: persistResult?.error || "Failed to save completion status" };
+      }
       const dbEndTime = performance.now();
       console.log(`[DEBUG draftStore] Database save completed in ${(dbEndTime - dbStartTime).toFixed(2)}ms`);
 
@@ -1692,10 +1754,23 @@ export const draftStore = proxy({
       }
 
       // Update completion status
-      this.completionStatus = { ...this.completionStatus, [pageKey]: false };
+      const previousCompletionStatus = this.completionStatus;
+      const dynamicStamps = {
+        ...(this.completionStatus?.[DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY] || {}),
+      };
+      delete dynamicStamps[pageKey];
+      this.completionStatus = {
+        ...this.completionStatus,
+        [pageKey]: false,
+        [DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY]: dynamicStamps,
+      };
 
       // Save to Firebase
-      await this.persistCompletionPercentage(appId);
+      const persistResult = await this.persistCompletionPercentage(appId);
+      if (!persistResult?.success) {
+        this.completionStatus = previousCompletionStatus;
+        return { success: false, error: persistResult?.error || "Failed to save completion status" };
+      }
 
       return { success: true };
     } catch (error) {

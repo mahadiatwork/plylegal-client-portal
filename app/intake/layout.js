@@ -70,6 +70,7 @@ import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { getApplicationSlug, normalizeApplicationSlug } from "@/lib/visaDisplay";
 import { useToast } from "@/hooks/use-toast";
+import { DynamicQuestionnaireOverride } from "@/components/questionnaire/DynamicQuestionnaireOverride";
 
 function getRouteIcon(route) {
   const text = `${route?.title || ""} ${route?.href || ""}`.toLowerCase();
@@ -179,6 +180,14 @@ export default function IntakeLayout({ children }) {
   const currentApp = appIdFromUrl
     ? appsSnap.applications.find((app) => String(app.id) === String(appIdFromUrl))
     : null;
+  const resolvedVisaContext = visaType === "temporary-work"
+    ? urlSubclass || currentApp?.visaContext || draftSnap.visaContext || null
+    : null;
+  const remoteQuestionnaireReady =
+    mounted &&
+    !draftSnap.isLoading &&
+    (!appIdFromUrl || String(draftSnap.currentApplicationId) === String(appIdFromUrl)) &&
+    (visaType !== "temporary-work" || resolvedVisaContext === "186" || resolvedVisaContext === "482");
   const intakeSlug = pathSlug || subclassFromQuery || (currentApp ? getApplicationSlug(currentApp) : getIntakeSlugForContext(visaType, draftSnap.visaContext));
   const buildHref = (href, options = {}) => buildIntakeHref({
     slug: intakeSlug,
@@ -991,7 +1000,14 @@ export default function IntakeLayout({ children }) {
 
             <div className="flex flex-1 justify-center pt-4 lg:pt-8">
               <div className="w-full max-w-4xl">
-                {children}
+                <DynamicQuestionnaireOverride
+                  ready={remoteQuestionnaireReady}
+                  route={internalPathname}
+                  visaContext={resolvedVisaContext}
+                  visaType={visaType}
+                >
+                  {children}
+                </DynamicQuestionnaireOverride>
               </div>
             </div>
           </div>

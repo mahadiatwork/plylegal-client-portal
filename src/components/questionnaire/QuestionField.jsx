@@ -28,7 +28,11 @@ const DEFAULT_MONTH_OPTIONS = [
 
 function getOptions(question, optionSources) {
   if (question.optionsSource) return optionSources?.[question.optionsSource] || [];
-  if (question.type === "yesNo") return question.options || YES_NO_OPTIONS;
+  if (question.type === "yesNo") {
+    return Array.isArray(question.options) && question.options.length
+      ? question.options
+      : YES_NO_OPTIONS;
+  }
   return question.options || [];
 }
 

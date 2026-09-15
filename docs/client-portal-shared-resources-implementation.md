@@ -1,5 +1,8 @@
 # Client Portal Shared Resources Implementation
 
+File viewing now follows [Resource Center document viewing](resource-center-view-only.md).
+Its verified viewer URL contract supersedes the Open/Download file examples below.
+
 ## Goal
 Update the main portal so the client resources page reads from the shared top-level Firestore `resources` collection instead of `applications/{appId}/resources`.
 

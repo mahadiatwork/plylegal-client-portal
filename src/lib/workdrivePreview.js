@@ -124,6 +124,7 @@ export function createPreviewToken({
   downloadUrl,
   fileName,
   fileSize,
+  purpose,
 }) {
   if (!getPreviewSecret()) throw new Error("Preview token secret is not configured");
 
@@ -142,6 +143,7 @@ export function createPreviewToken({
     ...(downloadUrl ? { downloadUrl } : {}),
     ...(fileName ? { fileName } : {}),
     ...(fileSize !== undefined ? { fileSize } : {}),
+    ...(purpose ? { purpose } : {}),
     exp: Math.floor(Date.now() / 1000) + PREVIEW_TOKEN_TTL_SECONDS,
   });
 }
@@ -185,6 +187,7 @@ export function verifyPreviewToken(token, { matterId, resourceId }) {
       downloadUrl: payload.downloadUrl || "",
       fileName: payload.fileName || "",
       fileSize: payload.fileSize,
+      purpose: payload.purpose || "",
     };
   } catch {
     return null;

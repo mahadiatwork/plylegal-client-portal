@@ -5,7 +5,7 @@ import path from "node:path";
 import { build } from "esbuild";
 import { NextRequest } from "next/server.js";
 import { getFirebaseIdentityAuth } from "../src/lib/firebaseIdentity.js";
-import { getPreviewCookieName } from "../src/lib/workdrivePreview.js";
+import { createPreviewToken, getPreviewCookieName } from "../src/lib/workdrivePreview.js";
 
 async function loadRoute(entry) {
   const result = await build({
@@ -61,7 +61,7 @@ function setup(t, slug = "482") {
     }],
     [`resourceTemplates/${templateSlug}/items/pdf`, {
       status: "active", kind: "file", name: "Guide.pdf", mimeType: "application/pdf",
-      externalUrl: shareUrl, size: 1000, category: "Guides", order: 2,
+      externalUrl: shareUrl, downloadAllowed: false, size: 1000, category: "Guides", order: 2,
     }],
     [`resourceTemplates/${templateSlug}/items/note`, {
       status: "active", kind: "note", name: "Instructions", noteText: "Read the guide", order: 1,
@@ -129,9 +129,12 @@ for (const slug of ["482", "186", "820", "866"]) {
     assert.equal(data.template.templateSlug, templateSlug);
     assert.deepEqual(data.template.categories, [{ name: "Guides", icon: "guide" }]);
     assert.equal(data.template.updatedAt, "2026-09-08T00:00:00.000Z");
-    assert.deepEqual(data.items.map((item) => item.id), ["note", "pdf"]);
-    assert.equal(data.items[1].externalUrl, shareUrl);
-    assert.equal(data.items[1].size, 1000);
+    assert.deepEqual(data.items.map((item) => item.id), ["no-url", "note", "pdf"]);
+    assert.equal(data.items[2].viewerUrl, shareUrl);
+    assert.equal(data.items[2].downloadAllowed, false);
+    assert.equal(data.items[2].externalUrl, "");
+    assert.equal(data.items[2].size, 1000);
+    assert.equal("downloadUrl" in data.items[2], false);
     assert.equal(calls.some(({ url }) => url.includes("/users/")), false);
   });
 }
@@ -176,21 +179,92 @@ test("upstream permission and service errors are not reported as missing resourc
   }
 });
 
-test("template PDF preview authorization works without Admin credentials and rejects hidden files", async (t) => {
-  const { documents } = setup(t);
+test("Resource Center PDFs cannot be fetched through the old raw preview route", async (t) => {
+  const { documents, calls } = setup(t);
   const context = { params: Promise.resolve({ matterId: "matter-1", resourceId: "pdf" }) };
   const prepare = () => preview.POST(new NextRequest("https://portal.example/api/matters/matter-1/resources/pdf/preview", {
     method: "POST", headers: { Authorization: "Bearer signed-client-token" },
   }), context);
-  const response = await prepare();
-  assert.equal(response.status, 200);
-  const cookie = response.cookies.get(getPreviewCookieName());
-  assert.ok(cookie?.value);
-  assert.equal(cookie.httpOnly, true);
-  assert.equal(cookie.secure, true);
-  assert.equal((await response.json()).previewUrl, "/api/matters/matter-1/resources/pdf/preview");
+  assert.equal((await prepare()).status, 404);
+  assert.equal((await preview.GET(new NextRequest("https://portal.example/api/matters/matter-1/resources/pdf/preview", {
+    headers: { Authorization: "Bearer signed-client-token" },
+  }), context)).status, 404);
+  const oldToken = createPreviewToken({
+    uid: "owner-1", role: "client", matterId: "matter-1", resourceId: "pdf",
+    downloadUrl: shareUrl, fileName: "Guide.pdf",
+  });
+  assert.equal((await preview.GET(new NextRequest("https://portal.example/api/matters/matter-1/resources/pdf/preview", {
+    headers: { Cookie: `${getPreviewCookieName()}=${oldToken}` },
+  }), context)).status, 401);
+  assert.equal(calls.every(({ url }) => url.startsWith("https://firestore.googleapis.com/")), true);
   documents.get("resourceTemplates/482/items/pdf").status = "draft";
   assert.equal((await prepare()).status, 404);
   documents.get("applications/matter-1").userId = "another-owner";
   assert.equal((await prepare()).status, 403);
+});
+
+test("template files retain metadata but expose only verified viewer URLs, including office documents", async (t) => {
+  const { documents } = setup(t);
+  const prefix = "resourceTemplates/482/items/";
+  const unsafeUrl = "https://example.test/private-source.docx";
+  documents.set(`${prefix}docx`, {
+    status: "active", kind: "file", name: "Instructions.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    externalUrl: shareUrl, downloadAllowed: false, downloadUrl: unsafeUrl,
+    downloadURL: unsafeUrl, workDriveDownloadUrl: unsafeUrl, download_url: unsafeUrl,
+  });
+  documents.set(`${prefix}legacy`, {
+    status: "active", kind: "file", name: "Legacy.pdf", externalUrl: unsafeUrl,
+    publicUrl: unsafeUrl, workDriveShareUrl: unsafeUrl, downloadUrl: unsafeUrl,
+  });
+  documents.set(`${prefix}download-link`, {
+    status: "active", kind: "file", name: "Workbook.xlsx", downloadAllowed: false,
+    externalUrl: `${shareUrl}/download?directDownload=true`,
+  });
+  documents.set(`${prefix}link`, {
+    status: "active", kind: "link", name: "Website", externalUrl: "https://example.test/guidance",
+  });
+  const data = await (await template.GET(request())).json();
+  const byId = Object.fromEntries(data.items.map((item) => [item.id, item]));
+  assert.equal(byId.docx.viewerUrl, shareUrl);
+  assert.equal(byId.docx.externalUrl, "");
+  assert.equal(byId.legacy.viewerUrl, "");
+  assert.equal(byId.legacy.externalUrl, "");
+  assert.equal(byId.legacy.downloadAllowed, null);
+  assert.equal(byId["download-link"].viewerUrl, "");
+  assert.equal(byId.link.externalUrl, "https://example.test/guidance");
+  assert.doesNotMatch(JSON.stringify(data), /private-source|directDownload|workDriveDownloadUrl|downloadURL|download_url/);
+});
+
+test("shared files use the same restricted viewer policy while links and notes remain available", async (t) => {
+  const { documents } = setup(t);
+  const unsafeUrl = "https://example.test/source.xlsx";
+  documents.set("resources/office", {
+    status: "active", type: "file", title: "Workbook.xlsx", publicUrl: shareUrl,
+    downloadAllowed: false, downloadUrl: unsafeUrl, mimeType: "application/vnd.ms-excel", fileSize: 1500,
+  });
+  documents.set("resources/legacy-file", {
+    status: "active", type: "file", title: "Legacy", url: unsafeUrl, downloadUrl: unsafeUrl,
+  });
+  documents.set("resources/note", {
+    status: "active", type: "note", title: "Instructions", noteText: "Contact your advisor.",
+  });
+  const data = await (await shared.GET(request("shared"))).json();
+  const byId = Object.fromEntries(data.resources.map((item) => [item.id, item]));
+  assert.equal(byId.office.viewerUrl, shareUrl);
+  assert.equal(byId.office.downloadAllowed, false);
+  assert.equal(byId.office.url, "");
+  assert.equal(byId.office.size, 1500);
+  assert.equal(byId["legacy-file"].url, "");
+  assert.equal(byId["legacy-file"].viewerUrl, "");
+  assert.equal(byId.general.url, "https://example.test/general");
+  assert.equal(byId.note.noteText, "Contact your advisor.");
+  assert.doesNotMatch(JSON.stringify(data), /source\.xlsx|downloadUrl/);
+});
+
+test("an explicit empty category list stays empty after categories are deleted", async (t) => {
+  const { documents } = setup(t);
+  documents.get("resourceTemplates/482").categories = [];
+  const data = await (await template.GET(request())).json();
+  assert.deepEqual(data.template.categories, []);
 });

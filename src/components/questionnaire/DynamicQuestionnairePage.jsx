@@ -18,8 +18,14 @@ import {
   getPreviousRoute,
   getVisaTypeFromPath,
 } from "@/lib/routes";
-import { evaluateVisibleIf } from "@/lib/questionnaires/validation";
 import { getQuestionnairePage } from "@/lib/questionnaires";
+import {
+  getQuestionnaireCompletionKey,
+  getQuestionnaireCompletionStamp,
+  getQuestionnaireDatePartNames,
+  getQuestionnairePageValidationIssues,
+  sanitizeQuestionnairePageValues,
+} from "@/lib/questionnaires/answers";
 
 function getNestedValue(obj, path) {
   if (!path) return undefined;
@@ -45,8 +51,8 @@ function getQuestionDefaultValue(question) {
 
 function getDefaultValues(questions = []) {
   return getQuestionsFlat(questions).reduce((defaults, question) => {
-    if (question.type === "dateParts" && question.parts) {
-      Object.values(question.parts).forEach((partName) => {
+    if (question.type === "dateParts") {
+      Object.values(getQuestionnaireDatePartNames(question)).forEach((partName) => {
         defaults[partName] = "";
       });
     } else if (question.answerKey) {
@@ -56,39 +62,13 @@ function getDefaultValues(questions = []) {
   }, {});
 }
 
-function getQuestionFieldNames(question) {
-  if (question.type === "dateParts" && question.parts) {
-    return Object.values(question.parts);
-  }
-  return question.answerKey ? [question.answerKey] : [];
-}
-
-function hasValue(value) {
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === "boolean") return true;
-  if (typeof value === "string") return value.trim() !== "";
-  return value !== null && value !== undefined;
-}
-
 function validateVisibleRequiredQuestions({ form, page, values }) {
-  let isValid = true;
   form.clearErrors();
-
-  getQuestionsFlat(page.questions).forEach((question) => {
-    if (!question.required) return;
-    if (!evaluateVisibleIf(question.visibleIf, values)) return;
-
-    getQuestionFieldNames(question).forEach((fieldName) => {
-      if (hasValue(values[fieldName])) return;
-      form.setError(fieldName, {
-        type: "required",
-        message: question.validation?.requiredMessage || "This field is required",
-      });
-      isValid = false;
-    });
+  const issues = getQuestionnairePageValidationIssues(page, values);
+  issues.forEach(({ fieldName, message }) => {
+    form.setError(fieldName, { type: "required", message });
   });
-
-  return isValid;
+  return issues.length === 0;
 }
 
 function renderIntroBlock(block, index) {
@@ -140,8 +120,32 @@ function getApplicantOptions(draft) {
   return options.length ? options : [{ value: "Main Applicant", label: "Main Applicant" }];
 }
 
+function inferProfileId(route, draft, requestedProfileId = null) {
+  const childId = String(route || "").match(/\/children\/([^/]+)\//)?.[1];
+  if (childId) {
+    return (draft?.profiles || []).some(
+      (profile) => String(profile.id) === childId && profile.relationship === "child"
+    ) ? childId : null;
+  }
+
+  const relationship = String(route || "").includes("/main-applicant/")
+    ? "main_applicant"
+    : String(route || "").includes("/spouse-partner/")
+      ? "spouse"
+      : null;
+  if (!relationship) return null;
+  if (requestedProfileId) {
+    const requestedProfile = (draft?.profiles || []).find(
+      (profile) => String(profile.id) === String(requestedProfileId)
+    );
+    if (requestedProfile?.relationship === relationship) return requestedProfile.id;
+  }
+  return (draft?.profiles || []).find((profile) => profile.relationship === relationship)?.id || null;
+}
+
 export function DynamicQuestionnairePage({
   definitionId,
+  definitionRevision,
   pageDefinition: providedPageDefinition,
   repeaterRegistry = {},
   route,
@@ -161,6 +165,8 @@ export function DynamicQuestionnairePage({
   const visaType = getVisaTypeFromPath(pathname);
   const appId = getApplicationIdFromSearchParams(searchParams) || getApplicationIdFromPathname(pathname);
   const profileId = getProfileIdFromSearchParams(searchParams);
+  const resolvedProfileId = inferProfileId(internalRoute, draftSnap.draft, profileId);
+  const hasManagedDefinition = Boolean(definitionId) && Number.isInteger(definitionRevision);
 
   useEffect(() => {
     if (appId && appId !== draftSnap.currentApplicationId) {
@@ -211,11 +217,11 @@ export function DynamicQuestionnairePage({
 
   const sectionData = useMemo(() => {
     if (!pageDefinition) return {};
-    if (pageDefinition.scope === "profile" && profileId) {
-      return draftSnap.draft?.profiles_data?.[profileId]?.[pageDefinition.sectionKey] || {};
+    if (pageDefinition.scope === "profile" && resolvedProfileId) {
+      return draftSnap.draft?.profiles_data?.[resolvedProfileId]?.[pageDefinition.sectionKey] || {};
     }
     return getNestedValue(draftSnap.draft, pageDefinition.sectionKey) || {};
-  }, [draftSnap.draft, pageDefinition, profileId]);
+  }, [draftSnap.draft, pageDefinition, resolvedProfileId]);
 
   useEffect(() => {
     if (!pageDefinition || draftSnap.isLoading) return;
@@ -233,30 +239,43 @@ export function DynamicQuestionnairePage({
     if (!pageDefinition) return { success: false, error: "Questionnaire page is not loaded" };
 
     if (pageDefinition.scope === "profile") {
-      if (!profileId) return { success: false, error: "Profile ID required" };
-      return draftStore.saveProfileSectionData(profileId, pageDefinition.sectionKey, data);
+      if (!resolvedProfileId) return { success: false, error: "Profile ID required" };
+      return draftStore.saveProfileSectionData(resolvedProfileId, pageDefinition.sectionKey, data);
     }
 
     return draftStore.saveSectionData(pageDefinition.sectionKey, data);
   };
 
   const markPageComplete = async () => {
+    const completionKey = getQuestionnaireCompletionKey(pageDefinition);
+    if (hasManagedDefinition) {
+      return draftStore.markDynamicQuestionnairePageComplete(
+        completionKey,
+        getQuestionnaireCompletionStamp(
+          { id: definitionId, revision: definitionRevision },
+          pageDefinition
+        ),
+        pageDefinition.scope === "profile" ? resolvedProfileId : null
+      );
+    }
     if (pageDefinition.scope === "profile") {
-      return draftStore.markProfilePageComplete(profileId, pageDefinition.completionKey || internalRoute.replace("/intake/", ""));
+      return draftStore.markProfilePageComplete(resolvedProfileId, completionKey);
     }
     return draftStore.markPageComplete(
-      pageDefinition.completionKey || internalRoute.replace("/intake/", ""),
+      completionKey,
       null,
       pageDefinition.sectionKey
     );
   };
 
   const handleSubmit = async (data) => {
-    if (!validateVisibleRequiredQuestions({ form, page: pageDefinition, values: data })) return;
+    const sanitizedData = sanitizeQuestionnairePageValues(pageDefinition, data);
+    form.reset(sanitizedData);
+    if (!validateVisibleRequiredQuestions({ form, page: pageDefinition, values: sanitizedData })) return;
 
     setIsSaving(true);
     try {
-      const result = await savePageData(data);
+      const result = await savePageData(sanitizedData);
       if (!result.success) {
         toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
         return;
@@ -283,13 +302,46 @@ export function DynamicQuestionnairePage({
   };
 
   const handleSave = async () => {
-    const values = form.getValues();
-    if (!validateVisibleRequiredQuestions({ form, page: pageDefinition, values })) return;
+    const values = sanitizeQuestionnairePageValues(pageDefinition, form.getValues());
+    form.reset(values);
 
     setIsSaving(true);
     try {
       const result = await savePageData(values);
       if (result.success) {
+        let completionResult = { success: true };
+        if (hasManagedDefinition) {
+          const completionKey = getQuestionnaireCompletionKey(pageDefinition);
+          const completionProfileId = pageDefinition.scope === "profile" ? resolvedProfileId : null;
+          const fullCompletionKey = completionProfileId
+            ? `${completionKey}__${completionProfileId}`
+            : completionKey;
+          if (getQuestionnairePageValidationIssues(pageDefinition, values).length) {
+            completionResult = await draftStore.markDynamicQuestionnairePageIncomplete(
+              completionKey,
+              completionProfileId
+            );
+          } else if (draftSnap.completionStatus?.[fullCompletionKey] === true) {
+            completionResult = await draftStore.markDynamicQuestionnairePageComplete(
+              completionKey,
+              getQuestionnaireCompletionStamp(
+                { id: definitionId, revision: definitionRevision },
+                pageDefinition
+              ),
+              completionProfileId
+            );
+          }
+        }
+        if (!completionResult?.success) {
+          toast({
+            title: "Draft saved with a warning",
+            description:
+              completionResult?.error ||
+              "Your answers were saved, but the page completion status could not be updated. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
       } else {
         toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });

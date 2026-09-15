@@ -7,6 +7,10 @@ import {
   TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES,
   TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES,
 } from "./routes.js";
+import {
+  getQuestionnairePageReviewItems,
+  getQuestionnairePageSavedValues,
+} from "./questionnaires/answers.js";
 
 const PROFILE_RELATIONSHIP_ORDER = {
   main_applicant: 0,
@@ -904,6 +908,7 @@ export function buildTemporaryWorkReviewSections({
   visaContext = null,
   appId = null,
   slug = null,
+  questionnaireDefinition = null,
 } = {}) {
   const effectiveVisaContext = visaContext || draft?.visaContext || "482";
   const options = {
@@ -916,18 +921,27 @@ export function buildTemporaryWorkReviewSections({
     applicantNamesById: buildApplicantNameMap(profiles),
   };
   const sections = [];
+  const dynamicPagesByRoute = new Map(
+    (questionnaireDefinition?.pages || []).map((page) => [page.route, page])
+  );
 
   const rosterSection = buildApplicantRosterSection(profiles, options);
   if (rosterSection) sections.push(rosterSection);
 
   profiles.forEach((profile, profileIndex) => {
     getSubpagesForProfile(profile, effectiveVisaContext).forEach((subpage) => {
-      const items = buildItemsFromObject(getProfileSectionData(draft, profile, subpage.sectionKey), context);
+      const dynamicPage = dynamicPagesByRoute.get(subpage.href);
+      const items = dynamicPage
+        ? getQuestionnairePageReviewItems(
+            dynamicPage,
+            getQuestionnairePageSavedValues(draft, dynamicPage, profile.id)
+          )
+        : buildItemsFromObject(getProfileSectionData(draft, profile, subpage.sectionKey), context);
       if (items.length === 0) return;
 
       sections.push({
         id: `profile-${slugify(profile.id)}-${slugify(subpage.sectionKey)}`,
-        title: `Applicant ${profileIndex + 1} (${getRelationshipLabel(profile.relationship)}) - ${subpage.title}`,
+        title: `Applicant ${profileIndex + 1} (${getRelationshipLabel(profile.relationship)}) - ${dynamicPage?.title || subpage.title}`,
         subtitle: getProfileDisplayName(profile),
         editHref: buildHref({
           ...options,
@@ -942,12 +956,18 @@ export function buildTemporaryWorkReviewSections({
   sections.push(...buildNonMigratingSections(draft, context, options));
 
   SHARED_SECTIONS.forEach((section) => {
-    const items = buildItemsFromObject(draft?.[section.key], context);
+    const dynamicPage = dynamicPagesByRoute.get(section.href);
+    const items = dynamicPage
+      ? getQuestionnairePageReviewItems(
+          dynamicPage,
+          getQuestionnairePageSavedValues(draft, dynamicPage)
+        )
+      : buildItemsFromObject(draft?.[section.key], context);
     if (items.length === 0) return;
 
     sections.push({
       id: slugify(section.title),
-      title: section.title,
+      title: dynamicPage?.title || section.title,
       editHref: buildHref({
         ...options,
         internalHref: section.href,

@@ -123,6 +123,8 @@ export const temporaryWork482Definition = {
   title: "Skills in Demand Visa Questionnaire",
   version: "1.0.0",
   status: "active",
+  schemaVersion: 1,
+  revision: 0,
   pages: [
     {
       id: "all-applicants-character",

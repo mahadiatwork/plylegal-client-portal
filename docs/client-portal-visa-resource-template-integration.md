@@ -1,5 +1,8 @@
 # Client Portal Visa Resource Template Integration
 
+File viewing now follows [Resource Center document viewing](resource-center-view-only.md).
+Its verified viewer URL contract supersedes the Open/Download file examples below.
+
 ## Goal
 Update the main client portal resources page so it displays visa-specific resource templates from Firestore, grouped under the categories created in the admin portal.
 

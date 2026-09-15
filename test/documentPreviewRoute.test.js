@@ -5,7 +5,7 @@ import path from "node:path";
 import { build } from "esbuild";
 import { NextRequest } from "next/server.js";
 import { getFirebaseIdentityAuth } from "../src/lib/firebaseIdentity.js";
-import { getPreviewCookieName } from "../src/lib/workdrivePreview.js";
+import { getPreviewCookieName, verifyPreviewToken } from "../src/lib/workdrivePreview.js";
 
 async function loadRoute(entry) {
   const result = await build({
@@ -105,4 +105,84 @@ test("owned document bootstraps and streams PDF bytes with an unusable Admin cre
   denyFirestore = true;
   assert.equal((await bootstrap.POST(request(), context)).status, 403);
   assert.equal((await bootstrap.POST(new NextRequest(request().url, { method: "POST" }), context)).status, 401);
+});
+
+test("review clients can select every active PDF while previews stay bound to the owned document", async (t) => {
+  const previous = { ...process.env };
+  t.after(() => { process.env = previous; });
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = "preview-test";
+  process.env.PREVIEW_TOKEN_SECRET = "preview-route-test-secret";
+  t.mock.method(getFirebaseIdentityAuth(), "verifyIdToken", async () => ({ uid: "owner-1" }));
+
+  const resource = (id, overrides = {}) => ({
+    name: `${docUrl}/resources/${id}`,
+    fields: {
+      ...fields({
+        type: "file", source: "documentReview", status: "active",
+        mimeType: "application/pdf", fileName: `${id}.pdf`, downloadUrl: shareUrl,
+        ...overrides,
+      }),
+      createdAt: { timestampValue: id === "latest" ? "2026-09-10T00:00:00Z" : "2026-09-08T00:00:00Z" },
+    },
+  });
+  let owner = "owner-1";
+  t.mock.method(globalThis, "fetch", async (input, options = {}) => {
+    assert.equal(options.headers.Authorization, "Bearer signed-client-token");
+    const url = String(input);
+    if (url === docUrl) return Response.json({ fields: fields({ userId: owner }) });
+    assert.ok(url.startsWith(`${docUrl}/resources?`), "only this matter's resources may be read");
+    if (new URL(url).searchParams.get("pageToken") === "next-page") {
+      return Response.json({ documents: [
+        resource("latest"),
+        resource("general", { source: "resources" }),
+        resource("not-pdf", { mimeType: "image/png", fileName: "image.png" }),
+      ] });
+    }
+    return Response.json({ documents: [
+      resource("earlier", { downloadUrl: "https://workdrive.zohopublic.com.au/external/earlier-token" }),
+      resource("archived", { status: "archived" }),
+    ], nextPageToken: "next-page" });
+  });
+
+  const context = { params: Promise.resolve({ matterId: "matter-1" }) };
+  const request = (resourceId) => new NextRequest("https://portal.example/api/matters/matter-1/document-preview", {
+    method: "POST",
+    headers: { Authorization: "Bearer signed-client-token", "Content-Type": "application/json" },
+    ...(resourceId === undefined ? {} : { body: JSON.stringify({ resourceId }) }),
+  });
+
+  const latest = await bootstrap.POST(request(), context);
+  assert.equal(latest.status, 200);
+  const latestData = await latest.json();
+  assert.equal(latestData.resourceId, "latest", "requests without a selection retain the latest-document default");
+  assert.deepEqual(latestData.documents, [
+    { id: "latest", fileName: "latest.pdf" },
+    { id: "earlier", fileName: "earlier.pdf" },
+  ]);
+
+  const earlier = await bootstrap.POST(request("earlier"), context);
+  assert.equal(earlier.status, 200);
+  const earlierData = await earlier.json();
+  assert.equal(earlierData.resourceId, "earlier");
+  assert.equal(earlierData.fileName, "earlier.pdf");
+  assert.equal(earlierData.previewUrl, "/api/matters/matter-1/resources/earlier/preview");
+  assert.match(earlierData.downloadUrl, /external\/earlier-token\/download/);
+  assert.deepEqual(earlierData.documents, latestData.documents);
+
+  const cookie = earlier.cookies.get(getPreviewCookieName());
+  assert.equal(cookie.path, "/api/matters/matter-1/resources/earlier/preview");
+  const claims = verifyPreviewToken(cookie.value, { matterId: "matter-1", resourceId: "earlier" });
+  assert.equal(claims.purpose, "documentReview");
+  assert.equal(claims.fileName, "earlier.pdf");
+  assert.equal(verifyPreviewToken(cookie.value, { matterId: "matter-1", resourceId: "latest" }), null);
+
+  for (const unavailableId of ["archived", "general", "not-pdf", "foreign-resource"]) {
+    const unavailable = await bootstrap.POST(request(unavailableId), context);
+    assert.equal(unavailable.status, 404, `${unavailableId} must not fall back to another document`);
+    assert.equal(unavailable.cookies.get(getPreviewCookieName()), undefined);
+  }
+  assert.equal((await bootstrap.POST(request("../another-matter"), context)).status, 400);
+  assert.equal((await bootstrap.POST(request(42), context)).status, 400);
+  owner = "another-client";
+  assert.equal((await bootstrap.POST(request("earlier"), context)).status, 403);
 });

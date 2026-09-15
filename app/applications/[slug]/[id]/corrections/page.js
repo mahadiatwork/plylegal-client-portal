@@ -76,8 +76,12 @@ export default function CorrectionsPage() {
   const [savingCorrectionIds, setSavingCorrectionIds] = useState({});
   const [existingCorrections, setExistingCorrections] = useState([]);
   const [previewAttempt, setPreviewAttempt] = useState(0);
+  const [documentSelection, setDocumentSelection] = useState(null);
   const [documentPreview, setDocumentPreview] = useState({
     status: "idle",
+    matterId: "",
+    resourceId: "",
+    documents: [],
     fileName: "",
     previewUrl: "",
     downloadUrl: "",
@@ -98,6 +102,9 @@ export default function CorrectionsPage() {
   const requestedCorrections = sortedExistingCorrections.filter((correction) => !isCompletedCorrection(correction));
   const completedCorrections = sortedExistingCorrections.filter(isCompletedCorrection);
   const documentPreviewBootstrapUrl = `/api/matters/${encodeURIComponent(appId || "")}/document-preview`;
+  const requestedResourceId = documentSelection?.matterId === appId ? documentSelection.resourceId : "";
+  const selectedResourceId = requestedResourceId || documentPreview.resourceId;
+  const selectedDocument = documentPreview.documents.find((document) => document.id === selectedResourceId);
   const documentViewerUrl = documentPreview.previewUrl
     ? `${documentPreview.previewUrl}#page=1&zoom=100&navpanes=0`
     : "";
@@ -108,7 +115,12 @@ export default function CorrectionsPage() {
     }
 
     let active = true;
-    setDocumentPreview({ status: "loading", fileName: "", previewUrl: "", downloadUrl: "", error: "" });
+    const controller = new AbortController();
+    setDocumentPreview((current) => ({
+      status: "loading", matterId: appId, resourceId: requestedResourceId,
+      documents: current.matterId === appId ? current.documents : [],
+      fileName: "", previewUrl: "", downloadUrl: "", error: "",
+    }));
 
     async function preparePreview() {
       try {
@@ -118,13 +130,18 @@ export default function CorrectionsPage() {
         const response = await fetch(documentPreviewBootstrapUrl, {
           method: "POST",
           credentials: "same-origin",
-          headers: { Authorization: `Bearer ${idToken}` },
+          headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify(requestedResourceId ? { resourceId: requestedResourceId } : {}),
+          signal: controller.signal,
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) throw new Error(result.error || "Preview unavailable");
         if (active) {
           setDocumentPreview({
             status: "ready",
+            matterId: appId,
+            resourceId: result.resourceId || "",
+            documents: result.documents || [],
             fileName: result.fileName || "Document preview",
             previewUrl: result.previewUrl || "",
             downloadUrl: result.downloadUrl || "",
@@ -133,18 +150,22 @@ export default function CorrectionsPage() {
         }
       } catch (error) {
         if (active) {
-          setDocumentPreview({
+          setDocumentPreview((current) => ({
+            ...current,
             status: "failed", fileName: "", previewUrl: "", downloadUrl: "",
             error: error.message || "Unable to load the document. Please try again.",
-          });
+          }));
         }
       }
     }
 
     preparePreview();
 
-    return () => { active = false; };
-  }, [appId, application?.id, documentPreviewBootstrapUrl, previewAttempt]);
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [appId, application?.id, documentPreviewBootstrapUrl, previewAttempt, requestedResourceId]);
 
   const fetchCorrections = useCallback(async () => {
     if (!application?.zohoId) {
@@ -233,7 +254,11 @@ export default function CorrectionsPage() {
   
   const updateCorrection = (id, field, value) => {
     setCorrections(corrections.map(c => 
-      c.id === id ? { ...c, [field]: value } : c
+      c.id === id ? {
+        ...c,
+        [field]: value,
+        documentName: c.documentName || selectedDocument?.fileName || "",
+      } : c
     ));
   };
 
@@ -310,7 +335,12 @@ export default function CorrectionsPage() {
         body: JSON.stringify({
           dealId: application.zohoId,
           subclass: slug,
-          corrections: validCorrections,
+          corrections: validCorrections.map((correction) => ({
+            ...correction,
+            details: correction.documentName
+              ? `Document: ${correction.documentName}\n\n${correction.details}`
+              : correction.details,
+          })),
         }),
       });
       const result = await response.json();
@@ -406,6 +436,22 @@ export default function CorrectionsPage() {
                   ) : null}
                 </CardHeader>
                 <CardContent>
+                  {documentPreview.documents.length > 1 ? (
+                    <div className="mb-4 space-y-2">
+                      <Label htmlFor="review-document">Document to review</Label>
+                      <select
+                        id="review-document"
+                        value={selectedResourceId}
+                        onChange={(event) => setDocumentSelection({ matterId: appId, resourceId: event.target.value })}
+                        className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm"
+                        data-testid="select-review-document"
+                      >
+                        {documentPreview.documents.map((document) => (
+                          <option key={document.id} value={document.id}>{document.fileName}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
                   <div className="h-[72vh] min-h-[42rem] max-h-[58rem] overflow-hidden rounded-lg border border-gray-200 bg-white">
                     {documentPreview.status === "ready" ? (
                       <iframe
@@ -476,6 +522,10 @@ export default function CorrectionsPage() {
                             </Button>
                           )}
                         </div>
+
+                        {correction.documentName ? (
+                          <p className="text-xs text-gray-500">Document: {correction.documentName}</p>
+                        ) : null}
 
                         <div className="space-y-2">
                           <Label htmlFor={`fieldName-${correction.id}`} className="text-sm text-gray-700">

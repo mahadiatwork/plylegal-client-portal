@@ -3,6 +3,10 @@ import { getTargetVisaPages } from "./targetVisaPages.js";
 import { formatReviewLabel, hasReviewValue, mergeDatePartGroups } from "./temporaryWorkReview.js";
 import { CHARACTER_QUESTION_LABELS } from "./allApplicantsParity.js";
 import { SPONSOR_CHARACTER_LABELS, normalizeSponsorCharacter } from "./partnerQuestionnaireAlignment.js";
+import {
+  getQuestionnairePageReviewItems,
+  getQuestionnairePageSavedValues,
+} from "./questionnaires/answers.js";
 
 const INTERNAL_KEYS = new Set(["id", "__typename", "createdAt", "updatedAt", "userId", "visaContext", "zohoDependentId", "zohoLastSyncedAt", "zohoSyncError", "zohoSyncStatus", "matterDocumentId"]);
 const SHARED_SUFFIXES = { "travel-history": "travel", "contact-details": "contact_details", "future-travel": "future_travel", "future-addresses": "future_addresses" };
@@ -124,12 +128,38 @@ function normalize(value, names) {
   return mergeDatePartGroups(result);
 }
 
-export function buildTargetVisaReviewSections({ visaType, draft = {}, appId }) {
+export function buildTargetVisaReviewSections({ visaType, draft = {}, appId, questionnaireDefinition = null }) {
   const names = new Map((draft.profiles || []).map((profile) => [String(profile.id), [profile.given_names, profile.family_name].filter(Boolean).join(" ") || "Unnamed applicant"]));
   const sections = [];
+  const dynamicPagesByRoute = new Map(
+    (questionnaireDefinition?.pages || []).map((page) => [page.route, page])
+  );
   for (const page of getTargetVisaPages(visaType, draft)) {
     const suffix = page.href.split("/").pop();
     if (suffix === "start") continue;
+    const dynamicPage = dynamicPagesByRoute.get(page.href);
+    if (dynamicPage) {
+      const profileId = page.profile ? page.profileId : null;
+      const items = getQuestionnairePageReviewItems(
+        dynamicPage,
+        getQuestionnairePageSavedValues(draft, dynamicPage, profileId)
+      );
+      if (items.length) {
+        sections.push({
+          id: page.key.replace(/[^a-zA-Z0-9-]+/g, "-"),
+          title: dynamicPage.title,
+          subtitle: page.profile ? names.get(String(profileId)) : undefined,
+          items,
+          editHref: buildIntakeHref({
+            appId,
+            internalHref: page.href,
+            visaType,
+            profileId: page.profile ? profileId : undefined,
+          }),
+        });
+      }
+      continue;
+    }
     let data = {};
     let title = page.title;
     let formatLabel = formatTargetReviewLabel;

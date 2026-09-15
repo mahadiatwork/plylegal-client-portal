@@ -2,12 +2,13 @@ import { normalizeTargetPersonalDetails, targetPersonalDetailsSchema, targetChil
 
 // Older completed child/spouse pages did not collect the newly shared fields.
 // Check the answers as well as the stored page flags before submission.
-export function getTargetPersonalDetailsIssues(visaType, draft = {}) {
+export function getTargetPersonalDetailsIssues(visaType, draft = {}, { skipRelationships = new Set() } = {}) {
   if (!["partner", "protection"].includes(visaType)) return [];
   const issues = [];
   const hasSpouse = (draft.profiles || []).some((profile) => profile.relationship === "spouse");
   for (const profile of draft.profiles || []) {
     if (!["spouse", "child"].includes(profile.relationship)) continue;
+    if (skipRelationships.has(profile.relationship)) continue;
     const saved = draft.profiles_data?.[profile.id];
     const legacy = profile.relationship === "child" ? {} : visaType === "partner"
       ? draft.spousePartner?.details || draft["spousePartner.details"] || {}

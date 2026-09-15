@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { extractSubclass, getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
+import { getResourceViewerUrl } from "@/lib/resourceAccess";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
   "all",
@@ -37,7 +38,11 @@ function normalizeResource(docSnap) {
     title: data.title || "Untitled resource",
     description: data.description || "",
     noteText: data.noteText || data.content || data.description || "",
-    url: data.publicUrl || data.url || "",
+    url: type === "link" ? data.publicUrl || data.url || data.externalUrl || "" : "",
+    viewerUrl: type === "file" ? getResourceViewerUrl(data) : "",
+    downloadAllowed: type === "file" && data.downloadAllowed === false ? false : null,
+    mimeType: data.mimeType || null,
+    size: typeof data.size === "number" ? data.size : typeof data.fileSize === "number" ? data.fileSize : null,
     type,
     status: String(data.status || "draft").toLowerCase(),
     category: String(data.category || data.section || data.group || "").toLowerCase(),

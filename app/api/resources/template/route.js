@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
+import { getResourceViewerUrl } from "@/lib/resourceAccess";
 
 const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", PROTECTION_PUBLIC_SLUG, "482", "186"]);
 
@@ -23,7 +24,7 @@ function serializeTimestamp(value) {
 }
 
 function normalizeCategories(categories) {
-  const source = Array.isArray(categories) && categories.length > 0
+  const source = Array.isArray(categories)
     ? categories
     : DEFAULT_TEMPLATE_CATEGORIES;
 
@@ -95,16 +96,18 @@ export async function GET(request) {
     const items = itemDocuments
       .map((doc) => {
         const data = doc.data;
+        const kind = String(data.kind || "file").toLowerCase();
         return {
           id: doc.id,
           parentId: data.parentId || null,
-          kind: String(data.kind || "file").toLowerCase(),
+          kind,
           name: data.name || data.fileName || "Untitled resource",
           category: data.category || "Uncategorized",
           order: typeof data.order === "number" ? data.order : 0,
           status: normalizeStatus(data.status),
-          externalUrl: data.externalUrl || data.publicUrl || data.workDriveShareUrl || data.workdriveShareUrl || data.url || "",
-          downloadUrl: data.downloadUrl || data.downloadURL || data.workdriveDownloadUrl || data.workDriveDownloadUrl || data.workDriveShareUrl || data.workdriveShareUrl || data.download_url || "",
+          externalUrl: kind === "link" ? data.externalUrl || data.publicUrl || data.url || "" : "",
+          viewerUrl: kind === "file" ? getResourceViewerUrl(data) : "",
+          downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
           noteText: data.noteText || data.body || data.content || data.description || "",
           mimeType: data.mimeType || null,
           size: typeof data.size === "number" ? data.size : null,
@@ -114,7 +117,7 @@ export async function GET(request) {
       })
       .filter((item) => item.status === "active")
       .filter((item) => item.kind !== "folder")
-      .filter((item) => item.kind === "note" || item.externalUrl || item.downloadUrl)
+      .filter((item) => item.kind === "note" || item.kind === "file" || item.externalUrl)
       .sort((a, b) => {
         const orderDiff = a.order - b.order;
         if (orderDiff !== 0) return orderDiff;

@@ -17,6 +17,11 @@ import { appDataStore } from "@/stores/appDataStore";
 import { buildIntakeHref, getIntakeSlugForContext, getPreviousRoute, getVisaTypeFromPath } from "@/lib/routes";
 import { getIncompleteChecklist } from "@/lib/submitCompletion";
 import { buildTargetVisaReviewSections, formatTargetReviewLabel } from "@/lib/targetVisaReview";
+import {
+  useActiveQuestionnaireDefinition,
+  useActiveQuestionnaireDefinitionController,
+} from "@/components/questionnaire/DynamicQuestionnaireOverride";
+import { getRemoteQuestionnaireDefinitionStrict } from "@/lib/questionnaires";
 
 const COMPLETE_DOCUMENT_STATUSES = new Set(["approved", "awaiting approval", "complete", "completed", "not required", "submitted", "under review", "uploaded", "verified"]);
 const SUBMIT_INSTRUCTIONS = [
@@ -38,6 +43,8 @@ export default function TargetVisaSubmitPage() {
   const router = useRouter();
   const visaType = getVisaTypeFromPath(pathname);
   const draftSnap = useSnapshot(draftStore);
+  const questionnaireDefinition = useActiveQuestionnaireDefinition();
+  const { replaceDefinition } = useActiveQuestionnaireDefinitionController();
   const { startNavigation } = useNavigationLoading();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,12 +52,12 @@ export default function TargetVisaSubmitPage() {
   const [documentItems, setDocumentItems] = useState([]);
   const submissionInFlight = useRef(false);
   const questionnaireItems = useMemo(() => getIncompleteChecklist({
-    visaType, draft: draftSnap.draft, completionStatus: draftSnap.completionStatus,
-  }), [visaType, draftSnap.draft, draftSnap.completionStatus]);
+    visaType, draft: draftSnap.draft, completionStatus: draftSnap.completionStatus, questionnaireDefinition,
+  }), [visaType, draftSnap.draft, draftSnap.completionStatus, questionnaireDefinition]);
   const incompleteItems = [...questionnaireItems, ...documentItems];
   const reviewSections = useMemo(() => buildTargetVisaReviewSections({
-    visaType, draft: draftSnap.draft, appId: draftSnap.currentApplicationId,
-  }), [visaType, draftSnap.draft, draftSnap.currentApplicationId]);
+    visaType, draft: draftSnap.draft, appId: draftSnap.currentApplicationId, questionnaireDefinition,
+  }), [visaType, draftSnap.draft, draftSnap.currentApplicationId, questionnaireDefinition]);
 
   const navigate = (href) => {
     if (!href) return;
@@ -78,15 +85,38 @@ export default function TargetVisaSubmitPage() {
     try {
       const appId = draftStore.currentApplicationId;
       if (!appId) throw new Error("No application ID found");
+      let currentDefinition;
+      try {
+        currentDefinition = await getRemoteQuestionnaireDefinitionStrict({ visaType });
+      } catch (error) {
+        console.error("Questionnaire definition verification failed:", error);
+        throw new Error("We could not verify the current questionnaire version. Please refresh and try again.");
+      }
+      replaceDefinition(currentDefinition);
       const requiredDocuments = await checkDocuments(appId);
       if (draftStore.currentApplicationId !== appId) throw new Error("The current application changed. Please review it before submitting.");
       setDocumentItems(requiredDocuments);
-      const requiredQuestions = getIncompleteChecklist({ visaType, draft: draftStore.draft, completionStatus: draftStore.completionStatus });
+      const requiredQuestions = getIncompleteChecklist({
+        visaType,
+        draft: draftStore.draft,
+        completionStatus: draftStore.completionStatus,
+        questionnaireDefinition: currentDefinition,
+      });
       if (requiredQuestions.length || requiredDocuments.length) {
         setConfirmOpen(true);
         return;
       }
-      const result = await applicationsStore.updateApplication(appId, { status: "submitted", submittedAt: new Date().toISOString() });
+      const result = await applicationsStore.updateApplication(appId, {
+        status: "submitted",
+        submittedAt: new Date().toISOString(),
+        questionnaireDefinitionRef: currentDefinition
+          ? {
+              id: currentDefinition.id,
+              revision: currentDefinition.revision,
+              version: currentDefinition.version,
+            }
+          : null,
+      });
       if (!result.success) throw new Error(result.error || "Failed to update application status");
       toast({ title: "Application Submitted Successfully", description: "Your application has been submitted and is now under review." });
       navigate(buildIntakeHref({ appId, internalHref: `/intake/${visaType}/start`, visaType }));

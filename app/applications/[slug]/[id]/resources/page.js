@@ -9,11 +9,10 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResourceCenterItem } from "@/components/ResourceCenterItem";
 import { auth } from "@/lib/firebase";
 import {
   BookOpen,
-  Download,
-  ExternalLink,
   FileText,
   Folder,
   Link as LinkIcon,
@@ -44,7 +43,7 @@ const CATEGORY_ICONS = {
 };
 
 function normalizeTemplateCategories(categories) {
-  const source = Array.isArray(categories) && categories.length > 0
+  const source = Array.isArray(categories)
     ? categories
     : DEFAULT_TEMPLATE_CATEGORIES;
 
@@ -74,7 +73,7 @@ function groupResourcesByCategory(categories, items) {
 
   items.forEach((item) => {
     if (item.status && item.status !== "active") return;
-    if (item.kind !== "note" && !item.externalUrl && !item.downloadUrl) return;
+    if (item.kind !== "note" && item.kind !== "file" && !item.externalUrl) return;
 
     const categoryName = item.category || "Uncategorized";
     const key = categoryName.toLowerCase();
@@ -98,12 +97,6 @@ function groupResourcesByCategory(categories, items) {
     .filter((category) => category.items.length > 0);
 }
 
-function getItemIcon(kind) {
-  if (kind === "file") return FileText;
-  if (kind === "note") return ScrollText;
-  return LinkIcon;
-}
-
 function CategoryIcon({ icon }) {
   const Icon = CATEGORY_ICONS[icon] || Folder;
 
@@ -112,20 +105,6 @@ function CategoryIcon({ icon }) {
       <Icon className="h-4 w-4" />
     </span>
   );
-}
-
-function formatResourceKind(kind) {
-  if (kind === "file") return "File";
-  if (kind === "note") return "Note";
-  if (kind === "link") return "Link";
-  return "Resource";
-}
-
-function formatFileSize(size) {
-  if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) return null;
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function isMissingTemplateResponse(response, data) {
@@ -152,147 +131,15 @@ function mapSharedResourcesToItems(resources) {
       order: index,
       status: resource.status || "active",
       externalUrl: resource.url || resource.externalUrl || "",
-      downloadUrl: resource.downloadUrl || "",
+      viewerUrl: resource.viewerUrl || "",
+      downloadAllowed: resource.downloadAllowed,
       noteText: resource.noteText || resource.description || "",
       mimeType: resource.mimeType || null,
       size: typeof resource.size === "number" ? resource.size : null,
-      previewable: false,
       createdAt: resource.createdAt || null,
       updatedAt: resource.updatedAt || null,
     };
   });
-}
-
-function getResourceTestId(name) {
-  return `link-resource-${String(name || "resource").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
-}
-
-function ResourceTemplateItem({ item, matterId }) {
-  const isNote = item.kind === "note";
-  const isPdf = item.previewable !== false && item.kind === "file" && (
-    String(item.mimeType || "").split(";", 1)[0].trim().toLowerCase() === "application/pdf" ||
-    (!item.mimeType && /\.pdf$/i.test(String(item.name || "")))
-  );
-  const Icon = getItemIcon(item.kind);
-  const fileSize = formatFileSize(item.size);
-  const previewUrl = `/api/matters/${encodeURIComponent(matterId)}/resources/${encodeURIComponent(item.id)}/preview`;
-  const downloadUrl = item.downloadUrl || item.externalUrl;
-  const [previewState, setPreviewState] = useState(isPdf ? "preparing" : "idle");
-
-  useEffect(() => {
-    if (!isPdf) return undefined;
-
-    let active = true;
-    auth.currentUser?.getIdToken()
-      .then((idToken) => {
-        if (!idToken) throw new Error("Missing authentication token");
-        return fetch(previewUrl, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-      })
-      .then((response) => {
-        if (!response.ok) throw new Error("Preview authorization failed");
-        if (active) setPreviewState("ready");
-      })
-      .catch(() => {
-        if (active) setPreviewState("failed");
-      });
-
-    return () => { active = false; };
-  }, [isPdf, previewUrl]);
-
-  useEffect(() => {
-    if (previewState !== "ready") return undefined;
-    const timeout = setTimeout(() => setPreviewState("failed"), 15000);
-    return () => clearTimeout(timeout);
-  }, [previewState]);
-
-  const meta = [
-    formatResourceKind(item.kind),
-    item.kind === "file" ? item.mimeType : null,
-    fileSize,
-  ].filter(Boolean).join(" | ");
-
-  return (
-    <article className="flex flex-col gap-3 rounded-md border border-[#DFE9E3] bg-[#F8FBF6] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 flex-1 gap-3">
-        <span className="mt-0.5 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-[#D7E3DD] bg-white text-[#4F726B]">
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-gray-900">{item.name}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
-          {isNote && item.noteText ? (
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.noteText}</p>
-          ) : null}
-        </div>
-      </div>
-
-      {!isNote && (item.externalUrl || downloadUrl) ? (
-        <div className="flex flex-shrink-0 flex-wrap gap-2">
-          {item.externalUrl ? (
-            <a
-              href={item.externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] bg-white px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
-              data-testid={getResourceTestId(item.name)}
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open
-            </a>
-          ) : null}
-          {downloadUrl ? (
-            <a
-              href={downloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#D7E3DD] bg-white px-3 text-sm font-medium text-[#255E4A] transition-colors hover:bg-[#EEF7F2]"
-              data-testid={`${getResourceTestId(item.name)}-download`}
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </a>
-          ) : null}
-        </div>
-      ) : null}
-
-      {isPdf ? (
-        <div className="basis-full overflow-hidden rounded-md border border-[#D7E3DD] bg-white">
-          {previewState === "ready" ? (
-            <iframe
-              src={previewUrl}
-              className="h-[32rem] w-full"
-              title="Document preview"
-              onLoad={() => setPreviewState("loaded")}
-              onError={() => setPreviewState("failed")}
-              data-testid={`iframe-${getResourceTestId(item.name)}`}
-            />
-          ) : previewState === "preparing" ? (
-            <div className="p-4 text-sm text-muted-foreground">Preparing document preview...</div>
-          ) : previewState === "loaded" ? (
-            <iframe
-              src={previewUrl}
-              className="h-[32rem] w-full"
-              title="Document preview"
-              data-testid={`iframe-${getResourceTestId(item.name)}`}
-            />
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-muted-foreground" role="alert">
-              <span>Preview unavailable. Open or download the document instead.</span>
-              <div className="flex gap-2">
-                {item.externalUrl ? <a className="font-medium text-[#255E4A] underline" href={item.externalUrl} target="_blank" rel="noopener noreferrer">Open</a> : null}
-                {downloadUrl ? <a className="font-medium text-[#255E4A] underline" href={downloadUrl} target="_blank" rel="noopener noreferrer" download>Download</a> : null}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : null}
-    </article>
-  );
 }
 
 export default function ResourcesPage() {
@@ -489,7 +336,7 @@ export default function ResourcesPage() {
 
                       <div className="mt-3 space-y-2 border-t border-[#DDE7E1] pt-3">
                         {category.items.map((item) => (
-                          <ResourceTemplateItem key={item.id} item={item} matterId={appId} />
+                          <ResourceCenterItem key={item.id} item={item} />
                         ))}
                       </div>
                     </section>

@@ -51,15 +51,18 @@ service cloud.firestore {
     match /questionnaireDefinitions/{definitionId} {
       allow read: if request.auth != null &&
         resource.data.status == "active";
-      allow write: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      // Questionnaire mutations are server-only through the admin portal.
+      allow write: if false;
 
       match /pages/{pageId} {
         allow read: if request.auth != null &&
           get(/databases/$(database)/documents/questionnaireDefinitions/$(definitionId)).data.status == "active";
-        allow write: if request.auth != null &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+        allow write: if false;
       }
+    }
+
+    match /questionnaireDefinitionRevisions/{revisionId} {
+      allow read, write: if false;
     }
 
     match /users/{userId}/preferences/{document=**} {
