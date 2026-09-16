@@ -19,13 +19,20 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
     }
 
-    match /applications/{appId}/{document=**} {
-      // Authenticated owner access to subcollections
+    match /applications/{appId}/data/{document=**} {
+      // Applicants can edit their questionnaire/completion data.
       allow read, write: if request.auth != null &&
         get(/databases/$(database)/documents/applications/$(appId)).data.userId == request.auth.uid;
 
-      // Public read to subcollections only if parent is flagged public
+      // Public review exposes questionnaire data, never private resources.
       allow read: if get(/databases/$(database)/documents/applications/$(appId)).data.publicReviewAccess == true;
+    }
+
+    match /applications/{appId}/resources/{resourceId} {
+      allow read: if request.auth != null &&
+        get(/databases/$(database)/documents/applications/$(appId)).data.userId == request.auth.uid;
+      // Matter resources are managed only by authenticated admin server APIs.
+      allow write: if false;
     }
 
     match /resources/{resourceId} {

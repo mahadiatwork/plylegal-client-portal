@@ -22,6 +22,7 @@ async function loadRoute(entry) {
 
 const template = await loadRoute("app/api/resources/template/route.js");
 const shared = await loadRoute("app/api/resources/shared/route.js");
+const matter = await loadRoute("app/api/resources/matter/route.js");
 const preview = await loadRoute("app/api/matters/[matterId]/resources/[resourceId]/preview/route.js");
 const root = "projects/resources-test/databases/(default)/documents";
 const shareUrl = "https://workdrive.zohopublic.com.au/external/resource-share";
@@ -76,6 +77,39 @@ function setup(t, slug = "482") {
     ["resources/186", { status: "active", scope: "shared", title: "186 only", program: "186", url: "https://example.test/186" }],
     ["resources/private", { status: "active", scope: "matter", title: "Private", url: "https://example.test/private" }],
     ["resources/draft", { status: "draft", title: "Draft", url: "https://example.test/draft" }],
+    ["applications/matter-1/resources/matter-note", {
+      status: "active", type: "note", title: "Matter note", noteText: "Only for this client",
+      category: "Matter notes", order: 1,
+    }],
+    ["applications/matter-1/resources/matter-link", {
+      status: "active", type: "link", title: "Matter link", url: "https://example.test/matter",
+      category: "Matter guides", order: 2,
+    }],
+    ["applications/matter-1/resources/matter-file", {
+      status: "active", type: "file", title: "Matter file", fileName: "matter.pdf",
+      workDriveShareUrl: shareUrl, downloadAllowed: false, downloadUrl: "https://example.test/private-file",
+      fileSize: 2048, category: "Matter guides", order: 3,
+    }],
+    ["applications/matter-1/resources/matter-raw-file", {
+      status: "active", type: "file", title: "Legacy matter file", fileName: "legacy.pdf",
+      url: "https://example.test/source-url-sentinel", downloadUrl: "https://example.test/download-url-sentinel",
+    }],
+    ["applications/matter-1/resources/document-review", {
+      status: "active", type: "file", source: "documentReview", title: "Correction.pdf",
+      downloadUrl: shareUrl,
+    }],
+    ["applications/matter-1/resources/hidden-flag", {
+      status: "active", type: "link", title: "Hidden", url: "https://example.test/hidden", hidden: true,
+    }],
+    ["applications/matter-1/resources/hidden-status", {
+      status: "hidden", type: "link", title: "Hidden status", url: "https://example.test/hidden-status",
+    }],
+    ["applications/matter-1/resources/archived", {
+      status: "archived", type: "link", title: "Archived", url: "https://example.test/archived",
+    }],
+    ["applications/matter-1/resources/folder", {
+      status: "active", type: "folder", title: "Folder",
+    }],
   ]);
   const calls = [];
   let failureStatus = null;
@@ -129,12 +163,13 @@ for (const slug of ["482", "186", "820", "866"]) {
     assert.equal(data.template.templateSlug, templateSlug);
     assert.deepEqual(data.template.categories, [{ name: "Guides", icon: "guide" }]);
     assert.equal(data.template.updatedAt, "2026-09-08T00:00:00.000Z");
-    assert.deepEqual(data.items.map((item) => item.id), ["no-url", "note", "pdf"]);
-    assert.equal(data.items[2].viewerUrl, shareUrl);
-    assert.equal(data.items[2].downloadAllowed, false);
-    assert.equal(data.items[2].externalUrl, "");
-    assert.equal(data.items[2].size, 1000);
-    assert.equal("downloadUrl" in data.items[2], false);
+    assert.deepEqual(data.items.map((item) => item.id), ["note", "pdf", "no-url"]);
+    const pdf = data.items.find((item) => item.id === "pdf");
+    assert.equal(pdf.viewerUrl, shareUrl);
+    assert.equal(pdf.downloadAllowed, false);
+    assert.equal(pdf.externalUrl, "");
+    assert.equal(pdf.size, 1000);
+    assert.equal("downloadUrl" in pdf, false);
     assert.equal(calls.some(({ url }) => url.includes("/users/")), false);
   });
 }
@@ -153,9 +188,33 @@ test("missing and draft templates permit the existing shared fallback and visa t
   }
 });
 
+test("matter resources are owner-scoped, active-only, ordered, and stripped of raw file URLs", async (t) => {
+  setup(t);
+  const response = await matter.GET(request("matter"));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  const data = await response.json();
+  assert.deepEqual(data.items.map((item) => item.id), [
+    "matter-note", "matter-link", "matter-file", "matter-raw-file",
+  ]);
+
+  const byId = Object.fromEntries(data.items.map((item) => [item.id, item]));
+  assert.equal(byId["matter-note"].category, "Matter notes");
+  assert.equal(byId["matter-note"].order, 1);
+  assert.equal(byId["matter-link"].externalUrl, "https://example.test/matter");
+  assert.equal(byId["matter-file"].viewerUrl, shareUrl);
+  assert.equal(byId["matter-file"].downloadAllowed, false);
+  assert.equal(byId["matter-file"].externalUrl, "");
+  assert.equal(byId["matter-file"].size, 2048);
+  assert.equal(byId["matter-raw-file"].viewerUrl, "");
+  assert.equal(byId["matter-raw-file"].externalUrl, "");
+  assert.equal(byId["matter-raw-file"].category, "For this matter");
+  assert.doesNotMatch(JSON.stringify(data), /private-file|source-url-sentinel|download-url-sentinel|Correction|Hidden|Archived/);
+});
+
 test("missing/invalid tokens and another owner's application cannot read resources", async (t) => {
   const { documents, calls } = setup(t);
-  for (const route of [template, shared]) {
+  for (const route of [template, shared, matter]) {
     assert.equal((await route.GET(request("template", null))).status, 401);
     assert.equal((await route.GET(request("template", "invalid-token"))).status, 401);
   }
@@ -163,6 +222,7 @@ test("missing/invalid tokens and another owner's application cannot read resourc
   documents.get("applications/matter-1").userId = "another-owner";
   assert.equal((await template.GET(request())).status, 403);
   assert.equal((await shared.GET(request("shared"))).status, 403);
+  assert.equal((await matter.GET(request("matter"))).status, 403);
   assert.equal(calls.some(({ options }) => options.method === "POST"), false);
   assert.equal((await template.GET(request("template", "signed-client-token", "matter-1/data"))).status, 400);
 });
@@ -171,7 +231,7 @@ test("upstream permission and service errors are not reported as missing resourc
   const { failWith } = setup(t);
   for (const [upstream, expected] of [[401, 401], [403, 403], [500, 502]]) {
     failWith(upstream);
-    for (const route of [template, shared]) {
+    for (const route of [template, shared, matter]) {
       const response = await route.GET(request());
       assert.equal(response.status, expected);
       assert.doesNotMatch(await response.text(), /private-detail-sentinel|service-account-sentinel/);

@@ -11,6 +11,7 @@ import { PillNav } from "@/components/PillNav";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResourceCenterItem } from "@/components/ResourceCenterItem";
 import { auth } from "@/lib/firebase";
+import { DEFAULT_TEMPLATE_CATEGORIES, loadResourcePageData } from "@/lib/resourcePageData";
 import {
   BookOpen,
   FileText,
@@ -19,19 +20,6 @@ import {
   ScrollText,
   ShieldCheck,
 } from "lucide-react";
-
-const DEFAULT_TEMPLATE_CATEGORIES = [
-  { name: "Uncategorized", icon: "folder" },
-  { name: "Guides", icon: "guide" },
-  { name: "Policies", icon: "policy" },
-  { name: "Helpful Links", icon: "link" },
-];
-
-const MISSING_TEMPLATE_ERRORS = new Set([
-  "No resource template available for this application type",
-  "No resource template found for this visa type",
-  "Resource template is not currently active",
-]);
 
 const CATEGORY_ICONS = {
   folder: Folder,
@@ -107,41 +95,6 @@ function CategoryIcon({ icon }) {
   );
 }
 
-function isMissingTemplateResponse(response, data) {
-  return response.status === 404 && MISSING_TEMPLATE_ERRORS.has(data?.error);
-}
-
-function normalizeSharedResourceKind(type) {
-  const value = String(type || "link").toLowerCase();
-  if (value === "file" || value === "note") return value;
-  return "link";
-}
-
-function mapSharedResourcesToItems(resources) {
-  if (!Array.isArray(resources)) return [];
-
-  return resources.map((resource, index) => {
-    const kind = normalizeSharedResourceKind(resource.type);
-    return {
-      id: resource.id,
-      parentId: null,
-      kind,
-      name: resource.title || resource.name || "Untitled resource",
-      category: resource.category || "Uncategorized",
-      order: index,
-      status: resource.status || "active",
-      externalUrl: resource.url || resource.externalUrl || "",
-      viewerUrl: resource.viewerUrl || "",
-      downloadAllowed: resource.downloadAllowed,
-      noteText: resource.noteText || resource.description || "",
-      mimeType: resource.mimeType || null,
-      size: typeof resource.size === "number" ? resource.size : null,
-      createdAt: resource.createdAt || null,
-      updatedAt: resource.updatedAt || null,
-    };
-  });
-}
-
 export default function ResourcesPage() {
   const params = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -178,42 +131,9 @@ export default function ResourcesPage() {
         throw new Error("Missing authentication token");
       }
 
-      const headers = {
-        Authorization: `Bearer ${idToken}`,
-      };
-      const applicationId = encodeURIComponent(appId);
-      const response = await fetch(`/api/resources/template?applicationId=${applicationId}`, {
-        headers,
-      });
-      const data = await response.json().catch(() => ({}));
-
-      if ((!response.ok || !data.success) && isMissingTemplateResponse(response, data)) {
-        const sharedResponse = await fetch(`/api/resources/shared?applicationId=${applicationId}`, {
-          headers,
-        });
-        const sharedData = await sharedResponse.json().catch(() => ({}));
-
-        if (!sharedResponse.ok || !sharedData.success) {
-          throw new Error(sharedData.error || data.error || "Failed to load resources");
-        }
-
-        setTemplate({
-          visaSlug: slug,
-          templateSlug: null,
-          title: "",
-          status: "active",
-          categories: DEFAULT_TEMPLATE_CATEGORIES,
-        });
-        setItems(mapSharedResourcesToItems(sharedData.resources || []));
-        return;
-      }
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to load resources");
-      }
-
-      setTemplate(data.template || null);
-      setItems(data.items || []);
+      const data = await loadResourcePageData({ appId, slug, idToken });
+      setTemplate(data.template);
+      setItems(data.items);
     } catch (error) {
       console.error("Error loading resources:", error);
       setResourcesError("We could not load your resources. Please refresh the page or contact Ply Legal.");
@@ -293,8 +213,7 @@ export default function ResourcesPage() {
             <div className="mb-8">
               <h1 className="font-serif text-3xl font-bold mb-3">Resources</h1>
               <p className="text-base text-muted-foreground leading-relaxed">
-                These resources provide official guidance and helpful references for your visa journey.
-                Always verify details on official government websites before taking any action.
+                We have included these resources to provide useful information relevant to your visa matter.
               </p>
             </div>
 
@@ -336,7 +255,7 @@ export default function ResourcesPage() {
 
                       <div className="mt-3 space-y-2 border-t border-[#DDE7E1] pt-3">
                         {category.items.map((item) => (
-                          <ResourceCenterItem key={item.id} item={item} />
+                          <ResourceCenterItem key={`${item.resourceSource || "resource"}:${item.id}`} item={item} />
                         ))}
                       </div>
                     </section>

@@ -12,6 +12,7 @@ const DEFAULT_TEMPLATE_CATEGORIES = [
   { name: "Policies", icon: "policy" },
   { name: "Helpful Links", icon: "link" },
 ];
+const LAST_ORDER = Number.MAX_SAFE_INTEGER;
 
 function serializeTimestamp(value) {
   if (!value) return null;
@@ -103,7 +104,9 @@ export async function GET(request) {
           kind,
           name: data.name || data.fileName || "Untitled resource",
           category: data.category || "Uncategorized",
-          order: typeof data.order === "number" ? data.order : 0,
+          order: typeof data.order === "number" && Number.isFinite(data.order)
+            ? data.order
+            : LAST_ORDER,
           status: normalizeStatus(data.status),
           externalUrl: kind === "link" ? data.externalUrl || data.publicUrl || data.url || "" : "",
           viewerUrl: kind === "file" ? getResourceViewerUrl(data) : "",
