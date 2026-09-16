@@ -3,6 +3,7 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { extractSubclass, getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
+import { normalizeResourceOrder } from "@/lib/resourceOrdering";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
   "all",
@@ -46,6 +47,7 @@ function normalizeResource(docSnap) {
     type,
     status: String(data.status || "draft").toLowerCase(),
     category: String(data.category || data.section || data.group || "").toLowerCase(),
+    order: normalizeResourceOrder(data.order),
     scope,
     program: String(data.program || "").toLowerCase(),
     audience: String(data.audience || "").toLowerCase(),
@@ -201,7 +203,9 @@ export async function GET(request) {
       .map(normalizeResource)
       .filter(isVisibleSharedResource)
       .filter((resource) => resourceMatchesApplication(resource, applicationTargets))
-      .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
+      .sort((a, b) => (
+        a.order - b.order || toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt)
+      ));
 
     return NextResponse.json({ success: true, resources }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

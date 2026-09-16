@@ -4,6 +4,7 @@ import {
   DEFAULT_TEMPLATE_CATEGORIES,
   loadResourcePageData,
 } from "../src/lib/resourcePageData.js";
+import { LAST_RESOURCE_ORDER, compareResourceItems } from "../src/lib/resourceOrdering.js";
 
 function json(body, status = 200) {
   return Response.json(body, { status });
@@ -85,7 +86,7 @@ test("resource page data combines matter items with shared fallback when a templ
 
   assert.deepEqual(result.template.categories, DEFAULT_TEMPLATE_CATEGORIES);
   assert.deepEqual(result.items.map(({ id, resourceSource, order }) => ({ id, resourceSource, order })), [
-    { id: "shared-link", resourceSource: "shared", order: 0 },
+    { id: "shared-link", resourceSource: "shared", order: LAST_RESOURCE_ORDER },
     { id: "matter-note", resourceSource: "matter", order: 7 },
   ]);
   assert.deepEqual(calls, [
@@ -104,4 +105,28 @@ test("resource page data does not silently hide a matter-resource read failure",
     loadResourcePageData({ appId: "matter-1", slug: "482", idToken: "signed-token", fetchImpl }),
     /Access denied/,
   );
+});
+
+test("shared fallback retains stored positions instead of replacing them with response indices", async () => {
+  const fetchImpl = async (url) => {
+    if (url.startsWith("/api/resources/template")) {
+      return json({ success: false, error: "No resource template found for this visa type" }, 404);
+    }
+    if (url.startsWith("/api/resources/matter")) {
+      return json({ success: true, items: [{ id: "matter-resource", name: "Matter", order: 2 }] });
+    }
+    return json({ success: true, resources: [
+      { id: "shared-later", title: "Later", order: "5" },
+      { id: "shared-first", title: "First", order: 0 },
+      { id: "shared-missing", title: "Missing" },
+    ] });
+  };
+
+  const result = await loadResourcePageData({ appId: "matter-1", slug: "482", idToken: "signed-token", fetchImpl });
+  assert.deepEqual(result.items.sort(compareResourceItems).map(({ id, order }) => ({ id, order })), [
+    { id: "shared-first", order: 0 },
+    { id: "matter-resource", order: 2 },
+    { id: "shared-later", order: 5 },
+    { id: "shared-missing", order: LAST_RESOURCE_ORDER },
+  ]);
 });

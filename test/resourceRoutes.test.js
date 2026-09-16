@@ -328,3 +328,52 @@ test("an explicit empty category list stays empty after categories are deleted",
   const data = await (await template.GET(request())).json();
   assert.deepEqual(data.template.categories, []);
 });
+
+for (const [label, route, prefix, orderedIds, idsAfterReorder] of [
+  ["template", template, "resourceTemplates/482/items/", ["pdf", "note", "no-url"], ["note", "pdf", "no-url"]],
+  ["matter", matter, "applications/matter-1/resources/", ["matter-link", "matter-note", "matter-file", "matter-raw-file"], ["matter-note", "matter-link", "matter-file", "matter-raw-file"]],
+]) {
+  test(`${label} resources honor string and zero positions and reload a saved reorder`, async (t) => {
+    const { documents } = setup(t);
+    documents.get(`${prefix}${orderedIds[0]}`).order = 0;
+    documents.get(`${prefix}${orderedIds[1]}`).order = "1";
+    if (label === "matter") documents.get(`${prefix}matter-file`).order = "10";
+
+    const firstResponse = await route.GET(request(label));
+    assert.equal(firstResponse.headers.get("cache-control"), "private, no-store");
+    const first = await firstResponse.json();
+    assert.deepEqual(first.items.map(({ id }) => id), orderedIds);
+    assert.equal(first.items[0].order, 0);
+    assert.equal(first.items[1].order, 1);
+    assert.equal(first.items.at(-1).order, Number.MAX_SAFE_INTEGER);
+
+    documents.get(`${prefix}${orderedIds[1]}`).order = 0;
+    documents.get(`${prefix}${orderedIds[0]}`).order = 3;
+    const refreshed = await (await route.GET(request(label))).json();
+    assert.deepEqual(refreshed.items.map(({ id }) => id), idsAfterReorder);
+  });
+}
+
+test("shared fallback resources expose stored positions and refresh order before update-date sorting", async (t) => {
+  const { documents } = setup(t);
+  documents.get("resources/482").order = 0;
+  documents.get("resources/general").order = "1";
+  documents.set("resources/newest", {
+    status: "active", scope: "shared", title: "Latest without a position",
+    url: "https://example.test/latest", updatedAt: new Date("2026-09-15T00:00:00Z"),
+  });
+
+  const firstResponse = await shared.GET(request("shared"));
+  assert.equal(firstResponse.headers.get("cache-control"), "private, no-store");
+  const first = await firstResponse.json();
+  assert.deepEqual(first.resources.map(({ id, order }) => ({ id, order })), [
+    { id: "482", order: 0 },
+    { id: "general", order: 1 },
+    { id: "newest", order: Number.MAX_SAFE_INTEGER },
+  ]);
+
+  documents.get("resources/general").order = 0;
+  documents.get("resources/482").order = 2;
+  const refreshed = await (await shared.GET(request("shared"))).json();
+  assert.deepEqual(refreshed.resources.map(({ id }) => id), ["general", "482", "newest"]);
+});

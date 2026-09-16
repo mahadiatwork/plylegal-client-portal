@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
+import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
 
 const DEFAULT_MATTER_CATEGORY = "For this matter";
-const LAST_ORDER = Number.MAX_SAFE_INTEGER;
 
 function serializeTimestamp(value) {
   if (!value) return null;
@@ -67,7 +67,7 @@ function normalizeMatterResource(doc) {
     kind,
     name: data.title || data.name || data.fileName || "Untitled resource",
     category: String(data.category || DEFAULT_MATTER_CATEGORY).trim() || DEFAULT_MATTER_CATEGORY,
-    order: typeof data.order === "number" && Number.isFinite(data.order) ? data.order : LAST_ORDER,
+    order: normalizeResourceOrder(data.order),
     status,
     externalUrl,
     viewerUrl,
@@ -100,11 +100,7 @@ export async function GET(request) {
     const items = documents
       .map(normalizeMatterResource)
       .filter(Boolean)
-      .sort((a, b) => {
-        const orderDiff = a.order - b.order;
-        if (orderDiff !== 0) return orderDiff;
-        return a.name.localeCompare(b.name);
-      });
+      .sort(compareResourceItems);
 
     return NextResponse.json(
       { success: true, items },

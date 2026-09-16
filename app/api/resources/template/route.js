@@ -3,6 +3,7 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
+import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
 
 const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", PROTECTION_PUBLIC_SLUG, "482", "186"]);
 
@@ -12,7 +13,6 @@ const DEFAULT_TEMPLATE_CATEGORIES = [
   { name: "Policies", icon: "policy" },
   { name: "Helpful Links", icon: "link" },
 ];
-const LAST_ORDER = Number.MAX_SAFE_INTEGER;
 
 function serializeTimestamp(value) {
   if (!value) return null;
@@ -104,9 +104,7 @@ export async function GET(request) {
           kind,
           name: data.name || data.fileName || "Untitled resource",
           category: data.category || "Uncategorized",
-          order: typeof data.order === "number" && Number.isFinite(data.order)
-            ? data.order
-            : LAST_ORDER,
+          order: normalizeResourceOrder(data.order),
           status: normalizeStatus(data.status),
           externalUrl: kind === "link" ? data.externalUrl || data.publicUrl || data.url || "" : "",
           viewerUrl: kind === "file" ? getResourceViewerUrl(data) : "",
@@ -121,11 +119,7 @@ export async function GET(request) {
       .filter((item) => item.status === "active")
       .filter((item) => item.kind !== "folder")
       .filter((item) => item.kind === "note" || item.kind === "file" || item.externalUrl)
-      .sort((a, b) => {
-        const orderDiff = a.order - b.order;
-        if (orderDiff !== 0) return orderDiff;
-        return a.name.localeCompare(b.name);
-      });
+      .sort(compareResourceItems);
 
     return NextResponse.json({
       success: true,

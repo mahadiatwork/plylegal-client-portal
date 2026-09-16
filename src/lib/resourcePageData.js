@@ -1,3 +1,5 @@
+import { normalizeResourceOrder } from "./resourceOrdering.js";
+
 export const DEFAULT_TEMPLATE_CATEGORIES = [
   { name: "Uncategorized", icon: "folder" },
   { name: "Guides", icon: "guide" },
@@ -24,7 +26,7 @@ function normalizeSharedResourceKind(type) {
 function mapSharedResourcesToItems(resources) {
   if (!Array.isArray(resources)) return [];
 
-  return resources.map((resource, index) => {
+  return resources.map((resource) => {
     const kind = normalizeSharedResourceKind(resource.type);
     return {
       id: resource.id,
@@ -32,7 +34,7 @@ function mapSharedResourcesToItems(resources) {
       kind,
       name: resource.title || resource.name || "Untitled resource",
       category: resource.category || "Uncategorized",
-      order: index,
+      order: normalizeResourceOrder(resource.order),
       status: resource.status || "active",
       externalUrl: resource.url || resource.externalUrl || "",
       viewerUrl: resource.viewerUrl || "",

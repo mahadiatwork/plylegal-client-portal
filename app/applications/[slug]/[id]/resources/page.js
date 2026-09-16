@@ -12,6 +12,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { ResourceCenterItem } from "@/components/ResourceCenterItem";
 import { auth } from "@/lib/firebase";
 import { DEFAULT_TEMPLATE_CATEGORIES, loadResourcePageData } from "@/lib/resourcePageData";
+import { compareResourceItems } from "@/lib/resourceOrdering";
 import {
   BookOpen,
   FileText,
@@ -43,10 +44,11 @@ function normalizeTemplateCategories(categories) {
     .filter((category) => category.name);
 }
 
-function compareResourceItems(a, b) {
-  const orderDiff = Number(a.order || 0) - Number(b.order || 0);
-  if (orderDiff !== 0) return orderDiff;
-  return String(a.name || "").localeCompare(String(b.name || ""));
+function categoryDisplayPriority(category) {
+  const name = category.name.trim().toLowerCase();
+  if (name === "for this matter") return 0;
+  if (name === "uncategorized") return 2;
+  return 1;
 }
 
 function groupResourcesByCategory(categories, items) {
@@ -63,7 +65,7 @@ function groupResourcesByCategory(categories, items) {
     if (item.status && item.status !== "active") return;
     if (item.kind !== "note" && item.kind !== "file" && !item.externalUrl) return;
 
-    const categoryName = item.category || "Uncategorized";
+    const categoryName = String(item.category || "").trim() || "Uncategorized";
     const key = categoryName.toLowerCase();
 
     if (!categoryMap.has(key)) {
@@ -82,7 +84,8 @@ function groupResourcesByCategory(categories, items) {
       ...category,
       items: category.items.sort(compareResourceItems),
     }))
-    .filter((category) => category.items.length > 0);
+    .filter((category) => category.items.length > 0)
+    .sort((left, right) => categoryDisplayPriority(left) - categoryDisplayPriority(right));
 }
 
 function CategoryIcon({ icon }) {

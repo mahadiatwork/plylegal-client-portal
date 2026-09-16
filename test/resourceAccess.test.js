@@ -61,6 +61,32 @@ test("client document cards offer only the restricted viewer for PDF, DOCX and o
   }
 });
 
+test("client links offer only Open for template, shared and matter resources", () => {
+  for (const resourceSource of ["template", "shared", "matter"]) {
+    for (const downloadAllowed of [undefined, null, false, true]) {
+      const html = render({
+        kind: "link", name: "Visa guidance", resourceSource, downloadAllowed,
+        externalUrl: "https://example.test/guidance",
+        viewerUrl,
+        downloadUrl: "https://example.test/unrestricted-file",
+      });
+      assert.equal((html.match(/<a\b/g) || []).length, 1);
+      assert.match(html, /href="https:\/\/example.test\/guidance"/);
+      assert.match(html, /target="_blank" rel="noopener noreferrer"/);
+      assert.match(html, />Open<|Open<\/a>/);
+      assert.doesNotMatch(html, /[Dd]ownload|unrestricted-file|View document|restricted-share/);
+    }
+  }
+});
+
+test("links without an external URL do not fall back to file download or viewer URLs", () => {
+  const html = render({
+    kind: "link", name: "Incomplete link", downloadAllowed: true, viewerUrl,
+    downloadUrl: "https://example.test/unrestricted-file",
+  });
+  assert.doesNotMatch(html, /<a\b|[Dd]ownload|unrestricted-file|restricted-share/);
+});
+
 test("document cards show readable file types instead of raw office MIME types", () => {
   const html = render({
     kind: "file", name: "Instructions", downloadAllowed: false, viewerUrl,
