@@ -21,6 +21,7 @@ import {
   getQuestionnairePageValidationIssues,
   isQuestionnaireCompletionStampCurrent,
 } from "./questionnaires/answers.js";
+import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
 
 function getProfileDisplayName(profile) {
   const rawName = `${profile?.given_names || ""} ${profile?.family_name || ""}`.trim();
@@ -949,8 +950,15 @@ export function getIncompleteChecklist({
   const completion = completionStatus || {};
   const items = [];
   const dynamicPagesByKey = new Map(
-    (questionnaireDefinition?.pages || []).map((page) => [getQuestionnaireCompletionKey(page), page])
+    (questionnaireDefinition?.pages || []).filter((page) => page.metadata?.renderer !== "legacy")
+      .map((page) => [getQuestionnaireCompletionKey(page), page])
   );
+  const legacyPagesByKey = new Set((questionnaireDefinition?.pages || [])
+    .filter((page) => page.metadata?.renderer === "legacy").map(getQuestionnaireCompletionKey));
+  const isLegacyPageKey = (key) => {
+    const base = key.split("__")[0];
+    return legacyPagesByKey.has(base) || findQuestionnaireDefinitionPage(questionnaireDefinition, `/intake/${base}`)?.metadata?.renderer === "legacy";
+  };
   const dynamicStamps = completion[DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY] || {};
 
   const dynamicPageIsComplete = (key, page) => {
@@ -971,7 +979,7 @@ export function getIncompleteChecklist({
       if (!dynamicPageIsComplete(key, dynamicPage)) items.push(label);
       return;
     }
-    if (Object.prototype.hasOwnProperty.call(dynamicStamps, key)) {
+    if (!isLegacyPageKey(key) && Object.prototype.hasOwnProperty.call(dynamicStamps, key)) {
       items.push(label);
       return;
     }
@@ -992,7 +1000,7 @@ export function getIncompleteChecklist({
       const dynamicPage = dynamicPagesByKey.get(page.key.split("__")[0]);
       if (dynamicPage) {
         if (!dynamicPageIsComplete(page.key, dynamicPage)) items.push(page.title);
-      } else if (Object.prototype.hasOwnProperty.call(dynamicStamps, page.key)) {
+      } else if (!isLegacyPageKey(page.key) && Object.prototype.hasOwnProperty.call(dynamicStamps, page.key)) {
         items.push(page.title);
       } else if (!isTargetVisaPageComplete(page, completion)) {
         items.push(page.title);

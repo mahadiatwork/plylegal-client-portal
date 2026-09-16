@@ -18,7 +18,8 @@ import {
   getPreviousRoute,
   getVisaTypeFromPath,
 } from "@/lib/routes";
-import { getQuestionnairePage } from "@/lib/questionnaires";
+import { getLocalQuestionnaireDefinition, getQuestionnairePage } from "@/lib/questionnaires";
+import { withQuestionnaireLoadTimeout } from "@/lib/questionnaires/remoteLoading";
 import {
   getQuestionnaireCompletionKey,
   getQuestionnaireCompletionStamp,
@@ -45,7 +46,7 @@ function getQuestionsFlat(questions = []) {
 function getQuestionDefaultValue(question) {
   if (question.defaultValue !== undefined) return question.defaultValue;
   if (question.type === "checkbox") return false;
-  if (question.type === "repeater") return [];
+  if (question.type === "repeater") return question.metadata?.collection === "object" ? {} : [];
   return "";
 }
 
@@ -185,13 +186,24 @@ export function DynamicQuestionnairePage({
         return;
       }
 
+      // This direct-render path is also the shipped Character page fallback.
+      // An already failed optional definition read must not trigger another
+      // remote read before its bundled questionnaire becomes available.
+      const bundledDefinition = getLocalQuestionnaireDefinition({ definitionId, visaType, visaContext: draftSnap.visaContext });
+      const bundledPage = bundledDefinition?.pages.find((page) => page.route === internalRoute);
+      if (bundledPage) {
+        setPageDefinition(bundledPage);
+        setIsLoadingDefinition(false);
+        return;
+      }
+
       setIsLoadingDefinition(true);
-      const loadedPage = await getQuestionnairePage({
+      const loadedPage = await withQuestionnaireLoadTimeout(() => getQuestionnairePage({
         definitionId,
         route: internalRoute,
         visaType,
         visaContext: draftSnap.visaContext,
-      });
+      })).catch(() => null);
 
       if (!cancelled) {
         setPageDefinition(loadedPage);

@@ -18,7 +18,7 @@ function getFieldDefaults(question) {
     fields[question.answerKey] = question.type === "checkbox"
       ? false
       : question.type === "repeater"
-        ? []
+        ? question.metadata?.collection === "object" ? {} : []
         : "";
   }
   if (Array.isArray(question.followUps)) {

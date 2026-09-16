@@ -1,8 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { DynamicQuestionnairePage } from "@/components/questionnaire/DynamicQuestionnairePage";
 import { getRemoteQuestionnaireDefinitionStrict } from "@/lib/questionnaires";
+import { withQuestionnaireLoadTimeout } from "@/lib/questionnaires/remoteLoading";
+import { QuestionnaireDefinitionContent } from "@/components/questionnaire/QuestionnaireDefinitionContent";
 
 const ActiveQuestionnaireDefinitionContext = createContext({
   definition: null,
@@ -27,6 +28,7 @@ export function DynamicQuestionnaireOverride({
   const remoteDefinitionsEnabled = process.env.NEXT_PUBLIC_DATABASE_TYPE === "firebase";
   const audienceKey = `${visaType || ""}|${visaContext || ""}`;
   const [resolved, setResolved] = useState({ key: null, definition: null, status: "idle" });
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   const replaceDefinition = useCallback((definition) => {
     setResolved({ key: audienceKey, definition, status: "ready" });
@@ -41,24 +43,21 @@ export function DynamicQuestionnaireOverride({
       };
     }
 
-    getRemoteQuestionnaireDefinitionStrict({ visaContext, visaType })
+    setResolved({ key: audienceKey, definition: null, status: "loading" });
+    withQuestionnaireLoadTimeout(() => getRemoteQuestionnaireDefinitionStrict({ visaContext, visaType }))
       .then((definition) => {
         if (!cancelled) setResolved({ key: audienceKey, definition, status: "ready" });
       })
       .catch((error) => {
         console.warn("Could not resolve a remote questionnaire page.", error);
-        if (!cancelled) setResolved({ key: audienceKey, definition: null, status: "error" });
+        if (!cancelled) setResolved({ key: audienceKey, definition: null, status: "error", errorCode: error?.code });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [audienceKey, ready, remoteDefinitionsEnabled, visaContext, visaType]);
+  }, [audienceKey, ready, remoteDefinitionsEnabled, retryAttempt, visaContext, visaType]);
 
-  const normalizedRoute = String(route || "").split("?")[0];
-  const remotePage = resolved.key === audienceKey
-    ? resolved.definition?.pages?.find((page) => page.route === normalizedRoute) || null
-    : null;
   const activeDefinition = remoteDefinitionsEnabled && resolved.key === audienceKey
     ? resolved.definition
     : null;
@@ -67,34 +66,18 @@ export function DynamicQuestionnaireOverride({
     replaceDefinition,
   }), [activeDefinition, replaceDefinition]);
 
-  let content = children;
-  if (remoteDefinitionsEnabled && (!ready || resolved.key !== audienceKey)) {
-    content = (
-      <div className="rounded-2xl bg-white p-8 text-sm text-gray-600 shadow-md">
-        Loading questionnaire…
-      </div>
-    );
-  } else if (remoteDefinitionsEnabled && resolved.status === "error") {
-    content = (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-sm text-red-800 shadow-md">
-        We could not securely load the current questionnaire. Refresh the page to try again.
-      </div>
-    );
-  } else if (remotePage) {
-    content = (
-      <DynamicQuestionnairePage
-        key={`${resolved.definition.id}:${resolved.definition.revision}:${remotePage.id}`}
-        definitionId={resolved.definition.id}
-        definitionRevision={resolved.definition.revision}
-        pageDefinition={remotePage}
-        route={route}
-      />
-    );
-  }
-
   return (
     <ActiveQuestionnaireDefinitionContext.Provider value={contextValue}>
-      {content}
+      <QuestionnaireDefinitionContent
+        definition={activeDefinition}
+        errorCode={resolved.errorCode}
+        hasLoadError={remoteDefinitionsEnabled && resolved.key === audienceKey && resolved.status === "error"}
+        loading={remoteDefinitionsEnabled && (!ready || (visaType && (resolved.key !== audienceKey || resolved.status === "loading")))}
+        onRetry={() => setRetryAttempt((attempt) => attempt + 1)}
+        route={route}
+      >
+        {children}
+      </QuestionnaireDefinitionContent>
     </ActiveQuestionnaireDefinitionContext.Provider>
   );
 }

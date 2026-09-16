@@ -9,8 +9,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
-export function Field(props) {
+export function Field(originalProps) {
+  const translate = useQuestionnaireCopy("all", originalProps.name);
+  const props = {
+    ...originalProps,
+    label: translate(originalProps.label),
+    description: translate(originalProps.description),
+    placeholder: translate(originalProps.placeholder),
+    options: originalProps.options?.map((option) => ({ ...option, label: translate(option.label) })),
+  };
   const { field, fieldState } = useController({
     name: props.name,
     control: props.control,

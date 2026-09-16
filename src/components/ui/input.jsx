@@ -1,8 +1,12 @@
+"use client";
+
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
+  const translate = useQuestionnaireCopy("placeholders", props.name || props.id);
   // h-9 to match icon buttons and default buttons.
   return (
     <input
@@ -14,6 +18,7 @@ const Input = React.forwardRef(({ className, type, ...props }, ref) => {
       )}
       ref={ref}
       {...props}
+      placeholder={translate(props.placeholder)}
     />
   );
 });

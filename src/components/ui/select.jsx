@@ -5,12 +5,17 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { translateQuestionnaireChildren, useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext"
 
 const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
 
-const SelectValue = SelectPrimitive.Value
+const SelectValue = React.forwardRef(({ placeholder, ...props }, ref) => {
+  const translate = useQuestionnaireCopy("placeholders");
+  return <SelectPrimitive.Value ref={ref} placeholder={translate(placeholder)} {...props} />
+})
+SelectValue.displayName = SelectPrimitive.Value.displayName
 
 const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
@@ -97,7 +102,9 @@ const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
 ))
 SelectLabel.displayName = SelectPrimitive.Label.displayName
 
-const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => (
+const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => {
+  const translate = useQuestionnaireCopy("options");
+  return (
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
@@ -112,9 +119,10 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
       </SelectPrimitive.ItemIndicator>
     </span>
 
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    <SelectPrimitive.ItemText>{translateQuestionnaireChildren(children, translate)}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
-))
+  )
+})
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
 const SelectSeparator = React.forwardRef(({ className, ...props }, ref) => (

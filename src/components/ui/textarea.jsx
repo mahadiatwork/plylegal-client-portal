@@ -1,7 +1,11 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 const Textarea = React.forwardRef(({ className, ...props }, ref) => {
+  const translate = useQuestionnaireCopy("placeholders", props.name || props.id);
   return (
     <textarea
       className={cn(
@@ -11,6 +15,7 @@ const Textarea = React.forwardRef(({ className, ...props }, ref) => {
       )}
       ref={ref}
       {...props}
+      placeholder={translate(props.placeholder)}
     />
   );
 });

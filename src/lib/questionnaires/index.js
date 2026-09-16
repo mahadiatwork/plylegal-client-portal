@@ -1,4 +1,6 @@
 import { questionnaireDefinitions } from "./temporaryWork482.definition.js";
+import { loadAuthenticatedQuestionnaireDefinition } from "./remoteLoading.js";
+import { findQuestionnaireDefinitionPage } from "./pageRoutes.js";
 import {
   isSafeQuestionnaireRoute,
   validateQuestionnaireDefinition,
@@ -114,10 +116,7 @@ function canLoadRemoteDefinitions() {
 
 async function loadLegacyPages(firestore, db, definitionId) {
   const pagesSnap = await firestore.getDocs(
-    firestore.query(
-      firestore.collection(db, "questionnaireDefinitions", definitionId, "pages"),
-      firestore.orderBy("order", "asc")
-    )
+    firestore.collection(db, "questionnaireDefinitions", definitionId, "pages")
   );
 
   return pagesSnap.docs.map((pageDoc) => ({
@@ -144,12 +143,7 @@ async function hydrateRemoteDefinition(firestore, db, definitionSnap) {
   );
 }
 
-async function loadFirestoreDefinitionUnchecked({ definitionId, visaType, visaContext } = {}) {
-  if (!canLoadRemoteDefinitions()) return null;
-
-  const firestore = await import("firebase/firestore");
-  const firebase = await import("@/lib/firebase");
-
+async function readFirestoreDefinition(firestore, firebase, { definitionId, visaType, visaContext } = {}) {
   if (definitionId) {
     const definitionSnap = await firestore.getDoc(
       firestore.doc(firebase.db, "questionnaireDefinitions", definitionId)
@@ -172,20 +166,53 @@ async function loadFirestoreDefinitionUnchecked({ definitionId, visaType, visaCo
     )
   );
 
-  const matchingSnapshots = definitionsSnap.docs.filter((definitionSnap) =>
-    questionnaireDefinitionMatches(
-      { ...definitionSnap.data(), id: definitionSnap.id },
-      { visaType, visaContext }
-    )
+  const selected = selectActiveQuestionnaireDefinition(
+    definitionsSnap.docs.map((definitionSnap) => ({ ...definitionSnap.data(), id: definitionSnap.id })),
+    { visaType, visaContext }
   );
+  if (!selected) return null;
 
-  const definitions = await Promise.all(
-    matchingSnapshots.map((definitionSnap) =>
-      hydrateRemoteDefinition(firestore, firebase.db, definitionSnap)
-    )
+  return hydrateRemoteDefinition(
+    firestore,
+    firebase.db,
+    definitionsSnap.docs.find((definitionSnap) => definitionSnap.id === selected.id)
   );
+}
 
-  return selectActiveQuestionnaireDefinition(definitions.filter(Boolean), { visaType, visaContext });
+async function readServerDefinition(args, token) {
+  const params = new URLSearchParams();
+  for (const key of ["definitionId", "visaType", "visaContext"]) {
+    if (args[key]) params.set(key, args[key]);
+  }
+  const response = await fetch(`/api/questionnaires/definition?${params}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.success !== true || !("definition" in payload)) {
+    const error = new Error("Unable to load the published questionnaire. Please try again.");
+    error.code = response.status === 401 ? "unauthenticated" : "unavailable";
+    throw error;
+  }
+  if (payload.definition === null) return null;
+  if (!questionnaireDefinitionMatches(payload.definition, args)) {
+    throw new Error("The published questionnaire does not match this application.");
+  }
+  return normalizeQuestionnaireDefinition(payload.definition);
+}
+
+async function loadFirestoreDefinitionUnchecked(args = {}) {
+  if (!canLoadRemoteDefinitions()) return null;
+
+  const [firestore, firebase] = await Promise.all([
+    import("firebase/firestore"),
+    import("@/lib/firebase"),
+  ]);
+  return loadAuthenticatedQuestionnaireDefinition({
+    auth: firebase.auth,
+    loadFromFirestore: () => readFirestoreDefinition(firestore, firebase, args),
+    loadFromServer: (token) => readServerDefinition(args, token),
+  });
 }
 
 async function loadFirestoreDefinition(args = {}) {
@@ -216,7 +243,7 @@ export async function getRemoteQuestionnairePage({ route, ...args } = {}) {
   const definition = await getRemoteQuestionnaireDefinition(args);
   if (!definition) return null;
 
-  return definition.pages.find(
+  return findQuestionnaireDefinitionPage(definition, normalizedRoute) || definition.pages.find(
     (page) => page.route === normalizedRoute || page.id === route
   ) || null;
 }

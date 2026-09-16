@@ -185,6 +185,7 @@ export default function IntakeLayout({ children }) {
     : null;
   const remoteQuestionnaireReady =
     mounted &&
+    authSnap.isAuthenticated &&
     !draftSnap.isLoading &&
     (!appIdFromUrl || String(draftSnap.currentApplicationId) === String(appIdFromUrl)) &&
     (visaType !== "temporary-work" || resolvedVisaContext === "186" || resolvedVisaContext === "482");

@@ -7,6 +7,8 @@ import {
   getQuestionnairePageReviewItems,
   getQuestionnairePageSavedValues,
 } from "./questionnaires/answers.js";
+import { applyLegacyQuestionnaireReviewCopy } from "./questionnaires/legacyCopy.js";
+import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
 
 const INTERNAL_KEYS = new Set(["id", "__typename", "createdAt", "updatedAt", "userId", "visaContext", "zohoDependentId", "zohoLastSyncedAt", "zohoSyncError", "zohoSyncStatus", "matterDocumentId"]);
 const SHARED_SUFFIXES = { "travel-history": "travel", "contact-details": "contact_details", "future-travel": "future_travel", "future-addresses": "future_addresses" };
@@ -137,8 +139,8 @@ export function buildTargetVisaReviewSections({ visaType, draft = {}, appId, que
   for (const page of getTargetVisaPages(visaType, draft)) {
     const suffix = page.href.split("/").pop();
     if (suffix === "start") continue;
-    const dynamicPage = dynamicPagesByRoute.get(page.href);
-    if (dynamicPage) {
+    const dynamicPage = dynamicPagesByRoute.get(page.href) || findQuestionnaireDefinitionPage(questionnaireDefinition, page.href);
+    if (dynamicPage && dynamicPage.metadata?.renderer !== "legacy") {
       const profileId = page.profile ? page.profileId : null;
       const items = getQuestionnairePageReviewItems(
         dynamicPage,
@@ -180,10 +182,10 @@ export function buildTargetVisaReviewSections({ visaType, draft = {}, appId, que
     if (suffix === "contact-details" && page.href.includes("/all-applicants/")) data = visibleContactData(data, visaType);
     formatLabel = reviewLabelForPage(page, formatLabel);
     const normalized = normalize(data, names);
-    const items = Object.entries(normalized).filter(([, value]) => hasReviewValue(value)).map(([key, value]) => ({ label: formatLabel(key), value }));
+    const items = applyLegacyQuestionnaireReviewCopy(Object.entries(normalized).filter(([, value]) => hasReviewValue(value)).map(([key, value]) => ({ label: formatLabel(key), value })), dynamicPage);
     if (!items.length) continue;
     sections.push({
-      id: page.key.replace(/[^a-zA-Z0-9-]+/g, "-"), title, items, formatLabel,
+      id: page.key.replace(/[^a-zA-Z0-9-]+/g, "-"), title: dynamicPage?.title || title, items, formatLabel,
       editHref: buildIntakeHref({ appId, internalHref: page.href, visaType, profileId: page.profile ? page.profileId : undefined }),
     });
   }

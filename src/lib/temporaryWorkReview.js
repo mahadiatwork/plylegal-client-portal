@@ -11,6 +11,8 @@ import {
   getQuestionnairePageReviewItems,
   getQuestionnairePageSavedValues,
 } from "./questionnaires/answers.js";
+import { applyLegacyQuestionnaireReviewCopy } from "./questionnaires/legacyCopy.js";
+import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
 
 const PROFILE_RELATIONSHIP_ORDER = {
   main_applicant: 0,
@@ -859,7 +861,7 @@ function getNonMigratingSubpageData(member, pathSuffix) {
   return {};
 }
 
-function buildNonMigratingSections(draft, context, options) {
+function buildNonMigratingSections(draft, context, options, questionnaireDefinition) {
   const members = Array.isArray(draft?.non_migrating_members) ? draft.non_migrating_members : [];
   if (members.length === 0) return [];
 
@@ -884,12 +886,13 @@ function buildNonMigratingSections(draft, context, options) {
 
   const memberSections = members.flatMap((member, memberIndex) =>
     NON_MIGRATING_MEMBER_SUBPAGES.map((subpage) => {
-      const items = buildItemsFromObject(getNonMigratingSubpageData(member, subpage.pathSuffix), context);
+      const template = findQuestionnaireDefinitionPage(questionnaireDefinition, `/intake/temporary-work/non-migrating/${member.id}/${subpage.pathSuffix}`);
+      const items = applyLegacyQuestionnaireReviewCopy(buildItemsFromObject(getNonMigratingSubpageData(member, subpage.pathSuffix), context), template);
       if (items.length === 0) return null;
 
       return {
         id: `other-family-${slugify(member.id)}-${slugify(subpage.pathSuffix)}`,
-        title: `Other Family ${memberIndex + 1} - ${subpage.title}`,
+        title: `Other Family ${memberIndex + 1} - ${template?.title || subpage.title}`,
         subtitle: getNonMigratingDisplayName(member),
         editHref: buildHref({
           ...options,
@@ -930,13 +933,13 @@ export function buildTemporaryWorkReviewSections({
 
   profiles.forEach((profile, profileIndex) => {
     getSubpagesForProfile(profile, effectiveVisaContext).forEach((subpage) => {
-      const dynamicPage = dynamicPagesByRoute.get(subpage.href);
-      const items = dynamicPage
+      const dynamicPage = dynamicPagesByRoute.get(subpage.href) || findQuestionnaireDefinitionPage(questionnaireDefinition, subpage.href);
+      const items = dynamicPage && dynamicPage.metadata?.renderer !== "legacy"
         ? getQuestionnairePageReviewItems(
             dynamicPage,
             getQuestionnairePageSavedValues(draft, dynamicPage, profile.id)
           )
-        : buildItemsFromObject(getProfileSectionData(draft, profile, subpage.sectionKey), context);
+        : applyLegacyQuestionnaireReviewCopy(buildItemsFromObject(getProfileSectionData(draft, profile, subpage.sectionKey), context), dynamicPage);
       if (items.length === 0) return;
 
       sections.push({
@@ -953,16 +956,16 @@ export function buildTemporaryWorkReviewSections({
     });
   });
 
-  sections.push(...buildNonMigratingSections(draft, context, options));
+  sections.push(...buildNonMigratingSections(draft, context, options, questionnaireDefinition));
 
   SHARED_SECTIONS.forEach((section) => {
     const dynamicPage = dynamicPagesByRoute.get(section.href);
-    const items = dynamicPage
+    const items = dynamicPage && dynamicPage.metadata?.renderer !== "legacy"
       ? getQuestionnairePageReviewItems(
           dynamicPage,
           getQuestionnairePageSavedValues(draft, dynamicPage)
         )
-      : buildItemsFromObject(draft?.[section.key], context);
+      : applyLegacyQuestionnaireReviewCopy(buildItemsFromObject(draft?.[section.key], context), dynamicPage);
     if (items.length === 0) return;
 
     sections.push({

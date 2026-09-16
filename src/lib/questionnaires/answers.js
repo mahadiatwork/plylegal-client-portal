@@ -19,13 +19,17 @@ export function getQuestionnaireFieldNames(question) {
 
 function getQuestionnaireEmptyValue(question) {
   if (question.type === "checkbox") return false;
-  if (question.type === "repeater") return [];
+  if (question.type === "repeater") return question.metadata?.collection === "object" ? {} : [];
   return "";
 }
 
 function valuesMatch(left, right) {
   if (Array.isArray(left) && Array.isArray(right)) {
-    return left.length === right.length && left.every((value, index) => value === right[index]);
+    return left.length === right.length && left.every((value, index) => valuesMatch(value, right[index]));
+  }
+  if (left && right && typeof left === "object" && typeof right === "object") {
+    const keys = Object.keys(left);
+    return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key) && valuesMatch(left[key], right[key]));
   }
   return left === right;
 }
@@ -35,7 +39,7 @@ function valuesMatch(left, right) {
  * This runs before validation and persistence as a backstop for conditional fields
  * restored by an asynchronous form reset.
  */
-export function sanitizeQuestionnairePageValues(page, values = {}) {
+export function sanitizeQuestionnairePageValues(page, values = {}, ancestorsVisible = true) {
   const sanitized = { ...values };
   const questions = page?.questions || [];
   let changed = true;
@@ -43,7 +47,7 @@ export function sanitizeQuestionnairePageValues(page, values = {}) {
 
   function countQuestions(items = []) {
     return items.reduce(
-      (count, question) => count + 1 + countQuestions(question.followUps || []),
+      (count, question) => count + 1 + countQuestions(question.followUps || []) + countQuestions(question.metadata?.fields || []),
       0
     );
   }
@@ -66,11 +70,24 @@ export function sanitizeQuestionnairePageValues(page, values = {}) {
             }
           });
         }
+        if (question.type === "repeater" && Array.isArray(question.metadata?.fields)) {
+          const value = sanitized[question.answerKey];
+          const sanitizeRow = (row) => row && typeof row === "object" && !Array.isArray(row)
+            ? sanitizeQuestionnairePageValues({ questions: question.metadata.fields }, row, visible)
+            : row;
+          const nextValue = question.metadata.collection === "object"
+            ? sanitizeRow(value)
+            : Array.isArray(value) ? value.map(sanitizeRow) : value;
+          if (!valuesMatch(value, nextValue)) {
+            sanitized[question.answerKey] = nextValue;
+            changed = true;
+          }
+        }
         if (question.followUps?.length) sanitizeQuestions(question.followUps, visible);
       });
     }
 
-    sanitizeQuestions(questions);
+    sanitizeQuestions(questions, ancestorsVisible);
   }
 
   return sanitized;
@@ -78,6 +95,9 @@ export function sanitizeQuestionnairePageValues(page, values = {}) {
 
 export function questionnaireAnswerHasValue(value, question) {
   if (Array.isArray(value)) return value.length > 0;
+  if (question.type === "repeater" && value && typeof value === "object") {
+    return Object.values(value).some((entry) => questionnaireReviewValueHasValue(entry));
+  }
   if (question.type === "checkbox") return value === true;
   if (typeof value === "boolean") return true;
   if (typeof value === "string") return value.trim() !== "";
@@ -87,15 +107,15 @@ export function questionnaireAnswerHasValue(value, question) {
 export function getQuestionnairePageValidationIssues(page, values = {}) {
   const issues = [];
 
-  function validateQuestions(questions = [], ancestorsVisible = true) {
+  function validateQuestions(questions = [], ancestorsVisible = true, source = values, prefix = "") {
     questions.forEach((question) => {
-      const visible = ancestorsVisible && evaluateVisibleIf(question.visibleIf, values);
+      const visible = ancestorsVisible && evaluateVisibleIf(question.visibleIf, source);
       if (visible) {
         const fieldNames = getQuestionnaireFieldNames(question);
         if (question.required) fieldNames.forEach((fieldName) => {
-          if (!questionnaireAnswerHasValue(values[fieldName], question)) {
+          if (!questionnaireAnswerHasValue(source[fieldName], question)) {
             issues.push({
-              fieldName,
+              fieldName: `${prefix}${fieldName}`,
               message: question.validation?.requiredMessage || "This field is required",
               questionId: question.id,
             });
@@ -107,19 +127,40 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
           Array.isArray(question.options) &&
           question.options.length > 0
         ) {
-          const value = values[question.answerKey];
+          const value = source[question.answerKey];
           const hasValue = questionnaireAnswerHasValue(value, question);
           const isAvailable = question.options.some((option) => option.value === value);
           if (hasValue && !isAvailable) {
             issues.push({
-              fieldName: question.answerKey,
+              fieldName: `${prefix}${question.answerKey}`,
               message: "Select one of the available options",
               questionId: question.id,
             });
           }
         }
+        if (question.type === "repeater" && Array.isArray(question.metadata?.fields)) {
+          const value = source[question.answerKey];
+          const rowPrefix = `${prefix}${question.answerKey}.`;
+          if (question.metadata.collection === "object") {
+            if (value != null && (typeof value !== "object" || Array.isArray(value))) {
+              issues.push({ fieldName: `${prefix}${question.answerKey}`, message: "Enter valid details", questionId: question.id });
+            } else {
+              validateQuestions(question.metadata.fields, visible, value || {}, rowPrefix);
+            }
+          } else if (value != null && !Array.isArray(value)) {
+            issues.push({ fieldName: `${prefix}${question.answerKey}`, message: "Enter a valid list of details", questionId: question.id });
+          } else {
+            (value || []).forEach((row, index) => {
+              if (!row || typeof row !== "object" || Array.isArray(row)) {
+                issues.push({ fieldName: `${rowPrefix}${index}`, message: "Enter valid details", questionId: question.id });
+              } else {
+                validateQuestions(question.metadata.fields, visible, row, `${rowPrefix}${index}.`);
+              }
+            });
+          }
+        }
       }
-      if (question.followUps?.length) validateQuestions(question.followUps, visible);
+      if (question.followUps?.length) validateQuestions(question.followUps, visible, source, prefix);
     });
   }
 
@@ -145,6 +186,14 @@ function getQuestionnaireReviewValue(question, values) {
   }
 
   const value = values[question.answerKey];
+  if (question.type === "repeater" && Array.isArray(question.metadata?.fields)) {
+    const reviewRow = (row) => Object.fromEntries(getQuestionnairePageReviewItems(
+      { questions: question.metadata.fields }, row && typeof row === "object" ? row : {},
+    ).map((item) => [item.label, item.value]));
+    return question.metadata.collection === "object"
+      ? reviewRow(value)
+      : Array.isArray(value) ? value.map(reviewRow) : [];
+  }
   const options = question.type === "yesNo" && !question.options?.length
     ? [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]
     : question.options || [];

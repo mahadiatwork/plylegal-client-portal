@@ -1,10 +1,12 @@
 "use client";
 
-import { useController } from "react-hook-form";
+import { useController, useFieldArray, useWatch } from "react-hook-form";
 import { Field } from "@/components/Field";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ConditionalBlock } from "@/components/questionnaire/ConditionalBlock";
+import { getQuestionnaireRowDefaults, scopeQuestionnaireRowField } from "@/lib/questionnaires/repeaters";
 
 const YES_NO_OPTIONS = [
   { value: "yes", label: "Yes" },
@@ -95,11 +97,67 @@ function DatePartsField({ question, form }) {
   );
 }
 
-function RepeaterField({ question, repeaterRegistry, form }) {
+function RepeaterQuestions({ questions, prefix, values, form, optionSources, repeaterRegistry }) {
+  return questions.map((question) => {
+    const defaults = Object.fromEntries(Object.entries(getQuestionnaireRowDefaults([question]))
+      .map(([name, value]) => [`${prefix}.${name}`, value]));
+    return (
+      <ConditionalBlock key={question.id} clearWhenHidden={question.clearWhenHidden} fieldDefaults={defaults} form={form} values={values} visibleIf={question.visibleIf}>
+        <div className="space-y-4">
+          <QuestionField form={form} optionSources={optionSources} question={scopeQuestionnaireRowField(question, prefix)} repeaterRegistry={repeaterRegistry} />
+          {question.followUps?.length > 0 && <RepeaterQuestions questions={question.followUps} prefix={prefix} values={values} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} />}
+        </div>
+      </ConditionalBlock>
+    );
+  });
+}
+
+function ObjectRepeaterField({ question, form, optionSources, repeaterRegistry }) {
+  const values = useWatch({ control: form.control, name: question.answerKey }) || {};
+  return <div className="space-y-5 rounded-lg border border-border p-5"><RepeaterQuestions questions={question.metadata.fields} prefix={question.answerKey} values={values} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} /></div>;
+}
+
+function ArrayRepeaterField({ question, form, optionSources, repeaterRegistry }) {
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: question.answerKey, keyName: "_questionnaireRowId" });
+  const values = useWatch({ control: form.control, name: question.answerKey }) || [];
+  return (
+    <div className="space-y-4">
+      {fields.map((field, index) => (
+        <div key={field._questionnaireRowId} className="space-y-5 rounded-lg border border-border p-5">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm font-semibold">{question.label} {index + 1}</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => remove(index)} aria-label={`Remove ${question.label} ${index + 1}`}>Remove</Button>
+          </div>
+          <RepeaterQuestions questions={question.metadata.fields} prefix={`${question.answerKey}.${index}`} values={values[index] || {}} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} />
+        </div>
+      ))}
+      <Button type="button" variant="outline" onClick={() => append({ id: globalThis.crypto?.randomUUID?.() || `row_${Date.now()}_${Math.random().toString(36).slice(2)}`, ...getQuestionnaireRowDefaults(question.metadata.fields) })}>{question.metadata.addLabel || `Add ${question.label}`}</Button>
+    </div>
+  );
+}
+
+function SchemaRepeaterField(props) {
+  const { question, form } = props;
+  const { fieldState } = useController({ control: form.control, name: question.answerKey, defaultValue: question.metadata.collection === "object" ? {} : [] });
+  return (
+    <div className="space-y-3">
+      <Label className="text-sm font-medium">{question.label}{question.required && <span className="ml-1 text-red-600">*</span>}</Label>
+      {question.description && <p className="text-sm text-gray-600">{question.description}</p>}
+      {question.metadata.collection === "object" ? <ObjectRepeaterField {...props} /> : <ArrayRepeaterField {...props} />}
+      {fieldState.error?.message && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+    </div>
+  );
+}
+
+function RepeaterField({ question, repeaterRegistry, form, optionSources }) {
   const Component = question.component ? repeaterRegistry?.[question.component] : null;
 
   if (Component) {
     return <Component question={question} form={form} />;
+  }
+
+  if (Array.isArray(question.metadata?.fields) && question.metadata.fields.length > 0) {
+    return <SchemaRepeaterField question={question} repeaterRegistry={repeaterRegistry} form={form} optionSources={optionSources} />;
   }
 
   return (
@@ -124,7 +182,7 @@ export function QuestionField({ form, optionSources, question, repeaterRegistry 
   }
 
   if (question.type === "repeater") {
-    return <RepeaterField question={question} repeaterRegistry={repeaterRegistry} form={form} />;
+    return <RepeaterField question={question} repeaterRegistry={repeaterRegistry} form={form} optionSources={optionSources} />;
   }
 
   if (question.type === "yesNo" || question.type === "radio") {

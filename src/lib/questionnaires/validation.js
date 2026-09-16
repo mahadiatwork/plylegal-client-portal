@@ -39,7 +39,7 @@ const SAFE_ROUTE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const SAFE_DATA_KEY = /^[A-Za-z0-9](?:[A-Za-z0-9_-]{0,254}[A-Za-z0-9])?$/;
 const RESERVED_DATA_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const RESERVED_WORKFLOW_ROUTE = /\/(?:start|profile|submit)$/;
-const PROFILE_QUESTIONNAIRE_ROUTE = /^\/intake\/(?:temporary-work|partner|protection)\/(?:main-applicant|spouse-partner|children\/[^/]+)\//;
+const PROFILE_QUESTIONNAIRE_ROUTE = /^\/intake\/(?:temporary-work|partner|protection)\/(?:main-applicant|spouse-partner|children\/[^/]+|non-migrating\/[^/]+)\//;
 const SUPPORTED_TEMPORARY_WORK_VISA_CONTEXTS = new Set(["482", "186"]);
 
 function isNonEmptyString(value) {
@@ -313,6 +313,29 @@ function validateQuestion(question, path, state, issues, depth = 1) {
 
   validateVisibleIf(question.visibleIf, path, issues);
 
+  if (question.metadata?.fields !== undefined) {
+    if (question.type !== "repeater") {
+      issues.push(`${path}.metadata.fields is only supported for repeater questions`);
+    } else if (!Array.isArray(question.metadata.fields) || question.metadata.fields.length === 0) {
+      issues.push(`${path}.metadata.fields must be a non-empty array of row questions`);
+    } else {
+      if (question.metadata.collection !== undefined && !["array", "object"].includes(question.metadata.collection)) {
+        issues.push(`${path}.metadata.collection must be "array" or "object"`);
+      }
+      const rowState = {
+        ...state,
+        storageNamespace: `${state.storageNamespace}.${question.answerKey}`,
+        seenAnswerKeys: new Set(),
+      };
+      question.metadata.fields.forEach((field, index) => {
+        validateQuestion(field, `${path}.metadata.fields[${index}]`, rowState, issues, depth + 1);
+      });
+      state.questionCount = rowState.questionCount;
+      state.hasQuestionLimitIssue = rowState.hasQuestionLimitIssue;
+      validatePageConditionReferences(question.metadata.fields, `${path}.metadata.fields`, issues);
+    }
+  }
+
   if (question.followUps !== undefined) {
     if (!Array.isArray(question.followUps)) {
       issues.push(`${path}.followUps must be an array`);
@@ -580,7 +603,13 @@ export function getQuestionnaireDefinitionIssues(definition) {
       return;
     }
 
-    const storageNamespace = `${page.scope || "shared"}:${page.sectionKey || ""}`;
+    const profileRole = page.metadata?.profileRole || (page.route?.includes("/main-applicant/") ? "main_applicant"
+      : page.route?.includes("/spouse-partner/") ? "spouse"
+        : page.route?.includes("/children/") ? "child"
+          : page.route?.includes("/non-migrating/") ? "non_migrating" : "");
+    const storageNamespace = page.scope === "profile"
+      ? `profile:${profileRole}:${page.sectionKey || ""}`
+      : `shared:${page.sectionKey || ""}`;
     const seenAnswerKeys = seenAnswerKeysByStorage.get(storageNamespace) || new Set();
     seenAnswerKeysByStorage.set(storageNamespace, seenAnswerKeys);
 
