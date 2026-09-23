@@ -63,6 +63,7 @@ function setup(t, slug = "482") {
     [`resourceTemplates/${templateSlug}/items/pdf`, {
       status: "active", kind: "file", name: "Guide.pdf", mimeType: "application/pdf",
       externalUrl: shareUrl, downloadAllowed: false, size: 1000, category: "Guides", order: 2,
+      description: "Use Code 33",
     }],
     [`resourceTemplates/${templateSlug}/items/note`, {
       status: "active", kind: "note", name: "Instructions", noteText: "Read the guide", order: 1,
@@ -83,7 +84,7 @@ function setup(t, slug = "482") {
     }],
     ["applications/matter-1/resources/matter-link", {
       status: "active", type: "link", title: "Matter link", url: "https://example.test/matter",
-      category: "Matter guides", order: 2,
+      category: "Matter guides", order: 2, description: "Matter-specific instructions",
     }],
     ["applications/matter-1/resources/matter-file", {
       status: "active", type: "file", title: "Matter file", fileName: "matter.pdf",
@@ -202,6 +203,8 @@ test("matter resources are owner-scoped, active-only, ordered, and stripped of r
   assert.equal(byId["matter-note"].category, "Matter notes");
   assert.equal(byId["matter-note"].order, 1);
   assert.equal(byId["matter-link"].externalUrl, "https://example.test/matter");
+  assert.equal(byId["matter-link"].description, "Matter-specific instructions");
+  assert.equal(byId["matter-link"].noteText, "Matter-specific instructions");
   assert.equal(byId["matter-file"].viewerUrl, shareUrl);
   assert.equal(byId["matter-file"].downloadAllowed, false);
   assert.equal(byId["matter-file"].externalUrl, "");
@@ -210,6 +213,29 @@ test("matter resources are owner-scoped, active-only, ordered, and stripped of r
   assert.equal(byId["matter-raw-file"].externalUrl, "");
   assert.equal(byId["matter-raw-file"].category, "For this matter");
   assert.doesNotMatch(JSON.stringify(data), /private-file|source-url-sentinel|download-url-sentinel|Correction|Hidden|Archived/);
+});
+
+test("template, shared and matter resources expose descriptions separately from note content", async (t) => {
+  const { documents } = setup(t);
+  documents.get("resources/general").description = "General instructions";
+  documents.get("resourceTemplates/482/items/note").noteText = "Template note content";
+  documents.get("resourceTemplates/482/items/note").description = "Legacy note fallback";
+
+  const templateData = await (await template.GET(request())).json();
+  const sharedData = await (await shared.GET(request("shared"))).json();
+  const matterData = await (await matter.GET(request("matter"))).json();
+  const templateItems = Object.fromEntries(templateData.items.map((item) => [item.id, item]));
+  const sharedItems = Object.fromEntries(sharedData.resources.map((item) => [item.id, item]));
+  const matterItems = Object.fromEntries(matterData.items.map((item) => [item.id, item]));
+
+  assert.equal(templateItems.pdf.description, "Use Code 33");
+  assert.equal(templateItems.pdf.noteText, "Use Code 33");
+  assert.equal(templateItems.note.description, "Legacy note fallback");
+  assert.equal(templateItems.note.noteText, "Template note content");
+  assert.equal(sharedItems.general.description, "General instructions");
+  assert.equal(sharedItems.general.noteText, "General instructions");
+  assert.equal(matterItems["matter-link"].description, "Matter-specific instructions");
+  assert.equal(matterItems["matter-link"].noteText, "Matter-specific instructions");
 });
 
 test("missing/invalid tokens and another owner's application cannot read resources", async (t) => {

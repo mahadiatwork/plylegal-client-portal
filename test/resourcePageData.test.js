@@ -70,7 +70,7 @@ test("resource page data combines matter items with shared fallback when a templ
         success: true,
         resources: [{
           id: "shared-link", type: "link", title: "Shared link", category: "Guides",
-          url: "https://example.test/shared",
+          url: "https://example.test/shared", description: "Use Code 33",
         }],
       });
     }
@@ -89,6 +89,8 @@ test("resource page data combines matter items with shared fallback when a templ
     { id: "shared-link", resourceSource: "shared", order: LAST_RESOURCE_ORDER },
     { id: "matter-note", resourceSource: "matter", order: 7 },
   ]);
+  assert.equal(result.items[0].description, "Use Code 33");
+  assert.equal(result.items[0].noteText, "Use Code 33");
   assert.deepEqual(calls, [
     "/api/resources/template?applicationId=matter-1",
     "/api/resources/matter?applicationId=matter-1",

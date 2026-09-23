@@ -96,6 +96,28 @@ test("document cards show readable file types instead of raw office MIME types",
   assert.doesNotMatch(html, /application\/vnd|wordprocessingml/);
 });
 
+test("link and file cards render optional descriptions while notes keep their own content", () => {
+  const linkHtml = render({
+    kind: "link", name: "Australian Police Check", externalUrl: "https://example.test/check",
+    description: "Use Code 33\nwhen applying.",
+  });
+  const fileHtml = render({
+    kind: "file", name: "Checklist.pdf", downloadAllowed: false, viewerUrl,
+    description: "Complete this before your appointment.",
+  });
+  const noteHtml = render({
+    kind: "note", name: "Note", description: "Do not render this description",
+    noteText: "Keep rendering note content.",
+  });
+
+  assert.match(linkHtml, /Use Code 33/);
+  assert.match(linkHtml, /when applying\./);
+  assert.match(linkHtml, /whitespace-pre-wrap/);
+  assert.match(fileHtml, /Complete this before your appointment\./);
+  assert.match(noteHtml, /Keep rendering note content\./);
+  assert.doesNotMatch(noteHtml, /Do not render this description/);
+});
+
 test("legacy or unsafe file cards cannot open files and notes and links still render", () => {
   for (const item of [
     { kind: "file", name: "Legacy.pdf", externalUrl: viewerUrl, downloadUrl: viewerUrl },

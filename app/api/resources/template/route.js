@@ -110,6 +110,7 @@ export async function GET(request) {
           externalUrl: kind === "link" ? data.externalUrl || data.publicUrl || data.url || "" : "",
           viewerUrl: kind === "file" ? getResourceViewerUrl(data) : "",
           downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
+          description: data.description || "",
           noteText: data.noteText || data.body || data.content || data.description || "",
           noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
           mimeType: data.mimeType || null,

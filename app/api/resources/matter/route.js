@@ -73,6 +73,7 @@ function normalizeMatterResource(doc) {
     externalUrl,
     viewerUrl,
     downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
+    description: data.description || "",
     noteText: data.noteText || data.content || data.description || "",
     noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
     mimeType: data.mimeType || null,

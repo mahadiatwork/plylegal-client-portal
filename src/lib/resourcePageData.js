@@ -39,6 +39,7 @@ function mapSharedResourcesToItems(resources) {
       externalUrl: resource.url || resource.externalUrl || "",
       viewerUrl: resource.viewerUrl || "",
       downloadAllowed: resource.downloadAllowed,
+      description: resource.description || "",
       noteText: resource.noteText || resource.description || "",
       noteHtml: resource.noteHtml || "",
       mimeType: resource.mimeType || null,

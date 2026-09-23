@@ -330,6 +330,7 @@ export type ResourceTemplateItem = {
   externalUrl: string;
   viewerUrl?: string;
   downloadAllowed?: false | null;
+  description?: string;
   noteText?: string;
   noteHtml?: string;
   mimeType: string | null;

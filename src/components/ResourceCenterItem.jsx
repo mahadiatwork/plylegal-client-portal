@@ -24,9 +24,10 @@ function formatFileSize(size) {
 export function ResourceCenterItem({ item }) {
   const isNote = item.kind === "note";
   const isFile = item.kind === "file";
+  const isLink = item.kind === "link";
   const Icon = isFile ? FileText : isNote ? ScrollText : LinkIcon;
   const viewerUrl = isFile ? getResourceViewerUrl(item) : "";
-  const actionUrl = isFile ? viewerUrl : item.kind === "link" ? item.externalUrl : "";
+  const actionUrl = isFile ? viewerUrl : isLink ? item.externalUrl : "";
   const meta = [
     isFile ? fileTypeLabel(item) : isNote ? "Note" : "Link",
     formatFileSize(item.size),
@@ -42,6 +43,9 @@ export function ResourceCenterItem({ item }) {
         <div className="min-w-0 flex-1 break-words">
           <h3 className="truncate text-sm font-semibold text-gray-900">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
+          {(isFile || isLink) && item.description ? (
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{item.description}</p>
+          ) : null}
           {isNote && item.noteHtml ? (
             <ResourceNoteViewer sanitizedHtml={item.noteHtml} />
           ) : isNote && item.noteText ? (
