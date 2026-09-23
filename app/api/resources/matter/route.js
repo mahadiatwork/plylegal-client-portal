@@ -3,6 +3,7 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
+import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
 
 const DEFAULT_MATTER_CATEGORY = "For this matter";
 
@@ -73,6 +74,7 @@ function normalizeMatterResource(doc) {
     viewerUrl,
     downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
     noteText: data.noteText || data.content || data.description || "",
+    noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
     mimeType: data.mimeType || null,
     size: typeof data.size === "number" ? data.size : typeof data.fileSize === "number" ? data.fileSize : null,
     createdAt: serializeTimestamp(data.createdAt),

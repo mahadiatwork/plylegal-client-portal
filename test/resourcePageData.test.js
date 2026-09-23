@@ -130,3 +130,36 @@ test("shared fallback retains stored positions instead of replacing them with re
     { id: "shared-missing", order: LAST_RESOURCE_ORDER },
   ]);
 });
+
+test("shared fallback carries explicit rich notes and never derives HTML from legacy text", async () => {
+  const fetchImpl = async (url) => {
+    if (url.startsWith("/api/resources/template")) {
+      return json({ success: false, error: "No resource template found for this visa type" }, 404);
+    }
+    if (url.startsWith("/api/resources/matter")) {
+      return json({ success: true, items: [] });
+    }
+    return json({ success: true, resources: [
+      {
+        id: "rich-note", type: "note", title: "Formatted", noteText: "Formatted",
+        noteHtml: "<p><strong>Formatted</strong></p>",
+      },
+      {
+        id: "legacy-note", type: "note", title: "Legacy",
+        noteText: "<strong>Keep this literal</strong>",
+      },
+    ] });
+  };
+
+  const result = await loadResourcePageData({
+    appId: "matter-1",
+    slug: "482",
+    idToken: "signed-token",
+    fetchImpl,
+  });
+  const byId = Object.fromEntries(result.items.map((item) => [item.id, item]));
+
+  assert.equal(byId["rich-note"].noteHtml, "<p><strong>Formatted</strong></p>");
+  assert.equal(byId["legacy-note"].noteHtml, "");
+  assert.equal(byId["legacy-note"].noteText, "<strong>Keep this literal</strong>");
+});

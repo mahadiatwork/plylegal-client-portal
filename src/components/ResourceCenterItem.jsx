@@ -1,5 +1,6 @@
 import { ExternalLink, FileText, Link as LinkIcon, ScrollText } from "lucide-react";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
+import { ResourceNoteViewer } from "@/components/ResourceNoteViewer";
 
 function fileTypeLabel(item) {
   const extension = String(item.name || "").split(".").pop().toLowerCase();
@@ -38,11 +39,13 @@ export function ResourceCenterItem({ item }) {
         <span className="mt-0.5 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-[#D7E3DD] bg-white text-[#4F726B]">
           <Icon className="h-4 w-4" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 break-words">
           <h3 className="truncate text-sm font-semibold text-gray-900">{item.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
-          {isNote && item.noteText ? (
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.noteText}</p>
+          {isNote && item.noteHtml ? (
+            <ResourceNoteViewer sanitizedHtml={item.noteHtml} />
+          ) : isNote && item.noteText ? (
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{item.noteText}</p>
           ) : null}
           {isFile && !viewerUrl ? (
             <p className="mt-2 text-sm text-muted-foreground">Document preview is not available yet.</p>

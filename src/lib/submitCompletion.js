@@ -913,12 +913,12 @@ function getTemporaryWorkValidationPageKeys(draft, visaContext) {
   return pageKeys;
 }
 
-function appendTemporaryWorkValidationIssues(items, draft, visaContext, dynamicPagesByKey = new Map()) {
+function appendTemporaryWorkValidationIssues(items, draft, visaContext, resolveDynamicPage = () => null) {
   const itemSet = new Set(items);
   const addIssue = (label) => addValidationIssue(items, itemSet, label);
 
   getTemporaryWorkValidationPageKeys(draft, visaContext).forEach((pageKey) => {
-    if (dynamicPagesByKey.has(pageKey.split("__")[0])) return;
+    if (resolveDynamicPage(pageKey)) return;
     const result = validateTemporaryWorkSectionCompletion({ draft, visaContext, pageKey });
     if (!result.applicable || result.complete) return;
     result.issues.forEach(addIssue);
@@ -960,6 +960,16 @@ export function getIncompleteChecklist({
     return legacyPagesByKey.has(base) || findQuestionnaireDefinitionPage(questionnaireDefinition, `/intake/${base}`)?.metadata?.renderer === "legacy";
   };
   const dynamicStamps = completion[DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY] || {};
+  const resolveDynamicPage = (key) => {
+    const base = key.split("__")[0];
+    return dynamicPagesByKey.get(base) || (() => {
+      const resolved = findQuestionnaireDefinitionPage(
+        questionnaireDefinition,
+        `/intake/${base}`,
+      );
+      return resolved?.metadata?.renderer !== "legacy" ? resolved : null;
+    })();
+  };
 
   const dynamicPageIsComplete = (key, page) => {
     if (completion[key] !== true) return false;
@@ -968,13 +978,15 @@ export function getIncompleteChecklist({
     }
     const separatorIndex = key.indexOf("__");
     const profileId = separatorIndex >= 0 ? key.slice(separatorIndex + 2) : null;
-    const values = getQuestionnairePageSavedValues(draft, page, profileId);
+    const values = page.metadata?.profileRole === "non_migrating"
+      ? getQuestionnairePageSavedValues(draft, page, null, profileId)
+      : getQuestionnairePageSavedValues(draft, page, profileId);
     return getQuestionnairePageValidationIssues(page, values).length === 0;
   };
 
   const addIncomplete = (key, label) => {
     if (!key || !label) return;
-    const dynamicPage = dynamicPagesByKey.get(key.split("__")[0]);
+    const dynamicPage = resolveDynamicPage(key);
     if (dynamicPage) {
       if (!dynamicPageIsComplete(key, dynamicPage)) items.push(label);
       return;
@@ -997,7 +1009,7 @@ export function getIncompleteChecklist({
 
   if (visaType !== "temporary-work") {
     getTargetVisaPages(visaType, draft).forEach((page) => {
-      const dynamicPage = dynamicPagesByKey.get(page.key.split("__")[0]);
+      const dynamicPage = resolveDynamicPage(page.key);
       if (dynamicPage) {
         if (!dynamicPageIsComplete(page.key, dynamicPage)) items.push(page.title);
       } else if (!isLegacyPageKey(page.key) && Object.prototype.hasOwnProperty.call(dynamicStamps, page.key)) {
@@ -1010,12 +1022,16 @@ export function getIncompleteChecklist({
       items.push("Included Applicants: Add the main applicant");
     }
     if (visaType === "partner" || visaType === "protection") {
-      if (!dynamicPagesByKey.has(`${visaType}/main-applicant/identity`)) {
+      if (!resolveDynamicPage(`${visaType}/main-applicant/identity`)) {
         appendMainApplicantIdentityValidationIssues(items, draft, visaType);
       }
-      const skipRelationships = dynamicPagesByKey.has(`${visaType}/spouse-partner/details`)
-        ? new Set(["spouse"])
-        : new Set();
+      const skipRelationships = new Set();
+      if (resolveDynamicPage(`${visaType}/spouse-partner/details`)) {
+        skipRelationships.add("spouse");
+      }
+      if (resolveDynamicPage(`${visaType}/children/child-profile/details`)) {
+        skipRelationships.add("child");
+      }
       items.push(...getTargetPersonalDetailsIssues(visaType, draft, { skipRelationships }));
     }
 
@@ -1085,7 +1101,7 @@ export function getIncompleteChecklist({
     addIncomplete(key, `All Applicants: ${subpage.title}`);
   });
 
-  appendTemporaryWorkValidationIssues(items, draft, visaContext, dynamicPagesByKey);
+  appendTemporaryWorkValidationIssues(items, draft, visaContext, resolveDynamicPage);
 
   return items;
 }

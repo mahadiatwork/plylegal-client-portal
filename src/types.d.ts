@@ -331,6 +331,7 @@ export type ResourceTemplateItem = {
   viewerUrl?: string;
   downloadAllowed?: false | null;
   noteText?: string;
+  noteHtml?: string;
   mimeType: string | null;
   size: number | null;
   createdAt: string | null;

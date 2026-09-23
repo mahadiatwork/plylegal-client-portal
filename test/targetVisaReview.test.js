@@ -88,3 +88,109 @@ test("main Other Names review mirrors the form's legacy fallback with per-person
   assert.match(JSON.stringify(other.items), /Current value/);
   assert.ok(!JSON.stringify(other.items).includes("Old value"));
 });
+
+test("promoted non-migrating pages review the selected member with published option labels", () => {
+  const memberPage = {
+    id: "partner-non-migrating-member-profile-other-names",
+    route: "/intake/partner/non-migrating/member-profile/other-names",
+    title: "Previous names",
+    sectionKey: "partner_other_names",
+    completionKey: "partner/non-migrating/member-profile/other-names",
+    scope: "profile",
+    metadata: { renderer: "dynamic", profileRole: "non_migrating", storagePath: "partner_other_names" },
+    questions: [{
+      id: "other_names",
+      answerKey: "other_names",
+      label: "Published previous names",
+      type: "repeater",
+      required: false,
+      metadata: { fields: [{
+        id: "type",
+        answerKey: "type",
+        label: "Published name type",
+        type: "select",
+        required: false,
+        options: [{ value: "maiden", label: "Former surname" }],
+      }] },
+    }],
+  };
+  const sections = buildTargetVisaReviewSections({
+    visaType: "partner",
+    appId: "matter",
+    questionnaireDefinition: { id: "published", revision: 1, pages: [memberPage] },
+    draft: {
+      profiles: [{ id: "main", relationship: "main_applicant" }],
+      non_migrating_members: [{
+        id: "member-1",
+        passport: { given_names: "Family", family_name: "Member" },
+        other_names: [{ type: "maiden" }],
+      }],
+    },
+  });
+
+  const review = sections.find((section) => section.title === "Previous names");
+  assert.ok(review);
+  assert.deepEqual(review.items, [{
+    label: "Published previous names",
+    value: [{ "Published name type": "Former surname" }],
+  }]);
+});
+
+test("promoted partner applicant lists use client names in review", () => {
+  const addressPage = {
+    id: "partner-all-applicants-addresses",
+    route: "/intake/partner/all-applicants/addresses",
+    title: "Published addresses",
+    sectionKey: "partner_addresses",
+    completionKey: "partner/all-applicants/addresses",
+    scope: "shared",
+    metadata: { renderer: "dynamic", storagePath: "partner_addresses" },
+    questions: [{
+      id: "address_history",
+      answerKey: "address_history",
+      label: "Published address history",
+      type: "repeater",
+      required: false,
+      metadata: { fields: [{
+        id: "applicant_ids",
+        answerKey: "applicant_ids",
+        label: "Published applicants",
+        type: "repeater",
+        required: false,
+        metadata: {
+          itemType: "string",
+          fields: [{ id: "value", answerKey: "value", label: "Applicant", type: "text", required: false }],
+        },
+      }, {
+        id: "street",
+        answerKey: "street",
+        label: "Street",
+        type: "text",
+        required: false,
+      }] },
+    }],
+  };
+  const sections = buildTargetVisaReviewSections({
+    visaType: "partner",
+    appId: "matter",
+    questionnaireDefinition: { id: "published", revision: 2, pages: [addressPage] },
+    draft: {
+      profiles,
+      partner_addresses: {
+        address_history: [{ applicant_ids: ["main", "child"], street: "10 Client Street" }],
+      },
+    },
+  });
+
+  const review = sections.find((section) => section.title === "Published addresses");
+  assert.ok(review);
+  assert.deepEqual(review.items, [{
+    label: "Published address history",
+    value: [{
+      "Published applicants": ["Alex Applicant", "Casey Child"],
+      Street: "10 Client Street",
+    }],
+  }]);
+  assert.ok(!JSON.stringify(review.items).includes('"main"'));
+  assert.ok(!JSON.stringify(review.items).includes('"child"'));
+});

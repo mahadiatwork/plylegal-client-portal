@@ -133,3 +133,242 @@ test("legacy review reads original profile section aliases and retains answers w
   assert.ok(other);
   assert.ok(other.items.some((item) => item.label === "Your previous name" && item.value === "Saved client name"));
 });
+
+test("promoted non-migrating pages validate the actual member route and completion stamp", () => {
+  const memberPage = {
+    id: "temporary-work-non-migrating-member-profile-other-names",
+    route: "/intake/temporary-work/non-migrating/member-profile/other-names",
+    title: "Previous names",
+    sectionKey: "temporary_work_other_names",
+    completionKey: "temporary-work/non-migrating/member-profile/other-names",
+    scope: "profile",
+    metadata: {
+      renderer: "dynamic",
+      profileRole: "non_migrating",
+      storagePath: "temporary_work_other_names",
+    },
+    questions: [{
+      id: "other_names",
+      answerKey: "other_names",
+      label: "Published previous names",
+      type: "repeater",
+      required: false,
+      metadata: {
+        fields: [
+          { id: "family_name", answerKey: "family_name", label: "Family name", type: "text", required: false },
+          {
+            id: "type",
+            answerKey: "type",
+            label: "Published name type",
+            type: "select",
+            required: false,
+            options: [{ value: "maiden", label: "Former surname" }],
+          },
+        ],
+      },
+    }],
+  };
+  const definition = { id: "published", revision: 7, pages: [memberPage] };
+  const completionKey = "temporary-work/non-migrating/member-1/other-names__member-1";
+  const draft = {
+    visaContext: "482",
+    non_migrating_members: [{
+      id: "member-1",
+      passport: { given_names: "Family", family_name: "Member" },
+      other_names: [{ family_name: "Previous", type: "maiden" }],
+    }],
+  };
+  const completionStatus = {
+    [completionKey]: true,
+    dynamicQuestionnaireCompletions: {
+      [completionKey]: {
+        definitionId: "published",
+        pageId: memberPage.id,
+        revision: 7,
+      },
+    },
+  };
+
+  const incomplete = getIncompleteChecklist({
+    visaType: "temporary-work",
+    visaContext: "482",
+    draft,
+    completionStatus,
+    questionnaireDefinition: definition,
+  });
+  assert.equal(
+    incomplete.includes("Other Family (Family Member): Other Names"),
+    false,
+  );
+
+  const sections = buildTemporaryWorkReviewSections({
+    draft,
+    visaContext: "482",
+    questionnaireDefinition: definition,
+  });
+  const review = sections.find((section) => section.title.includes("Previous names"));
+  assert.ok(review);
+  assert.deepEqual(review.items, [{
+    label: "Published previous names",
+    value: [{ "Family name": "Previous", "Published name type": "Former surname" }],
+  }]);
+});
+
+test("promoted temporary-work applicant lists use client names in review", () => {
+  const travelPage = {
+    id: "temporary-work-all-applicants-travel-history",
+    route: "/intake/temporary-work/all-applicants/travel-history",
+    title: "Published travel history",
+    sectionKey: "temporary_work_travel",
+    completionKey: "temporary-work/all-applicants/travel-history",
+    scope: "shared",
+    metadata: { renderer: "dynamic", storagePath: "temporary_work_travel" },
+    questions: [{
+      id: "travel_history",
+      answerKey: "travel_history",
+      label: "Published trips",
+      type: "repeater",
+      required: false,
+      metadata: { fields: [{
+        id: "applicant_ids",
+        answerKey: "applicant_ids",
+        label: "Published travellers",
+        type: "repeater",
+        required: true,
+        metadata: {
+          itemType: "string",
+          fields: [{ id: "value", answerKey: "value", label: "Applicant", type: "text", required: false }],
+        },
+      }, {
+        id: "country",
+        answerKey: "country",
+        label: "Country",
+        type: "text",
+        required: false,
+      }] },
+    }],
+  };
+  const sections = buildTemporaryWorkReviewSections({
+    visaContext: "482",
+    questionnaireDefinition: { id: "published", revision: 8, pages: [travelPage] },
+    draft: {
+      visaContext: "482",
+      profiles: [
+        { id: "main", relationship: "main_applicant", given_names: "Alex", family_name: "Applicant" },
+        { id: "child", relationship: "child", given_names: "Casey", family_name: "Child" },
+      ],
+      temporary_work_travel: {
+        travel_history: [{ applicant_ids: ["main", "child"], country: "New Zealand" }],
+      },
+    },
+  });
+
+  const review = sections.find((section) => section.title === "Published travel history");
+  assert.ok(review);
+  assert.deepEqual(review.items, [{
+    label: "Published trips",
+    value: [{
+      "Published travellers": ["Alex Applicant", "Casey Child"],
+      Country: "New Zealand",
+    }],
+  }]);
+  assert.ok(!JSON.stringify(review.items).includes('"main"'));
+  assert.ok(!JSON.stringify(review.items).includes('"child"'));
+});
+
+function completedDynamicPage(page, definition, key) {
+  return {
+    [key]: true,
+    dynamicQuestionnaireCompletions: {
+      [key]: {
+        definitionId: definition.id,
+        pageId: page.id,
+        revision: definition.revision,
+      },
+    },
+  };
+}
+
+test("promoted temporary-work child pages replace legacy validation for the actual child route", () => {
+  const childPage = {
+    id: "temporary-work-children-child-profile-details",
+    route: "/intake/temporary-work/children/child-profile/details",
+    title: "Details",
+    sectionKey: "temporary_work_details",
+    completionKey: "temporary-work/children/child-profile/details",
+    scope: "profile",
+    metadata: {
+      renderer: "dynamic",
+      profileRole: "child",
+      profileSection: "details",
+      storagePath: "temporary_work_details",
+    },
+    questions: [],
+  };
+  const definition = { id: "published-482", revision: 8, pages: [childPage] };
+  const completionKey = "temporary-work/children/child-1/details__child-1";
+  const draft = {
+    visaContext: "482",
+    profiles: [{ id: "child-1", relationship: "child", given_names: "Casey" }],
+    profiles_data: { "child-1": { details: {} } },
+  };
+  const args = {
+    visaType: "temporary-work",
+    visaContext: "482",
+    draft,
+    completionStatus: completedDynamicPage(childPage, definition, completionKey),
+  };
+
+  assert.ok(
+    getIncompleteChecklist(args).includes("Child (Casey): Personal details"),
+    "the legacy validator still reports the unpromoted child page",
+  );
+  assert.equal(
+    getIncompleteChecklist({ ...args, questionnaireDefinition: definition })
+      .includes("Child (Casey): Personal details"),
+    false,
+  );
+});
+
+test("promoted partner and protection child Details pages replace the fixed child schema", () => {
+  for (const visaType of ["partner", "protection"]) {
+    const childPage = {
+      id: `${visaType}-children-child-profile-details`,
+      route: `/intake/${visaType}/children/child-profile/details`,
+      title: "Details",
+      sectionKey: `${visaType}_details`,
+      completionKey: `${visaType}/children/child-profile/details`,
+      scope: "profile",
+      metadata: {
+        renderer: "dynamic",
+        profileRole: "child",
+        profileSection: "details",
+        storagePath: `${visaType}_details`,
+      },
+      questions: [],
+    };
+    const definition = { id: `published-${visaType}`, revision: 9, pages: [childPage] };
+    const completionKey = `${visaType}/children/child-1/details__child-1`;
+    const draft = {
+      profiles: [{ id: "child-1", relationship: "child", given_names: "Casey" }],
+      profiles_data: { "child-1": { details: {} } },
+    };
+    const args = {
+      visaType,
+      draft,
+      completionStatus: completedDynamicPage(childPage, definition, completionKey),
+    };
+    const isLegacyChildDetailsIssue = (issue) =>
+      issue.startsWith("Child (Casey): Country of birth");
+
+    assert.ok(
+      getIncompleteChecklist(args).some(isLegacyChildDetailsIssue),
+      `the ${visaType} legacy child schema still runs before promotion`,
+    );
+    assert.equal(
+      getIncompleteChecklist({ ...args, questionnaireDefinition: definition })
+        .some(isLegacyChildDetailsIssue),
+      false,
+    );
+  }
+});

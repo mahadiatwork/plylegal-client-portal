@@ -887,7 +887,16 @@ function buildNonMigratingSections(draft, context, options, questionnaireDefinit
   const memberSections = members.flatMap((member, memberIndex) =>
     NON_MIGRATING_MEMBER_SUBPAGES.map((subpage) => {
       const template = findQuestionnaireDefinitionPage(questionnaireDefinition, `/intake/temporary-work/non-migrating/${member.id}/${subpage.pathSuffix}`);
-      const items = applyLegacyQuestionnaireReviewCopy(buildItemsFromObject(getNonMigratingSubpageData(member, subpage.pathSuffix), context), template);
+      const items = template?.metadata?.renderer !== "legacy"
+        ? getQuestionnairePageReviewItems(
+            template,
+            getQuestionnairePageSavedValues(draft, template, null, member.id),
+            context,
+          )
+        : applyLegacyQuestionnaireReviewCopy(
+            buildItemsFromObject(getNonMigratingSubpageData(member, subpage.pathSuffix), context),
+            template,
+          );
       if (items.length === 0) return null;
 
       return {
@@ -937,7 +946,8 @@ export function buildTemporaryWorkReviewSections({
       const items = dynamicPage && dynamicPage.metadata?.renderer !== "legacy"
         ? getQuestionnairePageReviewItems(
             dynamicPage,
-            getQuestionnairePageSavedValues(draft, dynamicPage, profile.id)
+            getQuestionnairePageSavedValues(draft, dynamicPage, profile.id),
+            context,
           )
         : applyLegacyQuestionnaireReviewCopy(buildItemsFromObject(getProfileSectionData(draft, profile, subpage.sectionKey), context), dynamicPage);
       if (items.length === 0) return;
@@ -963,7 +973,8 @@ export function buildTemporaryWorkReviewSections({
     const items = dynamicPage && dynamicPage.metadata?.renderer !== "legacy"
       ? getQuestionnairePageReviewItems(
           dynamicPage,
-          getQuestionnairePageSavedValues(draft, dynamicPage)
+          getQuestionnairePageSavedValues(draft, dynamicPage),
+          context,
         )
       : applyLegacyQuestionnaireReviewCopy(buildItemsFromObject(draft?.[section.key], context), dynamicPage);
     if (items.length === 0) return;

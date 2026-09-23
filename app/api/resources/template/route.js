@@ -4,6 +4,7 @@ import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } fro
 import { getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
+import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
 
 const SUPPORTED_SLUGS = new Set(["820", "partner", "protection", PROTECTION_PUBLIC_SLUG, "482", "186"]);
 
@@ -110,6 +111,7 @@ export async function GET(request) {
           viewerUrl: kind === "file" ? getResourceViewerUrl(data) : "",
           downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
           noteText: data.noteText || data.body || data.content || data.description || "",
+          noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
           mimeType: data.mimeType || null,
           size: typeof data.size === "number" ? data.size : null,
           createdAt: serializeTimestamp(data.createdAt),

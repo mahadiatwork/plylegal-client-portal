@@ -322,6 +322,88 @@ test("shared files use the same restricted viewer policy while links and notes r
   assert.doesNotMatch(JSON.stringify(data), /source\.xlsx|downloadUrl/);
 });
 
+test("all resource routes sanitize explicit rich note HTML with the same strict policy", async (t) => {
+  const { documents } = setup(t);
+  const dirtyHtml = [
+    '<h2 style="text-align: center; color: red" onclick="alert(1)">Heading</h2>',
+    '<p><strong>Bold</strong> <em>Italic</em> <u>Underline</u> <s>Strike</s> <mark>Mark</mark></p>',
+    '<ul><li>Bullet</li></ul><ol><li>Numbered</li></ol>',
+    '<blockquote>Quoted</blockquote><pre><code>const safe = true;</code></pre><hr>',
+    '<p><a href="https://example.test/path" target="_self" rel="opener">Web</a> ',
+    '<a href="mailto:advisor@example.test">Email</a> <a href="tel:+61234567890">Call</a> ',
+    '<a href="/relative">Relative</a> <a href="javascript:alert(1)">Script URL</a> ',
+    '<a href="data:text/html,bad">Data URL</a></p>',
+    '<img src=x onerror="alert(1)"><iframe src="https://example.test"></iframe><script>alert(1)</script>',
+    '<textarea></textarea/><img src=x onerror="alert(2)">',
+    '<svg><animate attributeName="href" values="#safe;javascript:alert(3)"></animate></svg>',
+    '<form action="javascript:alert(4)"><button>Submit</button></form>',
+  ].join("");
+  const legacyText = "<strong>Legacy text remains literal</strong>";
+
+  documents.get("resourceTemplates/482/items/note").noteHtml = dirtyHtml;
+  documents.get("resourceTemplates/482/items/note").noteText = legacyText;
+  documents.get("applications/matter-1/resources/matter-note").noteHtml = dirtyHtml;
+  documents.get("applications/matter-1/resources/matter-note").noteText = legacyText;
+  documents.set("resources/rich-note", {
+    status: "active", scope: "shared", type: "note", title: "Rich note",
+    noteHtml: dirtyHtml, noteText: legacyText,
+  });
+
+  const templateData = await (await template.GET(request())).json();
+  const matterData = await (await matter.GET(request("matter"))).json();
+  const sharedData = await (await shared.GET(request("shared"))).json();
+  const notes = [
+    templateData.items.find((item) => item.id === "note"),
+    matterData.items.find((item) => item.id === "matter-note"),
+    sharedData.resources.find((item) => item.id === "rich-note"),
+  ];
+
+  for (const note of notes) {
+    assert.equal(note.noteText, legacyText);
+    assert.match(note.noteHtml, /<h2 style="text-align:center">Heading<\/h2>/);
+    assert.match(note.noteHtml, /<strong>Bold<\/strong>/);
+    assert.match(note.noteHtml, /<em>Italic<\/em>/);
+    assert.match(note.noteHtml, /<u>Underline<\/u>/);
+    assert.match(note.noteHtml, /<s>Strike<\/s>/);
+    assert.match(note.noteHtml, /<mark>Mark<\/mark>/);
+    assert.match(note.noteHtml, /<ul><li>Bullet<\/li><\/ul>/);
+    assert.match(note.noteHtml, /<ol><li>Numbered<\/li><\/ol>/);
+    assert.match(note.noteHtml, /<blockquote>Quoted<\/blockquote>/);
+    assert.match(note.noteHtml, /<pre><code>const safe = true;<\/code><\/pre><hr \/>/);
+    assert.match(note.noteHtml, /href="https:\/\/example\.test\/path" target="_blank" rel="noopener noreferrer"/);
+    assert.match(note.noteHtml, /href="mailto:advisor@example\.test" target="_blank" rel="noopener noreferrer"/);
+    assert.match(note.noteHtml, /href="tel:\+61234567890" target="_blank" rel="noopener noreferrer"/);
+    assert.doesNotMatch(note.noteHtml, /onclick|color\s*:|target="_self"|rel="opener"/i);
+    assert.doesNotMatch(note.noteHtml, /javascript:|data:text|href="\/relative"/i);
+    assert.doesNotMatch(note.noteHtml, /<img|<iframe|<script|<textarea|<svg|<animate|<form|<button|alert\([1-4]\)/i);
+  }
+});
+
+test("resource routes never infer rich HTML from legacy note text", async (t) => {
+  const { documents } = setup(t);
+  const legacyText = "<h2>Literal heading text</h2>\nNext line";
+
+  documents.get("resourceTemplates/482/items/note").noteText = legacyText;
+  documents.get("applications/matter-1/resources/matter-note").noteText = legacyText;
+  documents.set("resources/legacy-note", {
+    status: "active", scope: "shared", type: "note", title: "Legacy note", noteText: legacyText,
+  });
+
+  const templateData = await (await template.GET(request())).json();
+  const matterData = await (await matter.GET(request("matter"))).json();
+  const sharedData = await (await shared.GET(request("shared"))).json();
+  const notes = [
+    templateData.items.find((item) => item.id === "note"),
+    matterData.items.find((item) => item.id === "matter-note"),
+    sharedData.resources.find((item) => item.id === "legacy-note"),
+  ];
+
+  for (const note of notes) {
+    assert.equal(note.noteText, legacyText);
+    assert.equal(note.noteHtml, "");
+  }
+});
+
 test("an explicit empty category list stays empty after categories are deleted", async (t) => {
   const { documents } = setup(t);
   documents.get("resourceTemplates/482").categories = [];

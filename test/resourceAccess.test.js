@@ -110,3 +110,34 @@ test("legacy or unsafe file cards cannot open files and notes and links still re
   assert.match(link, /href="https:\/\/example.test\/guidance"/);
   assert.match(link, />Open<|Open<\/a>/);
 });
+
+test("legacy note text remains escaped and preserves authored line breaks", () => {
+  const html = render({
+    kind: "note",
+    name: "Legacy note",
+    noteText: "<strong>Literal markup</strong>\nSecond line",
+  });
+
+  assert.match(html, /&lt;strong&gt;Literal markup&lt;\/strong&gt;/);
+  assert.doesNotMatch(html, /<strong>Literal markup<\/strong>/);
+  assert.match(html, /whitespace-pre-wrap/);
+  assert.match(html, /Second line/);
+});
+
+test("rich notes render the sanitized API field as semantic read-only content", () => {
+  const html = render({
+    kind: "note",
+    name: "Formatted note",
+    noteText: "plain fallback sentinel",
+    noteHtml: '<h2>Heading</h2><p><strong>Bold</strong> and <em>italic</em></p><ol><li>First</li></ol><a href="https://example.test" target="_blank" rel="noopener noreferrer">Guidance</a>',
+  });
+
+  assert.match(html, /rich-text-content/);
+  assert.match(html, /min-w-0 flex-1 break-words/);
+  assert.match(html, /<h2>Heading<\/h2>/);
+  assert.match(html, /<strong>Bold<\/strong>/);
+  assert.match(html, /<em>italic<\/em>/);
+  assert.match(html, /<ol><li>First<\/li><\/ol>/);
+  assert.match(html, /href="https:\/\/example\.test" target="_blank" rel="noopener noreferrer"/);
+  assert.doesNotMatch(html, /plain fallback sentinel/);
+});

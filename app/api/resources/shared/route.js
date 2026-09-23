@@ -4,6 +4,7 @@ import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } fro
 import { extractSubclass, getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { normalizeResourceOrder } from "@/lib/resourceOrdering";
+import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
   "all",
@@ -39,6 +40,7 @@ function normalizeResource(docSnap) {
     title: data.title || "Untitled resource",
     description: data.description || "",
     noteText: data.noteText || data.content || data.description || "",
+    noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
     url: type === "link" ? data.publicUrl || data.url || data.externalUrl || "" : "",
     viewerUrl: type === "file" ? getResourceViewerUrl(data) : "",
     downloadAllowed: type === "file" && data.downloadAllowed === false ? false : null,

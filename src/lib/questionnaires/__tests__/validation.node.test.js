@@ -270,6 +270,29 @@ test("option objects require non-empty unique string values and labels", () => {
   assert.ok(issues.some((issue) => issue.includes("must be an object")));
 });
 
+test("static questionnaire choices support the shipped visa subclass catalogs", () => {
+  const definition = structuredClone(temporaryWork482Definition);
+  definition.pages[0].questions.push({
+    id: "visa-subclass-choice",
+    answerKey: "visa_subclass_choice",
+    label: "Visa subclass",
+    type: "select",
+    required: false,
+    options: Array.from({ length: 192 }, (_, index) => ({
+      value: String(index + 1),
+      label: String(index + 1),
+    })),
+  });
+  assert.deepEqual(getQuestionnaireDefinitionIssues(definition), []);
+
+  definition.pages[0].questions.at(-1).options = Array.from({ length: 251 }, (_, index) => ({
+    value: String(index + 1),
+    label: String(index + 1),
+  }));
+  assert.ok(getQuestionnaireDefinitionIssues(definition)
+    .some((issue) => issue.includes("cannot contain more than 250 items")));
+});
+
 test("only safe internal intake routes are accepted", () => {
   assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/all-applicants/character"), true);
   assert.equal(isSafeQuestionnaireRoute("/applications/482/questionnaire"), false);

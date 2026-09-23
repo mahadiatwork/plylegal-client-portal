@@ -19,22 +19,21 @@ import {
   getVisaTypeFromPath,
 } from "@/lib/routes";
 import { getLocalQuestionnaireDefinition, getQuestionnairePage } from "@/lib/questionnaires";
+import { resolveQuestionnairePagePresentation } from "@/lib/questionnaires/presentation";
 import { withQuestionnaireLoadTimeout } from "@/lib/questionnaires/remoteLoading";
 import {
   getQuestionnaireCompletionKey,
   getQuestionnaireCompletionStamp,
+  getQuestionnaireApplicantIdOptions,
   getQuestionnaireDatePartNames,
+  getQuestionnaireNonMigratingMemberUpdates,
+  getQuestionnairePageAnswerLayout,
+  getQuestionnairePageSavedValues,
+  getQuestionnairePageStorageTarget,
+  getQuestionnairePageStorageValues,
   getQuestionnairePageValidationIssues,
   sanitizeQuestionnairePageValues,
 } from "@/lib/questionnaires/answers";
-
-function getNestedValue(obj, path) {
-  if (!path) return undefined;
-  return path.split(".").reduce((current, key) => {
-    if (current === null || current === undefined) return undefined;
-    return current[key];
-  }, obj);
-}
 
 function getQuestionsFlat(questions = []) {
   return questions.flatMap((question) => [
@@ -144,6 +143,14 @@ function inferProfileId(route, draft, requestedProfileId = null) {
   return (draft?.profiles || []).find((profile) => profile.relationship === relationship)?.id || null;
 }
 
+function inferNonMigratingMemberId(route, draft) {
+  const memberId = String(route || "").match(/\/non-migrating\/([^/]+)\//)?.[1];
+  if (!memberId || memberId === "member-profile") return null;
+  return (draft?.non_migrating_members || []).some(
+    (member) => String(member.id) === memberId,
+  ) ? memberId : null;
+}
+
 export function DynamicQuestionnairePage({
   definitionId,
   definitionRevision,
@@ -167,6 +174,7 @@ export function DynamicQuestionnairePage({
   const appId = getApplicationIdFromSearchParams(searchParams) || getApplicationIdFromPathname(pathname);
   const profileId = getProfileIdFromSearchParams(searchParams);
   const resolvedProfileId = inferProfileId(internalRoute, draftSnap.draft, profileId);
+  const nonMigratingMemberId = inferNonMigratingMemberId(internalRoute, draftSnap.draft);
   const hasManagedDefinition = Boolean(definitionId) && Number.isInteger(definitionRevision);
 
   useEffect(() => {
@@ -218,22 +226,38 @@ export function DynamicQuestionnairePage({
     };
   }, [definitionId, draftSnap.visaContext, internalRoute, providedPageDefinition, visaType]);
 
+  const presentationPageDefinition = useMemo(
+    () => resolveQuestionnairePagePresentation(pageDefinition, draftSnap.draft),
+    [draftSnap.draft, pageDefinition]
+  );
+
   const defaultValues = useMemo(
-    () => getDefaultValues(pageDefinition?.questions || []),
-    [pageDefinition]
+    () => getDefaultValues(presentationPageDefinition?.questions || []),
+    [presentationPageDefinition]
   );
 
   const form = useForm({
     defaultValues,
   });
 
+  const storageTarget = useMemo(
+    () => getQuestionnairePageStorageTarget(
+      pageDefinition,
+      resolvedProfileId,
+      nonMigratingMemberId
+    ),
+    [nonMigratingMemberId, pageDefinition, resolvedProfileId]
+  );
+
   const sectionData = useMemo(() => {
     if (!pageDefinition) return {};
-    if (pageDefinition.scope === "profile" && resolvedProfileId) {
-      return draftSnap.draft?.profiles_data?.[resolvedProfileId]?.[pageDefinition.sectionKey] || {};
-    }
-    return getNestedValue(draftSnap.draft, pageDefinition.sectionKey) || {};
-  }, [draftSnap.draft, pageDefinition, resolvedProfileId]);
+    return getQuestionnairePageSavedValues(
+      draftSnap.draft,
+      pageDefinition,
+      resolvedProfileId,
+      nonMigratingMemberId
+    );
+  }, [draftSnap.draft, nonMigratingMemberId, pageDefinition, resolvedProfileId]);
 
   useEffect(() => {
     if (!pageDefinition || draftSnap.isLoading) return;
@@ -245,17 +269,44 @@ export function DynamicQuestionnairePage({
 
   const optionSources = useMemo(() => ({
     applicants: getApplicantOptions(draftSnap.draft),
-  }), [draftSnap.draft]);
+    applicantIds: getQuestionnaireApplicantIdOptions(draftSnap.draft, pageDefinition),
+  }), [draftSnap.draft, pageDefinition]);
 
   const savePageData = async (data) => {
     if (!pageDefinition) return { success: false, error: "Questionnaire page is not loaded" };
+    const storageValues = getQuestionnairePageStorageValues(
+      pageDefinition,
+      data,
+      draftSnap.draft
+    );
 
-    if (pageDefinition.scope === "profile") {
-      if (!resolvedProfileId) return { success: false, error: "Profile ID required" };
-      return draftStore.saveProfileSectionData(resolvedProfileId, pageDefinition.sectionKey, data);
+    if (storageTarget.type === "profile") {
+      if (!storageTarget.profileId) return { success: false, error: "Profile ID required" };
+      return draftStore.saveProfileSectionData(
+        storageTarget.profileId,
+        storageTarget.sectionKey,
+        storageValues
+      );
     }
 
-    return draftStore.saveSectionData(pageDefinition.sectionKey, data);
+    if (storageTarget.type === "nonMigratingMember") {
+      if (!storageTarget.memberId) {
+        return { success: false, error: "Non-migrating family member not found" };
+      }
+      const member = draftStore.getNonMigratingMember(storageTarget.memberId);
+      const updates = getQuestionnaireNonMigratingMemberUpdates(
+        pageDefinition,
+        storageValues,
+        member || {}
+      );
+      if (!updates) return { success: false, error: "Unsupported member questionnaire page" };
+      const saved = await draftStore.updateNonMigratingMember(storageTarget.memberId, updates);
+      return saved
+        ? { success: true }
+        : { success: false, error: "Failed to save family member answers" };
+    }
+
+    return draftStore.saveSectionData(storageTarget.sectionKey, storageValues);
   };
 
   const markPageComplete = async () => {
@@ -267,23 +318,30 @@ export function DynamicQuestionnairePage({
           { id: definitionId, revision: definitionRevision },
           pageDefinition
         ),
-        pageDefinition.scope === "profile" ? resolvedProfileId : null
+        storageTarget.type === "profile"
+          ? storageTarget.profileId
+          : storageTarget.type === "nonMigratingMember"
+            ? storageTarget.memberId
+            : null
       );
     }
-    if (pageDefinition.scope === "profile") {
-      return draftStore.markProfilePageComplete(resolvedProfileId, completionKey);
+    if (storageTarget.type === "profile") {
+      return draftStore.markProfilePageComplete(storageTarget.profileId, completionKey);
+    }
+    if (storageTarget.type === "nonMigratingMember") {
+      return draftStore.markProfilePageComplete(storageTarget.memberId, completionKey);
     }
     return draftStore.markPageComplete(
       completionKey,
       null,
-      pageDefinition.sectionKey
+      storageTarget.sectionKey
     );
   };
 
   const handleSubmit = async (data) => {
-    const sanitizedData = sanitizeQuestionnairePageValues(pageDefinition, data);
+    const sanitizedData = sanitizeQuestionnairePageValues(presentationPageDefinition, data);
     form.reset(sanitizedData);
-    if (!validateVisibleRequiredQuestions({ form, page: pageDefinition, values: sanitizedData })) return;
+    if (!validateVisibleRequiredQuestions({ form, page: presentationPageDefinition, values: sanitizedData })) return;
 
     setIsSaving(true);
     try {
@@ -314,7 +372,7 @@ export function DynamicQuestionnairePage({
   };
 
   const handleSave = async () => {
-    const values = sanitizeQuestionnairePageValues(pageDefinition, form.getValues());
+    const values = sanitizeQuestionnairePageValues(presentationPageDefinition, form.getValues());
     form.reset(values);
 
     setIsSaving(true);
@@ -324,11 +382,15 @@ export function DynamicQuestionnairePage({
         let completionResult = { success: true };
         if (hasManagedDefinition) {
           const completionKey = getQuestionnaireCompletionKey(pageDefinition);
-          const completionProfileId = pageDefinition.scope === "profile" ? resolvedProfileId : null;
+          const completionProfileId = storageTarget.type === "profile"
+            ? storageTarget.profileId
+            : storageTarget.type === "nonMigratingMember"
+              ? storageTarget.memberId
+              : null;
           const fullCompletionKey = completionProfileId
             ? `${completionKey}__${completionProfileId}`
             : completionKey;
-          if (getQuestionnairePageValidationIssues(pageDefinition, values).length) {
+          if (getQuestionnairePageValidationIssues(presentationPageDefinition, values).length) {
             completionResult = await draftStore.markDynamicQuestionnairePageIncomplete(
               completionKey,
               completionProfileId
@@ -393,24 +455,25 @@ export function DynamicQuestionnairePage({
     <Card
       className="rounded-2xl shadow-md bg-white"
       data-testid="dynamic-questionnaire-page"
-      data-questionnaire-page-id={pageDefinition.id}
+      data-questionnaire-page-id={presentationPageDefinition.id}
     >
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">{pageDefinition.title}</CardTitle>
+        <CardTitle className="text-2xl font-semibold">{presentationPageDefinition.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            {pageDefinition.introBlocks?.length > 0 && (
+            {presentationPageDefinition.introBlocks?.length > 0 && (
               <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-3 text-sm text-foreground">
-                {pageDefinition.introBlocks.map(renderIntroBlock)}
+                {presentationPageDefinition.introBlocks.map(renderIntroBlock)}
               </div>
             )}
 
             <QuestionRenderer
+              answerLayout={getQuestionnairePageAnswerLayout(presentationPageDefinition)}
               form={form}
               optionSources={optionSources}
-              questions={pageDefinition.questions}
+              questions={presentationPageDefinition.questions}
               repeaterRegistry={repeaterRegistry}
               values={values}
             />

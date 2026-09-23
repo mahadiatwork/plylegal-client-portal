@@ -142,9 +142,13 @@ export function buildTargetVisaReviewSections({ visaType, draft = {}, appId, que
     const dynamicPage = dynamicPagesByRoute.get(page.href) || findQuestionnaireDefinitionPage(questionnaireDefinition, page.href);
     if (dynamicPage && dynamicPage.metadata?.renderer !== "legacy") {
       const profileId = page.profile ? page.profileId : null;
+      const savedValues = dynamicPage.metadata?.profileRole === "non_migrating"
+        ? getQuestionnairePageSavedValues(draft, dynamicPage, null, page.profileId)
+        : getQuestionnairePageSavedValues(draft, dynamicPage, profileId);
       const items = getQuestionnairePageReviewItems(
         dynamicPage,
-        getQuestionnairePageSavedValues(draft, dynamicPage, profileId)
+        savedValues,
+        { applicantNamesById: names },
       );
       if (items.length) {
         sections.push({

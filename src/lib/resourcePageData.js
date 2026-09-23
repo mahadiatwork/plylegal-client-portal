@@ -40,6 +40,7 @@ function mapSharedResourcesToItems(resources) {
       viewerUrl: resource.viewerUrl || "",
       downloadAllowed: resource.downloadAllowed,
       noteText: resource.noteText || resource.description || "",
+      noteHtml: resource.noteHtml || "",
       mimeType: resource.mimeType || null,
       size: typeof resource.size === "number" ? resource.size : null,
       createdAt: resource.createdAt || null,

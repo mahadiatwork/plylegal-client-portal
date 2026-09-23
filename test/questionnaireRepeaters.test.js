@@ -72,3 +72,51 @@ test("repeater reviews use published row labels and hide irrelevant conditional 
     { label: "Other names", value: [{ "Previous name": "Smith", "Changed name?": "No", "Change date": "1/2/2020" }] },
   ]);
 });
+
+test("primitive string repeaters retain built-in applicant id arrays", () => {
+  const applicantIds = {
+    id: "applicant_ids",
+    answerKey: "applicant_ids",
+    type: "repeater",
+    label: "Applicants",
+    metadata: {
+      itemType: "string",
+      fields: [{ id: "applicant_id", answerKey: "value", type: "text", label: "Applicant" }],
+    },
+  };
+  const primitivePage = { questions: [applicantIds] };
+  const saved = { applicant_ids: ["profile-a", "profile-b"] };
+
+  assert.deepEqual(getQuestionnairePageValidationIssues(primitivePage, saved), []);
+  assert.deepEqual(sanitizeQuestionnairePageValues(primitivePage, saved), saved);
+  assert.deepEqual(getQuestionnairePageReviewItems(primitivePage, saved), [
+    { label: "Applicants", value: ["profile-a", "profile-b"] },
+  ]);
+  assert.equal(
+    getQuestionnairePageValidationIssues(primitivePage, { applicant_ids: [{ value: "profile-a" }] })[0]?.fieldName,
+    "applicant_ids",
+  );
+});
+
+test("promoted Details pages clear citizenship rows when the controlling answer becomes no", () => {
+  const citizenshipPage = {
+    metadata: { builtInPageId: "temporary-work-main-applicant-details" },
+    questions: [{
+      id: "citizenships",
+      answerKey: "citizenships",
+      label: "Other citizenships",
+      type: "repeater",
+      visibleIf: [{ field: "citizenship_other_than_birth", op: "equals", value: "yes" }],
+      metadata: {
+        fields: [{ id: "country", answerKey: "country", label: "Country", type: "text" }],
+      },
+    }],
+  };
+  assert.deepEqual(
+    sanitizeQuestionnairePageValues(citizenshipPage, {
+      citizenship_other_than_birth: "no",
+      citizenships: [{ country: "France" }],
+    }),
+    { citizenship_other_than_birth: "no", citizenships: [] },
+  );
+});
