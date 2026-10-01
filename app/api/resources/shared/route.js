@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/serverAuth";
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
-import { extractSubclass, getApplicationSlug, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
+import { extractSubclass, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { normalizeResourceOrder } from "@/lib/resourceOrdering";
 import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
+import { getApplicationResourceVisaSlug } from "@/lib/resourceVisa";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
   "all",
@@ -132,21 +133,18 @@ function getResourceTargetTags(data) {
   return [...directTargets, ...audienceTargets].map(normalizeTarget).filter(Boolean);
 }
 
-function getApplicationTargetSet(application) {
+function getApplicationTargetSet(application, questionnaire) {
   const targets = new Set();
   const textParts = [
     application?.type,
-    application?.reference,
     application?.visaType,
-    application?.visaTypeCode,
   ].filter(Boolean);
   const text = textParts.join(" ");
   const subclass = extractSubclass(text);
-  const slug = getApplicationSlug(application);
+  const slug = getApplicationResourceVisaSlug(application, questionnaire);
 
   textParts.forEach((part) => addTarget(targets, part));
   addTarget(targets, slug);
-  addTarget(targets, application?.visaTypeCode);
 
   if (subclass) {
     addTarget(targets, subclass);
@@ -158,7 +156,10 @@ function getApplicationTargetSet(application) {
   } else if (slug === "482") {
     ["482", "subclass 482", "skills in demand", "temporary skill shortage", "tss", "temporary-work", "temporary work"].forEach((tag) => addTarget(targets, tag));
   } else if (slug === "820" || slug === "partner") {
-    ["partner", "partner visa", "820", "309", "subclass 820", "subclass 309"].forEach((tag) => addTarget(targets, tag));
+    [
+      "partner", "partner visa", "820", "801", "309",
+      "subclass 820", "subclass 801", "subclass 309",
+    ].forEach((tag) => addTarget(targets, tag));
   } else if (slug === PROTECTION_PUBLIC_SLUG || slug === "protection") {
     [PROTECTION_PUBLIC_SLUG, `subclass ${PROTECTION_PUBLIC_SLUG}`, "protection", "protection visa"].forEach((tag) => addTarget(targets, tag));
   }
@@ -197,7 +198,8 @@ export async function GET(request) {
 
     if (applicationId) {
       const appData = await getOwnedApplication(client, auth, applicationId);
-      applicationTargets = getApplicationTargetSet(appData);
+      const questionnaireData = await client.getDocument(`applications/${applicationId}/data/questionnaire`) || {};
+      applicationTargets = getApplicationTargetSet(appData, questionnaireData);
     }
 
     const documents = await client.getActiveDocuments("resources");

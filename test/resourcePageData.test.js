@@ -55,6 +55,95 @@ test("resource page data combines ordered template and matter items", async () =
   assert.ok(calls.every(({ options }) => options.headers.Authorization === "Bearer signed-token"));
 });
 
+test("resource page data preserves global, visa and matter identities when item IDs collide", async () => {
+  const fetchImpl = async (url) => {
+    if (url.startsWith("/api/resources/template")) {
+      return json({
+        success: true,
+        template: { templateSlug: "482", categories: [] },
+        items: [
+          {
+            id: "same-id", name: "Global guide", templateSlug: "global",
+            resourceSource: "template:global",
+          },
+          {
+            id: "same-id", name: "Visa guide", templateSlug: "482",
+            resourceSource: "template:482",
+          },
+        ],
+      });
+    }
+    if (url.startsWith("/api/resources/matter")) {
+      return json({
+        success: true,
+        items: [{ id: "same-id", name: "Matter note", resourceSource: "template:spoofed" }],
+      });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  const result = await loadResourcePageData({
+    appId: "matter-1",
+    slug: "482",
+    idToken: "signed-token",
+    fetchImpl,
+  });
+
+  assert.deepEqual(result.items.map(({ id, name, resourceSource }) => ({ id, name, resourceSource })), [
+    { id: "same-id", name: "Global guide", resourceSource: "template:global" },
+    { id: "same-id", name: "Visa guide", resourceSource: "template:482" },
+    { id: "same-id", name: "Matter note", resourceSource: "matter" },
+  ]);
+  assert.equal(new Set(result.items.map((item) => `${item.resourceSource}:${item.id}`)).size, 3);
+});
+
+test("a global-only template keeps eligible legacy shared and matter resources during rollout", async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    if (url.startsWith("/api/resources/template")) {
+      return json({
+        success: true,
+        template: { visaSlug: "500", templateSlug: "global", categories: [] },
+        items: [{
+          id: "welcome", name: "Global welcome", templateSlug: "global",
+          resourceSource: "template:global",
+        }],
+      });
+    }
+    if (url.startsWith("/api/resources/matter")) {
+      return json({ success: true, items: [{ id: "matter-note", name: "Matter note" }] });
+    }
+    if (url.startsWith("/api/resources/shared")) {
+      // The shared route is responsible for excluding resources targeted to
+      // other visas before this page-level rollout merge.
+      return json({ success: true, resources: [{
+        id: "legacy-student", type: "link", title: "Student legacy guide",
+        url: "https://example.test/student",
+      }] });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  const result = await loadResourcePageData({
+    appId: "matter-1",
+    slug: "500",
+    idToken: "signed-token",
+    fetchImpl,
+  });
+
+  assert.deepEqual(result.items.map(({ id, resourceSource }) => ({ id, resourceSource })), [
+    { id: "welcome", resourceSource: "template:global" },
+    { id: "legacy-student", resourceSource: "shared" },
+    { id: "matter-note", resourceSource: "matter" },
+  ]);
+  assert.deepEqual(calls, [
+    "/api/resources/template?applicationId=matter-1",
+    "/api/resources/matter?applicationId=matter-1",
+    "/api/resources/shared?applicationId=matter-1",
+  ]);
+});
+
 test("resource page data combines matter items with shared fallback when a template is absent", async () => {
   const calls = [];
   const fetchImpl = async (url) => {

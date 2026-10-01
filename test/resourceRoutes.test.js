@@ -51,7 +51,11 @@ function setup(t, slug = "482") {
     if (token !== "signed-client-token") throw new Error("Invalid token");
     return { uid: "owner-1" };
   });
-  const templateSlug = slug === "820" ? "partner" : slug === "866" ? "protection" : slug;
+  const templateSlug = ["309", "801", "820", "partner"].includes(slug)
+    ? "partner"
+    : slug === "866"
+      ? "protection"
+      : slug;
   const documents = new Map([
     ["applications/matter-1", { userId: "owner-1", visaSlug: slug }],
     ["applications/matter-1/data/questionnaire", { visaContext: slug }],
@@ -154,7 +158,7 @@ const request = (route = "template", token = "signed-client-token", applicationI
   { headers: token ? { Authorization: `Bearer ${token}` } : {} },
 );
 
-for (const slug of ["482", "186", "820", "866"]) {
+for (const slug of ["482", "186", "309", "801", "820", "866"]) {
   test(`${slug} resources load without Admin credentials, preserving categories, order and links`, async (t) => {
     const { templateSlug, calls } = setup(t, slug);
     const response = await template.GET(request());
@@ -175,8 +179,245 @@ for (const slug of ["482", "186", "820", "866"]) {
   });
 }
 
-test("missing and draft templates permit the existing shared fallback and visa targeting", async (t) => {
+test("global and visa templates merge categories and retain colliding item identities", async (t) => {
   const { documents } = setup(t);
+  documents.get("resourceTemplates/482").categories = [
+    { name: "Guides", icon: "guide" },
+    { name: "Visa resources", icon: "policy" },
+  ];
+  documents.set("resourceTemplates/global", {
+    status: "active",
+    title: "All Matters",
+    categories: [
+      { name: "guides", icon: "folder" },
+      { name: "All matters", icon: "link" },
+    ],
+  });
+  documents.set("resourceTemplates/global/items/note", {
+    status: "active", kind: "note", name: "Global instructions", category: "guides", order: 0,
+  });
+  documents.set("resourceTemplates/global/items/folder", {
+    status: "active", kind: "folder", name: "Global folder",
+  });
+  documents.set("resourceTemplates/global/items/draft", {
+    status: "draft", kind: "link", name: "Global draft", externalUrl: "https://example.test/draft",
+  });
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.templateSlug, "482");
+  assert.deepEqual(data.template.categories, [
+    { name: "Guides", icon: "guide" },
+    { name: "All matters", icon: "link" },
+    { name: "Visa resources", icon: "policy" },
+  ]);
+  assert.deepEqual(
+    data.items.filter((item) => item.id === "note").map((item) => ({
+      id: item.id,
+      name: item.name,
+      templateSlug: item.templateSlug,
+      resourceSource: item.resourceSource,
+    })),
+    [
+      {
+        id: "note", name: "Global instructions", templateSlug: "global",
+        resourceSource: "template:global",
+      },
+      {
+        id: "note", name: "Instructions", templateSlug: "482",
+        resourceSource: "template:482",
+      },
+    ],
+  );
+  assert.equal(data.items.some((item) => item.name === "Global folder"), false);
+  assert.equal(data.items.some((item) => item.name === "Global draft"), false);
+});
+
+test("an active visa template stays visa-only when global is empty and never loads another visa", async (t) => {
+  const { documents } = setup(t, "482");
+  documents.set("resourceTemplates/global", {
+    status: "active", title: "All Matters", categories: [],
+  });
+  documents.set("resourceTemplates/global/items/folder", {
+    status: "active", kind: "folder", name: "Folder only",
+  });
+  documents.set("resourceTemplates/186", {
+    status: "active", title: "Subclass 186", categories: [{ name: "186 only", icon: "guide" }],
+  });
+  documents.set("resourceTemplates/186/items/private", {
+    status: "active", kind: "note", name: "Other visa resource", category: "186 only",
+  });
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.templateSlug, "482");
+  assert.ok(data.items.length > 0);
+  assert.ok(data.items.every((item) => item.templateSlug === "482"));
+  assert.equal(data.items.some((item) => item.name === "Other visa resource"), false);
+});
+
+test("an unsupported concrete visa receives global resources without Partner resources", async (t) => {
+  const { documents } = setup(t, "820");
+  documents.set("applications/matter-1", {
+    userId: "owner-1",
+    type: "Student Visa (Subclass 500)",
+    visaTypeCode: "partner",
+  });
+  documents.set("applications/matter-1/data/questionnaire", {});
+  documents.set("resourceTemplates/global", {
+    status: "active", title: "All Matters", categories: [{ name: "General", icon: "guide" }],
+  });
+  documents.set("resourceTemplates/global/items/welcome", {
+    status: "active", kind: "note", name: "Welcome", category: "General",
+  });
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.visaSlug, "500");
+  assert.equal(data.template.templateSlug, "global");
+  assert.deepEqual(data.items.map(({ id, templateSlug, resourceSource }) => ({
+    id, templateSlug, resourceSource,
+  })), [{
+    id: "welcome", templateSlug: "global", resourceSource: "template:global",
+  }]);
+});
+
+test("an unsupported concrete visa does not receive Partner-targeted legacy fallback resources", async (t) => {
+  const { documents } = setup(t, "820");
+  documents.set("applications/matter-1", {
+    userId: "owner-1",
+    type: "Student Visa (Subclass 500)",
+    visaTypeCode: "partner",
+  });
+  documents.set("applications/matter-1/data/questionnaire", {});
+  documents.set("resources/partner-only", {
+    status: "active", scope: "shared", title: "Partner only", program: "partner",
+    url: "https://example.test/partner",
+  });
+  documents.set("resources/student-only", {
+    status: "active", scope: "shared", title: "Student only", program: "500",
+    url: "https://example.test/student",
+  });
+
+  const response = await shared.GET(request("shared"));
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).resources.map((resource) => resource.id), ["general", "student-only"]);
+});
+
+test("ambiguous metadata and reference numbers remain global-only", async (t) => {
+  const { documents } = setup(t, "186");
+  documents.set("applications/matter-1", {
+    userId: "owner-1",
+    type: "Visa Application",
+    reference: "MAT-Subclass 186-XYZ",
+    visaTypeCode: "temporary-work",
+  });
+  documents.set("applications/matter-1/data/questionnaire", {});
+  documents.set("resourceTemplates/global", {
+    status: "active", title: "All Matters", categories: [{ name: "General", icon: "guide" }],
+  });
+  documents.set("resourceTemplates/global/items/welcome", {
+    status: "active", kind: "note", name: "Welcome", category: "General",
+  });
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.visaSlug, null);
+  assert.equal(data.template.templateSlug, "global");
+  assert.deepEqual(data.items.map((item) => item.resourceSource), ["template:global"]);
+
+  const fallback = await shared.GET(request("shared"));
+  assert.equal(fallback.status, 200);
+  assert.deepEqual((await fallback.json()).resources.map((resource) => resource.id), ["general"]);
+});
+
+test("legacy Partner targeting includes subclass 801 aliases", async (t) => {
+  const { documents } = setup(t, "801");
+  documents.set("resources/801", {
+    status: "active", scope: "shared", title: "801 only", program: "801",
+    url: "https://example.test/801",
+  });
+
+  const response = await shared.GET(request("shared"));
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).resources.map((resource) => resource.id), ["general", "801"]);
+});
+
+test("an exact application visa code resolves an otherwise opaque application", async (t) => {
+  const { documents } = setup(t, "801");
+  documents.set("applications/matter-1", {
+    userId: "owner-1",
+    type: "Opaque case label",
+    visaTypeCode: "801",
+  });
+  documents.set("applications/matter-1/data/questionnaire", {});
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.visaSlug, "820");
+  assert.equal(data.template.templateSlug, "partner");
+  assert.ok(data.items.every((item) => item.templateSlug === "partner"));
+});
+
+for (const visaContext of ["186", "482"]) {
+  test(`a generic temporary-work alias preserves the exact ${visaContext} questionnaire template`, async (t) => {
+    const { documents } = setup(t, visaContext);
+    documents.set("applications/matter-1", {
+      userId: "owner-1",
+      visaSlug: "temporary-work",
+      type: "Temporary Work",
+      visaTypeCode: "temporary-work",
+    });
+
+    const response = await template.GET(request());
+    assert.equal(response.status, 200);
+    const data = await response.json();
+
+    assert.equal(data.template.visaSlug, visaContext);
+    assert.equal(data.template.templateSlug, visaContext);
+    assert.ok(data.items.some((item) => item.templateSlug === visaContext));
+  });
+}
+
+test("an explicit application template takes precedence over a conflicting questionnaire context", async (t) => {
+  const { documents } = setup(t, "186");
+  documents.set("applications/matter-1", {
+    userId: "owner-1",
+    resourceTemplateSlug: "186",
+    visaSlug: "temporary-work",
+    type: "Visa Application",
+    visaTypeCode: "temporary-work",
+  });
+  documents.set("applications/matter-1/data/questionnaire", { visaContext: "482" });
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.visaSlug, "186");
+  assert.equal(data.template.templateSlug, "186");
+  assert.ok(data.items.every((item) => item.templateSlug === "186"));
+});
+
+test("an empty active global template preserves the existing shared fallback", async (t) => {
+  const { documents } = setup(t);
+  documents.set("resourceTemplates/global", {
+    status: "active", title: "All Matters", categories: [{ name: "General", icon: "guide" }],
+  });
+  documents.set("resourceTemplates/global/items/folder", {
+    status: "active", kind: "folder", name: "Folder only",
+  });
+
   for (const status of ["draft", null]) {
     if (status) documents.get("resourceTemplates/482").status = status;
     else documents.delete("resourceTemplates/482");

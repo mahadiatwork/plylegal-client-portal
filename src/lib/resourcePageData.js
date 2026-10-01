@@ -52,7 +52,13 @@ function mapSharedResourcesToItems(resources) {
 
 function identifyItems(items, resourceSource) {
   if (!Array.isArray(items)) return [];
-  return items.map((item) => ({ ...item, resourceSource }));
+  return items.map((item) => ({
+    ...item,
+    resourceSource:
+      resourceSource === "template"
+        ? item.resourceSource || (item.templateSlug ? `template:${item.templateSlug}` : resourceSource)
+        : resourceSource,
+  }));
 }
 
 async function parseResponse(response) {
@@ -76,8 +82,7 @@ export async function loadResourcePageData({ appId, slug, idToken, fetchImpl = f
   }
 
   let template;
-  let baseItems;
-  let baseSource;
+  let identifiedBaseItems;
 
   if ((!templateResponse.ok || !templateData.success) && isMissingTemplateResponse(templateResponse, templateData)) {
     const sharedResponse = await fetchImpl(`/api/resources/shared?applicationId=${applicationId}`, { headers });
@@ -94,22 +99,33 @@ export async function loadResourcePageData({ appId, slug, idToken, fetchImpl = f
       status: "active",
       categories: DEFAULT_TEMPLATE_CATEGORIES,
     };
-    baseItems = mapSharedResourcesToItems(sharedData.resources || []);
-    baseSource = "shared";
+    identifiedBaseItems = identifyItems(mapSharedResourcesToItems(sharedData.resources || []), "shared");
   } else {
     if (!templateResponse.ok || !templateData.success) {
       throw new Error(templateData.error || "Failed to load resources");
     }
 
     template = templateData.template || null;
-    baseItems = templateData.items || [];
-    baseSource = "template";
+    identifiedBaseItems = identifyItems(templateData.items || [], "template");
+
+    if (template?.templateSlug === "global") {
+      const sharedResponse = await fetchImpl(`/api/resources/shared?applicationId=${applicationId}`, { headers });
+      const sharedData = await parseResponse(sharedResponse);
+
+      if (!sharedResponse.ok || !sharedData.success) {
+        throw new Error(sharedData.error || "Failed to load shared resources");
+      }
+
+      identifiedBaseItems.push(
+        ...identifyItems(mapSharedResourcesToItems(sharedData.resources || []), "shared"),
+      );
+    }
   }
 
   return {
     template,
     items: [
-      ...identifyItems(baseItems, baseSource),
+      ...identifiedBaseItems,
       ...identifyItems(matterData.items, "matter"),
     ],
   };
