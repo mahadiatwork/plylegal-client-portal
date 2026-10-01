@@ -143,7 +143,69 @@ test("legacy note text remains escaped and preserves authored line breaks", () =
   assert.match(html, /&lt;strong&gt;Literal markup&lt;\/strong&gt;/);
   assert.doesNotMatch(html, /<strong>Literal markup<\/strong>/);
   assert.match(html, /whitespace-pre-wrap/);
+  assert.match(html, /text-sm leading-5 text-black/);
   assert.match(html, /Second line/);
+  assert.doesNotMatch(html, /Show More/);
+});
+
+test("titleless notes render without an invented or empty heading", () => {
+  const html = render({
+    kind: "note",
+    name: "",
+    noteText: "The body is enough on its own.",
+  });
+
+  assert.match(html, />Note</);
+  assert.match(html, /The body is enough on its own\./);
+  assert.doesNotMatch(html, /<h3|Untitled resource/);
+});
+
+test("long notes start collapsed with an accessible Show More control", () => {
+  const noteText = Array.from(
+    { length: 8 },
+    (_, index) => `Line ${index + 1}: relationship evidence instructions for the client.`,
+  ).join("\n");
+  const html = render({ kind: "note", name: "Long note", noteText });
+
+  assert.match(html, /Line 1: relationship evidence instructions/);
+  assert.match(html, /Show More/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /aria-controls="[^"]+"/);
+  assert.doesNotMatch(html, /Line 8:/);
+});
+
+test("collapsed note excerpts do not split emoji at the character limit", () => {
+  const noteText = `${"a".repeat(319)}😀 hidden tail`;
+  const html = render({ kind: "note", name: "Unicode note", noteText });
+
+  assert.match(html, /😀…/);
+  assert.doesNotMatch(html, /�|hidden tail/);
+});
+
+test("emoji-heavy excerpts apply word boundaries in Unicode code points", () => {
+  const noteText = `${"😀".repeat(121)} ${"b".repeat(197)}Z hidden tail`;
+  const html = render({ kind: "note", name: "Emoji-heavy note", noteText });
+
+  assert.match(html, /Z…/);
+  assert.doesNotMatch(html, /hidden tail/);
+});
+
+test("long rich notes preview canonical rich text instead of stale plaintext", () => {
+  const previewText = Array.from(
+    { length: 8 },
+    (_, index) => `Rich line ${index + 1}: relationship evidence instructions.`,
+  ).join("\n");
+  const html = render({
+    kind: "note",
+    name: "Long formatted note",
+    noteText: "stale plaintext sentinel",
+    notePreviewText: previewText,
+    noteHtml: `<h2>Rich heading</h2><p>${previewText}</p>`,
+  });
+
+  assert.match(html, /Rich line 1: relationship evidence instructions/);
+  assert.match(html, /Show More/);
+  assert.doesNotMatch(html, /stale plaintext sentinel|Rich line 8:|<h2>Rich heading<\/h2>/);
 });
 
 test("rich notes render the sanitized API field as semantic read-only content", () => {
@@ -155,6 +217,7 @@ test("rich notes render the sanitized API field as semantic read-only content", 
   });
 
   assert.match(html, /rich-text-content/);
+  assert.match(html, /text-sm leading-5 text-black/);
   assert.match(html, /min-w-0 flex-1 break-words/);
   assert.match(html, /<h2>Heading<\/h2>/);
   assert.match(html, /<strong>Bold<\/strong>/);

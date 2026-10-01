@@ -3,7 +3,10 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
-import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
+import {
+  resourceNoteHtmlToPlainText,
+  sanitizeResourceNoteHtml,
+} from "@/lib/resourceRichText.server";
 
 const DEFAULT_MATTER_CATEGORY = "For this matter";
 
@@ -59,6 +62,8 @@ function normalizeMatterResource(doc) {
     ? normalizeLinkUrl(data.externalUrl || data.publicUrl || data.url)
     : "";
   const viewerUrl = kind === "file" ? getResourceViewerUrl(data) : "";
+  const noteHtml = sanitizeResourceNoteHtml(data.noteHtml);
+  const noteText = data.noteText || data.content || data.description || "";
 
   if (kind === "link" && !externalUrl) return null;
 
@@ -66,7 +71,10 @@ function normalizeMatterResource(doc) {
     id: doc.id,
     parentId: null,
     kind,
-    name: data.title || data.name || data.fileName || "Untitled resource",
+    name:
+      kind === "note"
+        ? String(data.title ?? data.name ?? "").trim()
+        : data.title || data.name || data.fileName || "Untitled resource",
     category: String(data.category || DEFAULT_MATTER_CATEGORY).trim() || DEFAULT_MATTER_CATEGORY,
     order: normalizeResourceOrder(data.order),
     status,
@@ -74,8 +82,14 @@ function normalizeMatterResource(doc) {
     viewerUrl,
     downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
     description: data.description || "",
-    noteText: data.noteText || data.content || data.description || "",
-    noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
+    noteText,
+    noteHtml,
+    notePreviewText:
+      kind === "note"
+        ? noteHtml
+          ? resourceNoteHtmlToPlainText(noteHtml)
+          : noteText
+        : "",
     mimeType: data.mimeType || null,
     size: typeof data.size === "number" ? data.size : typeof data.fileSize === "number" ? data.fileSize : null,
     createdAt: serializeTimestamp(data.createdAt),

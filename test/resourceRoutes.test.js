@@ -288,6 +288,30 @@ test("an unsupported concrete visa receives global resources without Partner res
   }]);
 });
 
+test("an unknown legacy visaTypeCode does not fall back to Partner resources", async (t) => {
+  const { documents } = setup(t, "820");
+  documents.set("applications/matter-1", {
+    userId: "owner-1",
+    type: "Visa Application",
+    visaTypeCode: "student",
+  });
+  documents.set("applications/matter-1/data/questionnaire", {});
+  documents.set("resourceTemplates/global", {
+    status: "active", title: "All visa resources", categories: [{ name: "General", icon: "guide" }],
+  });
+  documents.set("resourceTemplates/global/items/welcome", {
+    status: "active", kind: "note", name: "Welcome", category: "General",
+  });
+
+  const response = await template.GET(request());
+  assert.equal(response.status, 200);
+  const data = await response.json();
+
+  assert.equal(data.template.visaSlug, "student");
+  assert.equal(data.template.templateSlug, "global");
+  assert.deepEqual(data.items.map((item) => item.resourceSource), ["template:global"]);
+});
+
 test("an unsupported concrete visa does not receive Partner-targeted legacy fallback resources", async (t) => {
   const { documents } = setup(t, "820");
   documents.set("applications/matter-1", {
@@ -430,6 +454,20 @@ test("an empty active global template preserves the existing shared fallback", a
   }
 });
 
+test("missing and draft templates permit the existing shared fallback and visa targeting", async (t) => {
+  const { documents } = setup(t);
+  for (const status of ["draft", null]) {
+    if (status) documents.get("resourceTemplates/482").status = status;
+    else documents.delete("resourceTemplates/482");
+    const response = await template.GET(request());
+    assert.equal(response.status, 404);
+    assert.equal((await response.json()).error, "No resource template found for this visa type");
+    const fallback = await shared.GET(request("shared"));
+    assert.equal(fallback.status, 200);
+    assert.deepEqual((await fallback.json()).resources.map((resource) => resource.id).sort(), ["482", "general"]);
+  }
+});
+
 test("matter resources are owner-scoped, active-only, ordered, and stripped of raw file URLs", async (t) => {
   setup(t);
   const response = await matter.GET(request("matter"));
@@ -477,6 +515,29 @@ test("template, shared and matter resources expose descriptions separately from 
   assert.equal(sharedItems.general.noteText, "General instructions");
   assert.equal(matterItems["matter-link"].description, "Matter-specific instructions");
   assert.equal(matterItems["matter-link"].noteText, "Matter-specific instructions");
+});
+
+test("template, shared and matter notes preserve an intentionally blank title", async (t) => {
+  const { documents } = setup(t);
+  documents.get("resourceTemplates/482/items/note").name = "";
+  documents.get("applications/matter-1/resources/matter-note").title = "";
+  documents.get("applications/matter-1/resources/matter-note").name = "Legacy matter title";
+  documents.set("resources/titleless-note", {
+    status: "active",
+    scope: "shared",
+    type: "note",
+    title: "",
+    name: "Legacy shared title",
+    noteText: "Shared note content",
+  });
+
+  const templateData = await (await template.GET(request())).json();
+  const sharedData = await (await shared.GET(request("shared"))).json();
+  const matterData = await (await matter.GET(request("matter"))).json();
+
+  assert.equal(templateData.items.find((item) => item.id === "note").name, "");
+  assert.equal(sharedData.resources.find((item) => item.id === "titleless-note").title, "");
+  assert.equal(matterData.items.find((item) => item.id === "matter-note").name, "");
 });
 
 test("missing/invalid tokens and another owner's application cannot read resources", async (t) => {
@@ -627,6 +688,8 @@ test("all resource routes sanitize explicit rich note HTML with the same strict 
 
   for (const note of notes) {
     assert.equal(note.noteText, legacyText);
+    assert.match(note.notePreviewText, /^Heading\nBold Italic Underline Strike Mark/);
+    assert.doesNotMatch(note.notePreviewText, /Legacy text remains literal/);
     assert.match(note.noteHtml, /<h2 style="text-align:center">Heading<\/h2>/);
     assert.match(note.noteHtml, /<strong>Bold<\/strong>/);
     assert.match(note.noteHtml, /<em>Italic<\/em>/);

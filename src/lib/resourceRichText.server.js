@@ -42,6 +42,8 @@ const ALIGNABLE_TAGS = [
   "pre",
 ];
 
+const BLOCK_END_TAGS = ["p", "h1", "h2", "h3", "h4", "li", "blockquote", "pre"];
+
 const allowedAttributes = Object.fromEntries(
   ALIGNABLE_TAGS.map((tag) => [tag, ["style"]]),
 );
@@ -94,4 +96,54 @@ const SANITIZE_OPTIONS = {
 export function sanitizeResourceNoteHtml(value) {
   if (typeof value !== "string" || !value.trim()) return "";
   return sanitizeHtml(value, SANITIZE_OPTIONS).trim();
+}
+
+function decodePlainTextEntities(value) {
+  const namedEntities = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    nbsp: " ",
+    quot: '"',
+  };
+
+  return value.replace(/&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi, (entity, decimal, hex, named) => {
+    if (decimal) {
+      const codePoint = Number.parseInt(decimal, 10);
+      return Number.isSafeInteger(codePoint) && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+
+    if (hex) {
+      const codePoint = Number.parseInt(hex, 16);
+      return Number.isSafeInteger(codePoint) && codePoint <= 0x10ffff
+        ? String.fromCodePoint(codePoint)
+        : entity;
+    }
+
+    return namedEntities[named.toLowerCase()] ?? entity;
+  });
+}
+
+export function resourceNoteHtmlToPlainText(value) {
+  const safeHtml = sanitizeResourceNoteHtml(value);
+  const withLineBreaks = safeHtml
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<hr\s*\/?>/gi, "\n")
+    .replace(new RegExp(`</(?:${BLOCK_END_TAGS.join("|")})\\s*>`, "gi"), "\n");
+  const encodedText = sanitizeHtml(withLineBreaks, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+
+  return decodePlainTextEntities(encodedText)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[\u00ad\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

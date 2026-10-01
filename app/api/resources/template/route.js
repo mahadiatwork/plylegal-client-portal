@@ -3,7 +3,10 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
-import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
+import {
+  resourceNoteHtmlToPlainText,
+  sanitizeResourceNoteHtml,
+} from "@/lib/resourceRichText.server";
 import {
   getApplicationResourceVisaSlug,
   getResourceTemplateSlug,
@@ -44,7 +47,6 @@ function normalizeCategories(categories) {
 function normalizeStatus(value, fallback = "draft") {
   return String(value || fallback).trim().toLowerCase();
 }
-
 function mergeCategories(templates) {
   const categories = [];
   const categoryIndexes = new Map();
@@ -71,6 +73,8 @@ function mergeCategories(templates) {
 function normalizeTemplateItem(doc, templateSlug) {
   const data = doc.data;
   const kind = String(data.kind || "file").toLowerCase();
+  const noteHtml = sanitizeResourceNoteHtml(data.noteHtml);
+  const noteText = data.noteText || data.body || data.content || data.description || "";
 
   return {
     id: doc.id,
@@ -78,7 +82,10 @@ function normalizeTemplateItem(doc, templateSlug) {
     resourceSource: `template:${templateSlug}`,
     parentId: data.parentId || null,
     kind,
-    name: data.name || data.fileName || "Untitled resource",
+    name:
+      kind === "note"
+        ? String(data.name || "").trim()
+        : data.name || data.fileName || "Untitled resource",
     category: data.category || "Uncategorized",
     order: normalizeResourceOrder(data.order),
     status: normalizeStatus(data.status),
@@ -86,8 +93,14 @@ function normalizeTemplateItem(doc, templateSlug) {
     viewerUrl: kind === "file" ? getResourceViewerUrl(data) : "",
     downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
     description: data.description || "",
-    noteText: data.noteText || data.body || data.content || data.description || "",
-    noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
+    noteText,
+    noteHtml,
+    notePreviewText:
+      kind === "note"
+        ? noteHtml
+          ? resourceNoteHtmlToPlainText(noteHtml)
+          : noteText
+        : "",
     mimeType: data.mimeType || null,
     size: typeof data.size === "number" ? data.size : null,
     createdAt: serializeTimestamp(data.createdAt),

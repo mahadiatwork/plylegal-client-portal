@@ -397,6 +397,26 @@
     border-top: 1px solid #cfded7;
     margin: 1rem 0;
   }
+
+  .resource-note-content.rich-text-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .resource-note-content.rich-text-content h2 {
+    font-size: 1.2rem;
+  }
+
+  .resource-note-content.rich-text-content h3 {
+    font-size: 1.05rem;
+  }
+
+  .resource-note-content.rich-text-content h4 {
+    font-size: 0.875rem;
+  }
+
+  .resource-note-content.rich-text-content blockquote {
+    color: #000;
+  }
 }
 
 /* /login — glassmorphism card */

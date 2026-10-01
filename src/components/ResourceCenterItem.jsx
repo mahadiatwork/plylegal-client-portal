@@ -25,6 +25,7 @@ export function ResourceCenterItem({ item }) {
   const isNote = item.kind === "note";
   const isFile = item.kind === "file";
   const isLink = item.kind === "link";
+  const title = String(item.name || "").trim();
   const Icon = isFile ? FileText : isNote ? ScrollText : LinkIcon;
   const viewerUrl = isFile ? getResourceViewerUrl(item) : "";
   const actionUrl = isFile ? viewerUrl : isLink ? item.externalUrl : "";
@@ -41,15 +42,19 @@ export function ResourceCenterItem({ item }) {
           <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1 break-words">
-          <h3 className="truncate text-sm font-semibold text-gray-900">{item.name}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
+          {title ? (
+            <h3 className="truncate text-sm font-semibold text-gray-900">{title}</h3>
+          ) : null}
+          <p className={`${title ? "mt-1" : ""} text-xs text-muted-foreground`}>{meta}</p>
           {(isFile || isLink) && item.description ? (
             <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{item.description}</p>
           ) : null}
-          {isNote && item.noteHtml ? (
-            <ResourceNoteViewer sanitizedHtml={item.noteHtml} />
-          ) : isNote && item.noteText ? (
-            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{item.noteText}</p>
+          {isNote && (item.noteHtml || item.noteText) ? (
+            <ResourceNoteViewer
+              sanitizedHtml={item.noteHtml}
+              fallbackText={item.noteText}
+              previewText={item.notePreviewText}
+            />
           ) : null}
           {isFile && !viewerUrl ? (
             <p className="mt-2 text-sm text-muted-foreground">Document preview is not available yet.</p>

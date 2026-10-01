@@ -4,7 +4,10 @@ import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } fro
 import { extractSubclass, PROTECTION_PUBLIC_SLUG } from "@/lib/visaDisplay";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { normalizeResourceOrder } from "@/lib/resourceOrdering";
-import { sanitizeResourceNoteHtml } from "@/lib/resourceRichText.server";
+import {
+  resourceNoteHtmlToPlainText,
+  sanitizeResourceNoteHtml,
+} from "@/lib/resourceRichText.server";
 import { getApplicationResourceVisaSlug } from "@/lib/resourceVisa";
 
 const GENERIC_RESOURCE_TARGETS = new Set([
@@ -35,13 +38,24 @@ function normalizeResource(docSnap) {
   const type = String(data.type || "link").toLowerCase();
   const scope = String(data.scope || "shared").toLowerCase();
   const targetTags = getResourceTargetTags(data);
+  const noteHtml = sanitizeResourceNoteHtml(data.noteHtml);
+  const noteText = data.noteText || data.content || data.description || "";
 
   return {
     id: docSnap.id,
-    title: data.title || "Untitled resource",
+    title:
+      type === "note"
+        ? String(data.title ?? data.name ?? "").trim()
+        : data.title || "Untitled resource",
     description: data.description || "",
-    noteText: data.noteText || data.content || data.description || "",
-    noteHtml: sanitizeResourceNoteHtml(data.noteHtml),
+    noteText,
+    noteHtml,
+    notePreviewText:
+      type === "note"
+        ? noteHtml
+          ? resourceNoteHtmlToPlainText(noteHtml)
+          : noteText
+        : "",
     url: type === "link" ? data.publicUrl || data.url || data.externalUrl || "" : "",
     viewerUrl: type === "file" ? getResourceViewerUrl(data) : "",
     downloadAllowed: type === "file" && data.downloadAllowed === false ? false : null,

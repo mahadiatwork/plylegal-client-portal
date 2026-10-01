@@ -32,7 +32,10 @@ function mapSharedResourcesToItems(resources) {
       id: resource.id,
       parentId: null,
       kind,
-      name: resource.title || resource.name || "Untitled resource",
+      name:
+        kind === "note"
+          ? String(resource.title ?? resource.name ?? "").trim()
+          : resource.title || resource.name || "Untitled resource",
       category: resource.category || "Uncategorized",
       order: normalizeResourceOrder(resource.order),
       status: resource.status || "active",
@@ -42,6 +45,7 @@ function mapSharedResourcesToItems(resources) {
       description: resource.description || "",
       noteText: resource.noteText || resource.description || "",
       noteHtml: resource.noteHtml || "",
+      notePreviewText: resource.notePreviewText || "",
       mimeType: resource.mimeType || null,
       size: typeof resource.size === "number" ? resource.size : null,
       createdAt: resource.createdAt || null,

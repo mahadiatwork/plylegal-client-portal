@@ -239,6 +239,10 @@ test("shared fallback carries explicit rich notes and never derives HTML from le
         id: "legacy-note", type: "note", title: "Legacy",
         noteText: "<strong>Keep this literal</strong>",
       },
+      {
+        id: "titleless-note", type: "note", title: "", name: "Legacy title",
+        noteText: "Keep the body without inventing a title.",
+      },
     ] });
   };
 
@@ -253,4 +257,5 @@ test("shared fallback carries explicit rich notes and never derives HTML from le
   assert.equal(byId["rich-note"].noteHtml, "<p><strong>Formatted</strong></p>");
   assert.equal(byId["legacy-note"].noteHtml, "");
   assert.equal(byId["legacy-note"].noteText, "<strong>Keep this literal</strong>");
+  assert.equal(byId["titleless-note"].name, "");
 });
