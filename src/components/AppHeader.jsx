@@ -32,114 +32,72 @@ export function AppHeader({ onMenuClick, variant = "default" }) {
     snap.user?.displayName ||
     null;
 
+  const displayName =
+    snap.userProfile?.name ||
+    snap.userProfile?.displayName ||
+    snap.user?.displayName ||
+    (email ? email.split("@")[0] : "User");
+
+  // Capitalize or extract first name
+  const firstName = displayName.split(" ")[0] || displayName;
+  const initial = (firstName[0] || "U").toUpperCase();
+
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 border-b",
-        isWorkspace
-          ? "border-[#d7ddfb] bg-[#E4E9FF] shadow-sm"
-          : "border-sidebar-border bg-sidebar"
-      )}
-    >
-      <div
-        className={cn(
-          "mx-auto px-4 sm:px-6",
-          isClassic
-            ? "max-w-[1716px] lg:px-8"
-            : isSpacious
-              ? "max-w-[1680px] lg:px-10 xl:px-16 2xl:px-24"
-              : "max-w-7xl"
-        )}
-      >
-        <div
-          className={cn(
-            "flex items-center justify-between",
-            isClassic ? "h-20 sm:h-[88px]" : isSpacious ? "h-[5.75rem]" : "h-16"
-          )}
-        >
-          {showLogo ? (
-            <ProgressLink href="/applications" className="flex-shrink-0">
-              <BrandLogo
-                priority
-                className={cn(
-                  "mx-0",
-                  isClassic ? "h-[50px] sm:h-[56px]" : isSpacious ? "h-[60px]" : "h-[40px]"
-                )}
-              />
-            </ProgressLink>
-          ) : (
-            <div className="flex min-w-0 flex-1 items-center">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div className="mx-auto w-full max-w-[1608px] px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center gap-3">
+            {isWorkspace && onMenuClick && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onMenuClick}
                 data-testid="button-menu"
-                className="sm:hidden text-primary hover:bg-primary/5 hover:text-primary"
+                className="lg:hidden text-slate-700 hover:bg-slate-100"
                 aria-label="Open menu"
               >
-                <Menu className="w-6 h-6" />
+                <Menu className="w-5 h-5" />
               </Button>
-            </div>
-          )}
+            )}
+            <ProgressLink href="/applications" className="flex-shrink-0 flex items-center">
+              <BrandLogo
+                priority
+                variant="black"
+                className="h-[36px] sm:h-[40px] w-auto mx-0"
+              />
+            </ProgressLink>
+          </div>
 
           {/* Right side */}
-          <div className={cn("flex items-center", isClassic || isSpacious ? "gap-5" : "gap-3")}>
-            {/* User email pill — desktop only */}
-            {email && (
-              <span className={cn(
-                "hidden sm:inline-flex items-center gap-2 rounded-full font-medium truncate",
-                isWorkspace
-                  ? "border border-slate-200 bg-white text-slate-700 shadow-sm"
-                  : "bg-white/10 text-sidebar-foreground/85",
-                isClassic
-                  ? "max-w-[260px] px-4 py-2 text-sm"
-                  : isSpacious
-                    ? "max-w-[260px] px-5 py-3 text-sm"
-                    : "max-w-[200px] px-3 py-1 text-xs"
-              )}>
-                {isSpacious && !isClassic && <UserRound className="h-4 w-4 shrink-0" />}
-                {email}
-              </span>
+          <div className="flex items-center gap-3 sm:gap-6">
+            {/* User Avatar + Name */}
+            {snap.user && (
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EEF7F2] text-xs font-bold text-[#244D42] border border-[#DCECE5]">
+                  {initial}
+                </span>
+                <span className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-slate-800">
+                  {firstName}
+                </span>
+              </div>
             )}
 
-            {/* Sign Out — desktop only */}
-            {isSpacious && !isClassic && (
-              <div className={cn("hidden sm:block h-8 w-px", isWorkspace ? "bg-slate-200" : "bg-white/25")} />
-            )}
+            {/* Sign Out Button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLogout}
               disabled={isLoggingOut}
               data-testid="button-logout"
-              className={cn(
-                "hidden sm:flex items-center gap-2 disabled:opacity-70",
-                isWorkspace
-                  ? "text-primary hover:bg-primary/5 hover:text-primary"
-                  : "text-sidebar-foreground/75 hover:text-white hover:bg-white/10",
-                isClassic ? "h-10 px-3 text-sm font-semibold" : isSpacious ? "h-11 px-4 text-sm" : ""
-              )}
+              className="inline-flex items-center gap-1.5 h-8 px-2.5 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-950 hover:bg-slate-100 disabled:opacity-70 transition-colors"
             >
               {isLoggingOut ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               )}
-              <span>{isLoggingOut ? "Signing out…" : "Sign Out"}</span>
+              <span>{isLoggingOut ? "Signing out…" : "Sign out"}</span>
             </Button>
-
-            {onMenuClick && !isWorkspace && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onMenuClick}
-                data-testid="button-menu"
-                className="sm:hidden text-sidebar-foreground/80 hover:text-white hover:bg-white/10"
-                aria-label="Open menu"
-              >
-                <Menu className="w-6 h-6" />
-              </Button>
-            )}
           </div>
         </div>
       </div>

@@ -29,29 +29,24 @@ const requiredKeys = [
 ];
 
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key]);
-
-if (missingKeys.length > 0) {
-  console.error(
-    `Firebase configuration missing required keys: ${missingKeys.join(', ')}`
-  );
-  throw new Error(
-    `Firebase configuration incomplete. Please add the missing environment variables: ${missingKeys.map(k => `NEXT_PUBLIC_FIREBASE_${k.toUpperCase()}`).join(', ')}`
-  );
-}
+const isConfigured = missingKeys.length === 0;
 
 // Initialize Firebase (no Auth needed for public access)
-let app;
-let db;
+let app = null;
+let db = null;
 
-try {
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  
-  console.log('✅ Firebase initialized successfully for Review & PDF app');
-  console.log(`📦 Project ID: ${firebaseConfig.projectId}`);
-} catch (error) {
-  console.error('❌ Firebase initialization failed:', error);
-  throw error;
+if (isConfigured) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log('✅ Firebase initialized successfully for Review & PDF app');
+  } catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+  }
+} else {
+  console.warn(
+    `⚠️ Review & PDF Firebase configuration incomplete. Missing keys: ${missingKeys.join(', ')}`
+  );
 }
 
 // Export Firestore only (no Auth)
@@ -59,7 +54,8 @@ export { db };
 
 // Export configuration for debugging (safe values only)
 export const config = {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId || null,
+  authDomain: firebaseConfig.authDomain || null,
 };
+
 

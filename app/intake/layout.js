@@ -65,39 +65,13 @@ import {
 } from "@/lib/routes";
 import { useState, useEffect } from "react";
 import React from "react";
-import { BrandLogo } from "@/components/BrandLogo";
+import { AppHeader } from "@/components/AppHeader";
+import { MatterWorkspaceHeader } from "@/components/MatterWorkspaceHeader";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { getApplicationSlug, normalizeApplicationSlug } from "@/lib/visaDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { DynamicQuestionnaireOverride } from "@/components/questionnaire/DynamicQuestionnaireOverride";
-
-function getRouteIcon(route) {
-  const text = `${route?.title || ""} ${route?.href || ""}`.toLowerCase();
-
-  if (text.includes("getting")) return FileText;
-  if (text.includes("included")) return Check;
-  if (text.includes("submit")) return Send;
-  if (text.includes("applicant")) return UsersRound;
-  if (text.includes("sponsor") || text.includes("relationship")) return HeartHandshake;
-  if (text.includes("child")) return Baby;
-  if (text.includes("employment")) return BriefcaseBusiness;
-  if (text.includes("education")) return GraduationCap;
-  if (text.includes("language")) return Languages;
-  if (text.includes("address") || text.includes("contact")) return MapPin;
-  if (text.includes("travel") || text.includes("visa")) return Plane;
-  if (text.includes("health")) return ShieldCheck;
-  if (text.includes("character")) return Scale;
-  if (text.includes("family")) return Home;
-
-  return FileCheck2;
-}
-
-function SidebarRouteIcon({ route, className, completed = false }) {
-  const Icon = completed ? Check : getRouteIcon(route);
-  return <Icon className={cn("h-5 w-5 shrink-0", className)} />;
-}
-
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
@@ -114,8 +88,7 @@ export default function IntakeLayout({ children }) {
   };
   const appsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [deletingNmfId, setDeletingNmfId] = useState(null);
@@ -166,7 +139,7 @@ export default function IntakeLayout({ children }) {
     }
   }, [authSnap.user?.id, appsSnap.applications.length]);
 
-  // Keep store "active profile" aligned when navigating via path-only child URLs (e.g. Next from spouse Identity).
+  // Keep store "active profile" aligned when navigating via path-only child URLs
   useEffect(() => {
     if (childProfileIdFromPath) {
       draftStore.setActiveProfile(childProfileIdFromPath);
@@ -198,13 +171,6 @@ export default function IntakeLayout({ children }) {
     visaContext: draftSnap.visaContext,
     ...options,
   });
-  const email = authSnap.user?.email || authSnap.userProfile?.email || authSnap.user?.displayName || null;
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    await authStore.logout();
-    router.push("/login");
-  };
 
   useEffect(() => {
     if (urlSubclass && urlSubclass !== draftSnap.visaContext) {
@@ -249,7 +215,7 @@ export default function IntakeLayout({ children }) {
 
   const isRouteActive = (href) => internalPathname === href;
 
-  // Convert route path to completion key (e.g., /intake/partner/start -> partner/start)
+  // Convert route path to completion key
   const getCompletionKey = (href) => {
     return href.replace('/intake/', '');
   };
@@ -258,14 +224,6 @@ export default function IntakeLayout({ children }) {
     const key = getCompletionKey(href);
     return completionData[key] === true;
   };
-
-  const currentSection = INTAKE_ROUTES.find((route) => {
-    if (route.href === internalPathname) return true;
-    if (route.subpages) {
-      return route.subpages.some((sub) => sub.href === internalPathname);
-    }
-    return false;
-  });
 
   const findProfileById = (profileId) =>
     profiles.find((profile) => String(profile.id) === String(profileId));
@@ -298,74 +256,9 @@ export default function IntakeLayout({ children }) {
     routeProfile ||
     (effectiveProfileId ? findProfileById(effectiveProfileId) : null);
 
-  const getProfileSubpages = (profile) => {
-    if (!profile) return [];
-    if (profile.relationship === "child") {
-      const subpages =
-        visaType === "temporary-work"
-          ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES
-          : visaType === "partner"
-            ? PARTNER_CHILD_PROFILE_SUBPAGES
-            : PROTECTION_CHILD_PROFILE_SUBPAGES;
-      const buildHrefFn =
-        visaType === "temporary-work"
-          ? buildTemporaryWorkChildHref
-          : visaType === "partner"
-            ? buildPartnerChildHref
-            : buildProtectionChildHref;
-      return subpages.map((subpage) => ({
-        href: buildHrefFn(profile.id, subpage.pathSuffix),
-        title: subpage.title,
-      }));
-    }
-    if (profile.relationship === "spouse") {
-      if (visaType === "temporary-work") {
-        return draftSnap.visaContext === "186"
-          ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES
-          : TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES;
-      }
-      return visaType === "partner"
-        ? PARTNER_SPOUSE_PROFILE_SUBPAGES
-        : PROTECTION_SPOUSE_PROFILE_SUBPAGES;
-    }
-    if (visaType === "partner") {
-      return PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES;
-    }
-    if (visaType === "protection") {
-      return PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES;
-    }
-    return PROFILE_SUBPAGES;
-  };
-
-  const getProfileTitle = (profile) => {
-    if (!profile) return "";
-    if (profile.relationship === "main_applicant") return "Main Applicant";
-    if (profile.relationship === "spouse") return "Spouse/Partner";
-    if (profile.relationship === "child") return "Child";
-    return "Dependent";
-  };
-
-  const isProfileLed = ["temporary-work", "partner", "protection"].includes(visaType);
-  const mobileSection =
-    isProfileLed && activeProfile
-      ? {
-          title: getProfileTitle(activeProfile),
-          subpages: getProfileSubpages(activeProfile),
-          profileId: activeProfile.id,
-        }
-      : currentSection;
-
-  useEffect(() => {
-    mobileActiveTabRef.current?.scrollIntoView({
-      block: "nearest",
-      inline: "center",
-    });
-  }, [internalPathname, mobileSection?.profileId, mobileSection?.title]);
-
   // Auto-expand sections that contain the current active route
   useEffect(() => {
     if (mounted) {
-      // Find the section containing the current route
       const activeSection = INTAKE_ROUTES.find((route) => {
         if (route.href === internalPathname) return true;
         if (route.subpages) {
@@ -398,145 +291,81 @@ export default function IntakeLayout({ children }) {
 
   const isSectionExpanded = (href) => expandedSections.has(href);
 
-  return (
-    <div className="min-h-screen bg-[#E4E9FF] flex flex-col">
-      {/* Mobile Header */}
-      <div
-        className={cn(
-          "lg:hidden flex-shrink-0 bg-sidebar text-white border-b border-white/10 transition-[z-index]",
-          sidebarOpen ? "z-10" : "z-40"
-        )}
-      >
-        <div className="flex items-center justify-between p-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            data-testid="button-menu-toggle"
-            className="h-9 w-9 text-white hover:bg-white/10 hover:text-white"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="flex-1 ml-4">
-            <h2 className="font-serif font-semibold text-base text-[#E6F2EC] truncate">
-              {mobileSection?.title}
-            </h2>
-            <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-[#E6F2EC]/90">
-              <span>{completionPercentage.percentage}% complete</span>
-              <span>{completionPercentage.completed} of {completionPercentage.total} sections</span>
-            </div>
-            <Progress
-              value={completionPercentage.percentage}
-              className="mt-1.5 h-2 rounded-full bg-[#2F4A43] [&>div]:bg-[#A7E0C2]"
-            />
-          </div>
-        </div>
+  // Calculate step sequence index counter
+  let globalStepCounter = 0;
 
-        {/* Mobile Section Tabs */}
-        {mobileSection?.subpages && (
-          <div className="border-t border-white/10 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max min-w-full gap-1 p-2">
-              {mobileSection.subpages.map((subpage) => {
-                const href = buildHref(subpage.href, mobileSection.profileId ? { profileId: mobileSection.profileId } : {});
-                const isActiveTab = isRouteActive(subpage.href);
-                return (
-                  <Button
-                    key={subpage.href}
-                    ref={isActiveTab ? mobileActiveTabRef : null}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (mobileSection.profileId) draftStore.setActiveProfile(mobileSection.profileId);
-                      navPush(href);
-                    }}
-                    className={cn(
-                      "min-h-8 text-xs whitespace-nowrap",
-                      isActiveTab
-                        ? "bg-white text-primary hover:bg-white/90"
-                        : "text-white hover:bg-white/10 hover:text-white"
-                    )}
-                    data-testid={`tab-${subpage.href}`}
-                  >
-                    {subpage.title}
-                  </Button>
-                );
-              })}
+  return (
+    <div className="min-h-screen bg-[#F6F8FC] flex flex-col text-slate-900">
+      {/* Universal Top Header */}
+      <AppHeader />
+
+      {/* Matter Workspace Sub-Header with 4 Tabs */}
+      <MatterWorkspaceHeader
+        application={currentApp}
+        appId={appIdFromUrl || draftSnap.currentApplicationId}
+        slug={intakeSlug}
+      />
+
+      {/* Mobile Stepper Toggle Bar */}
+      <div className="lg:hidden border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+              <span>Section Progress</span>
+              <span>{completionPercentage.completed} of {completionPercentage.total} complete</span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-[#244D42] transition-all duration-300"
+                style={{ width: `${completionPercentage.percentage}%` }}
+              />
             </div>
           </div>
-        )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="ml-4 h-8 text-xs font-medium border-slate-200"
+          >
+            {mobileMenuOpen ? "Hide Steps" : "View Steps"}
+          </Button>
+        </div>
       </div>
 
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside
-          className={cn(
-            "fixed top-0 left-0 h-screen z-30 flex-shrink-0",
-            "w-[88vw] max-w-[20.75rem] overflow-hidden border-r border-white/10 bg-sidebar text-white shadow-[18px_0_50px_rgba(12,43,34,0.14)] lg:w-[20.75rem]",
-            "transition-transform duration-300 lg:translate-x-0",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <div className="relative h-full flex flex-col">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(false)}
-              className="absolute left-4 top-4 z-30 h-10 w-10 rounded-md border border-white/20 bg-white/5 text-white hover:bg-white/15 hover:text-white lg:hidden"
-              aria-label="Close menu"
-            >
-              <X className="h-5 w-5 stroke-[2.5]" />
-            </Button>
-            {/* Logo */}
-            <div className="relative px-8 pb-7 pt-7">
-              <BrandLogo priority className="mx-0 h-[56px]" />
-              <p className="mt-1 text-sm text-white/70">
-                Client Portal
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const appId = draftSnap.currentApplicationId;
-                  if (appId) {
-                    navPush(`/applications/${intakeSlug}/${appId}/questionnaire`);
-                  } else {
-                    navPush("/applications");
-                  }
-                }}
-                className="mt-6 w-full justify-start px-0 text-sm font-medium text-white/80 hover:text-white hover:bg-white/10"
-                data-testid="button-back-to-applications"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2 text-white" />
-                Back to Application
-              </Button>
-            </div>
-
-            {/* Progress */}
-            <div className="relative mx-8 border-t border-white/20 py-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-[#E6F2EC]/85">Completion</span>
-                <span className="text-sm font-semibold text-[#E6F2EC]">
-                  {completionPercentage.percentage}%
-                </span>
-              </div>
-              <Progress
-                value={completionPercentage.percentage}
-                className="h-3 rounded-full bg-[#2F4A43] [&>div]:bg-[#A7E0C2]"
-              />
-              <p className="mt-3 text-sm font-medium text-[#E6F2EC]">
+      {/* Main 2-Column Content Layout */}
+      <div className="mx-auto w-full max-w-[1608px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 flex-1">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-8">
+          {/* Left Column: Modern Questionnaire Stepper */}
+          <aside
+            className={cn(
+              "w-full lg:w-[320px] shrink-0 bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-5",
+              mobileMenuOpen ? "block" : "hidden lg:block"
+            )}
+          >
+            {/* Stepper Header & Progress */}
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 block mb-1">
+                QUESTIONNAIRE
+              </span>
+              <p className="text-sm font-semibold text-slate-800">
                 {completionPercentage.completed} of {completionPercentage.total} sections complete
               </p>
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-[#244D42] transition-all duration-500 ease-out"
+                  style={{ width: `${completionPercentage.percentage}%` }}
+                />
+              </div>
             </div>
 
-            {/* Navigation */}
-            <ScrollArea className="relative flex-1 overflow-x-visible">
-              <nav className="px-5 pb-8 pt-1 space-y-2">
+            {/* Stepper Navigation List */}
+            <ScrollArea className="max-h-[calc(100vh-280px)] pr-2">
+              <nav className="space-y-1 pt-1" aria-label="Questionnaire Sections">
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
                   const isExpanded = isSectionExpanded(route.href);
 
-                  // ── Replace applicant sections with per-profile sections for profile-led visas ──
+                  // Replace applicant sections with per-profile sections for profile-led visas
                   const isProfileSection =
                     ['temporary-work', 'partner', 'protection'].includes(visaType) && (
                       route.href.includes('/main-applicant') ||
@@ -544,86 +373,98 @@ export default function IntakeLayout({ children }) {
                       route.href.includes('/children')
                     );
 
-                  if (isProfileSection) return null; // replaced by dynamic profile sections below
+                  if (isProfileSection) return null;
 
-                  // ── Profile sections injection point (after Application Profile route) ──
+                  // Profile sections injection point
                   if (['temporary-work', 'partner', 'protection'].includes(visaType) && route.href.endsWith('/profile') && profiles.length > 0) {
+                    globalStepCounter += 1;
+                    const stepNum = globalStepCounter;
+                    const isActive = isRouteActive(route.href);
+                    const isComplete = isRouteCompleted(route.href);
+
                     return (
-                      <div key="profile-routes">
+                      <div key="profile-routes" className="space-y-1">
                         {/* Application Profile nav item */}
-                        <Button
-                          variant="ghost"
+                        <button
+                          type="button"
                           onClick={() => {
                             navPush(buildHref(route.href));
-                            setSidebarOpen(false);
+                            setMobileMenuOpen(false);
                           }}
                           className={cn(
-                            "w-full justify-start gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
-                            isRouteActive(route.href) && "border-white/70 bg-white/10 text-white shadow-sm",
-                            isRouteCompleted(route.href) && !isRouteActive(route.href) && "text-white/60"
+                            "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
+                            isActive
+                              ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                              : "text-slate-700 hover:bg-slate-50"
                           )}
                         >
-                          <SidebarRouteIcon route={route} />
-                          {route.title}
-                        </Button>
+                          <span
+                            className={cn(
+                              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs transition-colors",
+                              isActive
+                                ? "bg-[#244D42] font-bold text-white shadow-sm"
+                                : isComplete
+                                  ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
+                                  : "border border-slate-200 text-slate-400 font-medium"
+                            )}
+                          >
+                            {isComplete && !isActive ? <Check className="h-3.5 w-3.5 stroke-[2.5]" /> : stepNum}
+                          </span>
+                          <span className="flex-1 truncate">{route.title}</span>
+                          {isComplete && <Check className="h-3.5 w-3.5 text-[#244D42] shrink-0" />}
+                        </button>
 
-                        {/* Per-profile sections */}
+                        {/* Per-profile dynamic sections */}
                         {(() => {
                           const sortedProfiles = [...profiles].sort((a, b) => {
                             const order = { main_applicant: 0, spouse: 1, child: 2, other: 3 };
                             return (order[a.relationship] ?? 4) - (order[b.relationship] ?? 4);
                           });
+
                           return sortedProfiles.map((profile) => {
-                          const profileKey = profile.id;
-                          const isProfileExpanded = isSectionExpanded(`profile-${profileKey}`);
-                          const profileName = `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Unnamed';
-                          // Type label only (name is shown on the line below). Child/others must not use full name here.
-                          const parenLabel =
-                            profile.relationship === 'main_applicant'
-                              ? 'Main Applicant'
-                              : profile.relationship === 'spouse'
-                                ? 'Spouse/Partner'
-                                : profile.relationship === 'child'
-                                  ? 'Child'
-                                  : profile.relationship === 'other'
-                                    ? 'Dependent'
+                            const profileKey = profile.id;
+                            const isProfileExpanded = isSectionExpanded(`profile-${profileKey}`);
+                            const profileName = `${profile.given_names || ''} ${profile.family_name || ''}`.trim() || 'Unnamed';
+                            const parenLabel =
+                              profile.relationship === 'main_applicant'
+                                ? 'Main Applicant'
+                                : profile.relationship === 'spouse'
+                                  ? 'Spouse/Partner'
+                                  : profile.relationship === 'child'
+                                    ? 'Child'
                                     : 'Dependent';
 
-                          // Check if any subpage for this profile is currently active (query or child path)
-                          const isThisProfileActive = effectiveProfileId === profileKey;
+                            const isThisProfileActive = effectiveProfileId === profileKey;
 
-                          return (
-                            <Collapsible
-                              key={`profile-${profileKey}`}
-                              open={isProfileExpanded || isThisProfileActive}
-                              onOpenChange={() => toggleSection(`profile-${profileKey}`)}
-                            >
-                              <div className="space-y-1">
-                                <CollapsibleTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    className={cn(
-                                      "mt-2 w-full justify-between gap-3 rounded-lg px-4 py-3 text-left text-white/90 hover:bg-white/10 hover:text-white",
-                                      isThisProfileActive && "bg-white/10 text-white"
-                                    )}
-                                    data-testid={`nav-profile-${profileKey}`}
-                                  >
-                                    <span className="flex min-w-0 items-center gap-2 text-left">
-                                      <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-semibold uppercase tracking-[0.02em]">{profileName}</span>
-                                        <span className="block truncate text-xs font-normal text-white/70">({parenLabel})</span>
-                                      </span>
-                                    </span>
-                                    <ChevronDown
+                            return (
+                              <Collapsible
+                                key={`profile-${profileKey}`}
+                                open={isProfileExpanded || isThisProfileActive}
+                                onOpenChange={() => toggleSection(`profile-${profileKey}`)}
+                                className="pt-1"
+                              >
+                                <div className="space-y-1">
+                                  <CollapsibleTrigger asChild>
+                                    <button
+                                      type="button"
                                       className={cn(
-                                        "w-4 h-4 transition-transform duration-200 flex-shrink-0",
-                                        (isProfileExpanded || isThisProfileActive) && "transform rotate-180"
+                                        "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors",
+                                        isThisProfileActive && "bg-slate-100/80 text-slate-900"
                                       )}
-                                    />
-                                  </Button>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="overflow-hidden">
-                                  <ul className="ml-6 mt-1 mb-1 space-y-1">
+                                    >
+                                      <span className="truncate">
+                                        <span className="uppercase text-[11px] font-bold text-slate-500 tracking-wider block">{parenLabel}</span>
+                                        <span className="text-sm font-semibold text-slate-800">{profileName}</span>
+                                      </span>
+                                      <ChevronDown
+                                        className={cn(
+                                          "w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0",
+                                          (isProfileExpanded || isThisProfileActive) && "transform rotate-180"
+                                        )}
+                                      />
+                                    </button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="overflow-hidden pl-3 border-l-2 border-slate-100 ml-3 space-y-0.5 mt-1">
                                     {(profile.relationship === 'child'
                                       ? (visaType === 'temporary-work' ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES : visaType === 'partner' ? PARTNER_CHILD_PROFILE_SUBPAGES : PROTECTION_CHILD_PROFILE_SUBPAGES).map((sp) => ({
                                           href: visaType === 'temporary-work' ? buildTemporaryWorkChildHref(profileKey, sp.pathSuffix) : visaType === 'partner' ? buildPartnerChildHref(profileKey, sp.pathSuffix) : buildProtectionChildHref(profileKey, sp.pathSuffix),
@@ -643,7 +484,9 @@ export default function IntakeLayout({ children }) {
                                                   : visaType === 'protection'
                                                     ? PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
                                                     : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                    ).map((subpage, index) => {
+                                    ).map((subpage) => {
+                                      globalStepCounter += 1;
+                                      const subStepNum = globalStepCounter;
                                       const isActive =
                                         effectiveProfileId === profileKey &&
                                         (profile.relationship === 'child' && subpage.pathSuffix
@@ -660,81 +503,97 @@ export default function IntakeLayout({ children }) {
                                       const isComplete =
                                         draftSnap.completionStatus?.[completionKey] === true ||
                                         draftSnap.completionStatus?.[legacyCompletionKey] === true;
+
                                       return (
                                         <React.Fragment key={`${subpage.href}-${profileKey}`}>
-                                          <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => {
-                                                navPush(buildHref(subpage.href, { profileId: profileKey }));
-                                                setSidebarOpen(false);
-                                                draftStore.setActiveProfile(profileKey);
-                                              }}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              navPush(buildHref(subpage.href, { profileId: profileKey }));
+                                              setMobileMenuOpen(false);
+                                              draftStore.setActiveProfile(profileKey);
+                                            }}
+                                            className={cn(
+                                              "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                                              isActive
+                                                ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                                                : "text-slate-600 hover:bg-slate-50"
+                                            )}
+                                          >
+                                            <span
                                               className={cn(
-                                                "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
+                                                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
                                                 isActive
-                                                  ? "font-semibold text-white"
-                                                  : "text-white/80",
-                                                isComplete && !isActive && "text-white/50"
+                                                  ? "bg-[#244D42] text-white font-bold"
+                                                  : isComplete
+                                                    ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
+                                                    : "border border-slate-200 text-slate-400"
                                               )}
-                                              data-testid={`nav-sub-${subpage.href}-${profileKey}`}
                                             >
-                                              {isComplete && <Check className="w-3 h-3 mr-2" />}
-                                              {subpage.title}
-                                            </Button>
-                                          </li>
+                                              {isComplete && !isActive ? <Check className="h-3 w-3 stroke-[2.5]" /> : subStepNum}
+                                            </span>
+                                            <span className="flex-1 truncate">{subpage.title}</span>
+                                            {isComplete && <Check className="h-3 w-3 text-[#244D42] shrink-0" />}
+                                          </button>
+
                                           {profile.relationship === 'main_applicant' && (
                                             (visaType === 'temporary-work' && subpage.title === 'Contact Details') ||
                                             (visaType !== 'temporary-work' && subpage.title === 'Family')
                                           ) && (
                                             (() => {
-                                              const isActive = internalPathname === nonMigratingBaseHref;
-                                              const isComplete = draftSnap.completionStatus?.[nonMigratingCompletionPrefix] === true;
+                                              globalStepCounter += 1;
+                                              const otherFamilyStepNum = globalStepCounter;
+                                              const isOtherFamilyActive = internalPathname === nonMigratingBaseHref;
+                                              const isOtherFamilyComplete = draftSnap.completionStatus?.[nonMigratingCompletionPrefix] === true;
 
                                               return (
-                                                <li className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                      navPush(buildHref(nonMigratingBaseHref));
-                                                      setSidebarOpen(false);
-                                                    }}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    navPush(buildHref(nonMigratingBaseHref));
+                                                    setMobileMenuOpen(false);
+                                                  }}
+                                                  className={cn(
+                                                    "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                                                    isOtherFamilyActive
+                                                      ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                                                      : "text-slate-600 hover:bg-slate-50"
+                                                  )}
+                                                >
+                                                  <span
                                                     className={cn(
-                                                      "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
-                                                      isActive
-                                                        ? "font-semibold text-white"
-                                                        : "text-white/80",
-                                                      isComplete && !isActive && "text-white/50"
+                                                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
+                                                      isOtherFamilyActive
+                                                        ? "bg-[#244D42] text-white font-bold"
+                                                        : isOtherFamilyComplete
+                                                          ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
+                                                          : "border border-slate-200 text-slate-400"
                                                     )}
                                                   >
-                                                    {isComplete && <Check className="w-3 h-3 mr-2" />}
-                                                    Other Family
-                                                  </Button>
-                                                </li>
+                                                    {isOtherFamilyComplete && !isOtherFamilyActive ? <Check className="h-3 w-3 stroke-[2.5]" /> : otherFamilyStepNum}
+                                                  </span>
+                                                  <span className="flex-1 truncate">Other Family</span>
+                                                  {isOtherFamilyComplete && <Check className="h-3 w-3 text-[#244D42] shrink-0" />}
+                                                </button>
                                               );
                                             })()
                                           )}
                                         </React.Fragment>
                                       );
                                     })}
-                                  </ul>
-                                </CollapsibleContent>
-                              </div>
-                            </Collapsible>
-                          );
-                        });
+                                  </CollapsibleContent>
+                                </div>
+                              </Collapsible>
+                            );
+                          });
                         })()}
 
-                        {/* Other Family */}
+                        {/* Other Family Non-migrating member entries */}
                         {(draftSnap.draft?.non_migrating_members || []).map((member) => {
                           const nmfKey = `nmf-${member.id}`;
                           const isNmfExpanded = isSectionExpanded(nmfKey);
                           const nmfName = [member.passport?.given_names, member.passport?.family_name]
                             .filter(Boolean).join(" ") || "Unnamed Member";
-                          const dob = [member.passport?.dob_day, member.passport?.dob_month, member.passport?.dob_year]
-                            .filter(Boolean).join(" ");
                           const isNmfActive = NON_MIGRATING_MEMBER_SUBPAGES.some(
                             sub => internalPathname === buildNonMigratingHref(member.id, sub.pathSuffix, visaType)
                           );
@@ -745,39 +604,36 @@ export default function IntakeLayout({ children }) {
                               key={nmfKey}
                               open={isNmfExpanded || isNmfActive}
                               onOpenChange={() => toggleSection(nmfKey)}
+                              className="pt-1"
                             >
                               <div className="space-y-1">
                                 <CollapsibleTrigger asChild>
-                                  <Button
-                                    variant="ghost"
+                                  <div
                                     className={cn(
-                                      "mt-2 w-full justify-between gap-3 rounded-lg px-4 py-3 text-left text-white/90 hover:bg-white/10 hover:text-white group",
-                                      isNmfActive && "bg-white/10 text-white"
+                                      "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors group",
+                                      isNmfActive && "bg-slate-100/80 text-slate-900"
                                     )}
                                   >
-                                    <span className="flex items-center gap-2 text-left flex-1 min-w-0">
-                                      <UserMinus className="w-3.5 h-3.5 text-white/70 flex-shrink-0" />
-                                      <span className="flex-1 truncate">
-                                        <span className="block text-xs text-white/50">
-                                          Other Family{member.relationship ? ` (${member.relationship.charAt(0).toUpperCase() + member.relationship.slice(1)})` : ''}
-                                        </span>
-                                        <span className="font-medium truncate">{nmfName}</span>
+                                    <span className="truncate flex-1">
+                                      <span className="uppercase text-[10px] font-bold text-slate-400 tracking-wider block">
+                                        Other Family{member.relationship ? ` (${member.relationship})` : ''}
                                       </span>
+                                      <span className="text-xs font-semibold text-slate-800">{nmfName}</span>
                                     </span>
-                                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    <div className="flex items-center gap-1 shrink-0">
                                       <span
                                         role="button"
                                         tabIndex={0}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           navPush(buildHref(`${nonMigratingBaseHref}?editNonMigratingId=${encodeURIComponent(member.id)}`));
-                                          setSidebarOpen(false);
+                                          setMobileMenuOpen(false);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
-                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-opacity cursor-pointer"
+                                        className="h-6 w-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
                                         title="Edit member"
                                       >
-                                        <Pencil className="w-3 h-3 text-white/70" />
+                                        <Pencil className="w-3 h-3" />
                                       </span>
                                       <span
                                         role="button"
@@ -787,19 +643,19 @@ export default function IntakeLayout({ children }) {
                                           setDeletingNmfId(isConfirmingDelete ? null : member.id);
                                         }}
                                         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.click()}
-                                        className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity cursor-pointer"
+                                        className="h-6 w-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
                                         title="Remove member"
                                       >
-                                        <Trash2 className="w-3 h-3 text-red-500" />
+                                        <Trash2 className="w-3 h-3" />
                                       </span>
                                       <ChevronDown
                                         className={cn(
-                                          "w-4 h-4 transition-transform duration-200",
+                                          "w-4 h-4 text-slate-400 transition-transform duration-200",
                                           (isNmfExpanded || isNmfActive) && "transform rotate-180"
                                         )}
                                       />
                                     </div>
-                                  </Button>
+                                  </div>
                                 </CollapsibleTrigger>
 
                                 {isConfirmingDelete && (
@@ -836,33 +692,29 @@ export default function IntakeLayout({ children }) {
                                   </div>
                                 )}
 
-                                <CollapsibleContent className="overflow-hidden">
-                                  <ul className="ml-6 mt-1 mb-1 space-y-1">
-                                    {NON_MIGRATING_MEMBER_SUBPAGES.map((sub) => {
-                                      const href = buildNonMigratingHref(member.id, sub.pathSuffix, visaType);
-                                      const isActive = internalPathname === href;
-                                      return (
-                                        <li key={sub.pathSuffix} className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                              navPush(buildHref(href));
-                                              setSidebarOpen(false);
-                                            }}
-                                            className={cn(
-                                              "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
-                                              isActive
-                                                ? "font-semibold text-white"
-                                                : "text-white/80"
-                                            )}
-                                          >
-                                            {sub.title}
-                                          </Button>
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
+                                <CollapsibleContent className="overflow-hidden pl-3 border-l-2 border-slate-100 ml-3 space-y-0.5 mt-1">
+                                  {NON_MIGRATING_MEMBER_SUBPAGES.map((sub) => {
+                                    const href = buildNonMigratingHref(member.id, sub.pathSuffix, visaType);
+                                    const isActive = internalPathname === href;
+                                    return (
+                                      <button
+                                        key={sub.pathSuffix}
+                                        type="button"
+                                        onClick={() => {
+                                          navPush(buildHref(href));
+                                          setMobileMenuOpen(false);
+                                        }}
+                                        className={cn(
+                                          "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
+                                          isActive
+                                            ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                                            : "text-slate-600 hover:bg-slate-50"
+                                        )}
+                                      >
+                                        <span className="truncate">{sub.title}</span>
+                                      </button>
+                                    );
+                                  })}
                                 </CollapsibleContent>
                               </div>
                             </Collapsible>
@@ -881,139 +733,126 @@ export default function IntakeLayout({ children }) {
                       >
                         <div className="space-y-1">
                           <CollapsibleTrigger asChild>
-                            <Button
-                              variant="ghost"
+                            <button
+                              type="button"
                               className={cn(
-                                "w-full justify-between gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
-                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href))) && "border-white/70 bg-white/10 text-white shadow-sm"
+                                "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+                                (isRouteActive(route.href) || route.subpages?.some((sub) => isRouteActive(sub.href)))
+                                  ? "bg-slate-100 text-slate-900"
+                                  : "text-slate-700 hover:bg-slate-50"
                               )}
-                              data-testid={`nav-${route.href}`}
                             >
-                              <span className="flex min-w-0 items-center gap-3">
-                                <SidebarRouteIcon route={route} />
-                                {route.title}
-                              </span>
+                              <span className="truncate">{route.title}</span>
                               <ChevronDown
                                 className={cn(
-                                  "w-4 h-4 transition-transform duration-200",
+                                  "w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0",
                                   isExpanded && "transform rotate-180"
                                 )}
                               />
-                            </Button>
+                            </button>
                           </CollapsibleTrigger>
-                          <CollapsibleContent className="overflow-hidden">
-                            <ul className="ml-6 mt-1 mb-1 space-y-1">
-                              {route.subpages.map((subpage) => {
-                                const isActive = isRouteActive(subpage.href);
-                                return (
-                                  <li key={subpage.href} className="flex items-center before:content-['•'] before:text-[#f2d887] before:mr-3 before:text-sm">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        navPush(buildHref(subpage.href));
-                                        setSidebarOpen(false);
-                                      }}
-                                      className={cn(
-                                        "w-full flex-1 justify-start min-h-7 px-0 text-[13px] font-medium hover:bg-transparent transition-colors",
-                                        isActive 
-                                          ? "font-semibold text-white"
-                                          : "text-white/80",
-                                        isRouteCompleted(subpage.href) && !isActive && "text-white/50"
-                                      )}
-                                      data-testid={`nav-sub-${subpage.href}`}
-                                    >
-                                      {isRouteCompleted(subpage.href) && (
-                                        <Check className="w-3 h-3 mr-2" />
-                                      )}
-                                      {subpage.title}
-                                    </Button>
-                                  </li>
-                                );
-                              })}
-                            </ul>
+                          <CollapsibleContent className="overflow-hidden pl-3 border-l-2 border-slate-100 ml-3 space-y-0.5 mt-1">
+                            {route.subpages.map((subpage) => {
+                              globalStepCounter += 1;
+                              const stepNum = globalStepCounter;
+                              const isActive = isRouteActive(subpage.href);
+                              const isComplete = isRouteCompleted(subpage.href);
+
+                              return (
+                                <button
+                                  key={subpage.href}
+                                  type="button"
+                                  onClick={() => {
+                                    navPush(buildHref(subpage.href));
+                                    setMobileMenuOpen(false);
+                                  }}
+                                  className={cn(
+                                    "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                                    isActive
+                                      ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                                      : "text-slate-600 hover:bg-slate-50"
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
+                                      isActive
+                                        ? "bg-[#244D42] text-white font-bold"
+                                        : isComplete
+                                          ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
+                                          : "border border-slate-200 text-slate-400"
+                                    )}
+                                  >
+                                    {isComplete && !isActive ? <Check className="h-3 w-3 stroke-[2.5]" /> : stepNum}
+                                  </span>
+                                  <span className="flex-1 truncate">{subpage.title}</span>
+                                  {isComplete && <Check className="h-3 w-3 text-[#244D42] shrink-0" />}
+                                </button>
+                              );
+                            })}
                           </CollapsibleContent>
                         </div>
                       </Collapsible>
                     );
                   } else {
+                    globalStepCounter += 1;
+                    const stepNum = globalStepCounter;
+                    const isActive = isRouteActive(route.href);
+                    const isComplete = isRouteCompleted(route.href);
+
                     return (
-                      <Button
+                      <button
                         key={route.href}
-                        variant="ghost"
+                        type="button"
                         onClick={() => {
                           navPush(buildHref(route.href));
-                          setSidebarOpen(false);
+                          setMobileMenuOpen(false);
                         }}
                         className={cn(
-                          "w-full justify-start gap-3 min-h-12 rounded-lg border-l-4 border-transparent px-4 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white",
-                          isRouteActive(route.href) && "border-white/70 bg-white/10 text-white shadow-sm",
-                          isRouteCompleted(route.href) && !isRouteActive(route.href) && "text-white/60"
+                          "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
+                          isActive
+                            ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                            : "text-slate-700 hover:bg-slate-50"
                         )}
-                        data-testid={`nav-${route.href}`}
                       >
-                        <SidebarRouteIcon route={route} completed={isRouteCompleted(route.href)} />
-                        {route.title}
-                      </Button>
+                        <span
+                          className={cn(
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs transition-colors",
+                            isActive
+                              ? "bg-[#244D42] font-bold text-white shadow-sm"
+                              : isComplete
+                                ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
+                                : "border border-slate-200 text-slate-400 font-medium"
+                          )}
+                        >
+                          {isComplete && !isActive ? <Check className="h-3.5 w-3.5 stroke-[2.5]" /> : stepNum}
+                        </span>
+                        <span className="flex-1 truncate">{route.title}</span>
+                        {isComplete && <Check className="h-3.5 w-3.5 text-[#244D42] shrink-0" />}
+                      </button>
                     );
                   }
                 })}
               </nav>
             </ScrollArea>
-          </div>
-        </aside>
+          </aside>
 
-        {/* Mobile Sidebar Overlay */}
-        {sidebarOpen && (
-          <div
-            className="lg:hidden fixed inset-0 z-20 bg-black/50"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Main Content */}
-        <main className="relative flex-1 overflow-y-auto bg-[#E4E9FF] px-4 pb-12 pt-4 sm:px-8 lg:ml-[20.75rem] lg:px-10 xl:px-16">
-          <div className="relative z-10 flex min-h-full flex-col">
-            <div className="hidden h-20 items-center justify-end gap-5 sm:flex">
-              {email && (
-                <span className="inline-flex max-w-[260px] items-center gap-3 truncate rounded-full border border-slate-200 bg-white/75 px-5 py-3 text-sm font-medium text-slate-900 shadow-sm backdrop-blur">
-                  <UserRound className="h-4 w-4 shrink-0 text-primary" />
-                  {email}
-                </span>
-              )}
-              <div className="h-8 w-px bg-slate-200" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                data-testid="button-logout"
-                className="h-11 px-4 text-sm font-semibold text-primary hover:bg-primary/5 hover:text-primary disabled:opacity-70"
+          {/* Right Column: Form Canvas */}
+          <main className="flex-1 min-w-0">
+            <div className="w-full">
+              <DynamicQuestionnaireOverride
+                ready={remoteQuestionnaireReady}
+                route={internalPathname}
+                visaContext={resolvedVisaContext}
+                visaType={visaType}
               >
-                {isLoggingOut ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <LogOut className="h-4 w-4" />
-                )}
-                <span>{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
-              </Button>
+                {children}
+              </DynamicQuestionnaireOverride>
             </div>
-
-            <div className="flex flex-1 justify-center pt-4 lg:pt-8">
-              <div className="w-full max-w-4xl">
-                <DynamicQuestionnaireOverride
-                  ready={remoteQuestionnaireReady}
-                  route={internalPathname}
-                  visaContext={resolvedVisaContext}
-                  visaType={visaType}
-                >
-                  {children}
-                </DynamicQuestionnaireOverride>
-              </div>
-            </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );
 }
+

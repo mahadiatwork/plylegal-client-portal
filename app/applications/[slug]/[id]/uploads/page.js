@@ -6,9 +6,8 @@ import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { appDataStore, updateUpload } from "@/stores/appDataStore";
 import { authStore } from "@/stores/authStore";
-import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
-import { PillNav } from "@/components/PillNav";
+import { MatterWorkspaceHeader } from "@/components/MatterWorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Upload as UploadIcon, FileText, ChevronDown, Trash2 } from "lucide-react";
@@ -304,20 +303,35 @@ export default function UploadsPage() {
   };
 
   const getStatusBadge = (status) => {
-    const statusStyles = {
-      'Pending': 'bg-gray-100 text-gray-700',
-      'Not Submitted Yet': 'bg-purple-100 text-purple-700 border border-purple-300',
-      'Uploaded': 'bg-blue-100 text-blue-700 border border-blue-300',
-      'Awaiting Approval': 'bg-orange-100 text-orange-700 border border-orange-300',
-      'Under Review': 'bg-yellow-100 text-yellow-700 border border-yellow-300',
-      'Approved': 'bg-green-100 text-green-700 border border-green-300',
-      'Rejected': 'bg-red-100 text-red-700 border border-red-300',
-      'Declined': 'bg-red-100 text-red-700 border border-red-300',
-    };
-    
+    const text = String(status || "").toLowerCase();
+    let dotColor = "bg-purple-500";
+    let textColor = "text-purple-700";
+    let bgClass = "bg-purple-50";
+
+    if (text.includes("approved") || text.includes("verified")) {
+      dotColor = "bg-emerald-600";
+      textColor = "text-emerald-700";
+      bgClass = "bg-emerald-50";
+    } else if (text.includes("awaiting") || text.includes("review")) {
+      dotColor = "bg-amber-500";
+      textColor = "text-amber-800";
+      bgClass = "bg-amber-50";
+    } else if (text.includes("reject") || text.includes("decline")) {
+      dotColor = "bg-red-500";
+      textColor = "text-red-700";
+      bgClass = "bg-red-50";
+    } else {
+      dotColor = "bg-purple-500";
+      textColor = "text-purple-700";
+      bgClass = "bg-purple-50";
+    }
+
+    const label = status || "Not Submitted Yet";
+
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status] || statusStyles['Pending']}`}>
-        {status || 'Pending'}
+      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium", bgClass, textColor)}>
+        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", dotColor)} />
+        {label}
       </span>
     );
   };
@@ -342,30 +356,18 @@ export default function UploadsPage() {
   };
 
   const canUpload = (status) => {
-    // Always allow uploads - users can upload multiple documents
     return true;
   };
 
   const renderUploadButton = (doc, status) => {
-    const uploadAllowed = canUpload(status);
-
-    return uploadAllowed ? (
+    return (
       <button
         type="button"
         onClick={() => handleOpenDialog(doc)}
-        className="inline-flex items-center justify-center gap-1 rounded-md border border-[#4F726B] px-3 py-1.5 text-xs font-medium text-[#4F726B] transition hover:bg-[#4F726B] hover:text-white"
+        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
       >
-        <UploadIcon className="w-3 h-3" />
-        Upload
-      </button>
-    ) : (
-      <button
-        type="button"
-        disabled
-        className="inline-flex cursor-not-allowed items-center justify-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-400 opacity-50"
-      >
-        <UploadIcon className="w-3 h-3" />
-        Upload
+        <UploadIcon className="w-3.5 h-3.5" />
+        <span>Upload</span>
       </button>
     );
   };
@@ -558,87 +560,80 @@ export default function UploadsPage() {
     };
   }, [documentsJson, matterDocuments]);
   
-  // Show loading state while data is being loaded
   if (isLoading || !application) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg text-gray-600">Loading...</div>
+      <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+        <AppHeader />
+        <div className="flex flex-1 items-center justify-center p-8">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm">
+            <div className="text-sm font-medium text-slate-600">Loading documents...</div>
+          </div>
         </div>
       </div>
     );
   }
-  
+
   return (
-    <div className="flex min-h-[100dvh] overflow-hidden bg-background">
-      <div className="hidden lg:block lg:w-[18.5rem] lg:flex-shrink-0">
-        <AppSidebar mode="contextual" application={application} />
-      </div>
-      
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm" 
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div className="absolute left-0 top-0 bottom-0">
-            <AppSidebar mode="contextual" application={application} onClose={() => setSidebarOpen(false)} />
+    <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+      <AppHeader />
+      <MatterWorkspaceHeader
+        application={application}
+        appId={appId}
+        slug={slug}
+      />
+
+      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <div className="mx-auto w-full max-w-[1608px]">
+          {/* Header */}
+          <div className="mb-6">
+            <h2 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Upload your documents
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Please upload the documents listed below. We will review them and let you know if anything else is required.
+            </p>
+            <p className="mt-1 text-xs text-slate-500 font-medium">
+              Accepted formats: PDF, JPG, PNG, DOC, TXT (max 5MB per file).
+            </p>
           </div>
-        </div>
-      )}
-      
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <AppHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
-        />
-        
-        <div className="lg:hidden">
-          <PillNav appId={appId} slug={slug} />
-        </div>
-        
-        <main className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-6">
-              <h1 className="font-semibold text-gray-900 text-2xl mb-2">Upload Documents</h1>
-              <p className="text-sm text-gray-700">
-                Upload supporting documents for your visa application. Accepted formats: PDF, JPG, PNG, DOC, TXT (max 5MB).
-              </p>
-            </div>
 
             {loadingMatterDocs ? (
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center">
                 <div className="text-gray-500">Loading documents...</div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Render Categories */}
-                {organizedDocuments.categories.map((category) => {
-                  const isExpanded = expandedCategories[category.name] ?? true;
-                  
-                  return (
-                    <Collapsible
-                      key={category.name}
-                      open={isExpanded}
-                      onOpenChange={(open) => setExpandedCategories(prev => ({ ...prev, [category.name]: open }))}
-                    >
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                        {/* Category Header */}
-                        <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">
-                          <div className="flex items-center gap-3 flex-1">
-                            <CollapsibleTrigger asChild>
-                              <button className="p-1 hover:bg-gray-200 rounded transition-colors">
-                                <ChevronDown className={cn(
-                                  "w-5 h-5 text-gray-500 transition-transform",
-                                  isExpanded && "rotate-180"
-                                )} />
-                              </button>
-                            </CollapsibleTrigger>
-                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
+            <div className="space-y-4">
+              {/* Render Categories */}
+              {organizedDocuments.categories.map((category) => {
+                const isExpanded = expandedCategories[category.name] ?? (category.documents.length > 0);
+
+                return (
+                  <Collapsible
+                    key={category.name}
+                    open={isExpanded}
+                    onOpenChange={(open) => setExpandedCategories(prev => ({ ...prev, [category.name]: open }))}
+                  >
+                    <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm overflow-hidden transition">
+                      {/* Category Header */}
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between p-4 sm:p-5 hover:bg-slate-50/70 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEF7F2] text-[#244D42]">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <h3 className="font-semibold text-slate-900 text-base">{category.name}</h3>
                           </div>
-                          <button className="p-1 hover:bg-gray-200 rounded transition-colors text-red-500">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                          <ChevronDown
+                            className={cn(
+                              "h-5 w-5 text-slate-400 transition-transform duration-200",
+                              isExpanded && "rotate-180 text-slate-700"
+                            )}
+                          />
+                        </button>
+                      </CollapsibleTrigger>
 
                         {/* Category Content */}
                         <CollapsibleContent>
@@ -796,7 +791,6 @@ export default function UploadsPage() {
             )}
           </div>
         </main>
-      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
@@ -849,7 +843,7 @@ export default function UploadsPage() {
                 onClick={handleUpload}
                 disabled={!selectedFile || !!error || uploading}
                 data-testid="button-confirm-upload"
-                className="bg-[#4F726B] hover:bg-[#4F726B]"
+                className="bg-[#244D42] hover:bg-[#1C3E35] text-white"
               >
                 {uploading ? 'Uploading...' : 'Upload File'}
               </Button>

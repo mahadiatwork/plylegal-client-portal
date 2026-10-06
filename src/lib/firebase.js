@@ -30,42 +30,39 @@ const requiredKeys = [
 ];
 
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key]);
-
-if (missingKeys.length > 0) {
-  console.error(
-    `Firebase configuration missing required keys: ${missingKeys.join(', ')}`
-  );
-  throw new Error(
-    `Firebase configuration incomplete. Please add the missing environment variables: ${missingKeys.map(k => `NEXT_PUBLIC_FIREBASE_${k.toUpperCase()}`).join(', ')}`
-  );
-}
+const isFirebaseConfigured = missingKeys.length === 0;
 
 // Initialize Firebase
-let app;
-let auth;
-let db;
+let app = null;
+let auth = null;
+let db = null;
 
-try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
+if (isFirebaseConfigured) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
 
-  // Explicitly set persistence to local (IndexedDB) so sessions survive
-  // browser/tab closes. Without this some environments may default to
-  // session-only persistence.
-  setPersistence(auth, browserLocalPersistence).catch((err) => {
-    console.warn('⚠️ Could not set auth persistence:', err.message);
-  });
-} catch (error) {
-  console.error('❌ Firebase initialization failed:', error);
-  throw error;
+    // Explicitly set persistence to local (IndexedDB) so sessions survive
+    // browser/tab closes.
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn('⚠️ Could not set auth persistence:', err.message);
+    });
+  } catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+  }
+} else {
+  console.warn(
+    `⚠️ Firebase configuration incomplete. Missing keys: ${missingKeys.join(', ')}. Set NEXT_PUBLIC_FIREBASE_* variables in .env.local to enable cloud sync.`
+  );
 }
 
 // Export Firebase services
-export { app, auth, db };
+export { app, auth, db, isFirebaseConfigured };
 
 // Export configuration for debugging (safe values only)
 export const config = {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId || null,
+  authDomain: firebaseConfig.authDomain || null,
 };
+

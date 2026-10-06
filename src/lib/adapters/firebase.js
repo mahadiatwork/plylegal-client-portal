@@ -37,6 +37,9 @@ import {
 export class FirebaseAdapter extends BaseAdapter {
   constructor() {
     super();
+    if (!auth || !db) {
+      throw new Error('Firebase is not configured with required credentials.');
+    }
     this.auth = auth;
     this.db = db;
   }
