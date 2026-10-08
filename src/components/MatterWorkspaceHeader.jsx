@@ -69,7 +69,7 @@ export function MatterWorkspaceHeader({
       label: "Questionnaire",
       href: `${baseHref}/questionnaire`,
       icon: FileText,
-      isActive: pathname?.includes("/questionnaire") || pathname?.startsWith("/intake/"),
+      isActive: pathname?.includes("/questionnaire") || pathname?.includes("/intake"),
     },
     {
       id: "uploads",

@@ -73,6 +73,7 @@ export default function IntakeStartPage() {
       error={error}
       isSubmitted={isSubmitted}
       completionPercentage={completionPercentage}
+      totalSections={completionData.total || 23}
       submitting={submitting}
       onStartedChange={(checked) => {
         setStarted(checked);
