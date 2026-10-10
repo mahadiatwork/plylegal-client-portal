@@ -89,9 +89,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        heading: ["var(--font-heading)"],
-        serif: ["var(--font-serif)"],
+        sans: ["var(--font-sans)", "Standerd", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        heading: ["var(--font-serif)", "SeasonMix", "Georgia", "serif"],
+        serif: ["var(--font-serif)", "SeasonMix", "Georgia", "serif"],
         mono: ["Menlo", "Monaco", "Courier New", "monospace"],
       },
       keyframes: {

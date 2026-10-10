@@ -1,18 +1,47 @@
 import "./globals.css";
-import { Inter, Lora } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "./providers";
 
-const inter = Inter({
-  subsets: ["latin"],
+const standerd = localFont({
+  src: [
+    {
+      path: "../public/fonts/plylegal/Standerd-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/plylegal/Standerd-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/plylegal/Standerd-SemiBold.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/plylegal/Standerd-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   variable: "--font-sans",
   display: "swap",
+  fallback: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
 });
 
-const lora = Lora({
-  subsets: ["latin"],
+const seasonMix = localFont({
+  src: [
+    {
+      path: "../public/fonts/plylegal/SeasonMix-Medium.woff2",
+      weight: "400 700",
+      style: "normal",
+    },
+  ],
   variable: "--font-serif",
   display: "swap",
+  fallback: ["Lora", "Georgia", "Times New Roman", "serif"],
 });
 
 const FAVICON_URL =
@@ -35,7 +64,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable} ${lora.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${standerd.variable} ${seasonMix.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <Providers>
           {children}

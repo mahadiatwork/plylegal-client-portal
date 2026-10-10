@@ -2,6 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Standerd";
+  src: url("/fonts/plylegal/Standerd-Regular.woff2") format("woff2"),
+       url("/fonts/plylegal/Standerd-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Standerd";
+  src: url("/fonts/plylegal/Standerd-Medium.woff2") format("woff2"),
+       url("/fonts/plylegal/Standerd-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Standerd";
+  src: url("/fonts/plylegal/Standerd-SemiBold.woff2") format("woff2"),
+       url("/fonts/plylegal/Standerd-SemiBold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Standerd";
+  src: url("/fonts/plylegal/Standerd-Bold.woff2") format("woff2"),
+       url("/fonts/plylegal/Standerd-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SeasonMix";
+  src: url("/fonts/plylegal/SeasonMix-Medium.woff2") format("woff2"),
+       url("/fonts/plylegal/SeasonMix-Medium.woff") format("woff");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -76,9 +121,9 @@
   --chart-4: 159 28% 46%;
   --chart-5: 200 50% 50%;
 
-  --font-sans: var(--font-sans, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
-  --font-heading: var(--font-serif, "Lora", Georgia, "Times New Roman", serif);
-  --font-serif: var(--font-serif, "Lora", Georgia, "Times New Roman", serif);
+  --font-sans: var(--font-sans, "Standerd", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --font-heading: var(--font-serif, "SeasonMix", Lora, Georgia, "Times New Roman", serif);
+  --font-serif: var(--font-serif, "SeasonMix", Lora, Georgia, "Times New Roman", serif);
   --font-mono: Menlo, Monaco, "Courier New", monospace;
   --radius: .5rem; /* 8px */
   --shadow-2xs: 0px 1px 2px 0px hsl(228 60% 20% / 0.05);
