@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, HelpCircle, Info, Loader2, Lock } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, HelpCircle, Info, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export function IntakeStartPageContent({
   onBackToApplications,
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 lg:p-10 shadow-sm">
+    <div className="w-full">
       <form
         onSubmit={onSubmit}
         onKeyDown={(event) => {
@@ -26,22 +26,22 @@ export function IntakeStartPageContent({
         }}
       >
         {/* Top Meta Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+        <div className="flex items-center justify-between border-b border-[#EBE7DF] pb-4">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
             SECTION 1 OF {totalSections}
           </span>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 border border-slate-300/80 bg-white rounded-lg px-3 py-1.5 transition-colors shadow-2xs"
           >
-            <HelpCircle className="h-4 w-4" />
+            <HelpCircle className="h-3.5 w-3.5 text-slate-600" />
             <span>Need help?</span>
           </button>
         </div>
 
         {/* Section Title & Description */}
         <div className="pt-6">
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h1 className="font-serif text-3xl sm:text-[34px] font-bold tracking-tight text-[#0D3339]">
             Getting started
           </h1>
           <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
@@ -78,11 +78,9 @@ export function IntakeStartPageContent({
         )}
 
         {/* Info Callout Banner */}
-        <div className="mt-6 rounded-xl border border-blue-100 bg-[#F0F5FF] p-4 sm:p-5">
+        <div className="mt-6 rounded-xl border border-[#DFD8FA]/70 bg-[#F8F7FC] p-4 sm:p-5">
           <div className="flex items-start gap-3.5">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-              <Info className="h-4 w-4" />
-            </div>
+            <Info className="h-7 w-7 text-[#7059CF] shrink-0 stroke-[1.8] mt-0.5" />
             <p className="text-sm leading-6 text-slate-700">
               <strong className="font-semibold text-slate-900">Accuracy matters.</strong> Incomplete or incorrect information can lead to delays, refusal, or visa cancellation. If you are unsure about anything, let us know.
             </p>
@@ -92,7 +90,7 @@ export function IntakeStartPageContent({
         {/* Checkbox Confirmation Card */}
         <div
           className={cn(
-            "mt-6 rounded-xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-sm transition-colors",
+            "mt-6 rounded-xl border border-[#E2DDD5] bg-white p-4 sm:p-5 shadow-xs transition-colors",
             error ? "border-red-300 ring-2 ring-red-100" : "hover:border-slate-300"
           )}
         >
@@ -103,8 +101,19 @@ export function IntakeStartPageContent({
               data-testid="checkbox-started"
               checked={started}
               onChange={(e) => onStartedChange(e.target.checked)}
-              className="h-5 w-5 rounded border-slate-300 text-[#244D42] focus:ring-[#244D42] cursor-pointer accent-[#244D42]"
+              className="sr-only"
             />
+            <div
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors",
+                started
+                  ? "bg-[#244D42] text-white"
+                  : "border border-slate-300 bg-white"
+              )}
+              aria-hidden="true"
+            >
+              {started && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+            </div>
             <span className="text-sm font-medium text-slate-800">
               I confirm that the information I provide will be accurate to the best of my knowledge.
             </span>
@@ -117,9 +126,11 @@ export function IntakeStartPageContent({
         </div>
 
         {/* Footer Navigation Bar */}
-        <div className="mt-10 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Lock className="h-4 w-4 text-purple-600 shrink-0" />
+        <div className="mt-10 flex flex-col gap-4 border-t border-[#EBE7DF] pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-500">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EBE7FE] text-[#7A64D6]">
+              <Lock className="h-4 w-4" />
+            </div>
             <span>You can save your progress and return anytime.</span>
           </div>
 
@@ -127,7 +138,7 @@ export function IntakeStartPageContent({
             type="submit"
             disabled={!started || isSubmitted || submitting}
             data-testid="button-begin"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#244D42] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1C3E35] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#244D42] px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#1C3E35] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? (
               <>

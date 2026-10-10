@@ -76,9 +76,9 @@
   --chart-4: 159 28% 46%;
   --chart-5: 200 50% 50%;
 
-  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-heading: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-  --font-serif: var(--font-heading);
+  --font-sans: var(--font-sans, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --font-heading: var(--font-serif, "Lora", Georgia, "Times New Roman", serif);
+  --font-serif: var(--font-serif, "Lora", Georgia, "Times New Roman", serif);
   --font-mono: Menlo, Monaco, "Courier New", monospace;
   --radius: .5rem; /* 8px */
   --shadow-2xs: 0px 1px 2px 0px hsl(228 60% 20% / 0.05);

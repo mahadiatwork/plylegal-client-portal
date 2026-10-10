@@ -304,32 +304,27 @@ export default function UploadsPage() {
 
   const getStatusBadge = (status) => {
     const text = String(status || "").toLowerCase();
-    let dotColor = "bg-purple-500";
-    let textColor = "text-purple-700";
-    let bgClass = "bg-purple-50";
+    let dotColor = "bg-[#9333EA]";
+    let textColor = "text-[#7C3AED]";
 
     if (text.includes("approved") || text.includes("verified")) {
-      dotColor = "bg-emerald-600";
-      textColor = "text-emerald-700";
-      bgClass = "bg-emerald-50";
+      dotColor = "bg-[#16A34A]";
+      textColor = "text-[#15803D]";
     } else if (text.includes("awaiting") || text.includes("review")) {
-      dotColor = "bg-amber-500";
-      textColor = "text-amber-800";
-      bgClass = "bg-amber-50";
+      dotColor = "bg-[#F59E0B]";
+      textColor = "text-[#D97706]";
     } else if (text.includes("reject") || text.includes("decline")) {
-      dotColor = "bg-red-500";
-      textColor = "text-red-700";
-      bgClass = "bg-red-50";
+      dotColor = "bg-[#DC2626]";
+      textColor = "text-[#B91C1C]";
     } else {
-      dotColor = "bg-purple-500";
-      textColor = "text-purple-700";
-      bgClass = "bg-purple-50";
+      dotColor = "bg-[#9333EA]";
+      textColor = "text-[#7C3AED]";
     }
 
     const label = status || "Not Submitted Yet";
 
     return (
-      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium", bgClass, textColor)}>
+      <span className={cn("inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium", textColor)}>
         <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", dotColor)} />
         {label}
       </span>
@@ -364,9 +359,9 @@ export default function UploadsPage() {
       <button
         type="button"
         onClick={() => handleOpenDialog(doc)}
-        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900"
       >
-        <UploadIcon className="w-3.5 h-3.5" />
+        <UploadIcon className="w-3.5 h-3.5 text-slate-500" />
         <span>Upload</span>
       </button>
     );
@@ -574,7 +569,7 @@ export default function UploadsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+    <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
       <AppHeader />
       <MatterWorkspaceHeader
         application={application}
@@ -584,25 +579,27 @@ export default function UploadsPage() {
 
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="mx-auto w-full max-w-[1608px]">
-          {/* Header */}
-          <div className="mb-6">
-            <h2 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Upload your documents
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Please upload the documents listed below. We will review them and let you know if anything else is required.
-            </p>
-            <p className="mt-1 text-xs text-slate-500 font-medium">
-              Accepted formats: PDF, JPG, PNG, DOC, TXT (max 5MB per file).
-            </p>
-          </div>
+          {/* Main Card Container matching PDF Page 4 */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
+            {/* Header */}
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Upload your documents
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Please upload the documents listed below. We will review them and let you know if anything else is required.
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Accepted formats: PDF, JPG, PNG, DOC, TXT (max 5MB per file).
+              </p>
+            </div>
 
             {loadingMatterDocs ? (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center">
-                <div className="text-gray-500">Loading documents...</div>
+              <div className="border border-slate-200/60 rounded-xl p-8 text-center bg-slate-50/50">
+                <div className="text-sm font-medium text-slate-500">Loading documents...</div>
               </div>
             ) : (
-            <div className="space-y-4">
+            <div className="divide-y divide-slate-100">
               {/* Render Categories */}
               {organizedDocuments.categories.map((category) => {
                 const isExpanded = expandedCategories[category.name] ?? (category.documents.length > 0);
@@ -613,17 +610,15 @@ export default function UploadsPage() {
                     open={isExpanded}
                     onOpenChange={(open) => setExpandedCategories(prev => ({ ...prev, [category.name]: open }))}
                   >
-                    <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm overflow-hidden transition">
+                    <div className="py-2 transition">
                       {/* Category Header */}
                       <CollapsibleTrigger asChild>
                         <button
                           type="button"
-                          className="flex w-full items-center justify-between p-4 sm:p-5 hover:bg-slate-50/70 transition-colors text-left"
+                          className="flex w-full items-center justify-between py-3.5 px-2 hover:bg-slate-50/70 rounded-lg transition-colors text-left"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEF7F2] text-[#244D42]">
-                              <FileText className="h-4 w-4" />
-                            </div>
+                            <FileText className="h-4 w-4 text-slate-500" />
                             <h3 className="font-semibold text-slate-900 text-base">{category.name}</h3>
                           </div>
                           <ChevronDown
@@ -649,15 +644,15 @@ export default function UploadsPage() {
                                   <col className="w-[30%]" />
                                   <col className="w-[15%]" />
                                 </colgroup>
-                                <thead className="bg-gray-50 border-b border-gray-200">
+                                <thead className="border-b border-slate-100">
                                   <tr>
-                                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Document Name</th>
-                                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Status</th>
-                                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Comments</th>
-                                    <th className="py-3 px-4 text-right text-sm font-medium text-gray-900">Action</th>
+                                    <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Document</th>
+                                    <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                    <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Comments</th>
+                                    <th className="py-2.5 px-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-slate-100">
                                   {category.documents.map((doc, index) => {
                                     // ALL data comes from Zoho document - never from JSON
                                     // Use "Name" key as primary source, then fallback to other Zoho fields
@@ -666,11 +661,11 @@ export default function UploadsPage() {
                                     const comment = getMatterDocumentComment(doc);
                                     
                                     return (
-                                      <tr key={doc.id || index} className="hover:bg-gray-50 transition-colors">
+                                      <tr key={doc.id || index} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="py-3 px-4">
-                                          <div className="flex items-center gap-2 min-w-0">
-                                            <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                                            <span className="text-sm text-gray-700 truncate" title={documentName}>
+                                          <div className="flex items-center gap-2.5 min-w-0">
+                                            <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                            <span className="text-sm font-medium text-slate-800 truncate" title={documentName}>
                                               {documentName}
                                             </span>
                                           </div>
@@ -706,18 +701,22 @@ export default function UploadsPage() {
                 {/* Uncategorized Documents */}
                 {organizedDocuments.uncategorized.length > 0 && (
                   <Collapsible defaultOpen={true}>
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                    <div className="py-2 transition">
                       <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between py-3.5 px-2 hover:bg-slate-50/70 rounded-lg transition-colors text-left"
+                        >
                           <div className="flex items-center gap-3">
-                            <ChevronDown className="w-5 h-5 text-gray-500" />
-                            <h3 className="font-semibold text-gray-900">Uncategorized</h3>
+                            <FileText className="h-4 w-4 text-slate-500" />
+                            <h3 className="font-semibold text-slate-900 text-base">Uncategorized</h3>
                           </div>
-                        </div>
+                          <ChevronDown className="h-5 w-5 text-slate-400" />
+                        </button>
                       </CollapsibleTrigger>
 
                       <CollapsibleContent>
-                        <div className="p-4">
+                        <div className="pt-2 pb-4 px-2">
                           <div className="space-y-3 lg:hidden">
                             {organizedDocuments.uncategorized.map((doc) => renderMobileDocumentCard(doc, 'Pending'))}
                           </div>
@@ -725,19 +724,19 @@ export default function UploadsPage() {
                             <table className="w-full table-fixed">
                               <colgroup>
                                 <col className="w-[40%]" />
-                                <col className="w-[15%]" />
-                                <col className="w-[30%]" />
+                                <col className="w-[18%]" />
+                                <col className="w-[27%]" />
                                 <col className="w-[15%]" />
                               </colgroup>
-                              <thead className="bg-gray-50 border-b border-gray-200">
+                              <thead className="border-b border-slate-100">
                                 <tr>
-                                  <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Document Name</th>
-                                  <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Status</th>
-                                  <th className="py-3 px-4 text-left text-sm font-medium text-gray-900">Comments</th>
-                                  <th className="py-3 px-4 text-right text-sm font-medium text-gray-900">Action</th>
+                                  <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Document</th>
+                                  <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                  <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Comments</th>
+                                  <th className="py-2.5 px-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-200">
+                              <tbody className="divide-y divide-slate-100">
                                 {organizedDocuments.uncategorized.map((doc) => {
                                   const status = doc.Document_Status || 'Pending';
                                   // Use "Name" key as primary source, then fallback to other fields
@@ -745,11 +744,11 @@ export default function UploadsPage() {
                                   const comment = getMatterDocumentComment(doc);
                                   
                                   return (
-                                    <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
                                       <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                                          <span className="text-sm text-gray-700 truncate" title={documentName}>
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                          <span className="text-sm font-medium text-slate-800 truncate" title={documentName}>
                                             {documentName}
                                           </span>
                                         </div>
@@ -790,7 +789,8 @@ export default function UploadsPage() {
               </div>
             )}
           </div>
-        </main>
+        </div>
+      </main>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

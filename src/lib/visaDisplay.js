@@ -3,7 +3,7 @@
  * Replaces legacy "Temporary Work" / TSS wording with Skills in Demand (subclass 482) where appropriate.
  */
 
-export const SKILLS_IN_DEMAND_TYPE_LABEL = "Skills in Demand (subclass 482)";
+export const SKILLS_IN_DEMAND_TYPE_LABEL = "Skills in Demand (Subclass 482)";
 export const PARTNER_PUBLIC_SLUG = "820";
 export const PROTECTION_PUBLIC_SLUG = "866";
 

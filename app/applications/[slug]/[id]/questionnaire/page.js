@@ -170,7 +170,7 @@ export default function QuestionnairePage() {
 
   if (isLoading || isQuestionnaireLoading || draftSnap.isLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+      <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
         <AppHeader />
         <MatterWorkspaceHeader
           application={application}
@@ -190,7 +190,7 @@ export default function QuestionnairePage() {
 
   if (!application) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+      <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
         <AppHeader />
         <div className="flex flex-1 items-center justify-center p-8">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm max-w-md w-full">
@@ -214,7 +214,7 @@ export default function QuestionnairePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+    <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
       <AppHeader />
       <MatterWorkspaceHeader
         application={application}

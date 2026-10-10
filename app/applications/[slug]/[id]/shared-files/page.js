@@ -37,27 +37,27 @@ function FileTypeIcon({ type }) {
   const t = String(type || "").toLowerCase();
   if (t === "pdf") {
     return (
-      <span className="flex h-7 w-7 items-center justify-center rounded bg-red-500 text-[10px] font-bold text-white uppercase">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EF4444] text-[10px] font-bold text-white uppercase shadow-xs">
         PDF
       </span>
     );
   }
   if (t === "word" || t === "doc" || t === "docx") {
     return (
-      <span className="flex h-7 w-7 items-center justify-center rounded bg-blue-600 text-[10px] font-bold text-white uppercase">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2563EB] text-[10px] font-bold text-white uppercase shadow-xs">
         W
       </span>
     );
   }
   if (t === "excel" || t === "xls" || t === "xlsx") {
     return (
-      <span className="flex h-7 w-7 items-center justify-center rounded bg-emerald-600 text-[10px] font-bold text-white uppercase">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#10B981] text-[10px] font-bold text-white uppercase shadow-xs">
         X
       </span>
     );
   }
   return (
-    <span className="flex h-7 w-7 items-center justify-center rounded bg-slate-500 text-[10px] font-bold text-white uppercase">
+    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-500 text-[10px] font-bold text-white uppercase shadow-xs">
       FILE
     </span>
   );
@@ -171,10 +171,10 @@ function SharedFilesTable({ title, subtitle, files = [], searchPlaceholder = "Se
                       href={file.url || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-slate-950 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900"
                     >
                       <span>View</span>
-                      <ExternalLink className="h-3.5 w-3.5" />
+                      <ExternalLink className="h-3 w-3 text-slate-400" />
                     </a>
                     <button
                       type="button"
@@ -237,7 +237,7 @@ export default function SharedFilesPage() {
 
   if (isLoading || !application) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+      <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
         <AppHeader />
         <div className="flex flex-1 items-center justify-center p-8">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm">
@@ -249,7 +249,7 @@ export default function SharedFilesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+    <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
       <AppHeader />
       <MatterWorkspaceHeader
         application={application}

@@ -79,50 +79,50 @@ export function RepeaterTable({
         <Button
           type="button"
           onClick={handleAdd}
-          className="bg-primary text-primary-foreground"
+          className="bg-[#244D42] text-white hover:bg-[#1C3E35] rounded-lg px-4 py-2 text-xs sm:text-sm font-medium shadow-sm transition-colors"
           data-testid={`button-add-${testIdPrefix}`}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-1.5" />
           {addButtonText}
         </Button>
       </div>
 
       {rows.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+        <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 rounded-xl text-sm">
           {emptyMessage}
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-2xs">
           {/* Mobile: card layout */}
-          <div className="block sm:hidden divide-y divide-border">
+          <div className="block sm:hidden divide-y divide-slate-100">
             {rows.map((row, index) => (
               <div key={index} className="p-4 space-y-3 bg-white">
                 {columns.map((col) => (
                   <div key={col.key} className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{col.label}</span>
-                    <span className="text-sm mt-0.5">
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{col.label}</span>
+                    <span className="text-sm font-medium text-slate-800 mt-0.5">
                       {col.format ? (typeof col.format === 'function' ? col.format(row) : col.format(row[col.key])) : row[col.key]}
                     </span>
                   </div>
                 ))}
-                <div className="flex gap-4 pt-3 border-t border-border">
+                <div className="flex gap-4 pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => handleEdit(index)}
-                    className="flex items-center gap-1.5 text-sm font-medium text-primary"
+                    className="flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-slate-900"
                     data-testid={`button-edit-mobile-${index}`}
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    Edit
+                    <span>Edit</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(index)}
-                    className="flex items-center gap-1.5 text-sm font-medium text-destructive"
+                    className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700"
                     data-testid={`button-delete-mobile-${index}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
@@ -132,47 +132,49 @@ export function RepeaterTable({
           {/* Desktop: table layout */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full min-w-[500px]">
-              <thead className="bg-muted/50">
+              <thead className="bg-slate-50/60 border-b border-slate-100">
                 <tr>
                   {columns.map((col) => (
                     <th
                       key={col.key}
-                      className="text-left py-3 px-4 text-sm font-medium"
+                      className="text-left py-3 px-4 text-xs font-semibold text-slate-700"
                     >
                       {col.label}
                     </th>
                   ))}
-                  <th className="w-24 py-3 px-4 text-sm font-medium text-right">Actions</th>
+                  <th className="w-32 py-3 px-4 text-xs font-semibold text-slate-700 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {rows.map((row, index) => (
                   <tr
                     key={index}
-                    className="border-t border-border hover:bg-muted/30"
+                    className="hover:bg-slate-50/50 transition-colors"
                   >
                     {columns.map((col) => (
-                      <td key={col.key} className="py-3 px-4 text-sm">
+                      <td key={col.key} className="py-3 px-4 text-sm text-slate-800">
                         {col.format ? (typeof col.format === 'function' ? col.format(row) : col.format(row[col.key])) : row[col.key]}
                       </td>
                     ))}
                     <td className="py-3 px-4 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end items-center gap-3">
                         <button
                           type="button"
                           onClick={() => handleEdit(index)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 hover:text-slate-950 transition-colors"
                           data-testid={`button-edit-${index}`}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Edit</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(index)}
-                          className="text-destructive hover:text-destructive/80 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
                           data-testid={`button-delete-${index}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </td>

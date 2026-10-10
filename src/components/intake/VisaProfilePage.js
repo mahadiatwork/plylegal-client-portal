@@ -786,17 +786,17 @@ export default function VisaProfilePage({
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Header card */}
-      <Card className="rounded-2xl shadow-md bg-white">
+      <Card className="rounded-2xl border border-white/70 bg-white p-2 sm:p-4 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#4F726B]/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-[#4F726B]" />
+          <CardTitle className="text-2xl sm:text-3xl font-serif font-bold text-[#0D3339] flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#E2EBE5] flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-[#244D42]" />
             </div>
             Included Applicants
           </CardTitle>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             Add everyone included in this application. Start with the main applicant, then add any family members included in the application.
           </p>
         </CardHeader>
@@ -918,7 +918,7 @@ export default function VisaProfilePage({
             type="button"
             variant="outline"
             onClick={() => { setEditingProfile(null); setDialogOpen(true); }}
-            className="w-full border-dashed border-2 border-[#4F726B]/30 text-[#4F726B] hover:bg-[#4F726B]/5 hover:border-[#4F726B]/60 h-11"
+            className="w-full border-dashed border-2 border-[#244D42]/30 text-[#244D42] hover:bg-[#244D42]/5 hover:border-[#244D42]/60 h-11 rounded-xl"
             data-testid="button-add-profile"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -997,7 +997,7 @@ export default function VisaProfilePage({
               type="button"
               onClick={handleContinue}
               disabled={!hasMainApplicant || isNavigating}
-              className="w-full bg-[#4F726B] hover:bg-[#4F726B] text-white h-12 text-base font-semibold flex items-center justify-between px-5"
+              className="w-full bg-[#244D42] hover:bg-[#1C3E35] text-white h-12 text-base font-semibold flex items-center justify-between px-5 rounded-lg shadow-sm"
               data-testid="button-continue"
             >
               <span>{isNavigating ? "Loading..." : "Continue to Forms"}</span>

@@ -294,7 +294,7 @@ export default function ResourcesPage() {
 
   if (isLoading || !application) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+      <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
         <AppHeader />
         <div className="flex flex-1 items-center justify-center p-8">
           <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm">
@@ -306,7 +306,7 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
+    <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
       <AppHeader />
       <MatterWorkspaceHeader
         application={application}
@@ -326,7 +326,7 @@ export default function ResourcesPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedCategoryName(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   <span>Back to all categories</span>
@@ -402,28 +402,28 @@ export default function ResourcesPage() {
                             href={actionUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-950"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-slate-950"
                           >
                             <span>Open link</span>
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            <ExternalLink className="h-3.5 w-3.5 text-slate-600" />
                           </a>
                         ) : actionUrl ? (
                           <a
                             href={actionUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-950"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-slate-950"
                           >
                             <span>View</span>
-                            <ArrowRight className="h-3.5 w-3.5" />
+                            <ArrowRight className="h-3.5 w-3.5 text-slate-600" />
                           </a>
                         ) : (
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-950"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-slate-950"
                           >
                             <span>View</span>
-                            <ArrowRight className="h-3.5 w-3.5" />
+                            <ArrowRight className="h-3.5 w-3.5 text-slate-600" />
                           </button>
                         )}
                       </div>
@@ -432,14 +432,14 @@ export default function ResourcesPage() {
                 })}
               </div>
 
-              {/* Bottom Notice Callout */}
-              <div className="mt-8 rounded-xl border border-slate-200/90 bg-[#F0F5FF] p-4 sm:p-5">
+              {/* Bottom Notice Callout matching PDF Page 6 */}
+              <div className="mt-8 rounded-xl border border-blue-100 bg-[#F0F5FF] p-4 sm:p-5">
                 <div className="flex items-start gap-3.5">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
                     <Info className="h-4 w-4" />
                   </div>
                   <p className="text-sm leading-6 text-slate-700">
-                    <strong className="font-semibold text-slate-900">Need more information?</strong> If you can&apos;t find what you&apos;re looking for, please contact us or refer to the <a href="https://immi.homeaffairs.gov.au" target="_blank" rel="noopener noreferrer" className="text-[#244D42] font-semibold underline">Department of Home Affairs website</a>.
+                    <strong className="font-semibold text-slate-900">Need more information?</strong> If you can&apos;t find what you&apos;re looking for, please <a href="#contact" className="text-blue-600 underline">contact us</a> or refer to the <a href="https://immi.homeaffairs.gov.au" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Department of Home Affairs website</a>.
                   </p>
                 </div>
               </div>
@@ -508,7 +508,7 @@ export default function ResourcesPage() {
                               <Icon className="h-5 w-5" />
                             </div>
                             <div>
-                              <h3 className="text-base font-bold text-slate-900">
+                              <h3 className="font-serif text-lg font-bold text-slate-900">
                                 {category.name}
                               </h3>
                               <p className="mt-1 text-xs text-slate-500 leading-relaxed">

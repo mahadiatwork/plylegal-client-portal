@@ -14,27 +14,27 @@ import {
 
 export function MatterStatusDot({ status }) {
   const text = String(status || "").trim().toLowerCase();
-  
+
   let dotColor = "bg-slate-400";
-  let textColor = "text-slate-700";
-  let bgClass = "bg-slate-100";
+  let textColor = "text-slate-600";
+  let bgClass = "bg-[#F1F5F9]";
 
   if (text.includes("preparing") || text.includes("in progress") || text.includes("qualification") || text.includes("review")) {
-    dotColor = "bg-blue-600";
-    textColor = "text-blue-700";
-    bgClass = "bg-blue-50";
+    dotColor = "bg-[#2563EB]";
+    textColor = "text-[#1D4ED8]";
+    bgClass = "bg-[#EBF2FE]";
   } else if (text.includes("finalis") || text.includes("finaliz") || text.includes("won") || text.includes("approved") || text.includes("completed")) {
-    dotColor = "bg-emerald-600";
-    textColor = "text-emerald-700";
-    bgClass = "bg-emerald-50";
+    dotColor = "bg-[#16A34A]";
+    textColor = "text-[#15803D]";
+    bgClass = "bg-[#DCFCE7]";
   } else if (text.includes("awaiting")) {
-    dotColor = "bg-amber-500";
-    textColor = "text-amber-800";
-    bgClass = "bg-amber-50";
+    dotColor = "bg-[#F59E0B]";
+    textColor = "text-[#D97706]";
+    bgClass = "bg-[#FEF3C7]";
   } else {
-    dotColor = "bg-slate-400";
-    textColor = "text-slate-600";
-    bgClass = "bg-slate-100";
+    dotColor = "bg-[#94A3B8]";
+    textColor = "text-[#475569]";
+    bgClass = "bg-[#F1F5F9]";
   }
 
   const label = status || "Draft";
@@ -58,7 +58,17 @@ export function MatterWorkspaceHeader({
   const pathname = usePathname();
   const appId = propAppId || application?.id;
   const slug = propSlug || (application ? getApplicationSlug(application) : "");
-  const applicationTitle = application ? formatVisaApplicationType(application) : "Visa Matter";
+  const applicationTitle = application
+    ? formatVisaApplicationType(application)
+    : slug === "482"
+      ? "Skills in Demand (Subclass 482)"
+      : slug === "186"
+        ? "Employer Nomination Visa (Subclass 186)"
+        : slug === "866" || slug === "protection"
+          ? "Protection Visa (Subclass 866)"
+          : slug === "820" || slug === "partner"
+            ? "Partner Visa (Subclass 820)"
+            : "Skills in Demand (Subclass 482)";
   const status = application?.status || "Preparing application";
 
   const baseHref = slug && appId ? `/applications/${slug}/${appId}` : "";
@@ -95,29 +105,31 @@ export function MatterWorkspaceHeader({
   ];
 
   return (
-    <div className={cn("w-full border-b border-slate-200/80 bg-white shadow-sm", className)}>
+    <div className={cn("w-full bg-transparent", className)}>
       <div className="mx-auto w-full max-w-[1608px] px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
         {/* Back Link */}
-        <div className="mb-2">
+        <div className="mb-3">
           <ProgressLink
             href={backHref}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-4 w-4 text-slate-700" />
             <span>{backLabel}</span>
           </ProgressLink>
         </div>
 
-        {/* Matter Title & Status Dot */}
-        <div className="flex flex-wrap items-baseline gap-3 pb-4 pt-1">
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        {/* Matter Title & Status Dot stacked vertically */}
+        <div className="pb-4 pt-1">
+          <h1 className="font-serif text-3xl sm:text-[36px] font-bold tracking-tight text-[#0D3339]">
             {applicationTitle}
           </h1>
-          <MatterStatusDot status={status} />
+          <div className="mt-2.5">
+            <MatterStatusDot status={status} />
+          </div>
         </div>
 
         {/* Horizontal Tabs */}
-        <nav className="flex items-center space-x-1 sm:space-x-4 overflow-x-auto no-scrollbar -mb-px" aria-label="Matter Tabs">
+        <nav className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar -mb-px" aria-label="Matter Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -125,17 +137,17 @@ export function MatterWorkspaceHeader({
                 key={tab.id}
                 href={tab.href}
                 className={cn(
-                  "group relative inline-flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap",
+                  "group relative inline-flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap",
                   tab.isActive
-                    ? "border-[#244D42] text-[#244D42] font-semibold"
-                    : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                    ? "bg-white text-[#244D42] font-semibold border-b-2 border-[#244D42] shadow-xs"
+                    : "bg-transparent text-slate-700 hover:text-slate-950 border-b-2 border-transparent"
                 )}
                 data-testid={`tab-${tab.id}`}
               >
                 <Icon
                   className={cn(
                     "h-4 w-4 shrink-0 transition-colors",
-                    tab.isActive ? "text-[#244D42]" : "text-slate-400 group-hover:text-slate-600"
+                    tab.isActive ? "text-[#244D42]" : "text-slate-600 group-hover:text-slate-900"
                   )}
                 />
                 <span>{tab.label}</span>

@@ -112,7 +112,7 @@ export default function IntakeLayout({ children }) {
   const childProfileIdFromPath =
     typeof pathname === "string"
       ? (internalPathname.match(/^\/intake\/(?:temporary-work|partner|protection)\/children\/([^/]+)\/(?:details|other|identity|custody)/) || [])[1] ??
-        null
+      null
       : null;
 
   const effectiveProfileId = profileIdFromUrl ?? childProfileIdFromPath;
@@ -266,7 +266,7 @@ export default function IntakeLayout({ children }) {
         }
         return false;
       });
-      
+
       if (activeSection && activeSection.subpages) {
         setExpandedSections((prev) => {
           const newSet = new Set(prev);
@@ -295,62 +295,96 @@ export default function IntakeLayout({ children }) {
   let globalStepCounter = 0;
 
   return (
-    <div className="min-h-screen bg-[#F6F8FC] flex flex-col text-slate-900">
-      {/* Universal Top Header */}
-      <AppHeader />
-
-      {/* Matter Workspace Sub-Header with 4 Tabs */}
-      <MatterWorkspaceHeader
-        application={currentApp}
-        appId={appIdFromUrl || draftSnap.currentApplicationId}
-        slug={intakeSlug}
-      />
-
-      {/* Mobile Stepper Toggle Bar */}
-      <div className="lg:hidden border-b border-slate-200 bg-white px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-              <span>Section Progress</span>
-              <span>{completionPercentage.completed} of {completionPercentage.total} complete</span>
-            </div>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-[#244D42] transition-all duration-300"
-                style={{ width: `${completionPercentage.percentage}%` }}
-              />
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="ml-4 h-8 text-xs font-medium border-slate-200"
-          >
-            {mobileMenuOpen ? "Hide Steps" : "View Steps"}
-          </Button>
-        </div>
+    <div className="relative min-h-screen flex flex-col bg-[#E5EAFF] text-slate-900 overflow-x-hidden">
+      {/* Ambient fluid wave background decoration matching client UI */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <svg
+          className="absolute -top-12 -right-16 h-[850px] w-[850px] sm:h-[1100px] sm:w-[1100px]"
+          viewBox="0 0 1000 1000"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M320 0 C 460 220, 520 480, 950 780 L 1000 780 L 1000 0 Z"
+            fill="url(#swoosh-gradient-intake-1)"
+            opacity="0.8"
+          />
+          <path
+            d="M180 0 C 380 260, 420 540, 850 900 L 1000 900 L 1000 0 Z"
+            fill="url(#swoosh-gradient-intake-2)"
+            opacity="0.45"
+          />
+          <defs>
+            <linearGradient id="swoosh-gradient-intake-1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.75" />
+              <stop offset="60%" stopColor="#EEF2FF" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#E2E7FE" stopOpacity="0.1" />
+            </linearGradient>
+            <linearGradient id="swoosh-gradient-intake-2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#DEE3FF" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
 
-      {/* Main 2-Column Content Layout */}
-      <div className="mx-auto w-full max-w-[1608px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 flex-1">
-        <div className="flex flex-col lg:flex-row lg:items-start gap-8">
-          {/* Left Column: Modern Questionnaire Stepper */}
-          <aside
-            className={cn(
-              "w-full lg:w-[320px] shrink-0 bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-5",
-              mobileMenuOpen ? "block" : "hidden lg:block"
-            )}
-          >
+      <div className="relative z-10 flex min-h-screen flex-col">
+        {/* Universal Top Header */}
+        <AppHeader />
+
+        {/* Matter Workspace Sub-Header with 4 Tabs */}
+        <MatterWorkspaceHeader
+          application={currentApp}
+          appId={appIdFromUrl || draftSnap.currentApplicationId}
+          slug={intakeSlug}
+        />
+
+        {/* Mobile Stepper Toggle Bar */}
+        <div className="lg:hidden border-b border-[#E2DDD5] bg-[#FAF8F5] px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                <span>Section Progress</span>
+                <span>{completionPercentage.completed} of {completionPercentage.total} complete</span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-[#244D42] transition-all duration-300"
+                  style={{ width: `${completionPercentage.percentage}%` }}
+                />
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="ml-4 h-8 text-xs font-medium border-slate-200"
+            >
+              {mobileMenuOpen ? "Hide Steps" : "View Steps"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Main 2-Column Content Layout: Single Unified Warm Ivory Card */}
+        <div className="mx-auto w-full max-w-[1608px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 flex-1">
+          <div className="rounded-2xl border border-white/70 bg-[#FAF8F5] shadow-[0_4px_24px_rgba(20,40,30,0.03)] overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-stretch">
+              {/* Left Column: Modern Questionnaire Stepper */}
+              <aside
+                className={cn(
+                  "w-full lg:w-[320px] shrink-0 p-5 sm:p-6 lg:border-r lg:border-[#EBE7DF]/80 space-y-5",
+                  mobileMenuOpen ? "block" : "hidden lg:block"
+                )}
+              >
             {/* Stepper Header & Progress */}
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 block mb-1">
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 block mb-1">
                 QUESTIONNAIRE
               </span>
-              <p className="text-sm font-semibold text-slate-800">
+              <p className="text-sm font-medium text-slate-700">
                 {completionPercentage.completed} of {completionPercentage.total} sections complete
               </p>
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                 <div
                   className="h-full rounded-full bg-[#244D42] transition-all duration-500 ease-out"
                   style={{ width: `${completionPercentage.percentage}%` }}
@@ -467,23 +501,23 @@ export default function IntakeLayout({ children }) {
                                   <CollapsibleContent className="overflow-hidden pl-3 border-l-2 border-slate-100 ml-3 space-y-0.5 mt-1">
                                     {(profile.relationship === 'child'
                                       ? (visaType === 'temporary-work' ? TEMPORARY_WORK_CHILD_PROFILE_SUBPAGES : visaType === 'partner' ? PARTNER_CHILD_PROFILE_SUBPAGES : PROTECTION_CHILD_PROFILE_SUBPAGES).map((sp) => ({
-                                          href: visaType === 'temporary-work' ? buildTemporaryWorkChildHref(profileKey, sp.pathSuffix) : visaType === 'partner' ? buildPartnerChildHref(profileKey, sp.pathSuffix) : buildProtectionChildHref(profileKey, sp.pathSuffix),
-                                          title: sp.title,
-                                          pathSuffix: sp.pathSuffix,
-                                        }))
+                                        href: visaType === 'temporary-work' ? buildTemporaryWorkChildHref(profileKey, sp.pathSuffix) : visaType === 'partner' ? buildPartnerChildHref(profileKey, sp.pathSuffix) : buildProtectionChildHref(profileKey, sp.pathSuffix),
+                                        title: sp.title,
+                                        pathSuffix: sp.pathSuffix,
+                                      }))
                                       : profile.relationship === 'spouse' && visaType === 'temporary-work' && draftSnap.visaContext === '186'
-                                          ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                          : profile.relationship === 'spouse' && visaType === 'temporary-work'
-                                            ? TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                            : profile.relationship === 'spouse' && visaType === 'partner'
-                                              ? PARTNER_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                              : profile.relationship === 'spouse' && visaType === 'protection'
-                                                ? PROTECTION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                                : visaType === 'partner'
-                                                  ? PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                                  : visaType === 'protection'
-                                                    ? PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
-                                                    : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                        ? EMPLOYER_NOMINATION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                        : profile.relationship === 'spouse' && visaType === 'temporary-work'
+                                          ? TEMPORARY_WORK_482_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                          : profile.relationship === 'spouse' && visaType === 'partner'
+                                            ? PARTNER_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                            : profile.relationship === 'spouse' && visaType === 'protection'
+                                              ? PROTECTION_SPOUSE_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                              : visaType === 'partner'
+                                                ? PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                                : visaType === 'protection'
+                                                  ? PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
+                                                  : PROFILE_SUBPAGES.map((sp) => ({ ...sp, pathSuffix: null }))
                                     ).map((subpage) => {
                                       globalStepCounter += 1;
                                       const subStepNum = globalStepCounter;
@@ -540,44 +574,44 @@ export default function IntakeLayout({ children }) {
                                             (visaType === 'temporary-work' && subpage.title === 'Contact Details') ||
                                             (visaType !== 'temporary-work' && subpage.title === 'Family')
                                           ) && (
-                                            (() => {
-                                              globalStepCounter += 1;
-                                              const otherFamilyStepNum = globalStepCounter;
-                                              const isOtherFamilyActive = internalPathname === nonMigratingBaseHref;
-                                              const isOtherFamilyComplete = draftSnap.completionStatus?.[nonMigratingCompletionPrefix] === true;
+                                              (() => {
+                                                globalStepCounter += 1;
+                                                const otherFamilyStepNum = globalStepCounter;
+                                                const isOtherFamilyActive = internalPathname === nonMigratingBaseHref;
+                                                const isOtherFamilyComplete = draftSnap.completionStatus?.[nonMigratingCompletionPrefix] === true;
 
-                                              return (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    navPush(buildHref(nonMigratingBaseHref));
-                                                    setMobileMenuOpen(false);
-                                                  }}
-                                                  className={cn(
-                                                    "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
-                                                    isOtherFamilyActive
-                                                      ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
-                                                      : "text-slate-600 hover:bg-slate-50"
-                                                  )}
-                                                >
-                                                  <span
+                                                return (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      navPush(buildHref(nonMigratingBaseHref));
+                                                      setMobileMenuOpen(false);
+                                                    }}
                                                     className={cn(
-                                                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
+                                                      "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
                                                       isOtherFamilyActive
-                                                        ? "bg-[#244D42] text-white font-bold"
-                                                        : isOtherFamilyComplete
-                                                          ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
-                                                          : "border border-slate-200 text-slate-400"
+                                                        ? "bg-[#EEF7F2] font-semibold text-[#244D42]"
+                                                        : "text-slate-600 hover:bg-slate-50"
                                                     )}
                                                   >
-                                                    {isOtherFamilyComplete && !isOtherFamilyActive ? <Check className="h-3 w-3 stroke-[2.5]" /> : otherFamilyStepNum}
-                                                  </span>
-                                                  <span className="flex-1 truncate">Other Family</span>
-                                                  {isOtherFamilyComplete && <Check className="h-3 w-3 text-[#244D42] shrink-0" />}
-                                                </button>
-                                              );
-                                            })()
-                                          )}
+                                                    <span
+                                                      className={cn(
+                                                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px]",
+                                                        isOtherFamilyActive
+                                                          ? "bg-[#244D42] text-white font-bold"
+                                                          : isOtherFamilyComplete
+                                                            ? "bg-[#EEF7F2] text-[#244D42] font-semibold"
+                                                            : "border border-slate-200 text-slate-400"
+                                                      )}
+                                                    >
+                                                      {isOtherFamilyComplete && !isOtherFamilyActive ? <Check className="h-3 w-3 stroke-[2.5]" /> : otherFamilyStepNum}
+                                                    </span>
+                                                    <span className="flex-1 truncate">Other Family</span>
+                                                    {isOtherFamilyComplete && <Check className="h-3 w-3 text-[#244D42] shrink-0" />}
+                                                  </button>
+                                                );
+                                              })()
+                                            )}
                                         </React.Fragment>
                                       );
                                     })}
@@ -838,7 +872,7 @@ export default function IntakeLayout({ children }) {
           </aside>
 
           {/* Right Column: Form Canvas */}
-          <main className="flex-1 min-w-0">
+          <main className="flex-1 min-w-0 p-6 sm:p-8 lg:p-10">
             <div className="w-full">
               <DynamicQuestionnaireOverride
                 ready={remoteQuestionnaireReady}
@@ -853,6 +887,8 @@ export default function IntakeLayout({ children }) {
         </div>
       </div>
     </div>
+  </div>
+</div>
   );
 }
 

@@ -107,7 +107,7 @@ export default function TemporaryWorkDependentsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="w-full">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
