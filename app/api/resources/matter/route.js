@@ -44,15 +44,17 @@ function isHiddenResource(data) {
   );
 }
 
-function normalizeMatterResource(doc) {
+function normalizeMatterResource(doc, requestedSource = "") {
   const data = doc.data;
   const kind = String(data.type || data.kind || "link").trim().toLowerCase();
   const status = normalizeStatus(data.status);
+  const source = String(data.source || "").trim();
 
   if (
     status !== "active" ||
     isHiddenResource(data) ||
-    String(data.source || "").trim().toLowerCase() === "documentreview" ||
+    source.toLowerCase() === "documentreview" ||
+    (requestedSource ? source !== requestedSource : source === "sharedFiles") ||
     !["file", "link", "note"].includes(kind)
   ) {
     return null;
@@ -69,6 +71,7 @@ function normalizeMatterResource(doc) {
 
   return {
     id: doc.id,
+    source,
     parentId: null,
     kind,
     name:
@@ -79,6 +82,7 @@ function normalizeMatterResource(doc) {
     order: normalizeResourceOrder(data.order),
     status,
     externalUrl,
+    url: externalUrl,
     viewerUrl,
     downloadAllowed: kind === "file" && data.downloadAllowed === false ? false : null,
     description: data.description || "",
@@ -91,6 +95,7 @@ function normalizeMatterResource(doc) {
           : noteText
         : "",
     mimeType: data.mimeType || null,
+    fileName: data.fileName || data.title || data.name || null,
     size: typeof data.size === "number" ? data.size : typeof data.fileSize === "number" ? data.fileSize : null,
     createdAt: serializeTimestamp(data.createdAt),
     updatedAt: serializeTimestamp(data.updatedAt),
@@ -107,6 +112,9 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get("applicationId");
+    const requestedSource = searchParams.get("source") === "sharedFiles"
+      ? "sharedFiles"
+      : "";
     if (!applicationId) {
       return NextResponse.json({ success: false, error: "applicationId is required" }, { status: 400 });
     }
@@ -114,13 +122,18 @@ export async function GET(request) {
     const client = createFirestoreClient(getBearerToken(request), request.signal);
     await getOwnedApplication(client, auth, applicationId);
     const documents = await client.getActiveDocuments(`applications/${applicationId}/resources`);
+    const categories = Array.isArray(
+      application[requestedSource ? "sharedFileCategories" : "resourceCategories"]
+    )
+      ? application[requestedSource ? "sharedFileCategories" : "resourceCategories"]
+      : [];
     const items = documents
-      .map(normalizeMatterResource)
+      .map((document) => normalizeMatterResource(document, requestedSource))
       .filter(Boolean)
       .sort(compareResourceItems);
 
     return NextResponse.json(
-      { success: true, items },
+      { success: true, items, categories },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
