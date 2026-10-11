@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSnapshot } from "valtio";
 import { applicationsStore } from "@/stores/applicationsStore";
@@ -10,7 +10,13 @@ import { AppHeader } from "@/components/AppHeader";
 import { MatterWorkspaceHeader } from "@/components/MatterWorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload as UploadIcon, FileText, ChevronDown, Trash2 } from "lucide-react";
+import {
+  Upload as UploadIcon,
+  FileText,
+  BriefcaseBusiness,
+  ChevronDown,
+  Folder,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +32,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 function getMatterDocumentName(doc = {}) {
@@ -50,6 +55,56 @@ function getMatterDocumentComment(doc = {}) {
     doc.rejection_comments ||
     doc.decline_reason ||
     '';
+}
+
+function getDocumentStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+
+  if (normalized.includes("approved") || normalized.includes("verified")) {
+    return {
+      label: status || "Approved",
+      dotClass: "bg-[#17824D]",
+      className: "bg-[#E1F3E8] text-[#28734F]",
+    };
+  }
+
+  if (normalized.includes("awaiting") || normalized.includes("review")) {
+    return {
+      label: status,
+      dotClass: "bg-[#D88A00]",
+      className: "bg-[#FFF0D6] text-[#A76709]",
+    };
+  }
+
+  if (normalized.includes("reject") || normalized.includes("decline")) {
+    return {
+      label: status,
+      dotClass: "bg-[#C53B3B]",
+      className: "bg-[#FDE4E4] text-[#A52F2F]",
+    };
+  }
+
+  return {
+    label: status || "Not Submitted Yet",
+    dotClass: "bg-[#7137D9]",
+    className: "bg-[#EEE8FF] text-[#6638B8]",
+  };
+}
+
+function getCategoryIcon(categoryName) {
+  const name = String(categoryName || "").toLowerCase();
+
+  if (name.includes("identity")) return FileText;
+  if (name.includes("employment")) return BriefcaseBusiness;
+  return Folder;
+}
+
+function getCategoryTone(categoryName) {
+  const name = String(categoryName || "").toLowerCase();
+
+  if (name.includes("identity")) return "bg-[#EAF3E8] text-[#244D42]";
+  if (name.includes("employment")) return "bg-[#FBEAE5] text-[#8B4D45]";
+  return "bg-[#EEF1E7] text-[#244D42]";
 }
 
 export default function UploadsPage() {
@@ -303,29 +358,11 @@ export default function UploadsPage() {
   };
 
   const getStatusBadge = (status) => {
-    const text = String(status || "").toLowerCase();
-    let dotColor = "bg-[#9333EA]";
-    let textColor = "text-[#7C3AED]";
-
-    if (text.includes("approved") || text.includes("verified")) {
-      dotColor = "bg-[#16A34A]";
-      textColor = "text-[#15803D]";
-    } else if (text.includes("awaiting") || text.includes("review")) {
-      dotColor = "bg-[#F59E0B]";
-      textColor = "text-[#D97706]";
-    } else if (text.includes("reject") || text.includes("decline")) {
-      dotColor = "bg-[#DC2626]";
-      textColor = "text-[#B91C1C]";
-    } else {
-      dotColor = "bg-[#9333EA]";
-      textColor = "text-[#7C3AED]";
-    }
-
-    const label = status || "Not Submitted Yet";
+    const { label, dotClass, className } = getDocumentStatus(status);
 
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium", textColor)}>
-        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", dotColor)} />
+      <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm", className)}>
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotClass)} />
         {label}
       </span>
     );
@@ -359,9 +396,10 @@ export default function UploadsPage() {
       <button
         type="button"
         onClick={() => handleOpenDialog(doc)}
-        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900"
+        aria-label={`Upload ${getMatterDocumentName(doc)}`}
+        className="inline-flex min-w-[116px] items-center justify-center gap-2 rounded-md border border-[#9DBBB2] bg-white px-3.5 py-2 text-sm font-semibold text-[#173F46] shadow-xs transition hover:border-[#244D42] hover:bg-[#F5FAF7]"
       >
-        <UploadIcon className="w-3.5 h-3.5 text-slate-500" />
+        <UploadIcon className="h-4 w-4 text-[#244D42]" />
         <span>Upload</span>
       </button>
     );
@@ -373,9 +411,9 @@ export default function UploadsPage() {
     const comment = getMatterDocumentComment(doc);
 
     return (
-      <div key={doc.id || documentName} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+      <div key={doc.id || documentName} className="rounded-lg border border-[#E5E5DE] bg-white p-3 shadow-sm">
         <div className="flex items-start gap-3">
-          <FileText className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+          <FileText className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#173F46]" />
           <div className="min-w-0 flex-1">
             <div className="break-words text-sm font-medium text-gray-800">{documentName}</div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -540,9 +578,9 @@ export default function UploadsPage() {
       
       return {
         name: categoryName,
-        documents: categoryDocuments.map(item => item.doc) // Extract just the doc, sorted by itemIndex
+        documents: categoryDocuments.map(item => item.doc), // Extract just the doc, sorted by itemIndex
       };
-    }).filter(category => category.documents.length > 0); // Only show categories that have documents
+    });
 
     // Find uncategorized documents (not matched to any JSON item)
     const uncategorized = matterDocuments.filter(doc => !matchedDocumentIds.has(doc.id));
@@ -554,6 +592,115 @@ export default function UploadsPage() {
       uncategorized
     };
   }, [documentsJson, matterDocuments]);
+
+  const renderDocumentTable = (documents) => {
+    if (documents.length === 0) {
+      return (
+        <div className="border-t border-[#E8E7E0] px-5 py-5 text-sm text-slate-500">
+          No documents are required in this section yet.
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="space-y-3 px-3 py-3 lg:hidden">
+          {documents.map((doc) => renderMobileDocumentCard(doc, "Not Submitted Yet"))}
+        </div>
+
+        <div className="hidden overflow-x-auto lg:block">
+          <table className="w-full min-w-[720px] table-fixed">
+            <colgroup>
+              <col className="w-[38%]" />
+              <col className="w-[18%]" />
+              <col className="w-[32%]" />
+              <col className="w-[12%]" />
+            </colgroup>
+            <thead className="border-b border-[#E8E7E0] bg-[#FCFBF7]">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-[#173F46]">Document</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-[#173F46]">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-[#173F46]">Comments</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-[#173F46]">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#ECEBE5]">
+              {documents.map((doc, index) => {
+                const documentName = getMatterDocumentName(doc);
+                const status = doc.Document_Status || "Not Submitted Yet";
+                const comment = getMatterDocumentComment(doc);
+
+                return (
+                  <tr key={doc.id || index} className="transition-colors hover:bg-[#FCFCF9]">
+                    <td className="px-5 py-3.5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="h-[18px] w-[18px] shrink-0 text-[#173F46]" />
+                        <span className="truncate text-sm font-medium text-[#173F46]" title={documentName}>
+                          {documentName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">{getStatusBadge(status)}</td>
+                    <td className="px-4 py-3.5">
+                      {comment ? (
+                        <span className="block truncate text-sm text-slate-600" title={comment}>
+                          {comment}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">{renderUploadButton(doc, status)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </>
+    );
+  };
+
+  const renderCategoryCard = (category, categoryKey = category.name) => {
+    const isExpanded = expandedCategories[categoryKey] ?? category.documents.length > 0;
+    const CategoryIcon = getCategoryIcon(category.name);
+
+    return (
+      <Collapsible
+        key={categoryKey}
+        open={isExpanded}
+        onOpenChange={(open) => setExpandedCategories((previous) => ({ ...previous, [categoryKey]: open }))}
+      >
+        <div className="overflow-hidden rounded-xl border border-[#E5E3DA] bg-white">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-4 bg-[#F8F5EC] px-4 py-3.5 text-left transition-colors hover:bg-[#F3F0E7] sm:px-5"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", getCategoryTone(category.name))}>
+                  <CategoryIcon className="h-5 w-5" />
+                </span>
+                <h3 className="truncate font-serif text-base font-semibold text-[#173F46] sm:text-lg">
+                  {category.name}
+                </h3>
+              </div>
+              <ChevronDown
+                className={cn(
+                  "h-5 w-5 shrink-0 text-[#173F46] transition-transform duration-200",
+                  isExpanded && "rotate-180"
+                )}
+              />
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            {renderDocumentTable(category.documents)}
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    );
+  };
   
   if (isLoading || !application) {
     return (
@@ -579,211 +726,35 @@ export default function UploadsPage() {
 
       <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="mx-auto w-full max-w-[1608px]">
-          {/* Main Card Container matching PDF Page 4 */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
-            {/* Header */}
-            <div className="mb-6">
-              <h2 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <div className="rounded-2xl border border-[#E1E4E0] bg-white p-5 shadow-[0_8px_30px_rgba(25,55,65,0.04)] sm:p-8">
+            <div className="mb-7">
+              <h2 className="font-serif text-2xl font-bold tracking-tight text-[#173F46] sm:text-[30px]">
                 Upload your documents
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm leading-6 text-[#617684] sm:text-base">
                 Please upload the documents listed below. We will review them and let you know if anything else is required.
               </p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-sm text-[#617684]">
                 Accepted formats: PDF, JPG, PNG, DOC, TXT (max 5MB per file).
               </p>
             </div>
 
             {loadingMatterDocs ? (
-              <div className="border border-slate-200/60 rounded-xl p-8 text-center bg-slate-50/50">
+              <div className="rounded-xl border border-[#E5E3DA] bg-[#FCFBF7] p-8 text-center">
                 <div className="text-sm font-medium text-slate-500">Loading documents...</div>
               </div>
             ) : (
-            <div className="divide-y divide-slate-100">
-              {/* Render Categories */}
-              {organizedDocuments.categories.map((category) => {
-                const isExpanded = expandedCategories[category.name] ?? (category.documents.length > 0);
+              <div className="space-y-3">
+                {organizedDocuments.categories.map((category) => renderCategoryCard(category))}
 
-                return (
-                  <Collapsible
-                    key={category.name}
-                    open={isExpanded}
-                    onOpenChange={(open) => setExpandedCategories(prev => ({ ...prev, [category.name]: open }))}
-                  >
-                    <div className="py-2 transition">
-                      {/* Category Header */}
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between py-3.5 px-2 hover:bg-slate-50/70 rounded-lg transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-slate-500" />
-                            <h3 className="font-semibold text-slate-900 text-base">{category.name}</h3>
-                          </div>
-                          <ChevronDown
-                            className={cn(
-                              "h-5 w-5 text-slate-400 transition-transform duration-200",
-                              isExpanded && "rotate-180 text-slate-700"
-                            )}
-                          />
-                        </button>
-                      </CollapsibleTrigger>
+                {organizedDocuments.uncategorized.length > 0 && renderCategoryCard({
+                  name: "Other documents (if applicable)",
+                  documents: organizedDocuments.uncategorized,
+                }, "__uncategorized")}
 
-                        {/* Category Content */}
-                        <CollapsibleContent>
-                          <div className="p-4">
-                            <div className="space-y-3 lg:hidden">
-                              {category.documents.map((doc) => renderMobileDocumentCard(doc, 'Not Submitted Yet'))}
-                            </div>
-                            <div className="hidden overflow-x-auto lg:block">
-                              <table className="w-full table-fixed">
-                                <colgroup>
-                                  <col className="w-[40%]" />
-                                  <col className="w-[15%]" />
-                                  <col className="w-[30%]" />
-                                  <col className="w-[15%]" />
-                                </colgroup>
-                                <thead className="border-b border-slate-100">
-                                  <tr>
-                                    <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Document</th>
-                                    <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                                    <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Comments</th>
-                                    <th className="py-2.5 px-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                  {category.documents.map((doc, index) => {
-                                    // ALL data comes from Zoho document - never from JSON
-                                    // Use "Name" key as primary source, then fallback to other Zoho fields
-                                    const documentName = getMatterDocumentName(doc);
-                                    const status = doc.Document_Status || 'Not Submitted Yet';
-                                    const comment = getMatterDocumentComment(doc);
-                                    
-                                    return (
-                                      <tr key={doc.id || index} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="py-3 px-4">
-                                          <div className="flex items-center gap-2.5 min-w-0">
-                                            <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                            <span className="text-sm font-medium text-slate-800 truncate" title={documentName}>
-                                              {documentName}
-                                            </span>
-                                          </div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                          {getStatusBadge(status)}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                          {comment ? (
-                                            <span className="text-sm text-gray-700 truncate block" title={comment}>
-                                              {comment}
-                                            </span>
-                                          ) : (
-                                            <span className="text-xs text-gray-400">—</span>
-                                          )}
-                                        </td>
-                                        <td className="py-3 px-4 text-right">
-                                          {renderUploadButton(doc, status)}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </CollapsibleContent>
-                      </div>
-                    </Collapsible>
-                  );
-                })}
-
-                {/* Uncategorized Documents */}
-                {organizedDocuments.uncategorized.length > 0 && (
-                  <Collapsible defaultOpen={true}>
-                    <div className="py-2 transition">
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between py-3.5 px-2 hover:bg-slate-50/70 rounded-lg transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-slate-500" />
-                            <h3 className="font-semibold text-slate-900 text-base">Uncategorized</h3>
-                          </div>
-                          <ChevronDown className="h-5 w-5 text-slate-400" />
-                        </button>
-                      </CollapsibleTrigger>
-
-                      <CollapsibleContent>
-                        <div className="pt-2 pb-4 px-2">
-                          <div className="space-y-3 lg:hidden">
-                            {organizedDocuments.uncategorized.map((doc) => renderMobileDocumentCard(doc, 'Pending'))}
-                          </div>
-                          <div className="hidden overflow-x-auto lg:block">
-                            <table className="w-full table-fixed">
-                              <colgroup>
-                                <col className="w-[40%]" />
-                                <col className="w-[18%]" />
-                                <col className="w-[27%]" />
-                                <col className="w-[15%]" />
-                              </colgroup>
-                              <thead className="border-b border-slate-100">
-                                <tr>
-                                  <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Document</th>
-                                  <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                                  <th className="py-2.5 px-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Comments</th>
-                                  <th className="py-2.5 px-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100">
-                                {organizedDocuments.uncategorized.map((doc) => {
-                                  const status = doc.Document_Status || 'Pending';
-                                  // Use "Name" key as primary source, then fallback to other fields
-                                  const documentName = getMatterDocumentName(doc);
-                                  const comment = getMatterDocumentComment(doc);
-                                  
-                                  return (
-                                    <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
-                                      <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                          <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                          <span className="text-sm font-medium text-slate-800 truncate" title={documentName}>
-                                            {documentName}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="py-3 px-4">
-                                        {getStatusBadge(status)}
-                                      </td>
-                                      <td className="py-3 px-4">
-                                        {comment ? (
-                                          <span className="text-sm text-gray-700 truncate block" title={comment}>
-                                            {comment}
-                                          </span>
-                                        ) : (
-                                          <span className="text-xs text-gray-400">—</span>
-                                        )}
-                                      </td>
-                                      <td className="py-3 px-4 text-right">
-                                        {renderUploadButton(doc, status)}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                )}
-
-                {/* Show message if no documents at all */}
                 {organizedDocuments.categories.length === 0 && organizedDocuments.uncategorized.length === 0 && (
-                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center">
-                    <div className="text-gray-500">No documents found</div>
+                  <div className="rounded-xl border border-[#E5E3DA] bg-[#FCFBF7] p-8 text-center text-sm text-slate-500">
+                    No documents found
                   </div>
                 )}
               </div>
