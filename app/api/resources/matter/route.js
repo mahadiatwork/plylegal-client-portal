@@ -120,7 +120,7 @@ export async function GET(request) {
     }
 
     const client = createFirestoreClient(getBearerToken(request), request.signal);
-    await getOwnedApplication(client, auth, applicationId);
+    const application = await getOwnedApplication(client, auth, applicationId);
     const documents = await client.getActiveDocuments(`applications/${applicationId}/resources`);
     const categories = Array.isArray(
       application[requestedSource ? "sharedFileCategories" : "resourceCategories"]
