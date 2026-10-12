@@ -64,3 +64,12 @@ next-env.d.ts
 node_modules/
 *.tar.gz
 allfiles.txt
+
+# Tool/temp directories
+.kilo/
+attached_assets/
+issues/
+docs/
+.next-e2e-final/
+.next-parity/
+.next-review/
