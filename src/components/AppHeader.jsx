@@ -45,7 +45,7 @@ export function AppHeader({ onMenuClick, variant = "default", className }) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 border-b border-[#ECE7E1]/80 bg-[#FAF7F4] shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+        "sticky top-0 z-50 border-b border-[#ECE7E1] bg-[#FCFAF7] shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
         className
       )}
     >
@@ -94,7 +94,7 @@ export function AppHeader({ onMenuClick, variant = "default", className }) {
               onClick={handleLogout}
               disabled={isLoggingOut}
               data-testid="button-logout"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800 hover:text-black disabled:opacity-60 transition-colors"
+              className="inline-flex items-center gap-2 border-l border-[#E8E4DE] pl-5 text-sm font-semibold text-slate-800 hover:text-black disabled:opacity-60 transition-colors"
             >
               {isLoggingOut ? (
                 <Loader2 className="h-4 w-4 animate-spin text-slate-600" />

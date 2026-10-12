@@ -20,9 +20,9 @@ export function MatterStatusDot({ status }) {
   let bgClass = "bg-[#F1F5F9]";
 
   if (text.includes("preparing") || text.includes("in progress") || text.includes("qualification") || text.includes("review")) {
-    dotColor = "bg-[#2563EB]";
-    textColor = "text-[#1D4ED8]";
-    bgClass = "bg-[#EBF2FE]";
+    dotColor = "bg-[#159A6A]";
+    textColor = "text-[#2A5A4D]";
+    bgClass = "bg-[#E8F2ED]";
   } else if (text.includes("finalis") || text.includes("finaliz") || text.includes("won") || text.includes("approved") || text.includes("completed")) {
     dotColor = "bg-[#16A34A]";
     textColor = "text-[#15803D]";
@@ -105,10 +105,10 @@ export function MatterWorkspaceHeader({
   ];
 
   return (
-    <div className={cn("w-full bg-transparent", className)}>
-      <div className="mx-auto w-full max-w-[1608px] px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+    <div className={cn("w-full border-b border-[#D9DCEA] bg-transparent", className)}>
+      <div className="mx-auto w-full max-w-[1608px] px-4 pt-4 sm:px-6 lg:px-8">
         {/* Back Link */}
-        <div className="mb-3">
+        <div className="mb-2">
           <ProgressLink
             href={backHref}
             className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors"
@@ -119,17 +119,17 @@ export function MatterWorkspaceHeader({
         </div>
 
         {/* Matter Title & Status Dot stacked vertically */}
-        <div className="pb-4 pt-1">
-          <h1 className="font-serif text-3xl sm:text-[36px] font-bold tracking-tight text-[#0D3339]">
+        <div className="pb-3 pt-1">
+          <h1 className="font-serif text-3xl sm:text-[40px] font-bold tracking-tight text-[#0D3339]">
             {applicationTitle}
           </h1>
-          <div className="mt-2.5">
+          <div className="mt-2">
             <MatterStatusDot status={status} />
           </div>
         </div>
 
         {/* Horizontal Tabs */}
-        <nav className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar -mb-px" aria-label="Matter Tabs">
+        <nav className="flex items-center gap-2 sm:gap-5 overflow-x-auto no-scrollbar -mb-px" aria-label="Matter Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -137,17 +137,17 @@ export function MatterWorkspaceHeader({
                 key={tab.id}
                 href={tab.href}
                 className={cn(
-                  "group relative inline-flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap",
+                  "group relative inline-flex items-center gap-3 rounded-t-xl border-b-[3px] px-4 py-4 text-sm font-medium transition-colors whitespace-nowrap sm:px-5 sm:text-base",
                   tab.isActive
-                    ? "bg-white text-[#244D42] font-semibold border-b-2 border-[#244D42] shadow-xs"
-                    : "bg-transparent text-slate-700 hover:text-slate-950 border-b-2 border-transparent"
+                    ? "border-[#244D42] bg-[#FCFBF8] text-[#244D42] font-semibold shadow-[0_-1px_1px_rgba(13,51,57,0.04)]"
+                    : "border-transparent bg-transparent text-[#405653] hover:text-[#173F46]"
                 )}
                 data-testid={`tab-${tab.id}`}
               >
                 <Icon
                   className={cn(
-                    "h-4 w-4 shrink-0 transition-colors",
-                    tab.isActive ? "text-[#244D42]" : "text-slate-600 group-hover:text-slate-900"
+                    "h-5 w-5 shrink-0 transition-colors sm:h-6 sm:w-6",
+                    tab.isActive ? "text-[#244D42]" : "text-[#405653] group-hover:text-[#173F46]"
                   )}
                 />
                 <span>{tab.label}</span>
