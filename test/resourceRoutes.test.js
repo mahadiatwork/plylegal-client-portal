@@ -153,8 +153,8 @@ function setup(t, slug = "482") {
   return { documents, calls, templateSlug, failWith: (status) => { failureStatus = status; } };
 }
 
-const request = (route = "template", token = "signed-client-token", applicationId = "matter-1") => new NextRequest(
-  `https://portal.example/api/resources/${route}?applicationId=${encodeURIComponent(applicationId)}`,
+const request = (route = "template", token = "signed-client-token", applicationId = "matter-1", source = "") => new NextRequest(
+  `https://portal.example/api/resources/${route}?applicationId=${encodeURIComponent(applicationId)}${source ? `&source=${encodeURIComponent(source)}` : ""}`,
   { headers: token ? { Authorization: `Bearer ${token}` } : {} },
 );
 
@@ -492,6 +492,26 @@ test("matter resources are owner-scoped, active-only, ordered, and stripped of r
   assert.equal(byId["matter-raw-file"].externalUrl, "");
   assert.equal(byId["matter-raw-file"].category, "For this matter");
   assert.doesNotMatch(JSON.stringify(data), /private-file|source-url-sentinel|download-url-sentinel|Correction|Hidden|Archived/);
+});
+
+test("shared files load their own resources and categories", async (t) => {
+  const { documents } = setup(t);
+  documents.get("applications/matter-1").sharedFileCategories = [
+    { name: "Client documents", icon: "folder" },
+  ];
+  documents.set("applications/matter-1/resources/shared-file", {
+    status: "active", type: "file", source: "sharedFiles", title: "Case summary.pdf",
+    workDriveShareUrl: shareUrl, downloadAllowed: false, category: "Client documents",
+  });
+
+  const response = await matter.GET(request("matter", "signed-client-token", "matter-1", "sharedFiles"));
+
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.deepEqual(data.categories, [{ name: "Client documents", icon: "folder" }]);
+  assert.deepEqual(data.items.map((item) => item.id), ["shared-file"]);
+  assert.equal(data.items[0].viewerUrl, shareUrl);
+  assert.equal(data.items[0].downloadAllowed, false);
 });
 
 test("template, shared and matter resources expose descriptions separately from note content", async (t) => {
