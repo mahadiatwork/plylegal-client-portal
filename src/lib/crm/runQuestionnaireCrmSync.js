@@ -6,6 +6,7 @@ import {
 import { getCrmSyncFlags } from "./crmSyncFlags.js";
 import { CRM_SYNC_STATES, buildCrmSyncJobRecord } from "./crmSyncJobs.js";
 import { buildQuestionnaireCrmProjection } from "./questionnaireMapping.js";
+import { seedDefinitionCrmMappings } from "./questionnaireCrmSeed.js";
 import { synchronizeQuestionnaireCrm } from "./questionnaireSync.js";
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -71,7 +72,9 @@ export async function loadPublishedDefinition(db, application, draft) {
 
 function normalizeLoadedDefinition(definition) {
   const pages = selectQuestionnaireDefinitionPages(definition, []);
-  return normalizeQuestionnaireDefinition({ ...definition, pages }, pages);
+  return seedDefinitionCrmMappings(
+    normalizeQuestionnaireDefinition({ ...definition, pages }, pages),
+  );
 }
 
 export async function runQuestionnaireCrmSync({

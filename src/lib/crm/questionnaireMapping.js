@@ -15,6 +15,7 @@ import {
   readQuestionAnswer,
   transformQuestionnaireAnswer,
 } from "./questionnaireTransforms.js";
+import { buildCanonicalApplicantCrmMappings } from "./applicantCrmProjection.js";
 
 function profilesForPage(draft, page, profileId) {
   const role = getQuestionnairePageProfileRole(page);
@@ -197,6 +198,16 @@ export function buildQuestionnaireCrmProjection({
     });
   });
 
+  mappings.push(...buildCanonicalApplicantCrmMappings({
+    definition,
+    draft,
+    application,
+    userProfile,
+    mode,
+    pageId,
+    profileId,
+  }));
+
   const groups = [];
   const groupIndex = new Map();
   mappings.filter((item) => item.status === "ready").forEach((item) => {
@@ -217,6 +228,9 @@ export function buildQuestionnaireCrmProjection({
       });
     }
     const group = groups[groupIndex.get(recordKey)];
+    if (item.transform === "canonical" && item.profileSnapshot) {
+      group.profileSnapshot = item.profileSnapshot;
+    }
     group.fields[item.fieldApiName] = item.clear ? "" : item.value;
     if (!group.fieldApiNames.includes(item.fieldApiName)) group.fieldApiNames.push(item.fieldApiName);
     group.questionIds.push(item.questionId);

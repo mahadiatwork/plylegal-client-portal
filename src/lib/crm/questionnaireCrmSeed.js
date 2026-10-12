@@ -3,7 +3,7 @@ import { getQuestionnairePageProfileRole } from "./questionnaireCrmContract.js";
 
 function profileTarget(role) {
   if (role === "main_applicant") {
-    return { target: CRM_TARGETS.main_contact, module: "Contacts" };
+    return { target: CRM_TARGETS.matter, module: "Deals" };
   }
   return { target: CRM_TARGETS.profile_record, module: "Partner_Dependents" };
 }
@@ -11,7 +11,9 @@ function profileTarget(role) {
 function identityMapping(question, role) {
   if (!role) return null;
   const destination = profileTarget(role);
-  const familyField = destination.module === "Contacts" ? "Last_Name" : "Name";
+  const isMatter = destination.module === "Deals";
+  const familyField = isMatter ? "Family_Name" : "Name";
+  const givenField = isMatter ? "Given_Name" : "First_Name";
   if (question.answerKey === "family_name" && question.type === "text") {
     return {
       mode: CRM_MAPPING_MODES.field,
@@ -25,7 +27,7 @@ function identityMapping(question, role) {
     return {
       mode: CRM_MAPPING_MODES.field,
       ...destination,
-      fieldApiName: "First_Name",
+      fieldApiName: givenField,
       transform: "text",
       clearPolicy: CRM_CLEAR_POLICIES.preserve_when_empty,
     };
@@ -47,6 +49,43 @@ function identityMapping(question, role) {
       fieldApiName: "Date_of_Birth",
       transform: "date_parts_to_iso",
       clearPolicy: CRM_CLEAR_POLICIES.preserve_when_empty,
+    };
+  }
+  if (isMatter && question.answerKey === "preferred_names" && question.type === "text") {
+    return {
+      mode: CRM_MAPPING_MODES.field,
+      ...destination,
+      fieldApiName: "Preferred_Name",
+      transform: "text",
+      clearPolicy: CRM_CLEAR_POLICIES.preserve_when_empty,
+    };
+  }
+  if (isMatter && question.answerKey === "country_of_birth" && question.type === "text") {
+    return {
+      mode: CRM_MAPPING_MODES.field,
+      ...destination,
+      fieldApiName: "Country_of_Birth",
+      transform: "text",
+      clearPolicy: CRM_CLEAR_POLICIES.preserve_when_empty,
+    };
+  }
+  if (isMatter && question.answerKey === "marital_status" && ["radio", "select"].includes(question.type)) {
+    return {
+      mode: CRM_MAPPING_MODES.field,
+      ...destination,
+      fieldApiName: "Marital_Status",
+      transform: "picklist",
+      clearPolicy: CRM_CLEAR_POLICIES.preserve_when_empty,
+      optionMap: {
+        "Never Married": "Never Married or been in a De Facto Relationship",
+        "Never Married or been in a De Facto Relationship": "Never Married or been in a De Facto Relationship",
+        Married: "Married",
+        "De Facto Relationship": "De Facto Relationship",
+        Divorced: "Divorced",
+        Engaged: "Engaged",
+        Separated: "Separated",
+        Widowed: "Widowed",
+      },
     };
   }
   return null;

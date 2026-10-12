@@ -645,6 +645,27 @@ function clearProfileCompletionKeys(completionStatus, profileIds) {
   return nextCompletionStatus;
 }
 
+function reconcileProfileDetails(candidateDraft, profileId, details) {
+  if (!Array.isArray(candidateDraft?.profiles) || !details || typeof details !== "object") return;
+  const mirroredFields = [
+    "family_name",
+    "given_names",
+    "preferred_names",
+    "gender",
+    "birth_day",
+    "birth_month",
+    "birth_year",
+  ];
+  candidateDraft.profiles = candidateDraft.profiles.map((profile) => {
+    if (String(profile?.id) !== String(profileId)) return profile;
+    const next = { ...profile };
+    mirroredFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(details, field)) next[field] = details[field];
+    });
+    return next;
+  });
+}
+
 export const draftStore = proxy({
   draft: {},
   completionStatus: {}, // Track which pages are completed: { "start": true, "main-applicant/details": true, ... }
@@ -1115,6 +1136,7 @@ export const draftStore = proxy({
       if (!candidateDraft.profiles_data) candidateDraft.profiles_data = {};
       if (!candidateDraft.profiles_data[profileId]) candidateDraft.profiles_data[profileId] = {};
       candidateDraft.profiles_data[profileId][section] = data;
+      if (section === "details") reconcileProfileDetails(candidateDraft, profileId, data);
 
       // Persist first — only touch local state after confirmed success
       const result = await db.saveDraft(candidateDraft, appId);
@@ -1366,9 +1388,6 @@ export const draftStore = proxy({
 
   async loadDraft(applicationId) {
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'draftStore.js:57', message: 'loadDraft entry', data: { applicationId, currentAppId: this.currentApplicationId, currentDraftKeys: Object.keys(this.draft || {}) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       this.isLoading = true;
 
       const appId = applicationId || this.currentApplicationId;
@@ -1379,19 +1398,12 @@ export const draftStore = proxy({
       }
 
       const data = await db.loadDraft(appId);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'draftStore.js:68', message: 'After db.loadDraft', data: { hasData: !!data, dataKeys: Object.keys(data || {}), hasTemporaryWorkDetails: !!data?.temporary_work_details, temporaryWorkDetailsKeys: Object.keys(data?.temporary_work_details || {}), birth_day: data?.temporary_work_details?.birth_day, marital_status: data?.temporary_work_details?.marital_status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       this.draft = data || {};
 
       // Restore visaContext from persisted draft data
       if (this.draft.visaContext) {
         this.visaContext = this.draft.visaContext;
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'draftStore.js:69', message: 'After setting this.draft', data: { draftKeys: Object.keys(this.draft || {}), hasTemporaryWorkDetails: !!this.draft?.temporary_work_details, birth_day: this.draft?.temporary_work_details?.birth_day, marital_status: this.draft?.temporary_work_details?.marital_status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
 
       // Load completion status
       const completionData = await db.loadCompletionStatus(appId);
@@ -1410,9 +1422,6 @@ export const draftStore = proxy({
       this.shouldPrefill = prefill;
 
       this.isLoading = false;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/519dbf1a-c78f-43ac-bfdc-ba79f1bb9226', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'draftStore.js:88', message: 'loadDraft exit', data: { returnDraftKeys: Object.keys(this.draft || {}), hasTemporaryWorkDetails: !!this.draft?.temporary_work_details, birth_day: this.draft?.temporary_work_details?.birth_day, marital_status: this.draft?.temporary_work_details?.marital_status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'B' }) }).catch(() => { });
-      // #endregion
       return this.draft;
     } catch (error) {
       console.error("Error loading draft:", error);

@@ -91,7 +91,14 @@ test("writes grouped Zoho payloads from saved answers", async () => {
     },
   );
   assert.equal(result.success, true);
-  assert.deepEqual(calls, [{ module: "Contacts", recordId: "contact-1", fields: { Last_Name: "Lovelace" } }]);
+  assert.deepEqual(calls, [
+    { module: "Contacts", recordId: "contact-1", fields: { Last_Name: "Lovelace" } },
+    {
+      module: "Deals",
+      recordId: "deal-1",
+      fields: { Family_Name: "Lovelace", Questionnaires_Status: "In Progress" },
+    },
+  ]);
   assert.equal(jobs.at(-1).state, "succeeded");
   assert.equal(jobs.at(-1).targets[0].fieldApiNames.includes("Last_Name"), true);
   assert.equal(JSON.stringify(jobs.at(-1)).includes("Lovelace"), false);
@@ -148,7 +155,7 @@ test("retrying the same payload is idempotent", async () => {
   const { client, calls } = zohoMock();
   const jobs = [];
   const input = {
-    application: { id: "app-1" },
+    application: { id: "app-1", zohoId: "deal-1" },
     userProfile: { zohoContactId: "contact-1" },
     definition,
     draft: {
@@ -170,5 +177,5 @@ test("retrying the same payload is idempotent", async () => {
   });
   assert.equal(first.success, true);
   assert.equal(second.idempotent, true);
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
 });

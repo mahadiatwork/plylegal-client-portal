@@ -9,8 +9,9 @@ import { buildQuestionnaireCrmProjection } from "./questionnaireMapping.js";
 
 const RELATIONSHIP_MAP = Object.freeze({
   spouse: "Spouse",
+  partner: "Partner",
   child: "Children",
-  other: "Other",
+  children: "Children",
 });
 
 function getRecordId(result) {
@@ -22,9 +23,8 @@ function dependentCreateFields(snapshot, contactId) {
     Contact_Name: contactId ? { id: contactId } : undefined,
     First_Name: snapshot?.given_names,
     Name: snapshot?.family_name,
-    Relationship_to_Applicant: RELATIONSHIP_MAP[snapshot?.relationship] || "Other",
+    Relationship_to_Applicant: RELATIONSHIP_MAP[snapshot?.relationship],
     Gender: ["Male", "Female"].includes(snapshot?.gender) ? snapshot.gender : undefined,
-    Is_Applicant: snapshot?.isApplicant === true,
   };
   if (snapshot?.isNonMigrating === true) fields.Non_Migrating = true;
   const year = String(snapshot?.birth_year || "").trim();
@@ -58,7 +58,7 @@ async function ensureDependentRecord(group, { zoho, userProfile, persistDependen
     firstName: snapshot.given_names,
     lastName: snapshot.family_name,
     dateOfBirth: dependentCreateFields(snapshot, contactId).Date_of_Birth,
-    relationship: snapshot.relationship,
+    relationship: RELATIONSHIP_MAP[snapshot.relationship] || snapshot.relationship,
   });
   const matched = existing.find((record) => zoho.buildDependentMatchKey?.(record) === matchKey);
   if (matched?.id) {
@@ -81,9 +81,8 @@ function markGroupMappings(projection, group, patch) {
   projection.mappings.forEach((item) => {
     if (item.status !== "ready") return;
     if (item.module !== group.module) return;
-    const sameRecord = group.recordId
-      ? item.recordId === group.recordId
-      : item.profileId === group.pendingProfileId;
+    const sameRecord = item.recordId === group.recordId
+      || (group.pendingProfileId && item.profileId === group.pendingProfileId);
     if (!sameRecord) return;
     Object.assign(item, patch);
     if (patch.recordId) item.recordId = patch.recordId;
@@ -179,15 +178,24 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
     };
   }
 
-  try {
-    if (projection.groups.length) {
-      const token = await zoho?.getAccessToken?.();
-      if (!token) {
-        throw Object.assign(new Error("Zoho access token is unavailable"), { code: "missing_zoho_token" });
-      }
+  let fatalError = null;
+  const groupErrors = [];
+  if (projection.groups.length) {
+    const token = await zoho?.getAccessToken?.();
+    if (!token) {
+      fatalError = Object.assign(new Error("Zoho access token is unavailable"), { code: "missing_zoho_token" });
+      projection.mappings.forEach((item) => {
+        if (item.status === "ready") {
+          item.status = "failed";
+          item.error = "missing_zoho_token";
+        }
+      });
     }
+  }
 
+  if (!fatalError) {
     for (const group of projection.groups) {
+      try {
       let recordId = group.recordId;
       if (group.needsDependentCreate || !recordId) {
         recordId = await ensureDependentRecord(group, {
@@ -208,12 +216,21 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
         });
       }
       markGroupMappings(projection, group, { status: "succeeded", recordId });
+      } catch (error) {
+        const sanitized = sanitizeCrmSyncError(error);
+        groupErrors.push(sanitized);
+        markGroupMappings(projection, group, { status: "failed", error: sanitized.code });
+      }
     }
+  }
 
+  const summary = summarizeCrmMappings(projection.mappings);
+  const hasFailures = Boolean(fatalError || groupErrors.length || summary.failed.length);
+  if (!hasFailures) {
     const completed = {
       ...job,
       state: CRM_SYNC_STATES.succeeded,
-      summary: summarizeCrmMappings(projection.mappings),
+      summary,
       updatedAt: now().toISOString(),
       completedAt: now().toISOString(),
       attemptCount: (deps.existingJob?.attemptCount || 0) + 1,
@@ -226,31 +243,29 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
       dryRun: false,
       summary: completed.summary,
     };
-  } catch (error) {
-    markGroupMappings(projection, { module: null }, {});
-    projection.mappings.forEach((item) => {
-      if (item.status === "ready") {
-        item.status = "failed";
-        item.error = sanitizeCrmSyncError(error).code;
-      }
-    });
-    const failed = {
-      ...job,
-      state: CRM_SYNC_STATES.failed,
-      error: sanitizeCrmSyncError(error),
-      summary: summarizeCrmMappings(projection.mappings),
-      updatedAt: now().toISOString(),
-      attemptCount: (deps.existingJob?.attemptCount || 0) + 1,
-    };
-    await persistJob?.(failed);
-    return {
-      success: false,
-      jobId: job.id,
-      state: CRM_SYNC_STATES.failed,
-      error: failed.error,
-      summary: failed.summary,
-    };
   }
+
+  const firstError = fatalError
+    ? sanitizeCrmSyncError(fatalError)
+    : groupErrors[0] || { code: "crm_projection_failed", message: "One or more CRM fields could not be synchronized" };
+  const failed = {
+    ...job,
+    state: CRM_SYNC_STATES.failed,
+    error: firstError,
+    summary,
+    updatedAt: now().toISOString(),
+    completedAt: now().toISOString(),
+    attemptCount: (deps.existingJob?.attemptCount || 0) + 1,
+  };
+  await persistJob?.(failed);
+  return {
+    success: false,
+    jobId: job.id,
+    state: CRM_SYNC_STATES.failed,
+    partial: summary.succeeded.length > 0,
+    error: failed.error,
+    summary: failed.summary,
+  };
 }
 
 export function blockingCrmSyncFailure(result, { requireMapped = false } = {}) {

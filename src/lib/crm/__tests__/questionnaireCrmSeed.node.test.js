@@ -25,7 +25,8 @@ test("seed mappings classify identity fields and leave the rest portal-only", ()
       },
     ],
   });
-  assert.equal(seeded.pages[0].questions[0].metadata.crm.fieldApiName, "Last_Name");
+  assert.equal(seeded.pages[0].questions[0].metadata.crm.target, "matter");
+  assert.equal(seeded.pages[0].questions[0].metadata.crm.fieldApiName, "Family_Name");
   assert.equal(seeded.pages[0].questions[1].metadata.crm.mode, "portal_only");
   assert.equal(seeded.pages[0].questions[2].metadata.crm.mode, "portal_only");
   assert.equal(seeded.pages[0].questions[2].metadata.fields[0].metadata.crm.mode, "portal_only");

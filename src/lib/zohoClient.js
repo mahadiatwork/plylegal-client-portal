@@ -355,7 +355,7 @@ class ZohoCRMClient {
       if (!fields) {
         if (relatedListName === 'Partner_Dependents') {
           // Fields we actually need from the response
-          fields = 'id,First_Name,Name,Last_Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating';
+          fields = 'id,First_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Citizenship,Non_Migrating,Passport_Number,Passport_Expiry_Date,Country_of_Passport,Relationship_Status';
         } else if (relatedListName === 'Deals') {
           // Fields for Deals/Applications
           fields = 'id,Deal_Name,DealName,Visa_Type,Deal_Stage,Stage,Amount,Closing_Date,Probability,Account_Name,Contact_Name,Owner,Modified_Time,Last_Activity_Time';
@@ -520,13 +520,13 @@ class ZohoCRMClient {
   }
 
   mapDependentToZohoFields(dep) {
+    const relationshipMap = { spouse: 'Spouse', partner: 'Partner', child: 'Children', children: 'Children' };
     return {
       First_Name: dep.firstName || '',
-      Last_Name: dep.lastName || '',
-      Relationship: dep.relationship || '',
+      Name: dep.lastName || '',
+      Relationship_to_Applicant: relationshipMap[String(dep.relationship || '').toLowerCase()] || '',
       Date_of_Birth: dep.dateOfBirth || '',
       Citizenship: dep.citizenship || '',
-      Is_Applicant: dep.isApplicant || false,
       Non_Migrating: dep.isNonMigrating || false,
     };
   }
@@ -548,16 +548,17 @@ class ZohoCRMClient {
     };
     const relationshipMap = {
       spouse: 'Spouse',
+      partner: 'Partner',
       child: 'Children',
+      children: 'Children',
     };
 
     const fields = {
       Contact_Name: contactId ? { id: contactId } : undefined,
       First_Name: profile?.given_names,
       Name: profile?.family_name,
-      Relationship_to_Applicant: relationshipMap[profile?.relationship] || (profile?.relationship === 'other' ? 'Other' : undefined),
+      Relationship_to_Applicant: relationshipMap[profile?.relationship],
       Gender: ['Male', 'Female'].includes(profile?.gender) ? profile.gender : undefined,
-      Is_Applicant: profile?.isApplicant === true,
     };
 
     // Only set Non_Migrating if explicitly true (for non-migrating members)
@@ -586,11 +587,10 @@ class ZohoCRMClient {
     const normalize = (v) => String(v || '').trim();
     return (
       normalize(existingDep.First_Name) !== normalize(mappedIncomingDep.First_Name) ||
-      normalize(existingDep.Last_Name) !== normalize(mappedIncomingDep.Last_Name) ||
-      normalize(existingDep.Relationship_to_Applicant || existingDep.Relationship) !== normalize(mappedIncomingDep.Relationship) ||
+      normalize(existingDep.Name) !== normalize(mappedIncomingDep.Name) ||
+      normalize(existingDep.Relationship_to_Applicant) !== normalize(mappedIncomingDep.Relationship_to_Applicant) ||
       normalize(existingDep.Date_of_Birth) !== normalize(mappedIncomingDep.Date_of_Birth) ||
       normalize(existingDep.Citizenship) !== normalize(mappedIncomingDep.Citizenship) ||
-      Boolean(existingDep.Is_Applicant) !== Boolean(mappedIncomingDep.Is_Applicant) ||
       Boolean(existingDep.Non_Migrating ?? existingDep.Is_Non_Migrating) !==
         Boolean(mappedIncomingDep.Non_Migrating ?? mappedIncomingDep.Is_Non_Migrating)
     );
@@ -605,6 +605,7 @@ class ZohoCRMClient {
   mapZohoDependentToAppFields(zohoRecord) {
     const relationshipReverseMap = {
       'spouse': 'spouse',
+      'partner': 'partner',
       'children': 'child',
       'child': 'child',
       'other': 'other',
@@ -625,7 +626,7 @@ class ZohoCRMClient {
       gender: zohoRecord.Gender || '',
       citizenship: zohoRecord.Citizenship || '',
       email: zohoRecord.Email || '',
-      isApplicant: zohoRecord.Is_Applicant === true || zohoRecord.Is_Applicant === 'true',
+      isApplicant: false,
       isNonMigrating:
         zohoRecord.Non_Migrating === true ||
         zohoRecord.Non_Migrating === 'true' ||

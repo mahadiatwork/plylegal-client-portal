@@ -4,6 +4,8 @@ import { ZohoCRMClient } from "../src/lib/zohoClient.js";
 
 const write = process.argv.includes("--write");
 const visaFilter = process.argv.find((arg) => arg.startsWith("--visa="))?.slice("--visa=".length);
+const applicationFilter = process.argv.find((arg) => arg.startsWith("--application="))
+  ?.slice("--application=".length);
 const checkpoint = { lastId: null };
 
 function sleep(ms) {
@@ -26,6 +28,7 @@ async function main() {
   let delay = 500;
   for (const doc of snapshot.docs) {
     const application = { id: doc.id, ...doc.data() };
+    if (applicationFilter && doc.id !== applicationFilter) continue;
     if (visaFilter && String(application.visaTypeCode || application.type || "") !== visaFilter) continue;
     checkpoint.lastId = doc.id;
     const result = await runQuestionnaireCrmSync({

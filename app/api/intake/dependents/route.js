@@ -43,7 +43,7 @@ export async function GET(request) {
     }
 
     const zohoClient = new ZohoCRMClient();
-    const fields = 'id,First_Name,Last_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Email,Citizenship,Is_Applicant,Is_Non_Migrating,Non_Migrating';
+    const fields = 'id,First_Name,Name,Relationship_to_Applicant,Date_of_Birth,Gender,Citizenship,Non_Migrating,Passport_Number,Passport_Expiry_Date,Country_of_Passport,Relationship_Status';
     const records = await zohoClient.getRelatedRecords('Contacts', zohoContactId, DEPENDENT_MODULE, fields);
     let contactRecord = null;
     try {

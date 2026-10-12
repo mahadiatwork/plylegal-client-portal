@@ -154,7 +154,7 @@ const draft = {
   },
 };
 
-test("projects a saved main-applicant page onto Contacts fields", () => {
+test("projects a saved main-applicant page onto the Matter and Contact", () => {
   const projection = buildQuestionnaireCrmProjection({
     definition: definition(),
     draft,
@@ -164,14 +164,23 @@ test("projects a saved main-applicant page onto Contacts fields", () => {
     pageId: "main-details",
     profileId: "main-1",
   });
-  assert.equal(projection.groups.length, 1);
-  assert.equal(projection.groups[0].module, "Contacts");
-  assert.equal(projection.groups[0].recordId, "contact-1");
-  assert.deepEqual(projection.groups[0].fields, {
+  assert.equal(projection.groups.length, 2);
+  const contact = projection.groups.find((group) => group.module === "Contacts");
+  const matter = projection.groups.find((group) => group.module === "Deals");
+  assert.equal(contact.recordId, "contact-1");
+  assert.deepEqual(contact.fields, {
     Last_Name: "Lovelace",
     First_Name: "Ada",
     Gender: "Female",
     Date_of_Birth: "1815-12-10",
+  });
+  assert.equal(matter.recordId, "deal-1");
+  assert.deepEqual(matter.fields, {
+    Family_Name: "Lovelace",
+    Given_Name: "Ada",
+    Gender: "Female",
+    Date_of_Birth: "1815-12-10",
+    Questionnaires_Status: "In Progress",
   });
   assert.equal(projection.mappings.find((item) => item.answerKey === "notes").skipReason, "portal_only");
 });
@@ -189,7 +198,12 @@ test("projects a spouse page only onto that dependant's Partner_Dependents recor
   assert.equal(projection.groups.length, 1);
   assert.deepEqual(projection.groups[0].module, "Partner_Dependents");
   assert.equal(projection.groups[0].recordId, "dep-1");
-  assert.deepEqual(projection.groups[0].fields, { Name: "King" });
+  assert.deepEqual(projection.groups[0].fields, {
+    Name: "King",
+    Relationship_to_Applicant: "Spouse",
+    Non_Migrating: false,
+    Contact_Name: { id: "contact-1" },
+  });
 });
 
 test("full reconciliation groups payloads without flattening portal-only answers", () => {
@@ -200,8 +214,9 @@ test("full reconciliation groups payloads without flattening portal-only answers
     userProfile: { zohoContactId: "contact-1" },
     mode: "full",
   });
-  assert.equal(projection.groups.length, 2);
+  assert.equal(projection.groups.length, 4);
+  assert.ok(projection.groups.some((group) => group.module === "Deals"));
   assert.ok(projection.groups.some((group) => group.module === "Contacts"));
   assert.ok(projection.groups.some((group) => group.recordId === "dep-1"));
-  assert.equal(projection.groups.some((group) => group.recordId === "dep-2"), false);
+  assert.equal(projection.groups.some((group) => group.recordId === "dep-2"), true);
 });
