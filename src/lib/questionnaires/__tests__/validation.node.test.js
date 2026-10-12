@@ -70,6 +70,144 @@ test("the bundled 482 Character page remains available without Firestore", async
   assert.equal(page?.questions.length, 18);
 });
 
+function detailsPage(role, extraQuestions = []) {
+  const routeRole = role === "main_applicant" ? "main-applicant" : role === "spouse" ? "spouse-partner" : "children/child-1";
+  return {
+    id: `${role}-details`,
+    route: `/intake/temporary-work/${routeRole}/details`,
+    title: "Details",
+    sectionKey: "details",
+    completionKey: `temporary-work/${routeRole}/details`,
+    scope: "profile",
+    order: 10,
+    metadata: { profileRole: role },
+    questions: [
+      {
+        id: `${role}-family-name`,
+        answerKey: "family_name",
+        label: "Family Name",
+        type: "text",
+        metadata: {
+          crm: {
+            mode: "field",
+            target: role === "main_applicant" ? "main_contact" : "profile_record",
+            module: role === "main_applicant" ? "Contacts" : "Partner_Dependents",
+            fieldApiName: role === "main_applicant" ? "Last_Name" : "Name",
+            transform: "text",
+            clearPolicy: "preserve_when_empty",
+          },
+        },
+      },
+      ...extraQuestions,
+    ],
+  };
+}
+
+test("existing definitions without CRM metadata remain valid", () => {
+  assert.deepEqual(getQuestionnaireDefinitionIssues(temporaryWork482Definition), []);
+});
+
+test("accepts validated CRM mappings for main applicants and dependants", () => {
+  const definition = structuredClone(temporaryWork482Definition);
+  definition.pages[0].questions[0].metadata = { ...(definition.pages[0].questions[0].metadata || {}), crm: { mode: "portal_only" } };
+  definition.pages.push(detailsPage("main_applicant"));
+  definition.pages.push(detailsPage("spouse", [
+    {
+      id: "spouse-gender",
+      answerKey: "gender",
+      label: "Gender",
+      type: "radio",
+      options: [
+        { value: "Male", label: "Male" },
+        { value: "Female", label: "Female" },
+        { value: "Other", label: "Other" },
+      ],
+      metadata: {
+        crm: {
+          mode: "field",
+          target: "profile_record",
+          module: "Partner_Dependents",
+          fieldApiName: "Gender",
+          transform: "picklist",
+          clearPolicy: "preserve_when_empty",
+          optionMap: { Male: "Male", Female: "Female" },
+        },
+      },
+    },
+  ]));
+  assert.deepEqual(getQuestionnaireDefinitionIssues(definition), []);
+});
+
+test("rejects unknown CRM targets, fields, and conflicting destinations", () => {
+  const unknownTarget = structuredClone(temporaryWork482Definition);
+  unknownTarget.pages.push(detailsPage("main_applicant"));
+  unknownTarget.pages.at(-1).questions[0].metadata.crm.target = "somewhere_else";
+  unknownTarget.pages.at(-1).questions[0].metadata.crm.module = "Contacts";
+  assert.ok(getQuestionnaireDefinitionIssues(unknownTarget).some((issue) => issue.includes("crm.target")));
+
+  const guessedField = structuredClone(temporaryWork482Definition);
+  guessedField.pages.push(detailsPage("main_applicant"));
+  guessedField.pages.at(-1).questions[0].metadata.crm.fieldApiName = "Preferred_Name";
+  assert.ok(getQuestionnaireDefinitionIssues(guessedField).some((issue) => issue.includes("approved CRM catalog")));
+
+  const conflict = structuredClone(temporaryWork482Definition);
+  conflict.pages.push(detailsPage("main_applicant", [
+    {
+      id: "main-family-name-2",
+      answerKey: "family_name_copy",
+      label: "Family name again",
+      type: "text",
+      metadata: {
+        crm: {
+          mode: "field",
+          target: "main_contact",
+          module: "Contacts",
+          fieldApiName: "Last_Name",
+          transform: "text",
+          clearPolicy: "preserve_when_empty",
+        },
+      },
+    },
+  ]));
+  assert.ok(getQuestionnaireDefinitionIssues(conflict).some((issue) => issue.includes("conflicts")));
+});
+
+test("rejects CRM field mappings on repeaters and incompatible types", () => {
+  const repeater = structuredClone(temporaryWork482Definition);
+  repeater.pages.push({
+    id: "identity",
+    route: "/intake/temporary-work/main-applicant/identity",
+    title: "Identity",
+    sectionKey: "identity",
+    scope: "profile",
+    metadata: { profileRole: "main_applicant" },
+    questions: [{
+      id: "passports",
+      answerKey: "passports",
+      label: "Passports",
+      type: "repeater",
+      metadata: {
+        crm: {
+          mode: "field",
+          target: "main_contact",
+          module: "Contacts",
+          fieldApiName: "Last_Name",
+          transform: "text",
+          clearPolicy: "preserve_when_empty",
+        },
+        fields: [{ id: "doc-number", answerKey: "document_number", label: "Number", type: "text" }],
+      },
+    }],
+  });
+  assert.ok(getQuestionnaireDefinitionIssues(repeater).some((issue) => issue.includes("repeater")));
+
+  const dateMismatch = structuredClone(temporaryWork482Definition);
+  dateMismatch.pages.push(detailsPage("main_applicant"));
+  dateMismatch.pages.at(-1).questions[0].type = "dateParts";
+  dateMismatch.pages.at(-1).questions[0].parts = { day: "birth_day", month: "birth_month", year: "birth_year" };
+  assert.ok(getQuestionnaireDefinitionIssues(dateMismatch).some((issue) => issue.includes("incompatible")));
+});
+
 test("definition validation rejects missing answerKey", () => {
   const broken = structuredClone(temporaryWork482Definition);
   delete broken.pages[0].questions[0].answerKey;

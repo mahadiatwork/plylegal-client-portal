@@ -185,6 +185,14 @@ export function DynamicQuestionnairePage({
   }, [appId, draftSnap.currentApplicationId]);
 
   useEffect(() => {
+    if (!pageDefinition?.id) return;
+    draftStore.setQuestionnaireCrmSyncContext({
+      pageId: pageDefinition.id,
+      profileId: resolvedProfileId || nonMigratingMemberId || null,
+    });
+  }, [nonMigratingMemberId, pageDefinition?.id, resolvedProfileId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadPageDefinition() {
@@ -351,6 +359,23 @@ export function DynamicQuestionnairePage({
         return;
       }
 
+      const crmResult = await draftStore.queueQuestionnaireCrmSync({
+        pageId: pageDefinition.id,
+        profileId: storageTarget.type === "profile"
+          ? storageTarget.profileId
+          : storageTarget.type === "nonMigratingMember"
+            ? storageTarget.memberId
+            : null,
+        immediate: true,
+      });
+      if (crmResult && crmResult.success === false && !crmResult.skipped) {
+        toast({
+          title: "Saved, CRM synchronization failed",
+          description: "Your answers were saved and can be retried without re-entering them.",
+          variant: "destructive",
+        });
+      }
+
       const completionResult = await markPageComplete();
       if (!completionResult.success) {
         toast({
@@ -416,7 +441,11 @@ export function DynamicQuestionnairePage({
           });
           return;
         }
-        toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
+        const crmMessage = draftStore.crmSync?.message;
+        toast({
+          title: "Draft saved",
+          description: crmMessage || "Your questionnaire answers have been saved.",
+        });
       } else {
         toast({ title: "Error", description: result.error || "Failed to save draft", variant: "destructive" });
       }
@@ -478,6 +507,27 @@ export function DynamicQuestionnairePage({
               values={values}
             />
 
+            {draftSnap.crmSync?.state && draftSnap.crmSync.state !== "idle" ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3 text-sm">
+                <p className={draftSnap.crmSync.state === "failed" ? "text-red-700" : "text-gray-700"}>
+                  {draftSnap.crmSync.message
+                    || (draftSnap.crmSync.state === "pending"
+                      ? "Saved. CRM synchronization pending."
+                      : draftSnap.crmSync.state === "succeeded"
+                        ? "Saved and synchronized to CRM."
+                        : "Saved. CRM synchronization failed and will be retried.")}
+                </p>
+                {draftSnap.crmSync.retryable ? (
+                  <button
+                    type="button"
+                    className="font-medium text-[#4F726B] underline"
+                    onClick={() => draftStore.retryQuestionnaireCrmSync()}
+                  >
+                    Retry CRM sync
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <FormNavigation
               onPrev={handlePrevious}
               onNext={form.handleSubmit(handleSubmit)}

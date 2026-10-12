@@ -7,6 +7,7 @@ import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMember
 import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
 import { DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY } from "@/lib/questionnaires/answers";
 import { authStore } from "./authStore";
+import { describeCrmSyncResult, requestQuestionnaireCrmSync } from "@/lib/crm/clientCrmSync";
 import { applicationsStore, syncZohoQuestionnaireStatus } from "./applicationsStore";
 
 // Get database adapter (Firebase or localStorage based on env)
@@ -654,10 +655,102 @@ export const draftStore = proxy({
   lastSaved: null,
   isLoading: false,
   isSaving: false,
+  crmSync: { state: "idle", message: null, jobId: null, retryable: false },
+  _crmSyncTimer: null,
+  _crmSyncContext: { pageId: null, profileId: null },
 
   /** Set the visa context (subclass) for the current application */
   setVisaContext(context) {
     this.visaContext = context;
+  },
+
+  setQuestionnaireCrmSyncContext(context = {}) {
+    this._crmSyncContext = {
+      pageId: context.pageId || null,
+      profileId: context.profileId || null,
+    };
+  },
+
+  async queueQuestionnaireCrmSync({ pageId, profileId, immediate = false } = {}) {
+    const appId = this.currentApplicationId;
+    if (!appId || typeof window === "undefined") return null;
+    const context = {
+      pageId: pageId || this._crmSyncContext.pageId,
+      profileId: profileId || this._crmSyncContext.profileId,
+    };
+    if (!context.pageId) return null;
+    if (this._crmSyncTimer) {
+      clearTimeout(this._crmSyncTimer);
+      this._crmSyncTimer = null;
+    }
+    this.crmSync = {
+      state: "pending",
+      message: "Saved. CRM synchronization pending.",
+      jobId: this.crmSync?.jobId || null,
+      retryable: true,
+      pageId: context.pageId,
+      profileId: context.profileId,
+    };
+    if (!immediate) {
+      this._crmSyncTimer = setTimeout(() => {
+        this.flushQuestionnaireCrmSync(context);
+      }, 1500);
+      return { success: true, state: "pending" };
+    }
+    return this.flushQuestionnaireCrmSync(context);
+  },
+
+  async flushQuestionnaireCrmSync(context = this._crmSyncContext) {
+    const appId = this.currentApplicationId;
+    if (!appId || !context?.pageId) return null;
+    const result = await requestQuestionnaireCrmSync({
+      applicationId: appId,
+      mode: "page",
+      pageId: context.pageId,
+      profileId: context.profileId,
+    });
+    const described = describeCrmSyncResult(result);
+    this.crmSync = {
+      state: described?.state || (result.skipped ? "idle" : "failed"),
+      message: described?.message || null,
+      jobId: result.jobId || null,
+      retryable: !result.success && !result.skipped,
+      pageId: context.pageId,
+      profileId: context.profileId,
+    };
+    return result;
+  },
+
+  async retryQuestionnaireCrmSync() {
+    return this.queueQuestionnaireCrmSync({
+      pageId: this.crmSync?.pageId,
+      profileId: this.crmSync?.profileId,
+      immediate: true,
+    });
+  },
+
+  async reconcileQuestionnaireCrm() {
+    const appId = this.currentApplicationId;
+    if (!appId || typeof window === "undefined") {
+      return { success: false, error: { message: "Application ID required" } };
+    }
+    this.crmSync = {
+      ...this.crmSync,
+      state: "pending",
+      message: "Reconciling CRM records…",
+    };
+    const result = await requestQuestionnaireCrmSync({
+      applicationId: appId,
+      mode: "full",
+    });
+    const described = describeCrmSyncResult(result);
+    this.crmSync = {
+      state: described?.state || (result.skipped ? "idle" : "failed"),
+      message: described?.message || result.error?.message || null,
+      jobId: result.jobId || null,
+      retryable: !result.success && !result.skipped,
+    };
+    return result;
   },
 
   async syncQuestionnaireStatus(status, applicationId) {
@@ -1029,6 +1122,7 @@ export const draftStore = proxy({
         this.draft = candidateDraft;
         this.lastSaved = new Date().toISOString();
         this.isSaving = false;
+        void this.queueQuestionnaireCrmSync({ immediate: false });
         return { success: true };
       }
       // Save failed — do NOT update this.draft (preserves last-known-good state)
@@ -1181,6 +1275,7 @@ export const draftStore = proxy({
         await this.persistNonMigratingZohoDependentId(memberId, zohoDependentId);
       }
     }
+    void this.queueQuestionnaireCrmSync({ immediate: false, profileId: memberId });
 
     return true;
   },
@@ -1572,6 +1667,7 @@ export const draftStore = proxy({
         this.draft = candidateDraft;
         this.lastSaved = new Date().toISOString();
         this.isSaving = false;
+        void this.queueQuestionnaireCrmSync({ immediate: false });
         return { success: true };
       }
 

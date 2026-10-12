@@ -241,6 +241,11 @@ export default function SubmitPage() {
         throw new Error("No application ID found");
       }
 
+      const crmResult = await draftStore.reconcileQuestionnaireCrm();
+      if (crmResult && !crmResult.skipped && crmResult.success === false) {
+        throw new Error("CRM synchronization failed. Your answers are saved; retry before submitting.");
+      }
+
       const result = await applicationsStore.updateApplication(appId, {
         status: "submitted",
         submittedAt: new Date().toISOString(),

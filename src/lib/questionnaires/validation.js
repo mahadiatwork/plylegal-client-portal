@@ -1,3 +1,5 @@
+import { validateDefinitionCrmMappings } from "../crm/questionnaireCrmContract.js";
+
 export const SUPPORTED_QUESTION_TYPES = new Set([
   "text",
   "textarea",
@@ -626,6 +628,8 @@ export function getQuestionnaireDefinitionIssues(definition) {
     });
     validatePageConditionReferences(page.questions, pagePath, issues);
   });
+
+  validateDefinitionCrmMappings(definition, issues);
 
   return issues;
 }
