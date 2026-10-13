@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   Search,
   ChevronRight,
-  ChevronDown,
   ArrowRight,
   ArrowLeft,
   ExternalLink,
@@ -29,7 +28,6 @@ import {
   Building2,
   CheckSquare,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const CATEGORY_ICONS = {
   folder: Folder,
@@ -78,19 +76,33 @@ function getItemType(item) {
 
 function ResourceTypePill({ type }) {
   const t = String(type || "").toLowerCase();
-  if (t === "guide") {
-    return <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">Guide</span>;
-  }
-  if (t === "link") {
-    return <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Link</span>;
-  }
-  if (t === "checklist") {
-    return <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">Checklist</span>;
-  }
-  if (t === "file") {
-    return <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">File</span>;
-  }
-  return <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">Note</span>;
+  const pill = t === "guide"
+    ? { label: "Guide", icon: BookOpen, className: "bg-[#E3EDFF] text-[#2160C5]" }
+    : t === "link"
+      ? { label: "Link", icon: LinkIcon, className: "bg-[#E5F5EC] text-[#176446]" }
+      : t === "checklist"
+        ? { label: "Checklist", icon: CheckSquare, className: "bg-[#F1E6FF] text-[#7435BB]" }
+        : t === "file"
+          ? { label: "File", icon: FileText, className: "bg-[#FBEFDE] text-[#8C5D22]" }
+          : { label: "Note", icon: ScrollText, className: "bg-[#EFF2F4] text-[#516679]" };
+  const Icon = pill.icon;
+
+  return (
+    <span className={`inline-flex min-w-[96px] items-center justify-center gap-2 rounded-md px-2.5 py-1 text-sm font-medium ${pill.className}`}>
+      <Icon className="h-4 w-4 shrink-0" />
+      {pill.label}
+    </span>
+  );
+}
+
+function getCategorySurface(name = "") {
+  const normalizedName = String(name).toLowerCase();
+  if (normalizedName.includes("government") || normalizedName.includes("visa process")) return "bg-[#E7F2EE] text-[#195A48]";
+  if (normalizedName.includes("document") || normalizedName.includes("evidence")) return "bg-[#E8EFFF] text-[#214D98]";
+  if (normalizedName.includes("requirement")) return "bg-[#F0E6FD] text-[#3E317E]";
+  if (normalizedName.includes("policy") || normalizedName.includes("important information")) return "bg-[#FBF0DF] text-[#65563B]";
+  if (normalizedName.includes("template") || normalizedName.includes("form")) return "bg-[#FBE6E6] text-[#37475C]";
+  return "bg-[#E9F3ED] text-[#174D42]";
 }
 
 const DEFAULT_CATEGORY_DESCRIPTIONS = {
@@ -294,11 +306,11 @@ export default function ResourcesPage() {
 
   if (isLoading || !application) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
+      <div className="flex min-h-screen flex-col bg-[#E6E8FA]">
         <AppHeader />
         <div className="flex flex-1 items-center justify-center p-8">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm">
-            <div className="text-sm font-medium text-slate-600">Loading resources...</div>
+          <div className="rounded-xl border border-[#E8E6E2] bg-[#FCFBF8] p-8 text-center shadow-sm">
+            <div className="text-sm font-medium text-[#5A6C73]">Loading resources...</div>
           </div>
         </div>
       </div>
@@ -306,7 +318,7 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
+    <div className="flex min-h-screen flex-col bg-[#E6E8FA]">
       <AppHeader />
       <MatterWorkspaceHeader
         application={application}
@@ -314,13 +326,13 @@ export default function ResourcesPage() {
         slug={slug}
       />
 
-      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <main className="flex-1 px-3 py-3 sm:px-5 sm:py-4 lg:px-8">
         <div className="mx-auto w-full max-w-[1608px]">
           {/* ========================================================= */}
           {/* PAGE 6: CATEGORY DETAIL VIEW                              */}
           {/* ========================================================= */}
           {selectedCategory ? (
-            <div>
+            <div className="rounded-xl border border-[#E8E6E2] bg-[#FCFBF8] p-5 shadow-[0_2px_5px_rgba(40,54,60,0.035)] sm:p-8">
               {/* Back to all categories */}
               <div className="mb-4">
                 <button
@@ -448,28 +460,28 @@ export default function ResourcesPage() {
             /* ========================================================= */
             /* PAGE 5: RESOURCES OVERVIEW GRID                           */
             /* ========================================================= */
-            <div>
+            <div className="rounded-xl border border-[#E8E6E2] bg-[#FCFBF8] px-5 py-5 shadow-[0_2px_5px_rgba(40,54,60,0.035)] sm:px-10">
               {/* Header & Controls */}
-              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="font-serif text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  <h2 className="font-serif text-3xl font-bold tracking-tight text-[#113E37] sm:text-[40px]">
                     Resources
                   </h2>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-[#627177] sm:text-lg">
                     Useful information, guides and templates to help you with your Subclass 482 application.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex w-full items-center gap-4 sm:w-auto">
                   {/* Search bar */}
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <div className="relative w-full sm:w-[334px]">
+                    <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#174D42]" />
                     <input
                       type="text"
                       placeholder="Search resources..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200/90 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#244D42] focus:outline-none shadow-sm"
+                      className="h-12 w-full rounded-[9px] border border-[#D8DCDD] bg-white py-2 pl-12 pr-4 text-sm text-[#173F46] shadow-[0_1px_2px_rgba(20,45,50,0.04)] placeholder:text-[#78858A] focus:border-[#244D42] focus:outline-none focus:ring-2 focus:ring-[#244D42]/15"
                     />
                   </div>
 
@@ -477,7 +489,7 @@ export default function ResourcesPage() {
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-[#244D42] focus:outline-none shadow-sm"
+                    className="h-12 min-w-[150px] rounded-[9px] border border-[#D8DCDD] bg-white px-4 text-sm font-semibold text-[#29454A] shadow-[0_1px_2px_rgba(20,45,50,0.04)] focus:border-[#244D42] focus:outline-none focus:ring-2 focus:ring-[#244D42]/15"
                   >
                     <option value="all">All types</option>
                     <option value="guide">Guide</option>
@@ -490,7 +502,7 @@ export default function ResourcesPage() {
               </div>
 
               {/* Category Cards Stack */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {categories.map((category) => {
                   const Icon = getCategoryIcon(category.name, category.icon);
                   const displayItems = category.items.slice(0, 4);
@@ -498,20 +510,20 @@ export default function ResourcesPage() {
                   return (
                     <div
                       key={category.name}
-                      className="rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-sm transition hover:shadow-md"
+                      className="overflow-hidden rounded-[10px] border border-[#E4E2DD] bg-[#FDFCF9] transition-colors hover:bg-white"
                     >
-                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-center">
+                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40%)_minmax(0,1fr)_auto]">
                         {/* Left Category Info */}
-                        <div className="lg:col-span-4">
-                          <div className="flex items-start gap-3.5">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF7F2] text-[#244D42]">
-                              <Icon className="h-5 w-5" />
+                        <div className="flex items-center border-b border-[#E4E2DD] px-4 py-5 lg:border-b-0 lg:border-r lg:py-4">
+                          <div className="flex items-center gap-6">
+                            <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full ${getCategorySurface(category.name)}`}>
+                              <Icon className="h-10 w-10" strokeWidth={2.1} />
                             </div>
                             <div>
-                              <h3 className="font-serif text-lg font-bold text-slate-900">
+                              <h3 className="font-serif text-2xl font-bold leading-tight text-[#143F46]">
                                 {category.name}
                               </h3>
-                              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                              <p className="mt-1 text-sm leading-snug text-[#627177] sm:text-base">
                                 {category.description}
                               </p>
                             </div>
@@ -519,35 +531,35 @@ export default function ResourcesPage() {
                         </div>
 
                         {/* Middle Items Preview */}
-                        <div className="lg:col-span-6">
-                          <div className="space-y-2 border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0">
+                        <div className="flex items-center px-5 py-2 sm:px-6">
+                          <div className="w-full divide-y divide-[#E8E6E2]">
                             {displayItems.map((item) => (
                               <div
                                 key={item.id || item.name}
                                 onClick={() => setSelectedCategoryName(category.name)}
-                                className="group flex items-center justify-between gap-3 py-1 cursor-pointer"
+                                className="group flex h-9 cursor-pointer items-center justify-between gap-3"
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="flex min-w-0 items-center gap-6">
                                   <ResourceTypePill type={item.type} />
-                                  <span className="text-sm font-medium text-slate-700 truncate group-hover:text-[#244D42] transition-colors">
+                                  <span className="truncate text-sm font-medium text-[#203F46] transition-colors group-hover:text-[#0D5A49] sm:text-[15px]">
                                     {item.name}
                                   </span>
                                 </div>
-                                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-[#244D42] shrink-0" />
+                                <ChevronRight className="h-5 w-5 shrink-0 text-[#1B3E46] transition-colors group-hover:text-[#0D5A49]" />
                               </div>
                             ))}
                           </div>
                         </div>
 
                         {/* Right Action */}
-                        <div className="lg:col-span-2 flex justify-end">
+                        <div className="flex justify-end self-start p-4">
                           <button
                             type="button"
                             onClick={() => setSelectedCategoryName(category.name)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-950"
+                            className="inline-flex min-w-[148px] items-center justify-center gap-3 rounded-md border border-[#B8C3C6] bg-white px-5 py-3 text-sm font-semibold text-[#1A3D45] transition hover:bg-[#F4F6F0] hover:text-[#103F37]"
                           >
                             <span>View all</span>
-                            <ArrowRight className="h-3.5 w-3.5" />
+                            <ArrowRight className="h-5 w-5" />
                           </button>
                         </div>
                       </div>
