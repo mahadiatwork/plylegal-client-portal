@@ -704,11 +704,44 @@ export default function UploadsPage() {
   
   if (isLoading || !application) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F6F8FC]">
-        <AppHeader />
-        <div className="flex flex-1 items-center justify-center p-8">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm">
-            <div className="text-sm font-medium text-slate-600">Loading documents...</div>
+      <div className="relative min-h-screen flex flex-col bg-[#E5EAFF] overflow-x-hidden">
+        {/* Ambient fluid wave background decoration */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <svg
+            className="absolute -top-12 -right-16 h-[850px] w-[850px] sm:h-[1100px] sm:w-[1100px]"
+            viewBox="0 0 1000 1000"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M320 0 C 460 220, 520 480, 950 780 L 1000 780 L 1000 0 Z"
+              fill="url(#swoosh-gradient-uploads-loading-1)"
+              opacity="0.8"
+            />
+            <path
+              d="M180 0 C 380 260, 420 540, 850 900 L 1000 900 L 1000 0 Z"
+              fill="url(#swoosh-gradient-uploads-loading-2)"
+              opacity="0.45"
+            />
+            <defs>
+              <linearGradient id="swoosh-gradient-uploads-loading-1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.75" />
+                <stop offset="60%" stopColor="#EEF2FF" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#E2E7FE" stopOpacity="0.1" />
+              </linearGradient>
+              <linearGradient id="swoosh-gradient-uploads-loading-2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.55" />
+                <stop offset="100%" stopColor="#DEE3FF" stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div className="relative z-10 flex min-h-screen flex-col">
+          <AppHeader />
+          <div className="flex flex-1 items-center justify-center p-8">
+            <div className="rounded-2xl border border-white/70 bg-[#FAF8F5] p-8 text-center shadow-[0_4px_24px_rgba(20,40,30,0.03)]">
+              <div className="text-sm font-medium text-slate-600">Loading documents...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -716,17 +749,50 @@ export default function UploadsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F4F7FB]">
-      <AppHeader />
-      <MatterWorkspaceHeader
-        application={application}
-        appId={appId}
-        slug={slug}
-      />
+    <div className="relative min-h-screen flex flex-col bg-[#E5EAFF] overflow-x-hidden">
+      {/* Ambient fluid wave background decoration matching questionnaire and portal */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <svg
+          className="absolute -top-12 -right-16 h-[850px] w-[850px] sm:h-[1100px] sm:w-[1100px]"
+          viewBox="0 0 1000 1000"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M320 0 C 460 220, 520 480, 950 780 L 1000 780 L 1000 0 Z"
+            fill="url(#swoosh-gradient-uploads-1)"
+            opacity="0.8"
+          />
+          <path
+            d="M180 0 C 380 260, 420 540, 850 900 L 1000 900 L 1000 0 Z"
+            fill="url(#swoosh-gradient-uploads-2)"
+            opacity="0.45"
+          />
+          <defs>
+            <linearGradient id="swoosh-gradient-uploads-1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.75" />
+              <stop offset="60%" stopColor="#EEF2FF" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#E2E7FE" stopOpacity="0.1" />
+            </linearGradient>
+            <linearGradient id="swoosh-gradient-uploads-2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#DEE3FF" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
 
-      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="mx-auto w-full max-w-[1608px]">
-          <div className="rounded-2xl border border-[#E1E4E0] bg-white p-5 shadow-[0_8px_30px_rgba(25,55,65,0.04)] sm:p-8">
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <AppHeader />
+        <MatterWorkspaceHeader
+          application={application}
+          appId={appId}
+          slug={slug}
+        />
+
+        <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+          <div className="mx-auto w-full max-w-[1608px]">
+            <div className="rounded-2xl border border-white/70 bg-[#FAF8F5] p-5 shadow-[0_4px_24px_rgba(20,40,30,0.03)] sm:p-8">
             <div className="mb-7">
               <h2 className="font-serif text-2xl font-bold tracking-tight text-[#173F46] sm:text-[30px]">
                 Upload your documents
@@ -759,9 +825,10 @@ export default function UploadsPage() {
                 )}
               </div>
             )}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
