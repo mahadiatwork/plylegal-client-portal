@@ -17,7 +17,10 @@ test("resource page data combines ordered template and matter items", async () =
     if (url.startsWith("/api/resources/template")) {
       return json({
         success: true,
-        template: { templateSlug: "482", categories: [{ name: "Guides", icon: "guide" }] },
+        template: {
+          templateSlug: "482",
+          categories: [{ name: "Guides", icon: "guide", description: "General guidance" }],
+        },
         items: [{ id: "same-id", name: "Template guide", category: "Guides", order: 4 }],
       });
     }
@@ -25,6 +28,10 @@ test("resource page data combines ordered template and matter items", async () =
       return json({
         success: true,
         items: [{ id: "same-id", name: "Client note", category: "For this matter", order: 2 }],
+        categories: [
+          { name: "Guides", icon: "government", description: "Guidance selected for this matter" },
+          { name: "For this matter", icon: "briefcase", description: "Matter-specific resources" },
+        ],
       });
     }
     throw new Error(`Unexpected request: ${url}`);
@@ -38,6 +45,10 @@ test("resource page data combines ordered template and matter items", async () =
   });
 
   assert.equal(result.template.templateSlug, "482");
+  assert.deepEqual(result.template.categories, [
+    { name: "Guides", icon: "government", description: "Guidance selected for this matter" },
+    { name: "For this matter", icon: "briefcase", description: "Matter-specific resources" },
+  ]);
   assert.deepEqual(result.items, [
     {
       id: "same-id", name: "Template guide", category: "Guides", order: 4,

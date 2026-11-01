@@ -516,6 +516,11 @@ test("shared files load their own resources and categories", async (t) => {
 
 test("template, shared and matter resources expose descriptions separately from note content", async (t) => {
   const { documents } = setup(t);
+  documents.get("resourceTemplates/482").categories = [{
+    name: "Guides",
+    icon: "government",
+    description: "Official application guidance",
+  }];
   documents.get("resources/general").description = "General instructions";
   documents.get("resourceTemplates/482/items/note").noteText = "Template note content";
   documents.get("resourceTemplates/482/items/note").description = "Legacy note fallback";
@@ -527,6 +532,11 @@ test("template, shared and matter resources expose descriptions separately from 
   const sharedItems = Object.fromEntries(sharedData.resources.map((item) => [item.id, item]));
   const matterItems = Object.fromEntries(matterData.items.map((item) => [item.id, item]));
 
+  assert.deepEqual(templateData.template.categories, [{
+    name: "Guides",
+    icon: "government",
+    description: "Official application guidance",
+  }]);
   assert.equal(templateItems.pdf.description, "Use Code 33");
   assert.equal(templateItems.pdf.noteText, "Use Code 33");
   assert.equal(templateItems.note.description, "Legacy note fallback");

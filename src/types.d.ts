@@ -342,6 +342,7 @@ export type ResourceTemplateItem = {
 export type ResourceTemplateCategory = {
   name: string;
   icon: string;
+  description?: string;
 };
 
 export type ResourceTemplate = {

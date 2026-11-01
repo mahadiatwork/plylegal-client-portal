@@ -679,9 +679,6 @@ export default function Page() {
 
               {hasOtherNames === "yes" && (
                 <div className="pl-0 mt-4">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Enter details of the other names you have been known by, including names before marriage
-                  </p>
                   <RepeaterTable
                     data={otherNames}
                     columns={otherNameColumns}

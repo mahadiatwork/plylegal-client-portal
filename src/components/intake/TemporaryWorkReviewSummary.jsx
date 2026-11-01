@@ -119,7 +119,7 @@ export function TemporaryWorkReviewSummary({
             >
               <div className="space-y-2">
                 <div className="min-w-0">
-                  <h3 className="break-words text-lg font-semibold text-sky-700">
+                  <h3 className="break-words text-lg font-semibold text-[#285646]">
                     {section.title}
                   </h3>
                   {section.subtitle && (

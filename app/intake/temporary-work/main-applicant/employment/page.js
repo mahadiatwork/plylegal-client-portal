@@ -87,6 +87,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     status: z.string().min(1, "Status is required"),
     position: z.string().optional(),
     employer: z.string().optional(),
+    employer_address: z.string().optional(),
     country: z.string().min(1, "Country is required"),
     city: z.string().optional(),
     duties: z.string().max(300, "Duties must be 300 characters or less").optional(),
@@ -108,6 +109,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       status: "",
       position: "",
       employer: "",
+      employer_address: "",
       country: "",
       city: "",
       duties: "",
@@ -301,6 +303,16 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
+        <Label htmlFor="employer_address" className="mb-2 block">Workplace Address</Label>
+        <Input
+          id="employer_address"
+          {...dialogForm.register("employer_address")}
+          data-testid="input-employer-address"
+          placeholder="Street, City, State, Postcode"
+        />
+      </div>
+
+      <div>
         <Label className="mb-2 block">Country *</Label>
         <Select
           value={dialogForm.watch("country")}
@@ -429,6 +441,7 @@ export default function EmploymentPage() {
       current_end_date_year: "",
       current_employment_type: "",
       current_address: "",
+      current_duties: "",
       employment_history: [],
     }
   });
@@ -652,6 +665,20 @@ export default function EmploymentPage() {
                       className="bg-white"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_duties" className="text-sm font-medium">
+                      Current Duties / Notes
+                    </Label>
+                    <Textarea
+                      id="current_duties"
+                      {...form.register("current_duties")}
+                      rows={3}
+                      maxLength={300}
+                      placeholder="Briefly describe the applicant's current duties"
+                      className="bg-white"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -670,6 +697,8 @@ export default function EmploymentPage() {
                 { key: "date_to_day", label: "Date To", format: (row) => row.date_to_day ? `${row.date_to_day} ${row.date_to_month} ${row.date_to_year}` : "Ongoing" },
                 { key: "status", label: "Status" },
                 { key: "position", label: "Position" },
+                { key: "employer", label: "Employer" },
+                { key: "duties", label: "Duties" },
                 { key: "country", label: "Country" },
               ]}
               onAdd={(newRow) => {

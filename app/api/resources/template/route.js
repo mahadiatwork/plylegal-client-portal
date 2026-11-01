@@ -40,6 +40,9 @@ function normalizeCategories(categories) {
     .map((category) => ({
       name: String(category?.name || "").trim(),
       icon: String(category?.icon || "folder").trim() || "folder",
+      ...(String(category?.description || "").trim()
+        ? { description: String(category.description).trim() }
+        : {}),
     }))
     .filter((category) => category.name);
 }

@@ -14,19 +14,24 @@ import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { ResourceNoteViewer } from "@/components/ResourceNoteViewer";
 import {
   BookOpen,
+  Briefcase,
+  CalendarDays,
+  CircleHelp,
   FileText,
   Folder,
+  Globe2,
+  GraduationCap,
   Link as LinkIcon,
+  ListChecks,
+  Landmark,
   ScrollText,
   ShieldCheck,
   Search,
-  ChevronRight,
-  ArrowRight,
   ArrowLeft,
   ExternalLink,
-  Info,
   Building2,
   CheckSquare,
+  Users,
 } from "lucide-react";
 
 const CATEGORY_ICONS = {
@@ -36,8 +41,17 @@ const CATEGORY_ICONS = {
   link: LinkIcon,
   file: FileText,
   note: ScrollText,
+  shield: ShieldCheck,
   government: Building2,
-  checklist: CheckSquare,
+  checklist: ListChecks,
+  briefcase: Briefcase,
+  education: GraduationCap,
+  people: Users,
+  calendar: CalendarDays,
+  globe: Globe2,
+  info: CircleHelp,
+  legal: Landmark,
+  scale: Landmark,
 };
 
 function getCategoryIcon(name = "", iconKey = "") {
@@ -427,33 +441,12 @@ export default function ResourcesPage() {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-slate-950"
                           >
                             <span>View</span>
-                            <ArrowRight className="h-3.5 w-3.5 text-slate-600" />
                           </a>
-                        ) : (
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-2xs transition hover:bg-slate-50 hover:text-slate-950"
-                          >
-                            <span>View</span>
-                            <ArrowRight className="h-3.5 w-3.5 text-slate-600" />
-                          </button>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   );
                 })}
-              </div>
-
-              {/* Bottom Notice Callout matching PDF Page 6 */}
-              <div className="mt-8 rounded-xl border border-blue-100 bg-[#F0F5FF] p-4 sm:p-5">
-                <div className="flex items-start gap-3.5">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                    <Info className="h-4 w-4" />
-                  </div>
-                  <p className="text-sm leading-6 text-slate-700">
-                    <strong className="font-semibold text-slate-900">Need more information?</strong> If you can&apos;t find what you&apos;re looking for, please <a href="#contact" className="text-blue-600 underline">contact us</a> or refer to the <a href="https://immi.homeaffairs.gov.au" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Department of Home Affairs website</a>.
-                  </p>
-                </div>
               </div>
             </div>
           ) : (
@@ -464,10 +457,10 @@ export default function ResourcesPage() {
               {/* Header & Controls */}
               <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="font-serif text-3xl font-bold tracking-tight text-[#113E37] sm:text-[40px]">
+                  <h2 className="font-serif text-2xl font-bold tracking-tight text-[#113E37] sm:text-[30px]">
                     Resources
                   </h2>
-                  <p className="mt-1 text-sm text-[#627177] sm:text-lg">
+                  <p className="mt-2 text-sm leading-6 text-[#627177] sm:text-base">
                     Useful information, guides and templates to help you with your Subclass 482 application.
                   </p>
                 </div>
@@ -520,10 +513,10 @@ export default function ResourcesPage() {
                               <Icon className="h-10 w-10" strokeWidth={2.1} />
                             </div>
                             <div>
-                              <h3 className="font-serif text-2xl font-bold leading-tight text-[#143F46]">
+                              <h3 className="font-serif text-base font-semibold leading-tight text-[#143F46] sm:text-lg">
                                 {category.name}
                               </h3>
-                              <p className="mt-1 text-sm leading-snug text-[#627177] sm:text-base">
+                              <p className="mt-1 text-sm leading-snug text-[#627177]">
                                 {category.description}
                               </p>
                             </div>
@@ -534,19 +527,19 @@ export default function ResourcesPage() {
                         <div className="flex items-center px-5 py-2 sm:px-6">
                           <div className="w-full divide-y divide-[#E8E6E2]">
                             {displayItems.map((item) => (
-                              <div
+                              <button
+                                type="button"
                                 key={item.id || item.name}
                                 onClick={() => setSelectedCategoryName(category.name)}
-                                className="group flex h-9 cursor-pointer items-center justify-between gap-3"
+                                className="group flex h-9 w-full cursor-pointer items-center gap-3 text-left"
                               >
                                 <div className="flex min-w-0 items-center gap-6">
                                   <ResourceTypePill type={item.type} />
-                                  <span className="truncate text-sm font-medium text-[#203F46] transition-colors group-hover:text-[#0D5A49] sm:text-[15px]">
+                                  <span className="truncate text-sm font-medium text-[#203F46] transition-colors group-hover:text-[#0D5A49]">
                                     {item.name}
                                   </span>
                                 </div>
-                                <ChevronRight className="h-5 w-5 shrink-0 text-[#1B3E46] transition-colors group-hover:text-[#0D5A49]" />
-                              </div>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -556,10 +549,9 @@ export default function ResourcesPage() {
                           <button
                             type="button"
                             onClick={() => setSelectedCategoryName(category.name)}
-                            className="inline-flex min-w-[148px] items-center justify-center gap-3 rounded-md border border-[#B8C3C6] bg-white px-5 py-3 text-sm font-semibold text-[#1A3D45] transition hover:bg-[#F4F6F0] hover:text-[#103F37]"
+                            className="inline-flex min-w-[148px] items-center justify-center rounded-md border border-[#B8C3C6] bg-white px-5 py-3 text-sm font-semibold text-[#1A3D45] transition hover:bg-[#F4F6F0] hover:text-[#103F37]"
                           >
                             <span>View all</span>
-                            <ArrowRight className="h-5 w-5" />
                           </button>
                         </div>
                       </div>

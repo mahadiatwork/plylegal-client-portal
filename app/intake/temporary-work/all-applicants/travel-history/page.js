@@ -699,7 +699,7 @@ export default function Page() {
           <li>military deployment</li>
           <li>visits back to your own country</li>
         </ul>
-        <p className="text-sm font-bold text-red-600 mt-4">
+        <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
           Please note if an applicant is under 16 years of age, this information is not required.
         </p>
       </CardHeader>

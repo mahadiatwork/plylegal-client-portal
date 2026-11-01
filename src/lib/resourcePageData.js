@@ -65,6 +65,40 @@ function identifyItems(items, resourceSource) {
   }));
 }
 
+function mergeCategoryMetadata(...groups) {
+  const categories = [];
+  const positions = new Map();
+
+  for (const group of groups) {
+    for (const rawCategory of Array.isArray(group) ? group : []) {
+      const name = String(rawCategory?.name || "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      const category = {
+        name,
+        icon: String(rawCategory?.icon || "folder").trim() || "folder",
+        ...(String(rawCategory?.description || "").trim()
+          ? { description: String(rawCategory.description).trim() }
+          : {}),
+      };
+      const existingPosition = positions.get(key);
+      if (existingPosition === undefined) {
+        positions.set(key, categories.length);
+        categories.push(category);
+      } else {
+        const existing = categories[existingPosition];
+        categories[existingPosition] = {
+          ...existing,
+          ...category,
+          description: category.description || existing.description || "",
+        };
+      }
+    }
+  }
+
+  return categories;
+}
+
 async function parseResponse(response) {
   return response.json().catch(() => ({}));
 }
@@ -127,7 +161,10 @@ export async function loadResourcePageData({ appId, slug, idToken, fetchImpl = f
   }
 
   return {
-    template,
+    template: {
+      ...template,
+      categories: mergeCategoryMetadata(template?.categories, matterData.categories),
+    },
     items: [
       ...identifiedBaseItems,
       ...identifyItems(matterData.items, "matter"),
