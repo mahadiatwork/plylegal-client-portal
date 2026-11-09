@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const EMPLOYMENT_STATUS_OPTIONS = [
@@ -76,7 +77,9 @@ const COUNTRIES = [
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
+function EmploymentHistoryDialog({ editingRow, onSave, onCancel, cancelLabel = "Cancel", confirmLabel = "Ok" }) {
+  const translate = useQuestionnaireCopy("labels", "employment_history");
+  const translatePlaceholder = useQuestionnaireCopy("placeholders", "employment_history");
   const dialogFormSchema = z.object({
     date_from_day: z.string().min(1, "Day is required"),
     date_from_month: z.string().min(1, "Month is required"),
@@ -134,7 +137,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
     <div className="space-y-4">
       <div>
         <Label className="text-base font-medium mb-3 block">
-          Is this applicant's current employment situation?
+          {translate("Is this applicant's current employment situation?")}
         </Label>
         <RadioGroup
           value={dialogForm.watch("is_current_employment")}
@@ -153,7 +156,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Date From</Label>
+        <Label className="mb-2 block">{translate("Date From")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_from_day")}
@@ -201,7 +204,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+        <Label className="mb-2 block">{translate("Date To (leave blank if ongoing)")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_to_day")}
@@ -246,7 +249,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Status *</Label>
+        <Label className="mb-2 block">{translate("Status *")}</Label>
         <Select
           value={dialogForm.watch("status")}
           onValueChange={(value) => dialogForm.setValue("status", value)}
@@ -266,7 +269,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Position Type</Label>
+        <Label className="mb-2 block">{translate("Position Type")}</Label>
         <Select
           value={dialogForm.watch("position_type")}
           onValueChange={(value) => dialogForm.setValue("position_type", value)}
@@ -284,7 +287,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
       {(status === "Employed" || status === "Self-Employed") && (
         <div>
-          <Label htmlFor="position" className="mb-2 block">Position / Occupation *</Label>
+          <Label htmlFor="position" className="mb-2 block">{translate("Position / Occupation *")}</Label>
           <Input
             id="position"
             {...dialogForm.register("position")}
@@ -294,7 +297,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       )}
 
       <div>
-        <Label htmlFor="employer" className="mb-2 block">Employer/Organization</Label>
+        <Label htmlFor="employer" className="mb-2 block">{translate("Employer/Organization")}</Label>
         <Input
           id="employer"
           {...dialogForm.register("employer")}
@@ -303,7 +306,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="employer_address" className="mb-2 block">Workplace Address</Label>
+        <Label htmlFor="employer_address" className="mb-2 block">{translate("Workplace Address")}</Label>
         <Input
           id="employer_address"
           {...dialogForm.register("employer_address")}
@@ -313,7 +316,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Country *</Label>
+        <Label className="mb-2 block">{translate("Country *")}</Label>
         <Select
           value={dialogForm.watch("country")}
           onValueChange={(value) => dialogForm.setValue("country", value)}
@@ -334,19 +337,19 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
       {visaContext === '186' && country === 'Australia' && (
         <div>
-          <Label htmlFor="visa_held" className="mb-2 block">What visa(s) were held during this period?</Label>
+          <Label htmlFor="visa_held" className="mb-2 block">{translate("What visa(s) were held during this period?")}</Label>
           <Textarea
             id="visa_held"
             {...dialogForm.register("visa_held")}
             rows={2}
             data-testid="textarea-visa-held"
-            placeholder={visaContext === '186' ? "e.g., Employer Nomination (subclass 186)" : "e.g., Skills in Demand (subclass 482)"}
+            placeholder={translatePlaceholder(visaContext === '186' ? "e.g., Employer Nomination (subclass 186)" : "e.g., Skills in Demand (subclass 482)")}
           />
         </div>
       )}
 
       <div>
-        <Label htmlFor="city" className="mb-2 block">City/Town</Label>
+        <Label htmlFor="city" className="mb-2 block">{translate("City/Town")}</Label>
         <Input
           id="city"
           {...dialogForm.register("city")}
@@ -355,7 +358,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="duties" className="mb-2 block">Duties/Notes <span className="text-sm font-normal text-gray-500">(max 300 characters)</span></Label>
+        <Label htmlFor="duties" className="mb-2 block">{translate("Duties/Notes")} <span className="text-sm font-normal text-gray-500">(max 300 characters)</span></Label>
         <Textarea
           id="duties"
           {...dialogForm.register("duties")}
@@ -371,7 +374,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
       <div>
         <Label className="text-base font-medium mb-3 block">
-          Is this employment related to the nominated position?
+          {translate("Is this employment related to the nominated position?")}
         </Label>
         <RadioGroup
           value={dialogForm.watch("is_related_to_nominated_position")}
@@ -391,7 +394,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           type="button"
@@ -399,7 +402,7 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
-          Ok
+          {confirmLabel}
         </Button>
       </DialogFooter>
     </div >
@@ -661,7 +664,7 @@ export default function EmploymentPage() {
                     <Input
                       id="current_address"
                       {...form.register("current_address")}
-                      placeholder="Street, City, State, Postcode"
+          placeholder={translatePlaceholder("Street, City, State, Postcode")}
                       className="bg-white"
                     />
                   </div>
@@ -716,6 +719,7 @@ export default function EmploymentPage() {
               }}
               DialogComponent={EmploymentHistoryDialog}
               addButtonText="Add"
+              fieldName="employment_history"
               testIdPrefix="employment"
             />
           </div>

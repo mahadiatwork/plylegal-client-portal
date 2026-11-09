@@ -198,9 +198,14 @@ class ZohoCRMClient {
     }
   }
 
-  async getRecord(moduleName, recordId) {
+  async getRecord(moduleName, recordId, fields = null) {
     try {
-      const response = await this.makeRequest('get', `/${moduleName}/${recordId}`);
+      const response = await this.makeRequest(
+        'get',
+        `/${moduleName}/${recordId}`,
+        null,
+        fields ? { fields } : null
+      );
       
       // Log response structure for debugging
       console.log(`📦 Response structure for ${moduleName}/${recordId}:`, JSON.stringify(response, null, 2));

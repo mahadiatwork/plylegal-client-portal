@@ -140,6 +140,55 @@ function SharedFilesTable({ title, subtitle, files = [] }) {
   );
 }
 
+function ClientSharedFolder({ folder }) {
+  const canEmbed = folder.mode === "embed";
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-[#E8E6E2] bg-[#FCFBF8] shadow-[0_2px_5px_rgba(40,54,60,0.035)]">
+      <div className="flex flex-col gap-4 border-b border-[#E8E6E2] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-9">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E9F3ED] text-[#174D42]">
+            <Folder className="h-7 w-7 stroke-[2.25]" />
+          </div>
+          <div>
+            <h2 className="font-serif text-2xl font-bold text-[#103F37] sm:text-[30px]">Client shared folder</h2>
+            <p className="mt-1 text-sm text-[#667579] sm:text-base">Documents shared with you by your legal team.</p>
+          </div>
+        </div>
+        <a
+          href={folder.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#244D42] px-5 text-sm font-semibold text-white transition hover:bg-[#173F46]"
+        >
+          Open in WorkDrive
+          <ExternalLink className="h-4 w-4" />
+        </a>
+      </div>
+
+      {canEmbed ? (
+        <div className="bg-white p-2 sm:p-4">
+          <iframe
+            src={folder.url}
+            title="Client shared WorkDrive folder"
+            className="h-[68vh] min-h-[560px] w-full rounded-lg border border-[#E3E0D9] bg-white"
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-downloads allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+            allow="fullscreen"
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center px-6 py-12 text-center">
+          <Folder className="h-12 w-12 text-[#AAB4B5]" />
+          <h3 className="mt-4 font-serif text-xl font-bold text-[#103F37]">Your shared folder is ready</h3>
+          <p className="mt-2 max-w-md text-sm text-[#667579]">Open the folder to browse and download the files shared for this matter.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function normalizeCategories(categories, items) {
   const byKey = new Map();
   for (const category of categories || []) {
@@ -159,6 +208,7 @@ export default function SharedFilesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [files, setFiles] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [sharedFolder, setSharedFolder] = useState(null);
   const [loadError, setLoadError] = useState("");
   const applicationsSnap = useSnapshot(applicationsStore);
   const authSnap = useSnapshot(authStore);
@@ -174,6 +224,7 @@ export default function SharedFilesPage() {
     const response = await fetch(`/api/resources/matter?applicationId=${encodeURIComponent(appId)}&source=sharedFiles`, { headers: { Authorization: `Bearer ${idToken}` } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) throw new Error(data.error || "Failed to load shared files");
+    setSharedFolder(data.sharedFolder || null);
     const nextItems = (data.items || []).map((item) => {
       const name = item.name || item.fileName || "Untitled file";
       return { id: item.id, category: item.category || "Uncategorized", name, dateAdded: formatDate(item.createdAt || item.updatedAt), dateAddedValue: new Date(item.createdAt || item.updatedAt || 0).getTime(), fileType: fileTypeFromName(item.fileName || name, item.mimeType), size: formatFileSize(item.size), sizeValue: Number(item.size) || 0, url: item.viewerUrl || item.url || item.externalUrl || "" };
@@ -215,7 +266,8 @@ export default function SharedFilesPage() {
     <MatterWorkspaceHeader application={application} appId={appId} slug={slug} />
     <main className="flex-1 px-3 py-3 sm:px-5 sm:py-4 lg:px-6"><div className="mx-auto w-full max-w-none space-y-4">
       {loadError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{loadError}</div> : null}
-      {!loadError && !files.length ? <div className="rounded-xl border border-[#E8E6E2] bg-[#FCFBF8] p-10 text-center shadow-sm"><FileSpreadsheet className="mx-auto h-12 w-12 text-[#AAB4B5]" /><h2 className="mt-4 font-serif text-xl font-bold text-[#103F37]">No shared files yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-[#667579]">Files shared by your legal team will appear here when they are added to this matter.</p></div> : null}
+      {sharedFolder ? <ClientSharedFolder folder={sharedFolder} /> : null}
+      {!loadError && !sharedFolder && !files.length ? <div className="rounded-xl border border-[#E8E6E2] bg-[#FCFBF8] p-10 text-center shadow-sm"><FileSpreadsheet className="mx-auto h-12 w-12 text-[#AAB4B5]" /><h2 className="mt-4 font-serif text-xl font-bold text-[#103F37]">No shared files yet</h2><p className="mx-auto mt-2 max-w-md text-sm text-[#667579]">Files shared by your legal team will appear here when they are added to this matter.</p></div> : null}
       {sections.map((section) => <SharedFilesTable key={section.name} title={section.name} subtitle={section.description || "Files shared with you for this matter."} files={section.files} />)}
     </div></main>
   </div>;

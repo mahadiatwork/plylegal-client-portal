@@ -19,6 +19,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 const QUALIFICATION_LEVELS = [
   "Secondary",
@@ -76,7 +77,8 @@ const COUNTRIES = [
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-function EducationDialog({ editingRow, onSave, onCancel }) {
+function EducationDialog({ editingRow, onSave, onCancel, cancelLabel = "Cancel", confirmLabel = "Ok" }) {
+  const translate = useQuestionnaireCopy("labels", "education_history");
   const dialogFormSchema = z.object({
     date_from_day: z.string().min(1, "Day is required"),
     date_from_month: z.string().min(1, "Month is required"),
@@ -136,7 +138,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Date From */}
       <div>
-        <Label className="mb-2 block">Date From</Label>
+        <Label className="mb-2 block">{translate("Date From")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_from_day")}
@@ -185,7 +187,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Date To */}
       <div>
-        <Label className="mb-2 block">Date To (leave blank if ongoing)</Label>
+        <Label className="mb-2 block">{translate("Date To (leave blank if ongoing)")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_to_day")}
@@ -231,7 +233,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Qualification Type */}
       <div>
-        <Label className="mb-2 block">Qualification Type/Course Type</Label>
+        <Label className="mb-2 block">{translate("Qualification Type/Course Type")}</Label>
         <Select
           value={dialogForm.watch("qualification")}
           onValueChange={(value) => dialogForm.setValue("qualification", value)}
@@ -253,7 +255,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
       {/* Highest Level Check */}
       <div>
         <Label className="text-sm font-medium mb-3 block">
-          Is this your highest level of qualification?
+          {translate("Is this your highest level of qualification?")}
         </Label>
         <RadioGroup
           value={dialogForm.watch("is_highest_qualification")}
@@ -278,7 +280,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Course Name */}
       <div>
-        <Label htmlFor="course_name" className="mb-2 block">Course Name or Research Description</Label>
+        <Label htmlFor="course_name" className="mb-2 block">{translate("Course Name or Research Description")}</Label>
         <Input
           id="course_name"
           {...dialogForm.register("course_name")}
@@ -291,7 +293,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Course Language */}
       <div>
-        <Label htmlFor="course_language" className="mb-2 block">Course Language</Label>
+        <Label htmlFor="course_language" className="mb-2 block">{translate("Course Language")}</Label>
         <Select
           value={dialogForm.watch("course_language")}
           onValueChange={(value) => dialogForm.setValue("course_language", value)}
@@ -312,7 +314,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Course Status */}
       <div>
-        <Label className="mb-2 block">Course Status</Label>
+        <Label className="mb-2 block">{translate("Course Status")}</Label>
         <Select
           value={dialogForm.watch("course_status")}
           onValueChange={(value) => dialogForm.setValue("course_status", value)}
@@ -333,11 +335,11 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       {/* Institution Details Header */}
       <div className="pt-2">
-        <h3 className="text-base font-bold text-gray-900 mb-4">Institution Details</h3>
+        <h3 className="text-base font-bold text-gray-900 mb-4">{translate("Institution Details")}</h3>
 
         {/* Institution Name */}
         <div className="mb-4">
-          <Label htmlFor="institution" className="mb-2 block">Institution Name</Label>
+          <Label htmlFor="institution" className="mb-2 block">{translate("Institution Name")}</Label>
           <Input
             id="institution"
             {...dialogForm.register("institution")}
@@ -350,7 +352,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
         {/* Country */}
         <div className="mb-4">
-          <Label className="mb-2 block">Country</Label>
+          <Label className="mb-2 block">{translate("Country")}</Label>
           <Select
             value={dialogForm.watch("country")}
             onValueChange={(value) => dialogForm.setValue("country", value)}
@@ -371,7 +373,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
         {/* Address */}
         <div className="mb-4">
-          <Label htmlFor="institution_address" className="mb-2 block">Address (including Street Number and Name)</Label>
+          <Label htmlFor="institution_address" className="mb-2 block">{translate("Address (including Street Number and Name)")}</Label>
           <Input
             id="institution_address"
             {...dialogForm.register("institution_address")}
@@ -384,7 +386,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
         {/* Suburb */}
         <div className="mb-4">
-          <Label htmlFor="institution_suburb" className="mb-2 block">Suburb/Town/City</Label>
+          <Label htmlFor="institution_suburb" className="mb-2 block">{translate("Suburb/Town/City")}</Label>
           <Input
             id="institution_suburb"
             {...dialogForm.register("institution_suburb")}
@@ -397,7 +399,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
         {/* State */}
         <div className="mb-4">
-          <Label htmlFor="institution_state" className="mb-2 block">State</Label>
+          <Label htmlFor="institution_state" className="mb-2 block">{translate("State")}</Label>
           <Input
             id="institution_state"
             {...dialogForm.register("institution_state")}
@@ -410,7 +412,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
         {/* Postcode */}
         <div className="mb-4">
-          <Label htmlFor="institution_postcode" className="mb-2 block">Postcode</Label>
+          <Label htmlFor="institution_postcode" className="mb-2 block">{translate("Postcode")}</Label>
           <Input
             id="institution_postcode"
             {...dialogForm.register("institution_postcode")}
@@ -424,7 +426,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           type="button"
@@ -432,7 +434,7 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
-          Ok
+          {confirmLabel}
         </Button>
       </DialogFooter>
     </div>
@@ -447,6 +449,7 @@ export default function EducationPage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const draft = draftSnap.draft;
+  const translateEducation = useQuestionnaireCopy("labels", "education_history");
 
   const appId = searchParams.get("applicationId");
   const profileId = searchParams.get("profileId");
@@ -571,7 +574,7 @@ export default function EducationPage() {
               {/* Education History Repeater (shown if Yes) */}
               {hasSecondaryEducation === "yes" && (
                 <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Education History</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{translateEducation("Education History")}</h3>
                   <RepeaterTable
                     data={educationHistory}
                     columns={[
@@ -596,6 +599,7 @@ export default function EducationPage() {
                     }}
                     DialogComponent={EducationDialog}
                     addButtonText="Add"
+                    fieldName="education_history"
                     testIdPrefix="education"
                   />
                 </div>

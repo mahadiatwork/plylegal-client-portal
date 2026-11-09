@@ -270,6 +270,109 @@ test("repeater action paths and popup sections resolve from the same field copy 
   );
 });
 
+test("186 employment, education and language repeaters resolve copy by their own field path", () => {
+  const page = {
+    id: "legacy-186-fixtures",
+    route: "/intake/temporary-work/main-applicant/employment",
+    title: "Main Applicant's Employment",
+    sectionKey: "temporary_work_employment",
+    scope: "profile",
+    completionKey: "temporary-work/main-applicant/employment",
+    metadata: { renderer: "legacy", originalTitle: "Employment" },
+    introBlocks: [],
+    questions: [
+      {
+        id: "employment_history", answerKey: "employment_history", label: "Employment History", type: "repeater", required: false,
+        metadata: {
+          originalPresentation: {
+            addLabel: "Add", emptyMessage: "No entries added", addDialogTitle: "Add Entry", editDialogTitle: "Edit Entry",
+            columns: [{ key: "date_from_day", label: "Date From" }],
+            actions: { edit: "Edit", delete: "Delete", cancel: "Cancel", confirm: "Ok", actionsHeading: "Actions" },
+          },
+          presentation: {
+            addLabel: "Add history", emptyMessage: "No employment added", addDialogTitle: "Add Employment", editDialogTitle: "Edit Employment",
+            columns: [{ key: "date_from_day", label: "From" }],
+            actions: { edit: "Modify", delete: "Remove", cancel: "Discard", confirm: "Save", actionsHeading: "Options" },
+          },
+          fields: [{ id: "date_from_day", answerKey: "date_from_day", label: "Date From", type: "text" }],
+        },
+      },
+      {
+        id: "education_history", answerKey: "education_history", label: "Education History", type: "repeater", required: false,
+        metadata: {
+          originalPresentation: { addLabel: "Add", emptyMessage: "No entries added", columns: [{ key: "institution", label: "Institution" }], actions: { edit: "Edit", delete: "Delete" } },
+          presentation: { addLabel: "Add study", emptyMessage: "No study added", columns: [{ key: "institution", label: "School" }], actions: { edit: "Edit", delete: "Delete" }, sections: [{ heading: "Institution Details" }] },
+          originalSections: [{ heading: "Institution Details" }],
+          fields: [{ id: "institution", answerKey: "institution", label: "Institution Name", type: "text" }],
+        },
+      },
+      {
+        id: "languages", answerKey: "languages", label: "Languages Used", type: "repeater", required: false,
+        metadata: {
+          originalPresentation: { addLabel: "Add", emptyMessage: "No entries added", columns: [{ key: "language", label: "Language" }], actions: { edit: "Edit", delete: "Delete" } },
+          presentation: { addLabel: "Add language", emptyMessage: "No languages added", columns: [{ key: "language", label: "Language spoken" }], actions: { edit: "Edit", delete: "Delete" } },
+          fields: [{ id: "language", answerKey: "language", label: "Language", type: "text" }],
+        },
+      },
+    ],
+  };
+  const copy = createLegacyQuestionnaireCopy(page);
+  assert.equal(translateLegacyQuestionnaireCopy("Add", copy, "labels", "employment_history"), "Add history");
+  assert.equal(translateLegacyQuestionnaireCopy("Date From", copy, "labels", "employment_history"), "From");
+  assert.equal(translateLegacyQuestionnaireCopy("Add", copy, "labels", "education_history"), "Add study");
+  assert.equal(translateLegacyQuestionnaireCopy("Institution", copy, "labels", "education_history"), "School");
+  assert.equal(translateLegacyQuestionnaireCopy("Institution Details", copy, "labels", "education_history"), "Institution Details");
+  assert.equal(translateLegacyQuestionnaireCopy("Add", copy, "labels", "languages"), "Add language");
+  assert.equal(translateLegacyQuestionnaireCopy("Language", copy, "labels", "languages"), "Language spoken");
+  assert.equal(translateLegacyQuestionnaireCopy("Empty", copy, "labels", "languages"), "Empty");
+});
+
+test("partner employment history consumes its own chrome and nested field copy", () => {
+  const page = {
+    id: "legacy-partner-employment",
+    route: "/intake/partner/main-applicant/employment",
+    title: "Main Applicant's Employment",
+    sectionKey: "partner_employment",
+    scope: "profile",
+    completionKey: "partner/main-applicant/employment",
+    metadata: { renderer: "legacy", originalTitle: "Employment" },
+    introBlocks: [],
+    questions: [{
+      id: "employment_history",
+      answerKey: "employment_history",
+      label: "Employment History",
+      type: "repeater",
+      required: false,
+      metadata: {
+        originalLabel: "Employment History",
+        originalDescription: "Enter details of all of your employment and unemployment since birth. There can be no gaps in dates.",
+        originalPresentation: {
+          addLabel: "Add", emptyMessage: "No entries added", addDialogTitle: "Add Entry", editDialogTitle: "Edit Entry",
+          columns: [{ key: "date_from_day", label: "Date From" }, { key: "status", label: "Status" }],
+          actions: { edit: "Edit", delete: "Delete", cancel: "Cancel", confirm: "Ok", actionsHeading: "Actions" },
+        },
+        presentation: {
+          addLabel: "Add role", emptyMessage: "No roles added", addDialogTitle: "Add Role", editDialogTitle: "Edit Role",
+          columns: [{ key: "date_from_day", label: "From" }, { key: "status", label: "Work status" }],
+          actions: { edit: "Modify", delete: "Remove", cancel: "Discard", confirm: "Save", actionsHeading: "Options" },
+        },
+        fields: [{ id: "status", answerKey: "status", label: "Status", type: "select", options: [{ value: "Employed", label: "Employed" }] }],
+      },
+    }],
+  };
+  const copy = createLegacyQuestionnaireCopy(page);
+  assert.equal(translateLegacyQuestionnaireCopy("Add", copy, "labels", "employment_history"), "Add role");
+  assert.equal(translateLegacyQuestionnaireCopy("Date From", copy, "labels", "employment_history"), "From");
+  assert.equal(translateLegacyQuestionnaireCopy("Status", copy, "labels", "employment_history"), "Work status");
+  assert.equal(translateLegacyQuestionnaireCopy("Actions", copy, "labels", "employment_history.actions"), "Options");
+  assert.equal(translateLegacyQuestionnaireCopy("Cancel", copy, "labels", "employment_history.actions"), "Discard");
+  assert.equal(translateLegacyQuestionnaireCopy("Ok", copy, "labels", "employment_history.actions"), "Save");
+  assert.equal(
+    translateLegacyQuestionnaireCopy("Enter details of all of your employment and unemployment since birth. There can be no gaps in dates.", copy, "help", "employment_history"),
+    "Enter details of all of your employment and unemployment since birth. There can be no gaps in dates."
+  );
+});
+
 test("promoted non-migrating pages validate the actual member route and completion stamp", () => {
   const memberPage = {
     id: "temporary-work-non-migrating-member-profile-other-names",

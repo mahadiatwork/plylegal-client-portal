@@ -499,6 +499,8 @@ test("shared files load their own resources and categories", async (t) => {
   documents.get("applications/matter-1").sharedFileCategories = [
     { name: "Client documents", icon: "folder" },
   ];
+  documents.get("applications/matter-1").clientSharedFolderUrl =
+    "https://workdrive.zohoexternal.com.au/file/client-shared-folder";
   documents.set("applications/matter-1/resources/shared-file", {
     status: "active", type: "file", source: "sharedFiles", title: "Case summary.pdf",
     workDriveShareUrl: shareUrl, downloadAllowed: false, category: "Client documents",
@@ -512,6 +514,29 @@ test("shared files load their own resources and categories", async (t) => {
   assert.deepEqual(data.items.map((item) => item.id), ["shared-file"]);
   assert.equal(data.items[0].viewerUrl, shareUrl);
   assert.equal(data.items[0].downloadAllowed, false);
+  assert.deepEqual(data.sharedFolder, {
+    url: "https://workdrive.zohoexternal.com.au/file/client-shared-folder",
+    mode: "embed",
+  });
+});
+
+test("shared files expose only validated WorkDrive folder links", async (t) => {
+  const { documents } = setup(t);
+  const application = documents.get("applications/matter-1");
+
+  application.clientSharedFolderUrl = "https://workdrive.zohopublic.com.au/external/client-folder";
+  let data = await (await matter.GET(request("matter", "signed-client-token", "matter-1", "sharedFiles"))).json();
+  assert.deepEqual(data.sharedFolder, {
+    url: "https://workdrive.zohopublic.com.au/external/client-folder",
+    mode: "external",
+  });
+
+  application.clientSharedFolderUrl = "https://workdrive.zohopublic.com.au.attacker.test/external/client-folder";
+  data = await (await matter.GET(request("matter", "signed-client-token", "matter-1", "sharedFiles"))).json();
+  assert.equal(data.sharedFolder, null);
+
+  data = await (await matter.GET(request("matter"))).json();
+  assert.equal(data.sharedFolder, null);
 });
 
 test("template, shared and matter resources expose descriptions separately from note content", async (t) => {

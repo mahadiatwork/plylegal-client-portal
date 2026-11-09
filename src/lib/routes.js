@@ -189,6 +189,7 @@ export const EMPLOYER_NOMINATION_ROUTES = [
     title: "Spouse/Partner",
     subpages: [
       { href: "/intake/temporary-work/spouse-partner/details", title: "Details" },
+      { href: "/intake/temporary-work/spouse-partner/other-details", title: "Other Names" },
       { href: "/intake/temporary-work/spouse-partner/identity", title: "Identity" },
       { href: "/intake/temporary-work/spouse-partner/education", title: "Education" },
       { href: "/intake/temporary-work/spouse-partner/language", title: "Language" },

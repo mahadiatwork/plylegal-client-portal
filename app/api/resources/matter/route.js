@@ -3,6 +3,7 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getResourceViewerUrl } from "@/lib/resourceAccess";
 import { compareResourceItems, normalizeResourceOrder } from "@/lib/resourceOrdering";
+import { loadClientSharedFolderAccess } from "@/lib/clientSharedFolder.server";
 import {
   resourceNoteHtmlToPlainText,
   sanitizeResourceNoteHtml,
@@ -131,9 +132,12 @@ export async function GET(request) {
       .map((document) => normalizeMatterResource(document, requestedSource))
       .filter(Boolean)
       .sort(compareResourceItems);
+    const sharedFolder = requestedSource
+      ? await loadClientSharedFolderAccess(application)
+      : null;
 
     return NextResponse.json(
-      { success: true, items, categories },
+      { success: true, items, categories, sharedFolder },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
