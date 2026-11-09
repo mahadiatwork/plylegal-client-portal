@@ -77,7 +77,7 @@ const COUNTRIES = [
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
+function EmploymentHistoryDialog({ editingRow, onSave, onCancel, cancelLabel = "Cancel", confirmLabel = "Ok" }) {
   const dialogFormSchema = z.object({
     date_from_day: z.string().min(1, "Day is required"),
     date_from_month: z.string().min(1, "Month is required"),
@@ -315,9 +315,9 @@ function EmploymentHistoryDialog({ editingRow, onSave, onCancel }) {
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
+          {cancelLabel}
         </Button>
-        <Button type="submit" className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-ok">Ok</Button>
+        <Button type="submit" className="bg-[#4F726B] hover:bg-[#4F726B] text-white" data-testid="button-ok">{confirmLabel}</Button>
       </DialogFooter>
     </form>
   );
@@ -669,6 +669,7 @@ export default function EmploymentPage() {
                 DialogComponent={EmploymentHistoryDialog}
                 addButtonText="Add"
                 testIdPrefix="employment"
+                fieldName="employment_history"
               />
               {form.formState.errors.employment_history && (
                 <p className="text-sm text-red-600 mt-2">{form.formState.errors.employment_history.message}</p>

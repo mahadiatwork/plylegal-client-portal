@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Trash2, Pencil, Plus } from "lucide-react";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 export function RepeaterTable({
   data = [],
@@ -24,7 +25,10 @@ export function RepeaterTable({
   dialogSubtitle,
   dialogClassName,
   dialogProps = {},
+  fieldName,
 }) {
+  const translate = useQuestionnaireCopy("labels", fieldName);
+  const actionTranslate = useQuestionnaireCopy("labels", fieldName ? `${fieldName}.actions` : null);
   const rows = data || [];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -83,13 +87,13 @@ export function RepeaterTable({
           data-testid={`button-add-${testIdPrefix}`}
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          {addButtonText}
+          {translate(addButtonText)}
         </Button>
       </div>
 
       {rows.length === 0 ? (
         <div className="text-center py-8 text-slate-400 border border-dashed border-slate-200 rounded-xl text-sm">
-          {emptyMessage}
+          {translate(emptyMessage)}
         </div>
       ) : (
         <div className="border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -99,7 +103,7 @@ export function RepeaterTable({
               <div key={index} className="p-4 space-y-3 bg-white">
                 {columns.map((col) => (
                   <div key={col.key} className="flex flex-col">
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{col.label}</span>
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{translate(col.label)}</span>
                     <span className="text-sm font-medium text-slate-800 mt-0.5">
                       {col.format ? (typeof col.format === 'function' ? col.format(row) : col.format(row[col.key])) : row[col.key]}
                     </span>
@@ -113,7 +117,7 @@ export function RepeaterTable({
                     data-testid={`button-edit-mobile-${index}`}
                   >
                     <Pencil className="h-3.5 w-3.5" />
-                    <span>Edit</span>
+                    <span>{actionTranslate("Edit")}</span>
                   </button>
                   <button
                     type="button"
@@ -122,7 +126,7 @@ export function RepeaterTable({
                     data-testid={`button-delete-mobile-${index}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete</span>
+                    <span>{actionTranslate("Delete")}</span>
                   </button>
                 </div>
               </div>
@@ -139,10 +143,10 @@ export function RepeaterTable({
                       key={col.key}
                       className="text-left py-3 px-4 text-xs font-semibold text-slate-700"
                     >
-                      {col.label}
+                      {translate(col.label)}
                     </th>
                   ))}
-                  <th className="w-32 py-3 px-4 text-xs font-semibold text-slate-700 text-right">Actions</th>
+                  <th className="w-32 py-3 px-4 text-xs font-semibold text-slate-700 text-right">{actionTranslate("Actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -165,7 +169,7 @@ export function RepeaterTable({
                           data-testid={`button-edit-${index}`}
                         >
                           <Pencil className="h-3.5 w-3.5 text-slate-500" />
-                          <span>Edit</span>
+                          <span>{actionTranslate("Edit")}</span>
                         </button>
                         <button
                           type="button"
@@ -174,7 +178,7 @@ export function RepeaterTable({
                           data-testid={`button-delete-${index}`}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                          <span>Delete</span>
+                          <span>{actionTranslate("Delete")}</span>
                         </button>
                       </div>
                     </td>
@@ -202,11 +206,11 @@ export function RepeaterTable({
         >
           <DialogHeader>
             <DialogTitle>
-              {dialogTitle || (editingIndex !== null ? "Edit Entry" : "Add Entry")}
+              {translate(dialogTitle || (editingIndex !== null ? "Edit Entry" : "Add Entry"))}
             </DialogTitle>
             {dialogSubtitle && (
               <p className="text-sm text-muted-foreground mt-2">
-                {dialogSubtitle}
+                {translate(dialogSubtitle)}
               </p>
             )}
           </DialogHeader>
@@ -216,6 +220,8 @@ export function RepeaterTable({
                 editingRow={editingIndex !== null ? rows[editingIndex] : null}
                 onSave={handleSubmit}
                 onCancel={handleCancel}
+                cancelLabel={actionTranslate(dialogProps.cancelLabel || "Cancel")}
+                confirmLabel={actionTranslate(dialogProps.confirmLabel || "Ok")}
                 {...dialogProps}
               />
             )}

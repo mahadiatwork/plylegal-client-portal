@@ -134,6 +134,142 @@ test("legacy review reads original profile section aliases and retains answers w
   assert.ok(other.items.some((item) => item.label === "Your previous name" && item.value === "Saved client name"));
 });
 
+test("repeater table and popup chrome are collected for legacy copy translation", () => {
+  const pageWithRepeater = {
+    id: "legacy-employment",
+    route: "/intake/protection/main-applicant/employment",
+    title: "Employment",
+    sectionKey: "protection_employment",
+    scope: "profile",
+    completionKey: "protection/main-applicant/employment",
+    metadata: { renderer: "legacy", originalTitle: "Employment" },
+    introBlocks: [],
+    questions: [{
+      id: "employment_history",
+      answerKey: "employment_history",
+      label: "Employment History for the Main Applicant ({mainApplicantName})",
+      type: "repeater",
+      required: false,
+      metadata: {
+        originalLabel: "Employment History",
+        originalPresentation: {
+          addLabel: "Add",
+          emptyMessage: "No entries added",
+          addDialogTitle: "Add Entry",
+          editDialogTitle: "Edit Entry",
+          columns: [
+            { key: "date_from_day", label: "Date From", format: "protectionDate" },
+            { key: "date_to_day", label: "Date To", format: "protectionDateOrOngoing" },
+            { key: "status", label: "Status" },
+          ],
+          actions: {
+            edit: "Edit",
+            delete: "Delete",
+            cancel: "Cancel",
+            confirm: "Ok",
+            actionsHeading: "Actions",
+          },
+        },
+        presentation: {
+          addLabel: "Add history",
+          emptyMessage: "Nothing added yet",
+          addDialogTitle: "Add History Entry",
+          editDialogTitle: "Edit History Entry",
+          columns: [
+            { key: "date_from_day", label: "From", format: "protectionDate" },
+            { key: "date_to_day", label: "To", format: "protectionDateOrOngoing" },
+            { key: "status", label: "Work status" },
+          ],
+          actions: {
+            edit: "Modify",
+            delete: "Remove",
+            cancel: "Discard",
+            confirm: "Save",
+            actionsHeading: "Options",
+          },
+        },
+        fields: [
+          { id: "date_from_day", answerKey: "date_from_day", label: "Date From", type: "text" },
+          { id: "status", answerKey: "status", label: "Status", type: "select", options: [{ value: "employed", label: "Employed" }] },
+        ],
+      },
+    }],
+  };
+  const copy = createLegacyQuestionnaireCopy(pageWithRepeater);
+  const fieldCopy = copy.fields.get("employment_history");
+  assert.ok(fieldCopy, "repeater field copy should exist");
+  assert.equal(translateLegacyQuestionnaireCopy("Add", copy, "labels", "employment_history"), "Add history");
+  assert.equal(translateLegacyQuestionnaireCopy("No entries added", copy, "labels", "employment_history"), "Nothing added yet");
+  assert.equal(translateLegacyQuestionnaireCopy("Add Entry", copy, "labels", "employment_history"), "Add History Entry");
+  assert.equal(translateLegacyQuestionnaireCopy("Edit Entry", copy, "labels", "employment_history"), "Edit History Entry");
+  assert.equal(translateLegacyQuestionnaireCopy("Date From", copy, "labels", "employment_history"), "From");
+  assert.equal(translateLegacyQuestionnaireCopy("Date To", copy, "labels", "employment_history"), "To");
+  assert.equal(translateLegacyQuestionnaireCopy("Status", copy, "labels", "employment_history"), "Work status");
+  assert.equal(translateLegacyQuestionnaireCopy("Edit", copy, "labels", "employment_history"), "Modify");
+  assert.equal(translateLegacyQuestionnaireCopy("Delete", copy, "labels", "employment_history"), "Remove");
+  assert.equal(translateLegacyQuestionnaireCopy("Cancel", copy, "labels", "employment_history"), "Discard");
+  assert.equal(translateLegacyQuestionnaireCopy("Ok", copy, "labels", "employment_history"), "Save");
+  assert.equal(translateLegacyQuestionnaireCopy("Actions", copy, "labels", "employment_history"), "Options");
+});
+
+test("repeater action paths and popup sections resolve from the same field copy map", () => {
+  const skillsPage = {
+    id: "legacy-skills",
+    route: "/intake/temporary-work/main-applicant/skills",
+    title: "Main Applicant's Skills",
+    sectionKey: "temporary_work_skills",
+    scope: "profile",
+    completionKey: "temporary-work/main-applicant/skills",
+    metadata: { renderer: "legacy", originalTitle: "Skills" },
+    introBlocks: [],
+    questions: [{
+      id: "assessments",
+      answerKey: "assessments",
+      label: "Skills Assessments",
+      type: "repeater",
+      required: false,
+      metadata: {
+        originalLabel: "Skills Assessments",
+        originalPresentation: {
+          addLabel: "Add",
+          emptyMessage: "No entries added",
+          addDialogTitle: "Add Entry",
+          editDialogTitle: "Edit Entry",
+          columns: [{ key: "outcome", label: "Outcome" }],
+          actions: { edit: "Edit", delete: "Delete", cancel: "Cancel", confirm: "Ok", actionsHeading: "Actions" },
+          sections: [
+            { heading: "Skills Assessment", description: "Enter details of the Skill Assessment you have applied for" },
+            { heading: "Assessment Outcome", description: "Enter details on the outcome of the Skills Assessment" },
+          ],
+        },
+        presentation: {
+          addLabel: "Add assessment",
+          emptyMessage: "No assessments added",
+          addDialogTitle: "Add Assessment",
+          editDialogTitle: "Edit Assessment",
+          columns: [{ key: "outcome", label: "Result" }],
+          actions: { edit: "Modify", delete: "Remove", cancel: "Discard", confirm: "Save", actionsHeading: "Options" },
+          sections: [
+            { heading: "Assessment", description: "Enter the assessment details" },
+            { heading: "Outcome", description: "Enter the assessment outcome" },
+          ],
+        },
+        fields: [{ id: "outcome", answerKey: "outcome", label: "Outcome", type: "select", options: [{ value: "Positive", label: "Positive" }] }],
+      },
+    }],
+  };
+  const copy = createLegacyQuestionnaireCopy(skillsPage);
+  assert.equal(translateLegacyQuestionnaireCopy("Add", copy, "labels", "assessments.actions"), "Add assessment");
+  assert.equal(translateLegacyQuestionnaireCopy("Add Entry", copy, "labels", "assessments.actions"), "Add Assessment");
+  assert.equal(translateLegacyQuestionnaireCopy("Actions", copy, "labels", "assessments.actions"), "Options");
+  assert.equal(translateLegacyQuestionnaireCopy("Delete", copy, "labels", "assessments.actions"), "Remove");
+  assert.equal(translateLegacyQuestionnaireCopy("Skills Assessment", copy, "labels", "assessments"), "Assessment");
+  assert.equal(
+    translateLegacyQuestionnaireCopy("Enter details on the outcome of the Skills Assessment", copy, "labels", "assessments"),
+    "Enter the assessment outcome"
+  );
+});
+
 test("promoted non-migrating pages validate the actual member route and completion stamp", () => {
   const memberPage = {
     id: "temporary-work-non-migrating-member-profile-other-names",

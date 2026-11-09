@@ -9,9 +9,50 @@ function addCopy(map, original, edited) {
   else if (!map.has(key)) map.set(key, edited);
 }
 
+function collectPresentationCopy(maps, question, path) {
+  const presentation = question.metadata?.presentation;
+  if (!presentation) return;
+  const field = maps.fields.get(path) || new Map();
+  const originals = question.metadata?.originalPresentation || {};
+  const add = (key, value, original) => {
+    if (typeof value !== "string" && typeof original !== "string") return;
+    addCopy(field, original ?? value, value);
+    addCopy(maps.labels, original ?? value, value);
+  };
+  add("addLabel", presentation.addLabel, originals.addLabel);
+  add("emptyMessage", presentation.emptyMessage, originals.emptyMessage);
+  add("addDialogTitle", presentation.addDialogTitle, originals.addDialogTitle);
+  add("editDialogTitle", presentation.editDialogTitle, originals.editDialogTitle);
+  add("dialogSubtitle", presentation.dialogSubtitle, originals.dialogSubtitle);
+  (presentation.columns || []).forEach((column, index) => {
+    const originalColumn = (originals.columns || [])[index];
+    addCopy(field, originalColumn?.label ?? column.label, column.label);
+    addCopy(maps.labels, originalColumn?.label ?? column.label, column.label);
+  });
+  (presentation.sections || []).forEach((section, index) => {
+    const originalSection = (originals.sections || [])[index];
+    addCopy(field, originalSection?.heading ?? section.heading, section.heading);
+    addCopy(maps.labels, originalSection?.heading ?? section.heading, section.heading);
+    addCopy(field, originalSection?.description ?? section.description, section.description);
+    addCopy(maps.labels, originalSection?.description ?? section.description, section.description);
+  });
+  if (presentation.actions) {
+    Object.entries(presentation.actions).forEach(([action, value]) => {
+      const originalValue = originals.actions?.[action];
+      addCopy(field, originalValue ?? value, value);
+      addCopy(maps.labels, originalValue ?? value, value);
+    });
+  }
+  if (presentation.rowFormatter && typeof presentation.rowFormatter === "string") {
+    maps.rowFormatters = maps.rowFormatters || new Map();
+    maps.rowFormatters.set(question.answerKey, presentation.rowFormatter);
+  }
+  maps.fields.set(path, field);
+}
+
 /** Published wording changes preserve original storage keys and form behavior. */
 export function createLegacyQuestionnaireCopy(page) {
-  const maps = { all: new Map(), labels: new Map(), options: new Map(), intro: new Map(), help: new Map(), body: new Map(), placeholders: new Map(), title: new Map(), fields: new Map(), personLabels: [] };
+  const maps = { all: new Map(), labels: new Map(), options: new Map(), intro: new Map(), help: new Map(), body: new Map(), placeholders: new Map(), title: new Map(), fields: new Map(), personLabels: [], rowFormatters: new Map() };
   if (page?.metadata?.renderer !== "legacy") return maps;
   const editedTitle = page.metadata.originalDisplayTitle !== undefined && page.title === page.metadata.originalDisplayTitle
     ? page.metadata.originalTitle : page.title;
@@ -42,6 +83,7 @@ export function createLegacyQuestionnaireCopy(page) {
       });
       const path = `${prefix}${question.answerKey}`;
       maps.fields.set(path, field);
+      collectPresentationCopy(maps, question, path);
       collect(question.followUps, prefix);
       collect(metadata.fields, `${path}.`);
     });
@@ -67,7 +109,7 @@ export function translateLegacyQuestionnaireCopy(value, copy, kind = "all", fiel
   if (typeof value !== "string") return value;
   const key = copyKey(value);
   if (fieldName) {
-    const path = String(fieldName).replace(/\.\d+(?=\.|$)/g, "");
+    const path = String(fieldName).replace(/\.\d+(?=\.|$)/g, "").replace(/\.actions$/, "");
     const field = copy.fields.get(path) || copy.fields.get(path.split(".").at(-1));
     const translated = field?.get(key);
     if (typeof translated === "string") return translated;

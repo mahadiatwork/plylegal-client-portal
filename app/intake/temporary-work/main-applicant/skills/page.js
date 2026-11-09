@@ -20,6 +20,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const ASSESSMENT_OUTCOMES = ["Positive", "Negative", "Unexpected", "Pending", "Other"];
@@ -56,7 +57,8 @@ const COUNTRIES = [
   "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
-function RegistrationDialog({ editingRow, onSave, onCancel }) {
+function RegistrationDialog({ editingRow, onSave, onCancel, cancelLabel = "Cancel", confirmLabel = "Ok" }) {
+  const translate = useQuestionnaireCopy("labels", "registrations");
   const dialogFormSchema = z.object({
     authority: z.string().min(1, "Name of Authority is required"),
     title: z.string().min(1, "Title/Name of Licence is required"),
@@ -108,7 +110,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
       <div>
-        <Label htmlFor="authority" className="mb-2 block">Name of Authority granting Licence or Registration or Membership</Label>
+        <Label htmlFor="authority" className="mb-2 block">{translate("Name of Authority granting Licence or Registration or Membership")}</Label>
         <Input
           id="authority"
           {...dialogForm.register("authority")}
@@ -120,7 +122,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="title" className="mb-2 block">Title/Name of Licence or Registration or Membership</Label>
+        <Label htmlFor="title" className="mb-2 block">{translate("Title/Name of Licence or Registration or Membership")}</Label>
         <Input
           id="title"
           {...dialogForm.register("title")}
@@ -132,7 +134,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="licence_number" className="mb-2 block">Licence/Registration Number</Label>
+        <Label htmlFor="licence_number" className="mb-2 block">{translate("Licence/Registration Number")}</Label>
         <Input
           id="licence_number"
           {...dialogForm.register("licence_number")}
@@ -145,7 +147,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
 
       <div>
         <Label className="text-sm font-medium mb-3 block">
-          Is there an English Language Requirement associated with obtaining this registration/licence?
+          {translate("Is there an English Language Requirement associated with obtaining this registration/licence?")}
         </Label>
         <RadioGroup
           value={dialogForm.watch("english_requirement")}
@@ -170,7 +172,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
 
       {dialogForm.watch("english_requirement") === "yes" && (
         <div>
-          <Label htmlFor="english_requirement_details" className="mb-2 block">Enter details of the language requirement</Label>
+          <Label htmlFor="english_requirement_details" className="mb-2 block">{translate("Enter details of the language requirement")}</Label>
           <Textarea
             id="english_requirement_details"
             {...dialogForm.register("english_requirement_details")}
@@ -184,7 +186,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       )}
 
       <div>
-        <Label htmlFor="occupation" className="mb-2 block">Occupation</Label>
+        <Label htmlFor="occupation" className="mb-2 block">{translate("Occupation")}</Label>
         <Input
           id="occupation"
           {...dialogForm.register("occupation")}
@@ -196,7 +198,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Country of Licence or Registration or Membership</Label>
+        <Label className="mb-2 block">{translate("Country of Licence or Registration or Membership")}</Label>
         <Select
           value={dialogForm.watch("country")}
           onValueChange={(value) => dialogForm.setValue("country", value)}
@@ -216,7 +218,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Issue Date</Label>
+        <Label className="mb-2 block">{translate("Issue Date")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("issue_date_day")}
@@ -264,7 +266,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Expiry Date (If applicable)</Label>
+        <Label className="mb-2 block">{translate("Expiry Date (If applicable)")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("expiry_date_day")}
@@ -310,7 +312,7 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           type="button"
@@ -318,14 +320,15 @@ function RegistrationDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
-          Ok
+          {confirmLabel}
         </Button>
       </DialogFooter>
     </div>
   );
 }
 
-function AssessmentDialog({ editingRow, onSave, onCancel }) {
+function AssessmentDialog({ editingRow, onSave, onCancel, cancelLabel = "Cancel", confirmLabel = "Ok" }) {
+  const translate = useQuestionnaireCopy("labels", "assessments");
   const dialogFormSchema = z.object({
     assessing_authority: z.string().min(1, "Name of Skills Assessing Authority is required"),
     assessment_type: z.string().min(1, "Type of Skills Assessment is required"),
@@ -368,12 +371,12 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Skills Assessment</h3>
-      <p className="text-sm text-gray-500 mb-4">Enter details of the Skill Assessment you have applied for</p>
+      <h3 className="text-base font-bold text-gray-900 mb-2">{translate("Skills Assessment")}</h3>
+      <p className="text-sm text-gray-500 mb-4">{translate("Enter details of the Skill Assessment you have applied for")}</p>
 
       {/* Authority */}
       <div>
-        <Label htmlFor="assessing_authority" className="mb-2 block">Name of Skills Assessing Authority</Label>
+        <Label htmlFor="assessing_authority" className="mb-2 block">{translate("Name of Skills Assessing Authority")}</Label>
         <Input
           id="assessing_authority"
           {...dialogForm.register("assessing_authority")}
@@ -386,7 +389,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
       {/* Type */}
       <div>
-        <Label className="mb-2 block">Type of Skills Assessment</Label>
+        <Label className="mb-2 block">{translate("Type of Skills Assessment")}</Label>
         <Select
           value={dialogForm.watch("assessment_type")}
           onValueChange={(value) => dialogForm.setValue("assessment_type", value)}
@@ -407,7 +410,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
       {/* ANZSCO Code */}
       <div>
-        <Label htmlFor="anzsco_code" className="mb-2 block">ANZSCO Code</Label>
+        <Label htmlFor="anzsco_code" className="mb-2 block">{translate("ANZSCO Code")}</Label>
         <Input
           id="anzsco_code"
           {...dialogForm.register("anzsco_code")}
@@ -420,7 +423,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
       {/* Lodgement Date */}
       <div>
-        <Label className="mb-2 block">Logement Date</Label>
+        <Label className="mb-2 block">{translate("Logement Date")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("lodgement_date_day")}
@@ -469,7 +472,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
       {/* Receipt Number */}
       <div>
-        <Label htmlFor="receipt_number" className="mb-2 block">Receipt Number</Label>
+        <Label htmlFor="receipt_number" className="mb-2 block">{translate("Receipt Number")}</Label>
         <Input
           id="receipt_number"
           {...dialogForm.register("receipt_number")}
@@ -478,12 +481,12 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div className="pt-4 pb-2">
-        <h3 className="text-base font-bold text-gray-900 mb-2">Assessment Outcome</h3>
-        <p className="text-sm text-gray-500 mb-4">Enter details on the outcome of the Skills Assessment</p>
+        <h3 className="text-base font-bold text-gray-900 mb-2">{translate("Assessment Outcome")}</h3>
+        <p className="text-sm text-gray-500 mb-4">{translate("Enter details on the outcome of the Skills Assessment")}</p>
 
         {/* Outcome */}
         <div className="mb-4">
-          <Label className="mb-2 block">Outcome</Label>
+          <Label className="mb-2 block">{translate("Outcome")}</Label>
           <Select
             value={dialogForm.watch("outcome")}
             onValueChange={(value) => dialogForm.setValue("outcome", value)}
@@ -504,7 +507,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
         {/* Outcome Date */}
         <div className="mb-4">
-          <Label className="mb-2 block">Outcome Date</Label>
+          <Label className="mb-2 block">{translate("Outcome Date")}</Label>
           <div className="grid grid-cols-3 gap-2">
             <Select
               value={dialogForm.watch("outcome_date_day")}
@@ -550,7 +553,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
         {/* Outcome Reference Number */}
         <div className="mb-4">
-          <Label htmlFor="outcome_reference_number" className="mb-2 block">Outcome Reference Number</Label>
+          <Label htmlFor="outcome_reference_number" className="mb-2 block">{translate("Outcome Reference Number")}</Label>
           <Input
             id="outcome_reference_number"
             {...dialogForm.register("outcome_reference_number")}
@@ -561,7 +564,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel">
-          Cancel
+          {cancelLabel}
         </Button>
         <Button
           type="button"
@@ -569,7 +572,7 @@ function AssessmentDialog({ editingRow, onSave, onCancel }) {
           className="bg-[#4F726B] hover:bg-[#4F726B] text-white"
           data-testid="button-ok"
         >
-          Ok
+          {confirmLabel}
         </Button>
       </DialogFooter>
     </div>
@@ -741,6 +744,7 @@ export default function SkillsPage() {
                     }}
                     DialogComponent={RegistrationDialog}
                     addButtonText="Add"
+                    fieldName="registrations"
                     testIdPrefix="registration"
                   />
                 </div>
@@ -799,6 +803,7 @@ export default function SkillsPage() {
                     }}
                     DialogComponent={AssessmentDialog}
                     addButtonText="Add"
+                    fieldName="assessments"
                     testIdPrefix="assessment"
                   />
                 </div>

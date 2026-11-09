@@ -393,7 +393,7 @@ export default function IntakeLayout({ children }) {
             </div>
 
             {/* Stepper Navigation List */}
-            <ScrollArea className="max-h-[calc(100vh-280px)] pr-2">
+            <ScrollArea className="h-[calc(100dvh-280px)] pr-2">
               <nav className="space-y-1 pt-1" aria-label="Questionnaire Sections">
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
