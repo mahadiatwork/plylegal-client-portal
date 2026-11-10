@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Trash2, Pencil, Plus } from "lucide-react";
-import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
+import { QuestionnaireCopyFieldScope, useQuestionnaireCopy, useQuestionnaireRepeaterFieldName } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 export function RepeaterTable({
   data = [],
@@ -27,8 +27,16 @@ export function RepeaterTable({
   dialogProps = {},
   fieldName,
 }) {
-  const translate = useQuestionnaireCopy("labels", fieldName);
-  const actionTranslate = useQuestionnaireCopy("labels", fieldName ? `${fieldName}.actions` : null);
+  const copyFieldName = useQuestionnaireRepeaterFieldName({
+    fieldName,
+    testIdPrefix,
+    addButtonText,
+    emptyMessage,
+    dialogTitle,
+    columns,
+  });
+  const translate = useQuestionnaireCopy("labels", copyFieldName);
+  const actionTranslate = useQuestionnaireCopy("labels", copyFieldName ? `${copyFieldName}.actions` : null);
   const rows = data || [];
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -216,14 +224,16 @@ export function RepeaterTable({
           </DialogHeader>
           <div className="overflow-visible">
             {DialogComponent && (
-              <DialogComponent
-                editingRow={editingIndex !== null ? rows[editingIndex] : null}
-                onSave={handleSubmit}
-                onCancel={handleCancel}
-                cancelLabel={actionTranslate(dialogProps.cancelLabel || "Cancel")}
-                confirmLabel={actionTranslate(dialogProps.confirmLabel || "Ok")}
-                {...dialogProps}
-              />
+              <QuestionnaireCopyFieldScope fieldName={copyFieldName}>
+                <DialogComponent
+                  editingRow={editingIndex !== null ? rows[editingIndex] : null}
+                  onSave={handleSubmit}
+                  onCancel={handleCancel}
+                  cancelLabel={actionTranslate(dialogProps.cancelLabel || "Cancel")}
+                  confirmLabel={actionTranslate(dialogProps.confirmLabel || "Ok")}
+                  {...dialogProps}
+                />
+              </QuestionnaireCopyFieldScope>
             )}
           </div>
         </DialogContent>

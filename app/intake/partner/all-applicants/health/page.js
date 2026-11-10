@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { QuestionnaireCopyText } from "@/components/questionnaire/QuestionnaireCopyContext";
 const formSchema = z.object({
   medical_condition: z.enum(["yes", "no"]).optional(),
   requires_assistance: z.enum(["yes", "no"]).optional(),
@@ -129,7 +130,7 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health Examinations</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Health Examinations</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has undertaken a health examination
         for an Australian visa in the past 12 months.
@@ -258,7 +259,7 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Hospital / health care facility details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Hospital / health care facility details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to enter any Australian private or
         public Hospital or Health Care facilities including nursing homes as a patient, visitor, employee or a trainee.
@@ -324,7 +325,7 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health care work details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Health care work details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to work as, or study or train to be, a
         health care worker or work within a health care facility while in Australia
@@ -400,7 +401,7 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Aged care / disability care details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Aged care / disability care details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to work, study or train within aged care,
         or disability care while in Australia
@@ -478,7 +479,7 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Child care centre details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Child care centre details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to work, or be a trainee, at a Childcare
         Centre (including pre-schools and creches) while in Australia.
@@ -578,7 +579,7 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Classroom details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Classroom details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who intends to be in a Classroom situation for more
         than 3 months (as a student, teacher, lecturer, or observer, etc) in Australia
@@ -760,7 +761,7 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Tuberculosis details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has ever had or currently has Tuberculosis or had a
         chest X-ray which showed an abnormality
@@ -819,7 +820,7 @@ function TuberculosisExposureDialog({ editingRow, onSave, onCancel, applicantOpt
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis exposure details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Tuberculosis exposure details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has ever been in close contact at home or at work
         with a person who has had Tuberculosis
@@ -880,7 +881,7 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health condition details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Health condition details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has any of the following Health Conditions that may
         incur medical costs, require treatment or medical follow up. Enter details of each condition including the expected
@@ -955,7 +956,7 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Ongoing medical care details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Ongoing medical care details</QuestionnaireCopyText>
       <p className="text-sm text-gray-500 mb-4">
         Enter details of any applicant who requires health or community care
       </p>
@@ -1418,6 +1419,7 @@ export default function Page() {
                     <HealthExamDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="health_examinations"
                   testIdPrefix="health-exam"
                 />
               </div>
@@ -1482,6 +1484,7 @@ export default function Page() {
                     <HospitalDetailsDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="hospital_details"
                   testIdPrefix="hospital"
                 />
               </div>
@@ -1548,6 +1551,7 @@ export default function Page() {
                     <HealthCareWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="healthcare_work_details"
                   testIdPrefix="healthcare-work"
                 />
               </div>
@@ -1610,6 +1614,7 @@ export default function Page() {
                     <AgedCareWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="aged_care_work_details"
                   testIdPrefix="aged-care-work"
                 />
               </div>
@@ -1673,6 +1678,7 @@ export default function Page() {
                     <ChildcareWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="childcare_work_details"
                   testIdPrefix="childcare-work"
                 />
               </div>
@@ -1736,6 +1742,7 @@ export default function Page() {
                     <ClassroomWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="classroom_work_details"
                   testIdPrefix="classroom-work"
                 />
               </div>
@@ -1799,6 +1806,7 @@ export default function Page() {
                     <TuberculosisDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="tuberculosis_details"
                   testIdPrefix="tuberculosis-details"
                 />
               </div>
@@ -1861,6 +1869,7 @@ export default function Page() {
                     <TuberculosisExposureDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="tuberculosis_exposure_details"
                   testIdPrefix="tuberculosis-exposure"
                 />
               </div>
@@ -1933,6 +1942,7 @@ export default function Page() {
                       <HealthConditionsDialog {...props} applicantOptions={applicantOptions} />
                     )}
                     addButtonText="Add"
+                    fieldName="health_conditions_details"
                     testIdPrefix="health-condition"
                   />
                 </div>
@@ -1996,6 +2006,7 @@ export default function Page() {
                       <AssistiveTechnologyDialog {...props} applicantOptions={applicantOptions} />
                     )}
                     addButtonText="Add"
+                    fieldName="medical_assistance_details"
                     testIdPrefix="medical-assistance"
                   />
                 </div>

@@ -100,7 +100,7 @@ function DatePartsField({ question, form }) {
 }
 
 function RepeaterQuestions({ questions, prefix, values, form, optionSources, repeaterRegistry }) {
-  return questions.map((question) => {
+  return questions.filter((question) => !question.metadata?.storageOnly).map((question) => {
     const defaults = Object.fromEntries(Object.entries(getQuestionnaireRowDefaults([question]))
       .map(([name, value]) => [`${prefix}.${name}`, value]));
     return (

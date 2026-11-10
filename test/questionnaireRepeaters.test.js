@@ -120,3 +120,63 @@ test("promoted Details pages clear citizenship rows when the controlling answer 
     { citizenship_other_than_birth: "no", citizenships: [] },
   );
 });
+
+test("dynamic repeater validation executes employment metadata rules", () => {
+  const employment = {
+    id: "employment_history",
+    answerKey: "employment_history",
+    label: "Employment history",
+    type: "repeater",
+    metadata: {
+      fields: [
+        { id: "status", answerKey: "status", label: "Status", type: "text" },
+        { id: "employer", answerKey: "employer", label: "Employer", type: "text" },
+        { id: "position", answerKey: "position", label: "Position", type: "text" },
+        { id: "duties", answerKey: "duties", label: "Duties", type: "text" },
+        { id: "visa", answerKey: "visa_held", label: "Visa", type: "text", metadata: { validation: { rules: [{ id: "requiredWhenEquals", field: "visa_held", config: { field: "country", value: "Australia" } }] } } },
+      ],
+      validation: { rules: [
+        { id: "datePartsAllOrNone", field: "date_to_day" },
+        { id: "dateToNotBeforeDateFrom", field: "date_to_day" },
+        { id: "requiredWhenStatusIn", field: "employer", config: { statuses: ["Work Experience/Internships"] } },
+        { id: "requiredWhenStatusIn", field: "position", config: { statuses: ["Work Experience/Internships"] } },
+        { id: "maxLength", field: "duties", config: { max: 300 } },
+      ] },
+    },
+  };
+  const invalid = { employment_history: [{
+    status: "Work Experience/Internships", employer: "", position: "", duties: "x".repeat(301), country: "Australia", visa_held: "",
+    date_from_day: "10", date_from_month: "January", date_from_year: "2024",
+    date_to_day: "9", date_to_month: "", date_to_year: "2024",
+  }] };
+  const issues = getQuestionnairePageValidationIssues({ questions: [employment] }, invalid);
+  assert.deepEqual(new Set(issues.map((issue) => issue.fieldName)), new Set([
+    "employment_history.0.date_to_day",
+    "employment_history.0.employer",
+    "employment_history.0.position",
+    "employment_history.0.duties",
+    "employment_history.0.visa_held",
+  ]));
+
+  const valid = structuredClone(invalid);
+  Object.assign(valid.employment_history[0], {
+    employer: "Example Pty Ltd", position: "Intern", duties: "Assisted the team", visa_held: "Subclass 186",
+    date_to_day: "11", date_to_month: "January", date_to_year: "2024",
+  });
+  assert.deepEqual(getQuestionnairePageValidationIssues({ questions: [employment] }, valid), []);
+});
+
+test("storage-only questions are preserved but excluded from validation and review", () => {
+  const compatibilityPage = { questions: [{
+    id: "records", answerKey: "records", label: "Records", type: "repeater", metadata: { fields: [
+      { id: "visible", answerKey: "visible", label: "Visible value", type: "text", required: true },
+      { id: "derived", answerKey: "derived", label: "Derived value", type: "text", required: true, metadata: { storageOnly: true } },
+    ] },
+  }] };
+  const values = { records: [{ visible: "Shown", derived: "Preserved compatibility value" }] };
+  assert.deepEqual(getQuestionnairePageValidationIssues(compatibilityPage, values), []);
+  assert.deepEqual(sanitizeQuestionnairePageValues(compatibilityPage, values), values);
+  assert.deepEqual(getQuestionnairePageReviewItems(compatibilityPage, values), [
+    { label: "Records", value: [{ "Visible value": "Shown" }] },
+  ]);
+});

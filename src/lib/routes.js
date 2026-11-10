@@ -34,7 +34,6 @@ export const PARTNER_VISA_ROUTES = [
       { href: "/intake/partner/spouse-partner/identity", title: "Identity" },
     ],
   },
-  { href: "/intake/partner/children/start", title: "Children" },
   {
     href: "/intake/partner/family-sponsor/details",
     title: "Family Sponsor",
@@ -539,9 +538,9 @@ export function getDynamicPartnerRoutes(visaContext) {
       });
     });
 
-  // Then static sections: Family Sponsor, Relationships, Family, All Applicants
+  // Then static sections outside the profile-driven applicant routes.
   const baseRoutes = PARTNER_VISA_ROUTES;
-  ["Family Sponsor", "Relationships", "Family", "All Applicants"].forEach(sectionTitle => {
+  ["Family Sponsor", "Relationships", "All Applicants"].forEach(sectionTitle => {
     const section = baseRoutes.find(r => r.title === sectionTitle);
     if (section) {
       if (section.subpages) {

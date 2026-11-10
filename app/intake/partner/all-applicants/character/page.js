@@ -1510,6 +1510,14 @@ function SimpleCharacterDialog({ editingRow, onSave, onCancel, applicantOptions 
     </div>
   );
 }
+const CHARACTER_DETAIL_FIELDS = {
+  police_check_last_12_months: "police_check_details",
+  domestic_violence_order: "domestic_violence_details",
+  national_security_risk: "national_security_details",
+  associated_criminal_conduct: "criminal_conduct_details",
+  associated_violent_org: "violent_org_details",
+};
+
 const formSchema = z.object({
   ...CHARACTER_QUESTIONS.reduce((acc, q) => {
     acc[q.key] = z.enum(["yes", "no"]).optional();
@@ -1546,6 +1554,18 @@ const formSchema = z.object({
   psychiatric_institution_details: z.array(z.any()).optional(),
   military_training_details: z.array(z.any()).optional(),
   military_service_details: z.array(z.any()).optional(),
+}).superRefine((values, context) => {
+  CHARACTER_QUESTIONS.forEach(({ key }) => {
+    if (values[key] !== "yes") return;
+    const detailsField = CHARACTER_DETAIL_FIELDS[key] || `${key}_details`;
+    if (!Array.isArray(values[detailsField]) || values[detailsField].length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [detailsField],
+        message: "Add at least one detail record for each Yes answer",
+      });
+    }
+  });
 });
 const GENERIC_DIALOG_CONFIG = {
   domestic_violence_order: {

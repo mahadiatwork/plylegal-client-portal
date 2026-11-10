@@ -9,6 +9,60 @@ function addCopy(map, original, edited) {
   else if (!map.has(key)) map.set(key, edited);
 }
 
+function presentationValues(presentation = {}) {
+  return [
+    presentation.addLabel,
+    presentation.emptyMessage,
+    presentation.addDialogTitle,
+    presentation.editDialogTitle,
+    presentation.dialogSubtitle,
+    ...(presentation.columns || []).map((column) => column.label),
+  ].filter((value) => typeof value === "string");
+}
+
+function identifierTokens(value) {
+  return String(value || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLocaleLowerCase("en")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((token) => token.endsWith("ies") ? `${token.slice(0, -3)}y` : token.endsWith("s") && token.length > 3 ? token.slice(0, -1) : token);
+}
+
+function tokensMatch(left, right) {
+  return left === right || (left.length >= 4 && right.length >= 4 && (left.startsWith(right) || right.startsWith(left)));
+}
+
+function repeaterHintScore(candidate, hints) {
+  const candidateTokens = identifierTokens(`${candidate.path} ${candidate.answerKey}`);
+  const hintTokens = identifierTokens(hints.testIdPrefix);
+  let score = 0;
+  if (hintTokens.length && hintTokens.every((hint) => candidateTokens.some((token) => tokensMatch(hint, token)))) {
+    score += 20 + hintTokens.length;
+  }
+
+  const candidateCopy = new Set(candidate.copy.map(copyKey));
+  [
+    [hints.addButtonText, 5],
+    [hints.emptyMessage, 8],
+    [hints.dialogTitle, 10],
+    ...((hints.columns || []).map((column) => [column?.label, 3])),
+  ].forEach(([value, weight]) => {
+    if (typeof value === "string" && candidateCopy.has(copyKey(value))) score += weight;
+  });
+  return score;
+}
+
+export function resolveLegacyQuestionnaireRepeaterPath(copy, hints = {}) {
+  if (typeof hints.fieldName === "string" && hints.fieldName.trim()) return hints.fieldName.trim();
+  const scored = (copy?.repeaters || [])
+    .map((candidate) => ({ candidate, score: repeaterHintScore(candidate, hints) }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => right.score - left.score);
+  if (!scored.length || scored[0].score === scored[1]?.score) return null;
+  return scored[0].candidate.path;
+}
+
 function collectPresentationCopy(maps, question, path) {
   const presentation = question.metadata?.presentation;
   if (!presentation) return;
@@ -48,11 +102,16 @@ function collectPresentationCopy(maps, question, path) {
     maps.rowFormatters.set(question.answerKey, presentation.rowFormatter);
   }
   maps.fields.set(path, field);
+  maps.repeaters.push({
+    path,
+    answerKey: question.answerKey,
+    copy: [...presentationValues(originals), ...presentationValues(presentation)],
+  });
 }
 
 /** Published wording changes preserve original storage keys and form behavior. */
 export function createLegacyQuestionnaireCopy(page) {
-  const maps = { all: new Map(), labels: new Map(), options: new Map(), intro: new Map(), help: new Map(), body: new Map(), placeholders: new Map(), title: new Map(), fields: new Map(), personLabels: [], rowFormatters: new Map() };
+  const maps = { all: new Map(), labels: new Map(), options: new Map(), intro: new Map(), help: new Map(), body: new Map(), placeholders: new Map(), title: new Map(), fields: new Map(), personLabels: [], rowFormatters: new Map(), repeaters: [] };
   if (page?.metadata?.renderer !== "legacy") return maps;
   const editedTitle = page.metadata.originalDisplayTitle !== undefined && page.title === page.metadata.originalDisplayTitle
     ? page.metadata.originalTitle : page.title;
@@ -83,6 +142,20 @@ export function createLegacyQuestionnaireCopy(page) {
       });
       const path = `${prefix}${question.answerKey}`;
       maps.fields.set(path, field);
+      const parentPaths = prefix.replace(/\.$/, "").split(".").filter(Boolean);
+      while (parentPaths.length) {
+        const parent = maps.fields.get(parentPaths.join("."));
+        if (parent) {
+          addCopy(parent, metadata.originalLabel, editedLabel);
+          addCopy(parent, metadata.originalDescription, question.description);
+          addCopy(parent, metadata.originalPlaceholder, question.placeholder);
+          (metadata.originalOptions || []).forEach((option) => {
+            const edited = question.options?.find((candidate) => candidate.value === option.value);
+            if (edited) addCopy(parent, option.label, edited.label);
+          });
+        }
+        parentPaths.pop();
+      }
       collectPresentationCopy(maps, question, path);
       collect(question.followUps, prefix);
       collect(metadata.fields, `${path}.`);
@@ -110,8 +183,13 @@ export function translateLegacyQuestionnaireCopy(value, copy, kind = "all", fiel
   const key = copyKey(value);
   if (fieldName) {
     const path = String(fieldName).replace(/\.\d+(?=\.|$)/g, "").replace(/\.actions$/, "");
-    const field = copy.fields.get(path) || copy.fields.get(path.split(".").at(-1));
-    const translated = field?.get(key);
+    const parts = path.split(".");
+    while (parts.length) {
+      const translated = copy.fields.get(parts.join("."))?.get(key);
+      if (typeof translated === "string") return translated;
+      parts.pop();
+    }
+    const translated = copy.fields.get(path.split(".").at(-1))?.get(key);
     if (typeof translated === "string") return translated;
   }
   const translated = copy[kind]?.get(key);

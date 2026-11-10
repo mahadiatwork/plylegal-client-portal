@@ -5,6 +5,7 @@
 
 export const SKILLS_IN_DEMAND_TYPE_LABEL = "Skills in Demand (Subclass 482)";
 export const PARTNER_PUBLIC_SLUG = "820";
+export const PARTNER_SUBCLASS_CODES = Object.freeze(["820", "801", "309", "100"]);
 export const PROTECTION_PUBLIC_SLUG = "866";
 
 const SUBCLASS_PATTERN = /subclass\s*(\d{3})/i;
@@ -12,6 +13,14 @@ const SUBCLASS_PATTERN = /subclass\s*(\d{3})/i;
 export function extractSubclass(value) {
   if (!value || typeof value !== "string") return null;
   return value.match(SUBCLASS_PATTERN)?.[1] || null;
+}
+
+export function isPartnerSubclass(value) {
+  return PARTNER_SUBCLASS_CODES.includes(String(value || "").trim());
+}
+
+function containsPartnerSubclass(value) {
+  return PARTNER_SUBCLASS_CODES.some((subclass) => new RegExp(`\\b${subclass}\\b`, "i").test(String(value || "")));
 }
 
 /**
@@ -50,7 +59,7 @@ export function mapZohoDealToVisaTypeCode(deal) {
   }
 
   const partnerVisa =
-    /\b820\b|\b309\b|partner\s+visa|subclass\s*820|subclass\s*309/i.test(combined) ||
+    containsPartnerSubclass(combined) || /partner\s+visa/i.test(combined) ||
     visaTypeRaw.trim().toLowerCase() === "partner";
   if (partnerVisa) {
     return "partner";
@@ -89,7 +98,7 @@ export function formatVisaApplicationType(app) {
 
 export function normalizeApplicationSlug(slug) {
   const value = String(slug || "").trim().toLowerCase();
-  if (value === "partner" || value === "309") return PARTNER_PUBLIC_SLUG;
+  if (value === "partner" || isPartnerSubclass(value)) return PARTNER_PUBLIC_SLUG;
   if (value === "protection") return PROTECTION_PUBLIC_SLUG;
   if (["186", "482", PARTNER_PUBLIC_SLUG, PROTECTION_PUBLIC_SLUG].includes(value)) return value;
   return value;
@@ -106,7 +115,7 @@ export function getApplicationSlug(app) {
     ""
   ).trim().toLowerCase();
 
-  if (["186", "482", "partner", "309", PARTNER_PUBLIC_SLUG, "protection", PROTECTION_PUBLIC_SLUG].includes(explicitSlug)) {
+  if (["186", "482", "partner", ...PARTNER_SUBCLASS_CODES, "protection", PROTECTION_PUBLIC_SLUG].includes(explicitSlug)) {
     return normalizeApplicationSlug(explicitSlug);
   }
 
@@ -148,7 +157,7 @@ export function getApplicationSlug(app) {
 
   const partnerVisa =
     app.visaTypeCode === "partner" ||
-    /\b820\b|\b309\b|partner\s+visa|subclass\s*820|subclass\s*309/i.test(lower);
+    containsPartnerSubclass(lower) || /partner\s+visa/i.test(lower);
   if (partnerVisa) {
     return PARTNER_PUBLIC_SLUG;
   }

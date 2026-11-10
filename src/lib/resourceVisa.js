@@ -1,6 +1,7 @@
 import {
   extractSubclass,
   PARTNER_PUBLIC_SLUG,
+  PARTNER_SUBCLASS_CODES,
   PROTECTION_PUBLIC_SLUG,
 } from "./visaDisplay.js";
 
@@ -19,7 +20,7 @@ function normalizeVisaSignal(value) {
 function normalizeKnownVisaSlug(value) {
   const slug = normalizeVisaSignal(value);
   if (slug === "186" || slug === "482") return slug;
-  if (["309", "801", PARTNER_PUBLIC_SLUG, "partner"].includes(slug)) {
+  if ([...PARTNER_SUBCLASS_CODES, "partner"].includes(slug)) {
     return PARTNER_PUBLIC_SLUG;
   }
   if ([PROTECTION_PUBLIC_SLUG, "protection"].includes(slug)) {
@@ -88,7 +89,7 @@ export function getApplicationResourceVisaSlug(application = {}, questionnaire =
   ) {
     return "482";
   }
-  if (/\b820\b|\b801\b|\b309\b|\bpartner\b/i.test(typeText)) {
+  if (PARTNER_SUBCLASS_CODES.some((subclass) => new RegExp(`\\b${subclass}\\b`, "i").test(typeText)) || /\bpartner\b/i.test(typeText)) {
     return PARTNER_PUBLIC_SLUG;
   }
 

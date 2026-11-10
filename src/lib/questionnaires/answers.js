@@ -66,6 +66,7 @@ export function sanitizeQuestionnairePageValues(page, values = {}, ancestorsVisi
 
     function sanitizeQuestions(items = [], ancestorsVisible = true) {
       items.forEach((question) => {
+        if (question.metadata?.storageOnly) return;
         const visible = ancestorsVisible && evaluateVisibleIf(question.visibleIf, sanitized);
         const clearsLegacyCitizenships = Boolean(
           page?.metadata?.builtInPageId &&
@@ -115,11 +116,89 @@ export function questionnaireAnswerHasValue(value, question) {
   return value !== null && value !== undefined;
 }
 
+function validationRules(question) {
+  return [
+    ...(question.validation?.rules || []),
+    ...(question.metadata?.validation?.rules || []),
+  ];
+}
+
+function datePartsFor(source, field) {
+  const base = String(field || "").replace(/_(day|month|year)$/, "");
+  return ["day", "month", "year"].map((part) => String(source?.[`${base}_${part}`] || "").trim());
+}
+
+function dateFromParts(parts) {
+  if (parts.some((part) => !part)) return null;
+  const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  const month = /^\d+$/.test(parts[1]) ? Number(parts[1]) : monthNames.indexOf(parts[1].toLowerCase()) + 1;
+  const day = Number(parts[0]);
+  const year = Number(parts[2]);
+  if (!day || !month || !year) return null;
+  const value = new Date(Date.UTC(year, month - 1, day));
+  return value.getUTCFullYear() === year && value.getUTCMonth() === month - 1 && value.getUTCDate() === day ? value : null;
+}
+
+function appendRuleIssue(issues, question, prefix, fieldName, message) {
+  issues.push({
+    fieldName: `${prefix}${fieldName}`,
+    message,
+    questionId: question.id,
+  });
+}
+
+function appendQuestionnaireRuleIssues(question, source, prefix, issues) {
+  validationRules(question).forEach((rule) => {
+    const field = rule.field || question.answerKey;
+    const value = source?.[field];
+    const message = rule.config?.message;
+    if (rule.id === "requiredWhenEquals") {
+      if (source?.[rule.config?.field] === rule.config?.value && !questionnaireAnswerHasValue(value, question)) {
+        appendRuleIssue(issues, question, prefix, field, message || "This field is required");
+      }
+    } else if (rule.id === "requiredWhenStatusIn") {
+      if ((rule.config?.statuses || []).includes(source?.status) && !questionnaireAnswerHasValue(value, question)) {
+        appendRuleIssue(issues, question, prefix, field, message || "This field is required for the selected status");
+      }
+    } else if (rule.id === "maxLength") {
+      if (typeof value === "string" && value.length > Number(rule.config?.max)) {
+        appendRuleIssue(issues, question, prefix, field, message || `Must be ${rule.config.max} characters or fewer`);
+      }
+    } else if (rule.id === "datePartsAllOrNone") {
+      const parts = datePartsFor(source, field);
+      if (parts.some(Boolean) && !parts.every(Boolean)) {
+        appendRuleIssue(issues, question, prefix, field, message || "Enter a complete date or leave all date fields blank");
+      }
+    } else if (rule.id === "datePartsRequiredUnlessValue") {
+      const exempt = (rule.config?.values || []).includes(source?.[rule.config?.field]);
+      if (!exempt && !datePartsFor(source, field).every(Boolean)) {
+        appendRuleIssue(issues, question, prefix, field, message || "Enter a complete date");
+      }
+    } else if (rule.id === "dateToNotBeforeDateFrom") {
+      const to = dateFromParts(datePartsFor(source, field));
+      const from = dateFromParts(datePartsFor(source, "date_from_day"));
+      if (to && from && to < from) {
+        appendRuleIssue(issues, question, prefix, field, message || "Date to cannot be before date from");
+      }
+    } else if (rule.id === "minimumRows") {
+      if (!Array.isArray(value) || value.length < Number(rule.config?.min || 1)) {
+        appendRuleIssue(issues, question, prefix, field, message || `Add at least ${rule.config?.min || 1} record`);
+      }
+    } else if (rule.id === "minRowsWhenEquals") {
+      const required = source?.[rule.config?.field] === rule.config?.value;
+      if (required && (!Array.isArray(value) || value.length < Number(rule.config?.min || 1))) {
+        appendRuleIssue(issues, question, prefix, field, message || `Add at least ${rule.config?.min || 1} record`);
+      }
+    }
+  });
+}
+
 export function getQuestionnairePageValidationIssues(page, values = {}) {
   const issues = [];
 
   function validateQuestions(questions = [], ancestorsVisible = true, source = values, prefix = "") {
     questions.forEach((question) => {
+      if (question.metadata?.storageOnly) return;
       const visible = ancestorsVisible && evaluateVisibleIf(question.visibleIf, source);
       if (visible) {
         const fieldNames = getQuestionnaireFieldNames(question);
@@ -149,6 +228,9 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
             });
           }
         }
+        if (question.type !== "repeater") {
+          appendQuestionnaireRuleIssues(question, source, prefix, issues);
+        }
         if (question.type === "repeater" && Array.isArray(question.metadata?.fields)) {
           const value = source[question.answerKey];
           const rowPrefix = `${prefix}${question.answerKey}.`;
@@ -164,6 +246,7 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
             if (value != null && (typeof value !== "object" || Array.isArray(value))) {
               issues.push({ fieldName: `${prefix}${question.answerKey}`, message: "Enter valid details", questionId: question.id });
             } else {
+              appendQuestionnaireRuleIssues(question, value || {}, rowPrefix, issues);
               validateQuestions(question.metadata.fields, visible, value || {}, rowPrefix);
             }
           } else if (value != null && !Array.isArray(value)) {
@@ -173,6 +256,7 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
               if (!row || typeof row !== "object" || Array.isArray(row)) {
                 issues.push({ fieldName: `${rowPrefix}${index}`, message: "Enter valid details", questionId: question.id });
               } else {
+                appendQuestionnaireRuleIssues(question, row, `${rowPrefix}${index}.`, issues);
                 validateQuestions(question.metadata.fields, visible, row, `${rowPrefix}${index}.`);
               }
             });
@@ -315,6 +399,7 @@ export function getQuestionnairePageReviewItems(page, values = {}, context = {})
 
   function appendQuestions(questions = [], ancestorsVisible = true) {
     questions.forEach((question) => {
+      if (question.metadata?.storageOnly) return;
       const visible = ancestorsVisible && evaluateVisibleIf(question.visibleIf, values);
       if (visible) {
         const value = getQuestionnaireReviewValue(question, values, context);

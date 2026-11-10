@@ -5,8 +5,9 @@ import path from "node:path";
 import { build } from "esbuild";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { createLegacyQuestionnaireCopy, translateLegacyQuestionnaireCopy, applyLegacyQuestionnaireReviewCopy } from "../src/lib/questionnaires/legacyCopy.js";
+import { createLegacyQuestionnaireCopy, resolveLegacyQuestionnaireRepeaterPath, translateLegacyQuestionnaireCopy, applyLegacyQuestionnaireReviewCopy } from "../src/lib/questionnaires/legacyCopy.js";
 import { findQuestionnaireDefinitionPage } from "../src/lib/questionnaires/pageRoutes.js";
+import { getDynamicPartnerRoutes, getDynamicTemporaryWorkRoutes, PARTNER_VISA_ROUTES, setNonMigratingMembersGetter, setProfilesGetter } from "../src/lib/routes.js";
 
 const page = {
   id: "legacy-other", route: "/intake/temporary-work/main-applicant/other", title: "Updated other names",
@@ -86,14 +87,19 @@ const bundled = await build({
   stdin: { resolveDir: process.cwd(), loader: "jsx", contents: `
     import React from "react";
     import {useForm} from "react-hook-form";
-    import {QuestionnaireCopyProvider} from "./src/components/questionnaire/QuestionnaireCopyContext.jsx";
+    import {QuestionnaireCopyFieldScope,QuestionnaireCopyProvider} from "./src/components/questionnaire/QuestionnaireCopyContext.jsx";
     import {Field} from "./src/components/Field.jsx";
     import {Card,CardHeader,CardTitle,CardContent} from "./src/components/ui/card.jsx";
+    import {Button} from "./src/components/ui/button.jsx";
+    import {Label} from "./src/components/ui/label.jsx";
     export {getIncompleteChecklist} from "./src/lib/submitCompletion.js";
     export {buildTemporaryWorkReviewSections} from "./src/lib/temporaryWorkReview.js";
     export function Fixture({page}) {
       const form=useForm({defaultValues:{previous_name:"Saved client name"}});
       return <QuestionnaireCopyProvider page={page}><Card><CardHeader><CardTitle>Other names</CardTitle></CardHeader><CardContent><p>Original instructions</p><Field control={form.control} name="previous_name" label="Previous name" description="Original help" placeholder="Original example" type="text"/></CardContent></Card></QuestionnaireCopyProvider>;
+    }
+    export function ScopedFixture({page,fieldName}) {
+      return <QuestionnaireCopyProvider page={page}><QuestionnaireCopyFieldScope fieldName={fieldName}><Label htmlFor="name">Name</Label><Button>Cancel</Button></QuestionnaireCopyFieldScope></QuestionnaireCopyProvider>;
     }
   ` },
   bundle: true, write: false, platform: "node", format: "cjs", packages: "external", jsx: "automatic", logLevel: "silent",
@@ -103,7 +109,7 @@ const legacyModule = new Module(filename);
 legacyModule.filename = filename;
 legacyModule.paths = Module._nodeModulePaths(path.dirname(filename));
 legacyModule._compile(bundled.outputFiles[0].text, filename);
-const { Fixture, getIncompleteChecklist, buildTemporaryWorkReviewSections } = legacyModule.exports;
+const { Fixture, ScopedFixture, getIncompleteChecklist, buildTemporaryWorkReviewSections } = legacyModule.exports;
 
 test("published text renders through the original controls without replacing stored answers", () => {
   const html = renderToStaticMarkup(createElement(Fixture, { page }));
@@ -124,6 +130,61 @@ test("legacy pages keep static saved completion and validation when a newer word
   const after = getIncompleteChecklist({ ...args, questionnaireDefinition: { id: "published", revision: 99, pages: [page] } });
   assert.deepEqual(after, before, "wording-only changes must retain original static completion/validation");
   assert.equal(after.some((issue) => issue.endsWith(": Other Names")), false);
+});
+
+test("legacy employment completion enforces declarative date, status and length contracts", () => {
+  const employment = {
+    is_currently_employed: "yes",
+    current_employer: "Example Pty Ltd",
+    current_position: "Analyst",
+    current_country: "Australia",
+    current_start_date_day: "1",
+    current_start_date_month: "January",
+    current_start_date_year: "2024",
+    current_employment_type: "Full-time",
+    current_address: "1 Example Street",
+    current_duties: "x".repeat(301),
+    employment_history: [{
+      status: "Work Experience/Internships",
+      employer: "",
+      position: "",
+      country: "Australia",
+      visa_held: "",
+      duties: "x".repeat(301),
+      date_from_day: "10",
+      date_from_month: "January",
+      date_from_year: "2024",
+      date_to_day: "9",
+      date_to_month: "",
+      date_to_year: "2024",
+    }],
+  };
+  const args = {
+    visaType: "temporary-work",
+    visaContext: "186",
+    draft: {
+      visaContext: "186",
+      profiles: [{ id: "main", relationship: "main_applicant", given_names: "Client" }],
+      profiles_data: { main: { employment } },
+    },
+    completionStatus: { "temporary-work/main-applicant/employment__main": true },
+  };
+  const invalid = getIncompleteChecklist(args);
+  assert.ok(invalid.some((issue) => issue.includes("Employment history details")));
+  assert.ok(invalid.some((issue) => issue.includes("Current employment duties")));
+
+  Object.assign(employment, { current_duties: "Valid duties" });
+  Object.assign(employment.employment_history[0], {
+    employer: "Example Pty Ltd",
+    position: "Intern",
+    visa_held: "Subclass 186",
+    duties: "Valid duties",
+    date_to_day: "11",
+    date_to_month: "January",
+  });
+  const valid = getIncompleteChecklist(args);
+  assert.equal(valid.some((issue) => issue.includes("Employment history details")), false);
+  assert.equal(valid.some((issue) => issue.includes("Current employment duties")), false);
 });
 
 test("legacy review reads original profile section aliases and retains answers with edited labels", () => {
@@ -268,6 +329,89 @@ test("repeater action paths and popup sections resolve from the same field copy 
     translateLegacyQuestionnaireCopy("Enter details on the outcome of the Skills Assessment", copy, "labels", "assessments"),
     "Enter the assessment outcome"
   );
+});
+
+test("repeater hints infer distinct popup paths and scope ambiguous nested labels", () => {
+  const healthPage = {
+    id: "legacy-health",
+    route: "/intake/temporary-work/all-applicants/health",
+    title: "Health",
+    sectionKey: "temporary_work_health",
+    scope: "shared",
+    completionKey: "temporary-work/all-applicants/health",
+    metadata: { renderer: "legacy", originalTitle: "Health" },
+    introBlocks: [],
+    questions: [
+      {
+        id: "health_examinations", answerKey: "health_examinations", label: "Health examinations", type: "repeater",
+        metadata: {
+          originalPresentation: { addLabel: "Add", emptyMessage: "No entries added", columns: [{ key: "name", label: "Name" }], actions: { cancel: "Cancel" } },
+          presentation: { addLabel: "Add exam", emptyMessage: "No examinations", columns: [{ key: "name", label: "Applicant" }], actions: { cancel: "Discard exam" } },
+          fields: [{ id: "name", answerKey: "name", label: "Exam applicant", type: "text", metadata: { originalLabel: "Name" } }],
+        },
+      },
+      {
+        id: "hospital_details", answerKey: "hospital_details", label: "Hospital details", type: "repeater",
+        metadata: {
+          originalPresentation: { addLabel: "Add", emptyMessage: "No entries added", columns: [{ key: "name", label: "Name" }], actions: { cancel: "Cancel" } },
+          presentation: { addLabel: "Add hospital", emptyMessage: "No hospital details", columns: [{ key: "name", label: "Patient" }], actions: { cancel: "Discard hospital" } },
+          fields: [{ id: "name", answerKey: "name", label: "Hospital applicant", type: "text", metadata: { originalLabel: "Name" } }],
+        },
+      },
+    ],
+  };
+  const copy = createLegacyQuestionnaireCopy(healthPage);
+  assert.equal(resolveLegacyQuestionnaireRepeaterPath(copy, { testIdPrefix: "health-exam", addButtonText: "Add" }), "health_examinations");
+  assert.equal(resolveLegacyQuestionnaireRepeaterPath(copy, { testIdPrefix: "hospital", addButtonText: "Add" }), "hospital_details");
+  assert.equal(translateLegacyQuestionnaireCopy("Name", copy, "labels"), "Name", "ambiguous global copy stays unchanged");
+  assert.equal(translateLegacyQuestionnaireCopy("Name", copy, "labels", "health_examinations.name"), "Exam applicant");
+  assert.equal(translateLegacyQuestionnaireCopy("Cancel", copy, "labels", "hospital_details"), "Discard hospital");
+
+  const html = renderToStaticMarkup(createElement(ScopedFixture, { page: healthPage, fieldName: "health_examinations" }));
+  assert.match(html, /Exam applicant/);
+  assert.match(html, /Discard exam/);
+});
+
+test("partner route lists omit the stale children start and duplicate Family lookup", () => {
+  assert.equal(PARTNER_VISA_ROUTES.some((route) => route.href === "/intake/partner/children/start"), false);
+  setProfilesGetter(() => [{ id: "main-1", relationship: "main_applicant" }]);
+  const routes = getDynamicPartnerRoutes();
+  assert.equal(routes.filter((route) => route.split("?")[0] === "/intake/partner/main-applicant/family").length, 1);
+  assert.equal(routes.includes("/intake/partner/children/start"), false);
+  setProfilesGetter(() => []);
+});
+
+test("temporary-work route order covers empty and multi-profile 482/186 scenarios", () => {
+  setProfilesGetter(() => []);
+  setNonMigratingMembersGetter(() => []);
+  const empty = getDynamicTemporaryWorkRoutes("482");
+  assert.deepEqual(empty.slice(0, 2), ["/intake/temporary-work/start", "/intake/temporary-work/profile"]);
+  assert.equal(empty.some((route) => route.includes("main-applicant")), false);
+  assert.equal(empty.at(-1), "/intake/temporary-work/submit");
+
+  setProfilesGetter(() => [
+    { id: "child-2", relationship: "child" },
+    { id: "spouse-2", relationship: "spouse" },
+    { id: "main-1", relationship: "main_applicant" },
+    { id: "child-1", relationship: "child" },
+    { id: "spouse-1", relationship: "spouse" },
+  ]);
+  setNonMigratingMembersGetter(() => [{ id: "member-1" }, { id: "member-2" }]);
+  const routes482 = getDynamicTemporaryWorkRoutes("482");
+  const routes186 = getDynamicTemporaryWorkRoutes("186");
+  const index = (routes, route) => routes.findIndex((candidate) => candidate === route);
+
+  assert.ok(index(routes482, "/intake/temporary-work/main-applicant/contact-details?profileId=main-1") < index(routes482, "/intake/temporary-work/non-migrating"));
+  assert.ok(index(routes482, "/intake/temporary-work/non-migrating/member-2/health") < index(routes482, "/intake/temporary-work/main-applicant/employment?profileId=main-1"));
+  assert.ok(index(routes482, "/intake/temporary-work/spouse-partner/identity?profileId=spouse-2") < index(routes482, "/intake/temporary-work/children/child-2/details"));
+  assert.equal(routes482.some((route) => route.includes("spouse-partner/education")), false);
+  assert.ok(index(routes186, "/intake/temporary-work/spouse-partner/identity?profileId=spouse-1") < index(routes186, "/intake/temporary-work/spouse-partner/education?profileId=spouse-1"));
+  assert.ok(index(routes186, "/intake/temporary-work/spouse-partner/language?profileId=spouse-2") < index(routes186, "/intake/temporary-work/children/child-1/details"));
+  assert.equal(new Set(routes482).size, routes482.length);
+  assert.equal(new Set(routes186).size, routes186.length);
+
+  setProfilesGetter(() => []);
+  setNonMigratingMembersGetter(() => []);
 });
 
 test("186 employment, education and language repeaters resolve copy by their own field path", () => {

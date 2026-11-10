@@ -8,6 +8,7 @@ import { CRM_SYNC_STATES, buildCrmSyncJobRecord } from "./crmSyncJobs.js";
 import { buildQuestionnaireCrmProjection } from "./questionnaireMapping.js";
 import { seedDefinitionCrmMappings } from "./questionnaireCrmSeed.js";
 import { synchronizeQuestionnaireCrm } from "./questionnaireSync.js";
+import { PARTNER_SUBCLASS_CODES } from "../visaDisplay.js";
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
@@ -37,7 +38,7 @@ export function parseCrmSyncRequestBody(body) {
 export function inferQuestionnaireAudience(application = {}, draft = {}) {
   const raw = String(application.visaTypeCode || application.type || application.visaType || "").toLowerCase();
   let visaType = "temporary-work";
-  if (raw.includes("partner") || ["820", "801", "309"].includes(raw)) visaType = "partner";
+  if (raw.includes("partner") || PARTNER_SUBCLASS_CODES.some((subclass) => new RegExp(`\\b${subclass}\\b`).test(raw))) visaType = "partner";
   else if (raw.includes("protection") || raw === "866") visaType = "protection";
   const visaContext = String(draft.visaContext || application.visaContext || "").trim()
     || (raw.includes("186") ? "186" : raw.includes("482") ? "482" : "");

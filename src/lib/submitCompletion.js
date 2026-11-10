@@ -69,7 +69,12 @@ const LEGACY_TEMPORARY_WORK_SECTION_KEYS = {
   },
 };
 
-const EMPLOYED_STATUSES = new Set(["employed", "self-employed"]);
+const EMPLOYED_STATUSES = new Set([
+  "employed",
+  "self-employed",
+  "work experience/internships",
+  "unpaid employment/volunteer",
+]);
 const STRICT_TEMPORARY_WORK_CONTEXTS = new Set(["186", "482"]);
 
 const TEMPORARY_WORK_SECTION_BY_ROUTE = {
@@ -584,6 +589,10 @@ function validateEmploymentSection(section, label, visaContext, addIssue) {
     return;
   }
 
+  if (typeof section?.current_duties === "string" && section.current_duties.length > 300) {
+    addIssue(`${label}: Current employment duties must be 300 characters or fewer`);
+  }
+
   if (
     hasRows(section?.employment_history) &&
     !allRowsHaveFields(
@@ -596,6 +605,15 @@ function validateEmploymentSection(section, label, visaContext, addIssue) {
         }
         if (visaContext === "186" && row?.country === "Australia" && !hasText(row?.visa_held)) {
           return false;
+        }
+        if (typeof row?.duties === "string" && row.duties.length > 300) return false;
+        const endParts = [row?.date_to_day, row?.date_to_month, row?.date_to_year];
+        const filledEndParts = endParts.filter(hasText).length;
+        if (filledEndParts > 0 && filledEndParts < 3) return false;
+        if (filledEndParts === 3) {
+          const from = parseResidenceDate(row.date_from_day, row.date_from_month, row.date_from_year);
+          const to = parseResidenceDate(row.date_to_day, row.date_to_month, row.date_to_year);
+          if (!from || !to || to < from) return false;
         }
         return true;
       }

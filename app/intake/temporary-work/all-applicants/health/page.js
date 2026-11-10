@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { QuestionnaireCopyText } from "@/components/questionnaire/QuestionnaireCopyContext";
 const formSchema = z.object({
   has_health_examinations: z.enum(["yes", "no"]).optional(),
   health_examinations: z.array(z.any()).optional(),
@@ -155,11 +156,11 @@ function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health Examinations</h3>
-      <p className="text-sm text-gray-500 mb-4">
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Health Examinations</QuestionnaireCopyText>
+      <QuestionnaireCopyText as="p" kind="help" className="text-sm text-gray-500 mb-4">
         Enter details of any applicant included in this application who has undertaken a health examination
         for an Australian visa in the past 12 months.
-      </p>
+      </QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -306,10 +307,10 @@ function VisitedOutsideDialog({ editingRow, onSave, onCancel, applicantOptions =
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Visited outside passport country</h3>
-      <p className="text-sm text-gray-500 mb-4">
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Visited outside passport country</QuestionnaireCopyText>
+      <QuestionnaireCopyText as="p" kind="help" className="text-sm text-gray-500 mb-4">
         Enter details of applicants who visited or lived outside their country of passport for more than 3 consecutive months in the last 5 years.
-      </p>
+      </QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -412,7 +413,7 @@ function HospitalDetailsDialog({ editingRow, onSave, onCancel, applicantOptions 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Hospital / health care facility details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Hospital / health care facility details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -475,7 +476,7 @@ function HealthCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions =
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health care work details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Health care work details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -549,7 +550,7 @@ function AgedCareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = [
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Aged care / disability care details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Aged care / disability care details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -621,7 +622,7 @@ function ChildcareWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Child care centre details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Child care centre details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -678,7 +679,7 @@ function ClassroomWorkDialog({ editingRow, onSave, onCancel, applicantOptions = 
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Classroom details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Classroom details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -735,7 +736,7 @@ function TuberculosisDialog({ editingRow, onSave, onCancel, applicantOptions = [
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Tuberculosis details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Tuberculosis details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -794,7 +795,7 @@ function HealthConditionsDialog({ editingRow, onSave, onCancel, applicantOptions
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Health condition details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Health condition details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -866,7 +867,7 @@ function AssistiveTechnologyDialog({ editingRow, onSave, onCancel, applicantOpti
   };
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
-      <h3 className="text-base font-bold text-gray-900 mb-2">Ongoing medical care details</h3>
+      <QuestionnaireCopyText as="h3" className="text-base font-bold text-gray-900 mb-2">Ongoing medical care details</QuestionnaireCopyText>
       <div>
         <Label className="mb-2 block">
           Name <span className="text-red-600">*</span>
@@ -1149,6 +1150,7 @@ export default function Page() {
                     <HealthExamDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="health_examinations"
                   testIdPrefix="health-exam"
                 />
               </div>
@@ -1189,6 +1191,7 @@ export default function Page() {
                     <VisitedOutsideDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="visited_outside_details"
                   testIdPrefix="visited-outside"
                 />
               </div>
@@ -1227,6 +1230,7 @@ export default function Page() {
                     <HospitalDetailsDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="hospital_details"
                   testIdPrefix="hospital"
                 />
               </div>
@@ -1265,6 +1269,7 @@ export default function Page() {
                     <HealthCareWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="healthcare_work_details"
                   testIdPrefix="healthcare-work"
                 />
               </div>
@@ -1302,6 +1307,7 @@ export default function Page() {
                     <AgedCareWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="aged_care_work_details"
                   testIdPrefix="aged-care-work"
                 />
               </div>
@@ -1340,6 +1346,7 @@ export default function Page() {
                     <ChildcareWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="childcare_work_details"
                   testIdPrefix="childcare-work"
                 />
               </div>
@@ -1378,6 +1385,7 @@ export default function Page() {
                     <ClassroomWorkDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="classroom_work_details"
                   testIdPrefix="classroom-work"
                 />
               </div>
@@ -1418,6 +1426,7 @@ export default function Page() {
                     <TuberculosisDialog {...props} applicantOptions={applicantOptions} />
                   )}
                   addButtonText="Add"
+                  fieldName="tuberculosis_details"
                   testIdPrefix="tuberculosis-details"
                 />
               </div>
@@ -1468,6 +1477,7 @@ export default function Page() {
                       <HealthConditionsDialog {...props} applicantOptions={applicantOptions} />
                     )}
                     addButtonText="Add"
+                    fieldName="health_conditions_details"
                     testIdPrefix="health-condition"
                   />
                 </div>
@@ -1506,6 +1516,7 @@ export default function Page() {
                       <AssistiveTechnologyDialog {...props} applicantOptions={applicantOptions} />
                     )}
                     addButtonText="Add"
+                    fieldName="medical_assistance_details"
                     testIdPrefix="medical-assistance"
                   />
                 </div>

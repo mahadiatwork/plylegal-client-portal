@@ -33,10 +33,11 @@ function getFieldDefaults(question) {
 
 export function QuestionRenderer({ answerLayout, form, optionSources, pageQuestions, questions = [], repeaterRegistry = {}, values }) {
   const allPageQuestions = pageQuestions || questions;
-  const groupHeadings = getQuestionnaireGroupHeadingIndexes(questions, values);
+  const displayedQuestions = questions.filter((question) => !question.metadata?.storageOnly);
+  const groupHeadings = getQuestionnaireGroupHeadingIndexes(displayedQuestions, values);
   return (
     <>
-      {questions.map((question, index) => (
+      {displayedQuestions.map((question, index) => (
         <Fragment key={question.id}>
           {groupHeadings.has(index) && (
             <h3 className="border-b border-border pb-2 pt-2 text-lg font-semibold text-foreground">

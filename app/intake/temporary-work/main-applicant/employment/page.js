@@ -417,6 +417,8 @@ export default function EmploymentPage() {
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
   const draft = draftSnap.draft;
+  const translateHistory = useQuestionnaireCopy("labels", "employment_history");
+  const translateHistoryHelp = useQuestionnaireCopy("help", "employment_history");
 
   const profileId = searchParams.get('profileId');
   const visaType = getVisaTypeFromPath(pathname);
@@ -532,7 +534,7 @@ export default function EmploymentPage() {
           <div className="space-y-8">
             {/* Q1: Are you currently Employed in a paid position? */}
             <div>
-              <Label className="text-base font-medium mb-3 block">
+              <Label htmlFor="is_currently_employed" className="text-base font-medium mb-3 block">
                 Are you currently Employed in a paid position?
               </Label>
               <RadioGroup
@@ -585,7 +587,7 @@ export default function EmploymentPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Country</Label>
+                      <Label htmlFor="current_country" className="text-sm font-medium">Country</Label>
                       <Select
                         value={form.watch("current_country")}
                         onValueChange={(value) => form.setValue("current_country", value)}
@@ -601,7 +603,7 @@ export default function EmploymentPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Employment Type</Label>
+                      <Label htmlFor="current_employment_type" className="text-sm font-medium">Employment Type</Label>
                       <Select
                         value={form.watch("current_employment_type")}
                         onValueChange={(value) => form.setValue("current_employment_type", value)}
@@ -619,7 +621,7 @@ export default function EmploymentPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">Date Started</Label>
+                    <Label htmlFor="current_start_date_day" className="text-sm font-medium">Date Started</Label>
                     <div className="grid grid-cols-3 gap-3">
                       <Select
                         value={form.watch("current_start_date_day")}
@@ -664,7 +666,7 @@ export default function EmploymentPage() {
                     <Input
                       id="current_address"
                       {...form.register("current_address")}
-          placeholder={translatePlaceholder("Street, City, State, Postcode")}
+                      placeholder="Street, City, State, Postcode"
                       className="bg-white"
                     />
                   </div>
@@ -689,9 +691,9 @@ export default function EmploymentPage() {
 
           {/* Q2: Employment History */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Employment History (last {draftSnap.visaContext === '186' ? '10' : '5'} years)</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{translateHistory(`Employment History (last ${draftSnap.visaContext === '186' ? '10' : '5'} years)`)}</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Enter details of your employment history for the previous {draftSnap.visaContext === '186' ? '10' : '5'} years
+              {translateHistoryHelp(`Enter details of your employment history for the previous ${draftSnap.visaContext === '186' ? '10' : '5'} years`)}
             </p>
             <RepeaterTable
               data={employmentHistory}
