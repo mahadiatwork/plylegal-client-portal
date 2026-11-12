@@ -533,6 +533,7 @@ export default function Page() {
                 </p>
                 <RepeaterTable
                   data={visaHistory}
+                  fieldName="visa_history"
                   columns={[
                     { key: "visa_country", label: "Country" },
                     { key: "visa_type", label: "Type" },

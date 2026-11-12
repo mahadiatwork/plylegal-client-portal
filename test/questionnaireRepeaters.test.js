@@ -32,11 +32,54 @@ test("row schemas validate storage keys, options, conditions and depth within th
   assert.ok(getQuestionnaireDefinitionIssues(definition([tooDeep])).some((issue) => issue.includes("maximum follow-up depth")));
 });
 
+test("definition validation accepts every option source consumed by the dynamic renderer", () => {
+  const supported = ["applicants", "countries"].map((optionsSource) => ({
+    id: `source-${optionsSource}`,
+    answerKey: `source_${optionsSource}`,
+    type: "select",
+    label: optionsSource,
+    optionsSource,
+  }));
+  assert.deepEqual(getQuestionnaireDefinitionIssues(definition(supported)), []);
+
+  const unsupported = structuredClone(supported[0]);
+  unsupported.id = "source-unknown";
+  unsupported.answerKey = "source_unknown";
+  unsupported.optionsSource = "unknown";
+  assert.ok(getQuestionnaireDefinitionIssues(definition([unsupported])).some((issue) => issue.includes("optionsSource is unsupported")));
+});
+
 test("row validation returns exact nested form paths and honors per-row visibility", () => {
   const issues = getQuestionnairePageValidationIssues(page, { names: [{ name: "Smith", changed: "no" }, { name: "", changed: "yes" }] });
   assert.deepEqual(issues.map((issue) => issue.fieldName), ["names.1.name", "names.1.details"]);
   assert.deepEqual(getQuestionnairePageValidationIssues(page, { names: [{ name: "Smith", changed: "no" }] }), []);
   assert.equal(getQuestionnairePageValidationIssues(page, { names: [] })[0].fieldName, "names");
+});
+
+test("repeater collection rules validate zero rows against page-level answers", () => {
+  const minimum = {
+    ...structuredClone(repeater),
+    required: false,
+    metadata: {
+      ...structuredClone(repeater.metadata),
+      validation: { rules: [{ id: "minimumRows", field: "names", config: { min: 2 } }] },
+    },
+  };
+  assert.deepEqual(
+    getQuestionnairePageValidationIssues({ questions: [minimum] }, { names: [] }).map((issue) => issue.fieldName),
+    ["names"],
+  );
+
+  const conditional = {
+    ...minimum,
+    metadata: {
+      ...minimum.metadata,
+      validation: { rules: [{ id: "minRowsWhenEquals", field: "names", config: { field: "gate", value: "yes", min: 1 } }] },
+    },
+  };
+  const conditionalPage = { questions: [{ id: "gate", answerKey: "gate", type: "yesNo", label: "Gate" }, conditional] };
+  assert.deepEqual(getQuestionnairePageValidationIssues(conditionalPage, { gate: "no", names: [] }), []);
+  assert.equal(getQuestionnairePageValidationIssues(conditionalPage, { gate: "yes", names: [] })[0].fieldName, "names");
 });
 
 test("sanitization clears hidden row answers without losing existing row IDs or unknown stored properties", () => {

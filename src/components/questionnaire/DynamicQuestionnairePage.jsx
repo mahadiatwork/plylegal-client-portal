@@ -62,9 +62,9 @@ function getDefaultValues(questions = []) {
   }, {});
 }
 
-function validateVisibleRequiredQuestions({ form, page, values }) {
+function validateVisibleRequiredQuestions({ form, page, values, draft }) {
   form.clearErrors();
-  const issues = getQuestionnairePageValidationIssues(page, values);
+  const issues = getQuestionnairePageValidationIssues(page, values, { draft });
   issues.forEach(({ fieldName, message }) => {
     form.setError(fieldName, { type: "required", message });
   });
@@ -235,8 +235,11 @@ export function DynamicQuestionnairePage({
   }, [definitionId, draftSnap.visaContext, internalRoute, providedPageDefinition, visaType]);
 
   const presentationPageDefinition = useMemo(
-    () => resolveQuestionnairePagePresentation(pageDefinition, draftSnap.draft),
-    [draftSnap.draft, pageDefinition]
+    () => resolveQuestionnairePagePresentation(pageDefinition, draftSnap.draft, {
+      profileId: resolvedProfileId,
+      memberId: nonMigratingMemberId,
+    }),
+    [draftSnap.draft, nonMigratingMemberId, pageDefinition, resolvedProfileId]
   );
 
   const defaultValues = useMemo(
@@ -349,7 +352,7 @@ export function DynamicQuestionnairePage({
   const handleSubmit = async (data) => {
     const sanitizedData = sanitizeQuestionnairePageValues(presentationPageDefinition, data);
     form.reset(sanitizedData);
-    if (!validateVisibleRequiredQuestions({ form, page: presentationPageDefinition, values: sanitizedData })) return;
+    if (!validateVisibleRequiredQuestions({ form, page: presentationPageDefinition, values: sanitizedData, draft: draftSnap.draft })) return;
 
     setIsSaving(true);
     try {
@@ -415,7 +418,7 @@ export function DynamicQuestionnairePage({
           const fullCompletionKey = completionProfileId
             ? `${completionKey}__${completionProfileId}`
             : completionKey;
-          if (getQuestionnairePageValidationIssues(presentationPageDefinition, values).length) {
+          if (getQuestionnairePageValidationIssues(presentationPageDefinition, values, { draft: draftSnap.draft }).length) {
             completionResult = await draftStore.markDynamicQuestionnairePageIncomplete(
               completionKey,
               completionProfileId

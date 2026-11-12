@@ -226,6 +226,7 @@ export function PassportDocumentsSection({ hasPassport, passports = [], onHasPas
           <p className="text-sm text-gray-600 mb-4">Enter details of all current passports.</p>
           <RepeaterTable
             data={passports}
+            fieldName="passports"
             columns={[
               { key: "document_number", label: "Passport/Document Number" },
               { key: "name", label: "Name" },

@@ -132,6 +132,7 @@ function migrateLegacyIdentity(savedData) {
 
   if (savedData?.has_national_id === "yes" || savedData?.has_national_id === "no") {
     return {
+      ...savedData,
       has_passport: savedData.has_passport || "no",
       passports: savedData.passports || [],
       has_national_id: savedData.has_national_id,
@@ -143,6 +144,7 @@ function migrateLegacyIdentity(savedData) {
   const legacyDocs = savedData?.identity_documents;
   if (!legacyDocs?.length) {
     return {
+      ...(savedData || {}),
       has_passport: savedData?.has_passport || "no",
       passports: savedData?.passports || [],
       has_national_id: "no",
@@ -166,6 +168,7 @@ function migrateLegacyIdentity(savedData) {
     const { family, given } = splitName(nationalRow.name);
     national_id_card = {
       ...emptyNational,
+      ...nationalRow,
       family_name: family,
       given_names: given,
       identification_number: nationalRow.identification_number || "",
@@ -182,6 +185,7 @@ function migrateLegacyIdentity(savedData) {
   const other_identity_documents = otherRows.map((d) => {
     const { family, given } = splitName(d.name);
     return {
+      ...d,
       family_name: family || "—",
       given_names: given || "—",
       document_type: mapLegacyDocumentTypeToSimplified(d.document_type),
@@ -191,11 +195,23 @@ function migrateLegacyIdentity(savedData) {
   });
 
   return {
+    ...savedData,
     has_passport: savedData.has_passport || "no",
     passports: savedData.passports || [],
     has_national_id: nationalRow ? "yes" : "no",
     national_id_card,
     other_identity_documents,
+  };
+}
+
+function mergeIdentityForSave(existing, values) {
+  return {
+    ...(existing || {}),
+    ...values,
+    national_id_card: {
+      ...(existing?.national_id_card || {}),
+      ...(values?.national_id_card || {}),
+    },
   };
 }
 
@@ -705,9 +721,13 @@ export default function IdentityPage() {
     setIsSaving(true);
     try {
       const data = form.getValues();
+      const existingIdentity = profileId
+        ? draftSnap.draft?.profiles_data?.[profileId]?.identity
+        : draftSnap.draft?.temporary_work_spouse_identity;
+      const payload = mergeIdentityForSave(existingIdentity, data);
       const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_spouse_identity", data);
+        ? await draftStore.saveProfileSectionData(profileId, "identity", payload)
+        : await draftStore.saveSectionData("temporary_work_spouse_identity", payload);
 
       if (result.success) {
         toast({
@@ -729,9 +749,13 @@ export default function IdentityPage() {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
+      const existingIdentity = profileId
+        ? draftSnap.draft?.profiles_data?.[profileId]?.identity
+        : draftSnap.draft?.temporary_work_spouse_identity;
+      const payload = mergeIdentityForSave(existingIdentity, data);
       const result = profileId
-        ? await draftStore.saveProfileSectionData(profileId, "identity", data)
-        : await draftStore.saveSectionData("temporary_work_spouse_identity", data);
+        ? await draftStore.saveProfileSectionData(profileId, "identity", payload)
+        : await draftStore.saveSectionData("temporary_work_spouse_identity", payload);
 
       if (result.success) {
         const completionResult = profileId
@@ -811,6 +835,7 @@ export default function IdentityPage() {
                 </p>
                 <RepeaterTable
                   data={passports}
+                  fieldName="passports"
                   columns={[
                     { key: "document_number", label: "Passport/Document Number" },
                     { key: "name", label: "Name" },
@@ -986,6 +1011,7 @@ export default function IdentityPage() {
             </p>
             <RepeaterTable
               data={otherIdentityDocuments}
+              fieldName="other_identity_documents"
               columns={[
                 { key: "document_type", label: "Type" },
                 { key: "family_name", label: "Family name" },

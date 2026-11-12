@@ -22,6 +22,13 @@ import {
   isQuestionnaireCompletionStampCurrent,
 } from "./questionnaires/answers.js";
 import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
+import {
+  getHistoryDate as parseResidenceDate,
+  getResidenceApplicants,
+  getResidenceCoverageIssues,
+} from "./historyCoverage.js";
+
+export { getResidenceCoverageIssues } from "./historyCoverage.js";
 
 function getProfileDisplayName(profile) {
   const rawName = `${profile?.given_names || ""} ${profile?.family_name || ""}`.trim();
@@ -89,23 +96,6 @@ const TEMPORARY_WORK_SECTION_BY_ROUTE = {
   language: "language",
   custody: "custody",
 };
-
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function hasText(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
@@ -241,172 +231,6 @@ function collectValidationIssues(runValidation) {
   const issueSet = new Set();
   const addIssue = (label) => addValidationIssue(issues, issueSet, label);
   runValidation(addIssue);
-  return issues;
-}
-
-function todayOnly() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function addYears(date, years) {
-  const next = new Date(date);
-  next.setFullYear(next.getFullYear() + years);
-  return next;
-}
-
-function formatCoverageDate(date) {
-  return `${String(date.getDate()).padStart(2, "0")} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function monthIndex(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return -1;
-  if (/^\d+$/.test(raw)) {
-    const month = Number.parseInt(raw, 10);
-    return month >= 1 && month <= 12 ? month - 1 : -1;
-  }
-  return MONTH_NAMES.findIndex((month) => month.toLowerCase() === raw.toLowerCase());
-}
-
-function parseResidenceDate(day, month, year) {
-  const parsedDay = Number.parseInt(String(day || ""), 10);
-  const parsedYear = Number.parseInt(String(year || ""), 10);
-  const parsedMonth = monthIndex(month);
-  if (!parsedDay || parsedMonth < 0 || !parsedYear) return null;
-
-  const date = new Date(parsedYear, parsedMonth, parsedDay);
-  if (
-    date.getFullYear() !== parsedYear ||
-    date.getMonth() !== parsedMonth ||
-    date.getDate() !== parsedDay
-  ) {
-    return null;
-  }
-  return date;
-}
-
-function rowBelongsToApplicant(row, applicant) {
-  const saved = String(row?.applicant_name || "").trim();
-  if (!saved) return false;
-  return [applicant.value, applicant.label, applicant.id].filter(Boolean).some((token) => saved === token);
-}
-
-function applicantCoverageStart(applicant, today) {
-  const tenYearsAgo = new Date(today);
-  tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
-
-  const dob = parseResidenceDate(applicant.birth_day, applicant.birth_month, applicant.birth_year);
-  if (!dob) return tenYearsAgo;
-
-  const sixteenthBirthday = addYears(dob, 16);
-  return sixteenthBirthday > tenYearsAgo ? sixteenthBirthday : tenYearsAgo;
-}
-
-function parseResidenceInterval(row, today) {
-  const start = parseResidenceDate(row.date_from_day, row.date_from_month, row.date_from_year);
-  if (!start) return { error: "Date From is incomplete or invalid." };
-
-  const toValues = [row.date_to_day, row.date_to_month, row.date_to_year].map((value) => String(value || "").trim());
-  const filledToValues = toValues.filter(Boolean).length;
-  let end = today;
-
-  if (filledToValues > 0 && filledToValues < 3) {
-    return { error: "Date To is incomplete." };
-  }
-
-  if (filledToValues === 3) {
-    end = parseResidenceDate(row.date_to_day, row.date_to_month, row.date_to_year);
-    if (!end) return { error: "Date To is invalid." };
-  }
-
-  if (end < start) {
-    return { error: "Date To cannot be before Date From." };
-  }
-
-  return { start, end };
-}
-
-function getResidenceApplicants(draft) {
-  return (draft?.profiles || []).map((profile) => {
-    const fullName = [profile?.given_names, profile?.family_name].filter(Boolean).join(" ").trim();
-    const label = fullName || "Unnamed";
-    return {
-      label,
-      value: label,
-      id: profile?.id,
-      birth_day: profile?.birth_day || "",
-      birth_month: profile?.birth_month || "",
-      birth_year: profile?.birth_year || "",
-    };
-  });
-}
-
-export function getResidenceCoverageIssues(records, applicants) {
-  if (!Array.isArray(applicants) || applicants.length === 0) return [];
-
-  const today = todayOnly();
-  const issues = [];
-
-  applicants.forEach((applicant) => {
-    const requiredStart = applicantCoverageStart(applicant, today);
-    if (requiredStart > today) return;
-
-    const intervals = [];
-    const applicantRows = (records || []).filter((row) => rowBelongsToApplicant(row, applicant));
-
-    applicantRows.forEach((row) => {
-      const parsed = parseResidenceInterval(row, today);
-      if (parsed.error) {
-        issues.push(`${applicant.label}: ${parsed.error}`);
-        return;
-      }
-      if (parsed.end < requiredStart || parsed.start > today) return;
-      intervals.push({
-        start: parsed.start < requiredStart ? requiredStart : parsed.start,
-        end: parsed.end > today ? today : parsed.end,
-      });
-    });
-
-    if (!intervals.length) {
-      issues.push(`${applicant.label}: add residence records from ${formatCoverageDate(requiredStart)} to today.`);
-      return;
-    }
-
-    intervals.sort((a, b) => a.start.getTime() - b.start.getTime());
-    let coveredEnd = null;
-
-    intervals.forEach((interval) => {
-      if (!coveredEnd) {
-        if (interval.start > requiredStart) {
-          issues.push(`${applicant.label}: coverage must start by ${formatCoverageDate(requiredStart)}.`);
-        }
-        coveredEnd = interval.end;
-        return;
-      }
-
-      if (interval.start.getTime() > coveredEnd.getTime() + MS_PER_DAY) {
-        issues.push(
-          `${applicant.label}: gap between ${formatCoverageDate(addDays(coveredEnd, 1))} and ${formatCoverageDate(addDays(interval.start, -1))}.`
-        );
-      }
-
-      if (interval.end > coveredEnd) {
-        coveredEnd = interval.end;
-      }
-    });
-
-    if (coveredEnd && coveredEnd < today) {
-      issues.push(`${applicant.label}: coverage must continue through today.`);
-    }
-  });
-
   return issues;
 }
 
@@ -927,6 +751,7 @@ function getTemporaryWorkValidationPageKeys(draft, visaContext) {
   });
 
   pageKeys.push("temporary-work/all-applicants/countries-of-residence");
+  pageKeys.push("temporary-work/all-applicants/travel-history");
 
   return pageKeys;
 }
@@ -991,7 +816,10 @@ export function getIncompleteChecklist({
 
   const dynamicPageIsComplete = (key, page) => {
     if (completion[key] !== true) return false;
-    if (!isQuestionnaireCompletionStampCurrent(dynamicStamps[key], questionnaireDefinition, page)) {
+    const stamp = dynamicStamps[key];
+    const isBundledTemporaryWorkCharacter = !stamp
+      && String(page.route || "").split("?")[0] === "/intake/temporary-work/all-applicants/character";
+    if (!isBundledTemporaryWorkCharacter && !isQuestionnaireCompletionStampCurrent(stamp, questionnaireDefinition, page)) {
       return false;
     }
     const separatorIndex = key.indexOf("__");
@@ -999,7 +827,7 @@ export function getIncompleteChecklist({
     const values = page.metadata?.profileRole === "non_migrating"
       ? getQuestionnairePageSavedValues(draft, page, null, profileId)
       : getQuestionnairePageSavedValues(draft, page, profileId);
-    return getQuestionnairePageValidationIssues(page, values).length === 0;
+    return getQuestionnairePageValidationIssues(page, values, { draft }).length === 0;
   };
 
   const addIncomplete = (key, label) => {

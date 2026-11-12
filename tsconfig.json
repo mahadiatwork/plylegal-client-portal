@@ -55,7 +55,9 @@
     ".next-e2e/types/**/*.ts",
     ".next-e2e/dev/types/**/*.ts",
     ".next-color-check/types/**/*.ts",
-    ".next-color-check/dev/types/**/*.ts"
+    ".next-color-check/dev/types/**/*.ts",
+    ".next-verify/types/**/*.ts",
+    ".next-verify/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

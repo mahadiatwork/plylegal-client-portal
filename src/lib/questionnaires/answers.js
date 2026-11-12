@@ -1,5 +1,10 @@
 import { evaluateVisibleIf } from "./validation.js";
-import { getContinuousHistoryIssues, getYearsAgoDate } from "../protectionHistoryCoverage.js";
+import {
+  getContinuousHistoryIssues,
+  getResidenceApplicants,
+  getResidenceCoverageIssues,
+  getYearsAgoDate,
+} from "../historyCoverage.js";
 import {
   SPONSOR_CHARACTER_KEYS,
   normalizeSponsorCharacter,
@@ -147,8 +152,13 @@ function appendRuleIssue(issues, question, prefix, fieldName, message) {
   });
 }
 
-function appendQuestionnaireRuleIssues(question, source, prefix, issues) {
-  validationRules(question).forEach((rule) => {
+const COLLECTION_VALIDATION_RULES = new Set(["minimumRows", "minRowsWhenEquals"]);
+
+function appendQuestionnaireRuleIssues(question, source, prefix, issues, scope = "all") {
+  validationRules(question).filter((rule) =>
+    scope === "all"
+      || (scope === "collection" ? COLLECTION_VALIDATION_RULES.has(rule.id) : !COLLECTION_VALIDATION_RULES.has(rule.id))
+  ).forEach((rule) => {
     const field = rule.field || question.answerKey;
     const value = source?.[field];
     const message = rule.config?.message;
@@ -176,7 +186,7 @@ function appendQuestionnaireRuleIssues(question, source, prefix, issues) {
       }
     } else if (rule.id === "dateToNotBeforeDateFrom") {
       const to = dateFromParts(datePartsFor(source, field));
-      const from = dateFromParts(datePartsFor(source, "date_from_day"));
+      const from = dateFromParts(datePartsFor(source, rule.config?.fromField || "date_from_day"));
       if (to && from && to < from) {
         appendRuleIssue(issues, question, prefix, field, message || "Date to cannot be before date from");
       }
@@ -193,7 +203,7 @@ function appendQuestionnaireRuleIssues(question, source, prefix, issues) {
   });
 }
 
-export function getQuestionnairePageValidationIssues(page, values = {}) {
+export function getQuestionnairePageValidationIssues(page, values = {}, context = {}) {
   const issues = [];
 
   function validateQuestions(questions = [], ancestorsVisible = true, source = values, prefix = "") {
@@ -228,9 +238,13 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
             });
           }
         }
-        if (question.type !== "repeater") {
-          appendQuestionnaireRuleIssues(question, source, prefix, issues);
-        }
+        appendQuestionnaireRuleIssues(
+          question,
+          source,
+          prefix,
+          issues,
+          question.type === "repeater" ? "collection" : "all",
+        );
         if (question.type === "repeater" && Array.isArray(question.metadata?.fields)) {
           const value = source[question.answerKey];
           const rowPrefix = `${prefix}${question.answerKey}.`;
@@ -246,7 +260,7 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
             if (value != null && (typeof value !== "object" || Array.isArray(value))) {
               issues.push({ fieldName: `${prefix}${question.answerKey}`, message: "Enter valid details", questionId: question.id });
             } else {
-              appendQuestionnaireRuleIssues(question, value || {}, rowPrefix, issues);
+              appendQuestionnaireRuleIssues(question, value || {}, rowPrefix, issues, "row");
               validateQuestions(question.metadata.fields, visible, value || {}, rowPrefix);
             }
           } else if (value != null && !Array.isArray(value)) {
@@ -256,7 +270,7 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
               if (!row || typeof row !== "object" || Array.isArray(row)) {
                 issues.push({ fieldName: `${rowPrefix}${index}`, message: "Enter valid details", questionId: question.id });
               } else {
-                appendQuestionnaireRuleIssues(question, row, `${rowPrefix}${index}.`, issues);
+                appendQuestionnaireRuleIssues(question, row, `${rowPrefix}${index}.`, issues, "row");
                 validateQuestions(question.metadata.fields, visible, row, `${rowPrefix}${index}.`);
               }
             });
@@ -268,6 +282,21 @@ export function getQuestionnairePageValidationIssues(page, values = {}) {
   }
 
   validateQuestions(page?.questions || []);
+
+  function appendResidenceCoverageRules(questions = []) {
+    questions.forEach((question) => {
+      validationRules(question).filter((rule) => rule.id === "residenceHistoryCoverage").forEach((rule) => {
+        const fieldName = rule.field || question.answerKey;
+        getResidenceCoverageIssues(
+          Array.isArray(values[fieldName]) ? values[fieldName] : [],
+          getResidenceApplicants(context.draft),
+        ).forEach((message) => issues.push({ fieldName, message, questionId: question.id }));
+      });
+      appendResidenceCoverageRules(question.followUps || []);
+      appendResidenceCoverageRules(question.metadata?.fields || []);
+    });
+  }
+  appendResidenceCoverageRules(page?.questions || []);
 
   if (page?.metadata?.answerLayout === "applicantLanguages") {
     const applicants = Array.isArray(values.applicants) ? values.applicants : [];
@@ -419,22 +448,77 @@ export function getQuestionnaireCompletionKey(page) {
   return page?.completionKey || String(page?.route || "").replace(/^\/intake\//, "");
 }
 
+function questionnaireBehaviorValidation(value) {
+  if (Array.isArray(value)) return value.map(questionnaireBehaviorValidation);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !/(?:label|description|message|title)$/i.test(key))
+    .map(([key, entry]) => [key, questionnaireBehaviorValidation(entry)]));
+}
+
+function questionnaireBehaviorQuestion(question) {
+  return {
+    id: question?.id || "",
+    answerKey: question?.answerKey || "",
+    type: question?.type || "",
+    required: question?.required === true,
+    ...(Object.prototype.hasOwnProperty.call(question || {}, "defaultValue") ? { defaultValue: question.defaultValue } : {}),
+    ...(Array.isArray(question?.options) ? { optionValues: question.options.map((option) => option?.value) } : {}),
+    ...(question?.optionsSource ? { optionsSource: question.optionsSource } : {}),
+    ...(question?.parts ? { parts: question.parts } : {}),
+    ...(question?.visibleIf ? { visibleIf: question.visibleIf } : {}),
+    ...(question?.clearWhenHidden ? { clearWhenHidden: true } : {}),
+    ...(question?.validation ? { validation: questionnaireBehaviorValidation(question.validation) } : {}),
+    ...(question?.metadata?.storageOnly ? { storageOnly: true } : {}),
+    ...(question?.metadata?.collection ? { collection: question.metadata.collection } : {}),
+    ...(question?.metadata?.validation?.rules ? { rules: questionnaireBehaviorValidation(question.metadata.validation.rules) } : {}),
+    ...(Array.isArray(question?.metadata?.fields)
+      ? { fields: question.metadata.fields.map(questionnaireBehaviorQuestion) }
+      : {}),
+    ...(Array.isArray(question?.followUps)
+      ? { followUps: question.followUps.map(questionnaireBehaviorQuestion) }
+      : {}),
+  };
+}
+
+function questionnaireBehaviorHash(page) {
+  const contract = JSON.stringify({
+    id: page?.id || "",
+    route: page?.route || "",
+    sectionKey: page?.sectionKey || "",
+    completionKey: getQuestionnaireCompletionKey(page),
+    scope: page?.scope || "",
+    storagePath: page?.metadata?.storagePath || "",
+    profileSection: page?.metadata?.profileSection || "",
+    profileRole: page?.metadata?.profileRole || "",
+    answerLayout: page?.metadata?.answerLayout || "",
+    validator: page?.metadata?.validator || "",
+    questions: (page?.questions || []).map(questionnaireBehaviorQuestion),
+  });
+  let hash = 2166136261;
+  for (let index = 0; index < contract.length; index += 1) {
+    hash ^= contract.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `v1-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
 export function getQuestionnaireCompletionStamp(definition, page) {
   return {
     definitionId: definition?.id || "",
     pageId: page?.id || "",
     revision: Number.isInteger(definition?.revision) ? definition.revision : 0,
+    behaviorVersion: questionnaireBehaviorHash(page),
   };
 }
 
 export function isQuestionnaireCompletionStampCurrent(stamp, definition, page) {
   if (!stamp || typeof stamp !== "object") return false;
   const expected = getQuestionnaireCompletionStamp(definition, page);
-  return (
-    stamp.definitionId === expected.definitionId &&
-    stamp.pageId === expected.pageId &&
-    stamp.revision === expected.revision
-  );
+  if (stamp.definitionId !== expected.definitionId || stamp.pageId !== expected.pageId) return false;
+  return typeof stamp.behaviorVersion === "string"
+    ? stamp.behaviorVersion === expected.behaviorVersion
+    : stamp.revision === expected.revision;
 }
 
 function getOwnNestedValue(value, path) {
@@ -783,18 +867,27 @@ export function getQuestionnairePageStorageValues(page, values = {}, draft = {})
   if (answerLayout !== "applicantLanguages") return values;
 
   const applicants = Array.isArray(values.applicants) ? values.applicants : [];
-  return Object.fromEntries(applicants
+  const storagePath = page?.metadata?.storagePath || page?.sectionKey;
+  const existingValue = getLegacyStorageValue(draft, storagePath);
+  const existing = existingValue && typeof existingValue === "object" && !Array.isArray(existingValue)
+    ? existingValue
+    : {};
+  return {
+    ...existing,
+    ...Object.fromEntries(applicants
     .filter((applicant) => applicant?.id)
     .map((applicant) => [
       String(applicant.id),
       (Array.isArray(applicant.languages) ? applicant.languages : []).map((language, index) => ({
+        ...(language && typeof language === "object" && !Array.isArray(language) ? language : {}),
         language: String(language?.language || ""),
         speak: Boolean(language?.speak),
         read: Boolean(language?.read),
         write: Boolean(language?.write),
         preference_order: index + 1,
       })),
-    ]));
+    ])),
+  };
 }
 
 function getNonMigratingPageSuffix(page) {
@@ -862,6 +955,7 @@ export function getQuestionnaireNonMigratingMemberUpdates(page, values = {}, mem
           dob_year: values.dob_year,
         },
         place_of_birth: {
+          ...(member.place_of_birth || {}),
           town_city: values.place_of_birth_town,
           state_province: values.place_of_birth_state,
           country: values.place_of_birth_country,
@@ -890,6 +984,7 @@ export function getQuestionnaireNonMigratingMemberUpdates(page, values = {}, mem
     case "citizenship":
       return {
         citizenship: {
+          ...(member.citizenship || {}),
           has_other: values.citizenship_has_other,
           countries: values.citizenship_has_other === "yes"
             ? String(values.citizenship_countries || "").split(",").map((country) => country.trim()).filter(Boolean)

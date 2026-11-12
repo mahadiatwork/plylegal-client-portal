@@ -643,6 +643,7 @@ export default function PreviousRelationshipsPage() {
                   </p>
                   <RepeaterTable
                     data={applicantRelationshipsList}
+                    fieldName="applicant_previous_relationships_list"
                     columns={applicantColumns}
                     onAdd={(row) => updateApplicantRelationships([...applicantRelationshipsList, row])}
                     onEdit={(index, row) => {
@@ -686,6 +687,7 @@ export default function PreviousRelationshipsPage() {
                   </p>
                   <RepeaterTable
                     data={spouseRelationshipsList}
+                    fieldName="spouse_previous_relationships_list"
                     columns={applicantColumns}
                     onAdd={(row) => updateSpouseRelationships([...spouseRelationshipsList, row])}
                     onEdit={(index, row) => {

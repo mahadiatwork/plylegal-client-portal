@@ -102,3 +102,22 @@ test("spouse requirements hide unavailable questions and use a clear unnamed fal
     { exists: true, name: "Current Partner" },
   );
 });
+
+test("page title templates interpolate profile and non-migrating names without overriding edited copy", () => {
+  const draft = {
+    profiles: [{ id: "child-1", relationship: "child" }],
+    profiles_data: { "child-1": { details: { given_names: "Casey", family_name: "Child" } } },
+    non_migrating_members: [{ id: "member-1", passport: { given_names: "Morgan", family_name: "Parent" } }],
+  };
+  const page = {
+    title: "Details",
+    metadata: { originalTitle: "Details", titleTemplate: "Details — {profileName}" },
+    questions: [],
+  };
+  assert.equal(resolveQuestionnairePagePresentation(page, draft, { profileId: "child-1" }).title, "Details — Casey Child");
+  assert.equal(resolveQuestionnairePagePresentation(page, draft, { memberId: "member-1" }).title, "Details — Morgan Parent");
+
+  const edited = { ...page, title: "Tell us about this applicant" };
+  assert.equal(resolveQuestionnairePagePresentation(edited, draft, { profileId: "child-1" }).title, edited.title);
+  assert.equal(page.title, "Details", "the published definition is not mutated");
+});

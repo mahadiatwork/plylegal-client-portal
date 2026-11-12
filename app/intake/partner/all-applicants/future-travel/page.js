@@ -356,6 +356,7 @@ export default function FutureTravelPage() {
               </p>
               <RepeaterTable
                 data={futureTravel}
+                fieldName="future_travel"
                 columns={futureTravelColumns}
                 onAdd={(row) => updateFutureTravel([...futureTravel, row])}
                 onEdit={(index, row) => {

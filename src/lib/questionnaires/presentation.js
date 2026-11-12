@@ -33,6 +33,43 @@ function displayName(profile, details = {}) {
   ].filter(Boolean).join(" ").trim();
 }
 
+function profilePresentation(draft, context = {}) {
+  const profiles = Array.isArray(draft?.profiles) ? draft.profiles : [];
+  const profile = context.profileId
+    ? profiles.find((candidate) => String(candidate.id) === String(context.profileId))
+    : null;
+  if (profile) {
+    return displayName(profile, draft?.profiles_data?.[String(profile.id)]?.details || "")
+      || (isSpouseProfile(profile) ? "Spouse/Partner" : profile.relationship === "child" ? "Child" : "Main Applicant");
+  }
+  if (context.memberId) {
+    const member = (draft?.non_migrating_members || []).find((candidate) => String(candidate.id) === String(context.memberId));
+    return [member?.passport?.given_names, member?.passport?.family_name].filter(Boolean).join(" ").trim()
+      || "Non-Migrating Member";
+  }
+  const main = profiles.find((candidate) => candidate?.relationship === "main_applicant") || profiles[0];
+  return displayName(main, draft?.profiles_data?.[String(main?.id)]?.details || "") || "Main Applicant";
+}
+
+function resolvePageTitle(page, draft, context) {
+  const template = page.title === page.metadata?.originalTitle
+    ? page.metadata?.titleTemplate
+    : page.title;
+  if (!template || !template.includes("{")) return page.title;
+  const mainApplicantName = profilePresentation(draft, {});
+  const spouseName = getQuestionnaireSpousePresentation(draft).name;
+  const replacements = {
+    profileName: profilePresentation(draft, context),
+    mainApplicantName,
+    spouseName,
+    sponsorName: draft?.partner_sponsor_details?.given_names || "Sponsor",
+  };
+  return Object.entries(replacements).reduce(
+    (title, [token, value]) => title.replaceAll(`{${token}}`, value),
+    template,
+  );
+}
+
 export function getQuestionnaireSpousePresentation(draft = {}) {
   const spouse = (Array.isArray(draft?.profiles) ? draft.profiles : []).find(isSpouseProfile);
   if (spouse) {
@@ -96,10 +133,11 @@ function resolveQuestions(questions, spouse) {
 }
 
 /** Apply display-only built-in metadata without changing storage identifiers. */
-export function resolveQuestionnairePagePresentation(page, draft = {}) {
+export function resolveQuestionnairePagePresentation(page, draft = {}, context = {}) {
   if (!page) return page;
   const questions = resolveQuestions(page.questions || [], getQuestionnaireSpousePresentation(draft));
-  return questions === page.questions ? page : { ...page, questions };
+  const title = resolvePageTitle(page, draft, context);
+  return questions === page.questions && title === page.title ? page : { ...page, title, questions };
 }
 
 /** Return one heading position for each consecutive visible group. */

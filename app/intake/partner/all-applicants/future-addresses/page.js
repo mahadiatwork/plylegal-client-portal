@@ -184,6 +184,7 @@ function FutureAddressDialog({ editingRow, onSave, onCancel }) {
     }
 
     onSave({
+      ...(editingRow || {}),
       ...data,
       address_display: addressDisplay,
     });
@@ -631,6 +632,7 @@ export default function FutureAddressesPage() {
               </p>
               <RepeaterTable
                 data={futureAddresses}
+                fieldName="future_addresses"
                 columns={futureAddressColumns}
                 onAdd={(row) => updateFutureAddresses([...futureAddresses, row])}
                 onEdit={(index, row) => {

@@ -10,6 +10,8 @@ import {
 } from "../src/lib/allApplicantsParity.js";
 import { COUNTRIES } from "../src/reuseable/countries.js";
 import { temporaryWork482Definition } from "../src/lib/questionnaires/temporaryWork482.definition.js";
+import { getResidenceCoverageIssues } from "../src/lib/historyCoverage.js";
+import { getQuestionnairePageValidationIssues } from "../src/lib/questionnaires/answers.js";
 
 test("editing a legacy travel reason keeps its saved value and the approved choices", () => {
   const approved = [...COMMON_TRAVEL_REASONS];
@@ -77,4 +79,33 @@ test("common character wording retains target answer keys and question metadata"
   assert.match(labels.overstayed_visa, /visa or entry permit/);
   assert.match(labels.excluded_from_country, /excluded from or asked to leave/);
   assert.doesNotMatch(labels.deported_removed, /excluded/);
+});
+
+test("promoted residence coverage executes the same existing rule as the legacy submit path", () => {
+  const draft = {
+    profiles: [{ id: "main", given_names: "Mina", family_name: "Lee", birth_day: "1", birth_month: "January", birth_year: "1980" }],
+  };
+  const page = {
+    questions: [{
+      id: "residence-records",
+      answerKey: "residence_records",
+      type: "repeater",
+      label: "Residence records",
+      metadata: {
+        fields: [],
+        validation: { rules: [{ id: "residenceHistoryCoverage", field: "residence_records", config: { years: 10, minimumAge: 16 } }] },
+      },
+    }],
+  };
+  const legacyIssues = getResidenceCoverageIssues([], [{
+    id: "main",
+    label: "Mina Lee",
+    value: "Mina Lee",
+    birth_day: "1",
+    birth_month: "January",
+    birth_year: "1980",
+  }]);
+  const dynamicIssues = getQuestionnairePageValidationIssues(page, { residence_records: [] }, { draft })
+    .map((issue) => issue.message);
+  assert.deepEqual(dynamicIssues, legacyIssues);
 });

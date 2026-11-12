@@ -274,9 +274,11 @@ export default function Page() {
     try {
       let result;
       if (profileId) {
-        result = await draftStore.saveProfileSectionData(profileId, "details", data);
+        const payload = { ...(draftSnap.draft?.profiles_data?.[profileId]?.details || {}), ...data };
+        result = await draftStore.saveProfileSectionData(profileId, "details", payload);
       } else {
-        result = await draftStore.saveSectionData(detailsSectionKey, data);
+        const payload = { ...(draftSnap.draft?.[detailsSectionKey] || {}), ...data };
+        result = await draftStore.saveSectionData(detailsSectionKey, payload);
       }
 
       if (result.success) {
@@ -318,10 +320,12 @@ export default function Page() {
       const values = form.getValues();
       let result;
       if (profileId) {
-        result = await draftStore.saveProfileSectionData(profileId, "details", values);
+        const payload = { ...(draftSnap.draft?.profiles_data?.[profileId]?.details || {}), ...values };
+        result = await draftStore.saveProfileSectionData(profileId, "details", payload);
         await draftStore.markProfilePageComplete(profileId, `${visaType}/main-applicant/details`);
       } else {
-        result = await draftStore.saveSectionData(detailsSectionKey, values);
+        const payload = { ...(draftSnap.draft?.[detailsSectionKey] || {}), ...values };
+        result = await draftStore.saveSectionData(detailsSectionKey, payload);
         await draftStore.markPageComplete(`${visaType}/main-applicant/details`, null, detailsSectionKey);
       }
       if (result.success) {
@@ -651,6 +655,7 @@ export default function Page() {
                 </p>
                 <RepeaterTable
                   data={citizenshipsList}
+                  fieldName="citizenships"
                   columns={[
                     { key: "country", label: "Country" },
                     { key: "how_obtained", label: "How was this Citizenship obtained?" },

@@ -657,11 +657,6 @@ export function getNextRoute(currentHref, visaType, applicationId = null, visaCo
     }
     return null;
   }
-  // Remove direct navigation from partner/children and protection/children to their subpages since they are dynamic now
-  if (visaType === "partner" && internalCurrentHref.startsWith("/intake/partner/children")) {
-    // If it's the old static children page, skip to next. But we are deleting it anyway.
-  }
-
   let searchHref = internalCurrentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {
@@ -712,10 +707,6 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
     }
     return null;
   }
-  if (visaType === "partner" && internalCurrentHref.startsWith("/intake/partner/children")) {
-    // Old static children page
-  }
-
   let searchHref = internalCurrentHref;
   let currentProfileId = null;
   if (typeof window !== 'undefined') {

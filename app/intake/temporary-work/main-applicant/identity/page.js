@@ -339,6 +339,7 @@ export default function MainApplicantIdentityPage() {
             <p className="text-sm text-gray-600 mb-2">Enter details of other identity documents you hold.</p>
             <RepeaterTable
               data={values.other_identity_documents || []}
+              fieldName="other_identity_documents"
               columns={[
                 { key: "document_type", label: "Type" },
                 { key: "family_name", label: "Family name" },
@@ -385,6 +386,7 @@ export default function MainApplicantIdentityPage() {
               {(values.citizen_of_country === "yes" || (values.citizen_of_country === "no" && values.ever_been_citizen === "yes")) && (
                 <RepeaterTable
                   data={values.citizenships || []}
+                  fieldName="citizenships"
                   columns={[
                     { key: "country", label: "Country" },
                     { key: "how_obtained", label: "How obtained" },
@@ -408,6 +410,7 @@ export default function MainApplicantIdentityPage() {
               {values.permanent_residency_rights === "yes" && (
                 <RepeaterTable
                   data={values.pr_countries || []}
+                  fieldName="pr_countries"
                   columns={[
                     { key: "country", label: "Country" },
                     { key: "status", label: "Status" },

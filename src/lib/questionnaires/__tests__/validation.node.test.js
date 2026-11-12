@@ -616,12 +616,31 @@ test("required follow-ups inherit hidden ancestor visibility", () => {
   assert.equal(getQuestionnairePageValidationIssues(page, { gate: "yes" }).length, 1);
 });
 
-test("dynamic completion stamps are tied to definition revision and page", () => {
+test("dynamic completion stamps survive copy-only revisions but reject behavioral changes", () => {
   const definition = { id: "temporary-work-482", revision: 3 };
-  const page = { id: "character" };
+  const page = {
+    id: "character",
+    route: "/intake/temporary-work/all-applicants/character",
+    sectionKey: "temporary_work_character",
+    questions: [{ id: "declaration", answerKey: "declaration", label: "Original wording", type: "yesNo", required: true }],
+  };
   const stamp = getQuestionnaireCompletionStamp(definition, page);
   assert.equal(isQuestionnaireCompletionStampCurrent(stamp, definition, page), true);
-  assert.equal(isQuestionnaireCompletionStampCurrent(stamp, { ...definition, revision: 4 }, page), false);
+  assert.equal(isQuestionnaireCompletionStampCurrent(
+    stamp,
+    { ...definition, revision: 4 },
+    { ...page, title: "Edited title", questions: [{ ...page.questions[0], label: "Edited wording" }] },
+  ), true);
+  assert.equal(isQuestionnaireCompletionStampCurrent(
+    stamp,
+    { ...definition, revision: 4 },
+    { ...page, questions: [{ ...page.questions[0], required: false }] },
+  ), false);
+  assert.equal(isQuestionnaireCompletionStampCurrent(
+    { definitionId: definition.id, pageId: page.id, revision: 3 },
+    { ...definition, revision: 4 },
+    page,
+  ), false);
 });
 
 test("storage keys and workflow-only routes are rejected", () => {

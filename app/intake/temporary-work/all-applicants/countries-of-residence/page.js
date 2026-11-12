@@ -135,6 +135,11 @@ function ResidenceDialog({ editingRow, onSave, onCancel, applicants = [] }) {
                         <SelectValue placeholder="Choose Applicant" />
                     </SelectTrigger>
                     <SelectContent>
+                        {!applicants.some((a) => a.value === dialogForm.watch("applicant_name")) && dialogForm.watch("applicant_name") ? (
+                            <SelectItem value={dialogForm.watch("applicant_name")}>
+                                {applicantLabelForValue(dialogForm.watch("applicant_name"), applicants)}
+                            </SelectItem>
+                        ) : null}
                         {applicants.length === 0 ? (
                             <SelectItem value="__none__" disabled>No applicants found</SelectItem>
                         ) : (
@@ -379,7 +384,7 @@ export default function Page() {
                 const fullName = [p.given_names, p.family_name].filter(Boolean).join(" ");
                 return {
                     label: fullName.trim() || "Unnamed",
-                    value: fullName.trim() || "Unnamed",
+                    value: p.id || fullName.trim() || "Unnamed",
                     id: p.id,
                     birth_day: p.birth_day || "",
                     birth_month: p.birth_month || "",
@@ -573,6 +578,7 @@ export default function Page() {
 
                         <RepeaterTable
                             data={residenceRecords}
+                            fieldName="residence_records"
                             columns={[
                                 {
                                     key: "applicant_name",

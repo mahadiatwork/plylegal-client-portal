@@ -121,7 +121,7 @@ function migrateTravelRows(rows, profiles) {
 
 function sanitizeTravelRows(rows) {
   if (!Array.isArray(rows)) return [];
-  return rows.map(({ is_current_location, ...row }) => row);
+  return rows.map(({ is_current_location, arrival_display, departure_display, ...row }) => row);
 }
 
 function sanitizeTravelData(data) {
@@ -736,6 +736,7 @@ export default function Page() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Travel records</h3>
                 <RepeaterTable
                   data={travelHistory}
+                  fieldName="travel_history"
                   columns={[
                     {
                       key: "applicant_ids",

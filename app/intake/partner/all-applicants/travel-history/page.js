@@ -414,6 +414,7 @@ export default function Page() {
                 </p>
                 <RepeaterTable
                   data={travelHistory}
+                  fieldName="travel_history"
                   columns={[
                     { key: "country", label: "Country" },
                     { key: "arrival_display", label: "Arrival Date" },

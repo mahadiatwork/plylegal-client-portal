@@ -1,52 +1,85 @@
-# Temporary Work (482 / 186) Questionnaire Parity — Client Portal Exclusions
+# Questionnaire Parity Decision Exclusions
 
-The authoritative exclusions file for this work lives at
-`F:\Work Projects\ply-legal-admin-portal\EXCLUSIONS.md`.
+Last reviewed: 2026-11-11
 
-## Implemented here
+All evidence-backed technical parity items for Protection 866, Skills in Demand 482, Employer Nomination 186, and Partner 820 are implemented in the current worktree. The records below are retained only because changing the current behavior requires a product or legal decision. No value is inferred by this document.
 
-- `src/components/RepeaterTable.jsx` consumes field-path chrome copy (add, empty,
-  add/edit dialog titles, columns, actions, cancel, confirm).
-- `src/lib/questionnaires/legacyCopy.js` collects presentation columns, popup sections,
-  and action copy, and resolves `.actions` field paths back to the repeater path.
-- `app/intake/temporary-work/main-applicant/skills/page.js` passes
-  `fieldName="registrations"` / `fieldName="assessments"`, translates nested dialog
-  labels and popup section headings, and consumes editable cancel/confirm copy.
-- `app/intake/temporary-work/main-applicant/employment/page.js` passes
-  `fieldName="employment_history"` and consumes editable history labels, placeholders,
-  dialog chrome, and the 186 visa-held copy.
-- `app/intake/temporary-work/spouse-partner/education/page.js` passes
-  `fieldName="education_history"` and consumes editable labels and Institution Details.
-- `app/intake/temporary-work/spouse-partner/language/page.js` passes
-  `fieldName="languages"` / `fieldName="english_tests"` and consumes editable labels,
-  sub-score heading, table chrome, and dialog buttons.
-- `src/lib/routes.js` static 186 spouse subpages now include Other Names.
-- Partner Employment history passes `fieldName="employment_history"` and consumes
-  editable dialog labels, table chrome, and buttons.
-- Tests cover repeater chrome, popup-section translation, per-path 186 fixtures, and
-  Partner Employment copy.
+## 1. Partner questionnaire audience
 
-## Remaining client exclusions
+Owner: Product and Legal
 
-- Only the Skills, 186 Employment, 186 Spouse Education, and 186 Spouse Language
-  dialogs consume editable nested labels. Other legacy dialogs still hard-code those
-  strings.
-- Current-employment labels outside the history dialog are only partially translated.
-- The Visas page keeps the stored `history` compatibility array but does not render an
-  active history dialog (Path B decision) for either context.
-- Dynamic rendering was not promoted for any 482/186 page; 25/27 content templates
-  remain on the legacy renderer and one Character page remains dynamic.
-- Health has not yet been reconciled to ten distinct popup contracts.
-- Character still reads the separately maintained
-  `src/lib/questionnaires/temporaryWork482.definition.js`; there is no shared fixture
-  with the admin starter template yet.
-- Residence coverage validation and 186 `visa_held` completion behavior in
-  `submitCompletion.js` were not changed.
-- The Spouse Language studied-in-English placeholder still contains pre-existing
-  encoding corruption in `page.js`; the admin catalog keeps the correct en-dash copy.
-- Partner Employment is the only Partner dialog consuming nested editable copy.
-  Sponsor Character, Relationships, All Applicants Character, Health, and the other
-  Partner dialogs still hard-code those strings.
-- The Partner audience boundary (820/801/309/100) and the stale
-  `/intake/partner/children/start` route remain unresolved.
-- No Partner page was promoted to the dynamic renderer.
+Reason: The client currently normalizes 820, 801, 309, and 100 to the shared Partner flow, while the audited legal source is labelled for subclass 820. The decision prompt was dismissed, so there is no approval to narrow or affirm the shared audience.
+
+Current behavior: Existing 820/801/309/100 normalization remains unchanged.
+
+Next step: Approve either 820-only, 820/801, or all-four targeting. Then encode the approved audience in both definition matching and client validation and add one test per supported and rejected subclass.
+
+## 2. Partner All Applicants Character requiredness
+
+Owner: Legal
+
+Reason: The current implementation requires all 27 declarations and at least one attributed detail row for every Yes answer. The earlier mounted behavior allowed incomplete declarations/rows, and no legal approval record establishes which contract is authoritative. The decision prompt was dismissed.
+
+Current behavior: The existing strict validation remains unchanged; no further requiredness was added.
+
+Next step: Legal must approve legacy-optional, Yes-details-only, or all-required validation. Update the catalog, mounted schema, submit validation, and migration tests together.
+
+## 3. Partner affirmative-row policies outside Character
+
+Owner: Product and Legal
+
+Reason: Mounted Partner Health, Visas, Contacts, and Future Travel flows permit Yes with zero detail rows. Adding minimum rows would be a new legal/data requirement rather than parity work.
+
+Current behavior: Existing mounted optional-row behavior is preserved.
+
+Next step: Decide the minimum-row policy per page. If a minimum is approved, provide the validation message and apply the same declarative rule to legacy, dynamic, and submit-time validation.
+
+## 4. Partner applicant scope for shared pages
+
+Owner: Product and Data
+
+Reason: Partner Travel, Visas, and Contacts are presented under All Applicants, but their mounted storage/UI is main-applicant-oriented. Converting them to per-applicant records changes the persisted data model and review attribution.
+
+Current behavior: Existing answer keys, storage paths, and main-applicant semantics remain unchanged.
+
+Next step: Approve main-applicant-only wording or a per-applicant migration design, including compatibility handling for existing rows.
+
+## 5. Partner workflow-screen editability
+
+Owner: Product and Legal
+
+Reason: Start, profile, and submit screens are workflow controls rather than questionnaire content pages. Making their legal/instructional copy editable requires an explicit ownership and publication policy.
+
+Current behavior: Workflow screens remain outside the editable questionnaire catalog and cannot be structurally promoted.
+
+Next step: Identify which copy blocks, if any, are admin-owned and approve a copy-only workflow contract before adding them to the catalog.
+
+## 6. Child Identity custody duplication
+
+Owner: Product and Legal
+
+Reason: The mounted child Identity page includes an under-18 custody block while Custody also has a dedicated route. Removing, merging, or requiring either block changes the legal workflow.
+
+Current behavior: Both mounted surfaces remain available; no new custody requiredness was introduced.
+
+Next step: Choose the authoritative custody surface and provide migration/completion behavior for existing answers before changing either page.
+
+## 7. Canonical subclass 186 display name
+
+Owner: Product and Legal
+
+Reason: Existing UI and documents use both “Employer Nomination Visa” and “Employer Nomination Scheme.” No approved canonical user-facing name is recorded.
+
+Current behavior: Existing strings are preserved; IDs, routes, visa context `186`, and storage contracts are unchanged.
+
+Next step: Approve the canonical display name and identify document/legal-copy exceptions before running a copy-only migration.
+
+## 8. Continuous-history coverage beyond residence
+
+Owner: Legal
+
+Reason: Countries of Residence already enforces the existing later-of-ten-years-or-age-16 coverage rule. No equivalent mounted rule or approved coverage period exists for Employment, Education, or Travel, so extending continuous coverage would invent validation.
+
+Current behavior: Residence coverage is enforced in legacy, dynamic, and submit-time paths. Other histories retain their existing date and row rules only.
+
+Next step: Legal must specify each affected history, period, gap tolerance, ongoing-row semantics, and error wording before any additional coverage validator is implemented.

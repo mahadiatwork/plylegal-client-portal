@@ -422,6 +422,7 @@ export default function Page() {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Address History</h3>
               <RepeaterTable
                 data={addressHistory}
+                fieldName="address_history"
                 columns={[
                   { key: "applicant_ids", label: "Applicant(s)", format: (row) => applicantLabels(row.applicant_ids) },
                   { key: "address1", label: "Address" },

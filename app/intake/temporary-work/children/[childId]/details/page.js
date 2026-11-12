@@ -236,7 +236,8 @@ export default function ChildDetailsPage() {
 
   const onSubmit = async () => {
     const values = form.getValues();
-    const result = await draftStore.saveProfileSectionData(profileId, "details", values);
+    const payload = { ...(draftSnap.draft?.profiles_data?.[profileId]?.details || {}), ...values };
+    const result = await draftStore.saveProfileSectionData(profileId, "details", payload);
     if (result.success) {
       const completionResult = await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
       if (!completionResult.success) {
@@ -265,7 +266,8 @@ export default function ChildDetailsPage() {
     isSavingRef.current = true;
     try {
       const values = form.getValues();
-      const result = await draftStore.saveProfileSectionData(profileId, "details", values);
+      const payload = { ...(draftSnap.draft?.profiles_data?.[profileId]?.details || {}), ...values };
+      const result = await draftStore.saveProfileSectionData(profileId, "details", payload);
       if (result.success) {
         await draftStore.markProfilePageComplete(profileId, `${visaType}/children/${childId}/details`);
         toast({ title: "Draft saved", description: "Your changes have been saved successfully" });
@@ -589,6 +591,7 @@ export default function ChildDetailsPage() {
                 </p>
                 <RepeaterTable
                   data={citizenshipsList}
+                  fieldName="citizenships"
                   columns={[
                     { key: "country", label: "Country" },
                     { key: "how_obtained", label: "How was this Citizenship obtained?" },

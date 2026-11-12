@@ -282,9 +282,11 @@ export default function Page() {
 
   const onSubmit = async () => {
     const values = getValues();
+    const profileValues = { ...(draftSnap.draft?.profiles_data?.[profileId]?.details || {}), ...values };
+    const legacyValues = { ...(draftSnap.draft?.temporary_work_spouse_details || {}), ...values };
     const result = (profileId && isSpouseProfile)
-      ? await draftStore.saveProfileSectionData(profileId, "details", values)
-      : await draftStore.saveSectionData("temporary_work_spouse_details", values);
+      ? await draftStore.saveProfileSectionData(profileId, "details", profileValues)
+      : await draftStore.saveSectionData("temporary_work_spouse_details", legacyValues);
 
     if (result.success) {
       const completionResult = (profileId && isSpouseProfile)
@@ -320,12 +322,14 @@ export default function Page() {
       const values = getValues();
       let result;
       if (profileId && isSpouseProfile) {
-        result = await draftStore.saveProfileSectionData(profileId, "details", values);
+        const payload = { ...(draftSnap.draft?.profiles_data?.[profileId]?.details || {}), ...values };
+        result = await draftStore.saveProfileSectionData(profileId, "details", payload);
         if (result.success) {
           await draftStore.markProfilePageComplete(profileId, `${visaType}/spouse-partner/details`);
         }
       } else {
-        result = await draftStore.saveSectionData("temporary_work_spouse_details", values);
+        const payload = { ...(draftSnap.draft?.temporary_work_spouse_details || {}), ...values };
+        result = await draftStore.saveSectionData("temporary_work_spouse_details", payload);
         if (result.success) {
           await draftStore.markPageComplete(
             `${visaType}/spouse-partner/details`,
@@ -733,6 +737,7 @@ export default function Page() {
                 </p>
                 <RepeaterTable
                   data={citizenshipsList}
+                  fieldName="citizenships"
                   columns={[
                     { key: "country", label: "Country" },
                     { key: "how_obtained", label: "How was this Citizenship obtained?" },

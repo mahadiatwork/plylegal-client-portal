@@ -392,8 +392,9 @@ test("applicant language pages adapt the profile-keyed legacy contract without l
       { id: "unknown", given_names: "Unknown" },
     ],
     protection_languages: {
-      adult: [{ language: "English", speak: true, read: false, write: true, preference_order: 1 }],
+      adult: [{ language: "English", speak: true, read: false, write: true, preference_order: 1, importedCode: "eng" }],
       orphan: [{ language: "French", speak: true }],
+      migration_marker: { source: "legacy-import" },
     },
   };
 
@@ -403,10 +404,11 @@ test("applicant language pages adapt the profile-keyed legacy contract without l
     { id: "unknown", _languageEligibility: "unknown" },
     { id: "orphan", _languageEligibility: "optional" },
   ]);
-  assert.deepEqual(getQuestionnairePageStorageValues(page, formValues), {
-    adult: [{ language: "English", speak: true, read: false, write: true, preference_order: 1 }],
+  assert.deepEqual(getQuestionnairePageStorageValues(page, formValues, draft), {
+    adult: [{ language: "English", speak: true, read: false, write: true, preference_order: 1, importedCode: "eng" }],
     unknown: [],
     orphan: [{ language: "French", speak: true, read: false, write: false, preference_order: 1 }],
+    migration_marker: { source: "legacy-import" },
   });
   assert.ok(
     getQuestionnairePageValidationIssues(page, formValues)
@@ -604,7 +606,8 @@ test("non-migrating pages read and update the selected member without touching r
     relationship: "parent",
     relationship_status: "Married",
     passport: { number: "KEEP", sex: "Female", dob_day: "2", dob_month: "May", dob_year: "1970" },
-    place_of_birth: { town_city: "Paris", state_province: "Ile-de-France", country: "France" },
+    place_of_birth: { town_city: "Paris", state_province: "Ile-de-France", country: "France", importedCode: "FR-IDF" },
+    citizenship: { has_other: "yes", countries: ["France"], importedSource: "legacy" },
   };
   const draft = {
     temporary_work_details: { relationship: "main applicant data" },
@@ -629,5 +632,13 @@ test("non-migrating pages read and update the selected member without touching r
   assert.equal(updates.relationship_status, "Widowed");
   assert.equal(updates.passport.number, "KEEP");
   assert.equal(updates.place_of_birth.country, "Canada");
+  assert.equal(updates.place_of_birth.importedCode, "FR-IDF");
+  const citizenshipUpdates = getQuestionnaireNonMigratingMemberUpdates(
+    { ...page, route: "/intake/temporary-work/non-migrating/member-1/citizenship" },
+    { citizenship_has_other: "no", citizenship_countries: "" },
+    member,
+  );
+  assert.equal(citizenshipUpdates.citizenship.importedSource, "legacy");
+  assert.deepEqual(citizenshipUpdates.citizenship.countries, []);
   assert.deepEqual(getQuestionnairePageSavedValues(draft, page), {});
 });

@@ -571,6 +571,7 @@ export default function ContactsPage() {
           {watch("has_family_in_australia") === "Yes" && (
             <RepeaterTable
               data={watch("family_in_australia") || []}
+              fieldName="family_in_australia"
               columns={[
                 { key: "family_name", label: "Family Name" },
                 { key: "given_names", label: "Given Names" },

@@ -121,6 +121,33 @@ const formatDate = (day, month, year) => {
   return `${day} ${month} ${year}`;
 };
 
+function withHealthDisplays(key, value) {
+  if (!Array.isArray(value)) return value;
+  if (key === "health_examinations") {
+    return value.map((row) => ({
+      ...row,
+      date_completed_display: formatDate(row.date_completed_day, row.date_completed_month, row.date_completed_year),
+    }));
+  }
+  if (key === "visited_outside_details") {
+    return value.map((row) => ({
+      ...row,
+      date_from_display: formatDate(row.date_from_day, row.date_from_month, row.date_from_year),
+      date_to_display: formatDate(row.date_to_day, row.date_to_month, row.date_to_year),
+    }));
+  }
+  return value;
+}
+
+function withoutHealthDisplays(data) {
+  return Object.fromEntries(Object.entries(data || {}).map(([key, value]) => [
+    key,
+    Array.isArray(value)
+      ? value.map(({ date_completed_display, date_from_display, date_to_display, ...row }) => row)
+      : value,
+  ]));
+}
+
 // ─── Health Examination Dialog ────────────────────────────────────────
 function HealthExamDialog({ editingRow, onSave, onCancel, applicantOptions = [] }) {
   const dialogSchema = z.object({
@@ -1012,7 +1039,7 @@ export default function Page() {
     const savedData = draftSnap.draft?.temporary_work_health || {};
     if (Object.keys(savedData).length > 0) {
       Object.keys(savedData).forEach((key) => {
-        let value = savedData[key];
+        let value = withHealthDisplays(key, savedData[key]);
         // Handle legacy empty strings by defaulting to "no" for question fields
         if (value === "" && [
           "medical_condition",
@@ -1039,7 +1066,7 @@ export default function Page() {
   const onSubmit = async (data) => {
     setIsSaving(true);
     try {
-      await draftStore.saveSectionData("temporary_work_health", data);
+      await draftStore.saveSectionData("temporary_work_health", withoutHealthDisplays(data));
       await draftStore.markPageComplete(`${visaType}/all-applicants/health`, null, "temporary_work_health");
       const next = getNextRoute(pathname, visaType, draftSnap.currentApplicationId, draftSnap.visaContext);
       startNavigation(next);
@@ -1057,7 +1084,7 @@ export default function Page() {
     setIsSaving(true);
     try {
       const values = form.getValues();
-      const result = await draftStore.saveSectionData("temporary_work_health", values);
+      const result = await draftStore.saveSectionData("temporary_work_health", withoutHealthDisplays(values));
       if (result.success) {
         toast({
           title: "Draft saved",

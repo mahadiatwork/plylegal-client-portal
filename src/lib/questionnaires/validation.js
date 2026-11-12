@@ -15,6 +15,7 @@ export const SUPPORTED_DEFINITION_STATUSES = new Set(["draft", "active", "archiv
 export const SUPPORTED_PAGE_SCOPES = new Set(["shared", "profile"]);
 export const SUPPORTED_QUESTIONNAIRE_VISA_TYPES = new Set(["temporary-work", "partner", "protection"]);
 export const SUPPORTED_QUESTIONNAIRE_SCHEMA_VERSION = 1;
+export const SUPPORTED_QUESTION_OPTIONS_SOURCES = new Set(["applicants", "countries"]);
 
 export const QUESTIONNAIRE_LIMITS = Object.freeze({
   maxSerializedBytes: 900 * 1024,
@@ -273,7 +274,7 @@ function validateQuestion(question, path, state, issues, depth = 1) {
     }
   }
 
-  if (question.optionsSource !== undefined && question.optionsSource !== "applicants") {
+  if (question.optionsSource !== undefined && !SUPPORTED_QUESTION_OPTIONS_SOURCES.has(question.optionsSource)) {
     issues.push(`${path}.optionsSource is unsupported`);
   }
 

@@ -448,8 +448,11 @@ export function QuestionField({ answerLayout, form, optionSources, pageQuestions
   }
 
   if (
+    question.optionsSource === "countries"
+    || (
     question.metadata?.clientControl === "select"
     && question.answerKey.split(".").pop() === "country_of_birth"
+    )
   ) {
     return <CountrySelectField question={question} form={form} />;
   }

@@ -225,6 +225,7 @@ export default function Page() {
             </RadioGroup>
             {form.watch(key) === "yes" && <RepeaterTable
               data={rows}
+              fieldName={field}
               columns={columns}
               onAdd={(row) => setRows([...rows, row])}
               onEdit={(index, row) => setRows(rows.map((current, i) => i === index ? row : current))}

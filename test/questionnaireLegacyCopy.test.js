@@ -187,6 +187,33 @@ test("legacy employment completion enforces declarative date, status and length 
   assert.equal(valid.some((issue) => issue.includes("Current employment duties")), false);
 });
 
+test("final temporary-work validation rechecks Travel after an earlier completion", () => {
+  const draft = {
+    visaContext: "482",
+    profiles: [],
+    temporary_work_travel: { has_travel_history: "yes", travel_history: [] },
+  };
+  const args = {
+    visaType: "temporary-work",
+    visaContext: "482",
+    draft,
+    completionStatus: { "temporary-work/all-applicants/travel-history": true },
+  };
+  assert.ok(getIncompleteChecklist(args).includes("All Applicants: Travel history records"));
+
+  draft.temporary_work_travel.travel_history = [{
+    applicant_ids: ["legacy-main"],
+    country: "France",
+    reason_for_visit: "Holiday",
+    legal_status: "Tourist",
+    date_arrived_day: "1",
+    date_arrived_month: "January",
+    date_arrived_year: "2025",
+  }];
+  assert.equal(getIncompleteChecklist(args).includes("All Applicants: Travel history records"), false);
+  assert.equal(getIncompleteChecklist(args).includes("All Applicants: Travel history details"), false);
+});
+
 test("legacy review reads original profile section aliases and retains answers with edited labels", () => {
   const draft = { visaContext: "482", profiles: [{ id: "main", relationship: "main_applicant", given_names: "Client" }], profiles_data: { main: { other: { previous_name: "Saved client name" } } } };
   const sections = buildTemporaryWorkReviewSections({ draft, visaContext: "482", questionnaireDefinition: { id: "published", revision: 99, pages: [page] } });

@@ -675,6 +675,7 @@ export default function SupportingWitnessesPage() {
           >
             <RepeaterTable
               data={supportingWitnesses}
+              fieldName="supporting_witnesses"
               columns={witnessColumns}
               onAdd={(row) => updateSupportingWitnesses([...supportingWitnesses, row])}
               onEdit={(index, row) => {

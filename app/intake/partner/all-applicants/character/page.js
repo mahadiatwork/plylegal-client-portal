@@ -1829,6 +1829,7 @@ export default function Page() {
                         </p>
                         <RepeaterTable
                           data={form.watch("police_check_details") || []}
+                          fieldName="police_check_details"
                           columns={[
                             { key: "applicant_name", label: "Name" },
                             { key: "date_of_birth_display", label: "Date of Birth" },
@@ -1877,6 +1878,7 @@ export default function Page() {
                         </p>
                         <RepeaterTable
                           data={form.watch("immigration_detention_details") || []}
+                          fieldName="immigration_detention_details"
                           columns={[
                             { key: "applicant_name", label: "Name" },
                             { key: "centre_name", label: "Name of Centre / Camp" },
@@ -1926,6 +1928,7 @@ export default function Page() {
                         </p>
                         <RepeaterTable
                           data={form.watch("psychiatric_institution_details") || []}
+                          fieldName="psychiatric_institution_details"
                           columns={[
                             { key: "applicant_name", label: "Name" },
                             { key: "date_from_display", label: "Date From" },
@@ -1975,6 +1978,7 @@ export default function Page() {
                         </p>
                         <RepeaterTable
                           data={form.watch("military_training_details") || []}
+                          fieldName="military_training_details"
                           columns={[
                             { key: "applicant_name", label: "Name" },
                             { key: "date_of_birth_display", label: "Date of Birth" },
@@ -2025,6 +2029,7 @@ export default function Page() {
                         </p>
                         <RepeaterTable
                           data={form.watch("military_service_details") || []}
+                          fieldName="military_service_details"
                           columns={[
                             { key: "applicant_name", label: "Name" },
                             { key: "date_of_birth_display", label: "Date of Birth" },
@@ -2071,6 +2076,7 @@ export default function Page() {
                     {GENERIC_DIALOG_CONFIG[q.key] && (
                       <RepeaterTable
                         data={form.watch(GENERIC_DIALOG_CONFIG[q.key].field) || []}
+                        fieldName={GENERIC_DIALOG_CONFIG[q.key].field}
                         columns={[
                           { key: "applicant_name", label: "Name" },
                           { key: "country", label: "Country" },
@@ -2098,6 +2104,7 @@ export default function Page() {
                     {q.key === "convicted_offence" && (
                       <RepeaterTable
                         data={form.watch("convicted_offence_details") || []}
+                        fieldName="convicted_offence_details"
                         columns={[
                           { key: "applicant_name", label: "Name" },
                           { key: "country", label: "Country" },
@@ -2125,6 +2132,7 @@ export default function Page() {
                     {q.key === "awaiting_legal_action" && (
                       <RepeaterTable
                         data={form.watch("awaiting_legal_action_details") || []}
+                        fieldName="awaiting_legal_action_details"
                         columns={[
                           { key: "applicant_name", label: "Name" },
                           { key: "country", label: "Country" },
@@ -2152,6 +2160,7 @@ export default function Page() {
                     {q.key === "false_misleading_info" && (
                       <RepeaterTable
                         data={form.watch("false_misleading_info_details") || []}
+                        fieldName="false_misleading_info_details"
                         columns={[
                           { key: "applicant_name", label: "Name" },
                           { key: "details", label: "Details" }
@@ -2177,6 +2186,7 @@ export default function Page() {
                     {q.key === "sponsorship_payment" && (
                       <RepeaterTable
                         data={form.watch("sponsorship_payment_details") || []}
+                        fieldName="sponsorship_payment_details"
                         columns={[
                           { key: "applicant_name", label: "Name" },
                           { key: "details", label: "Details" }
@@ -2202,6 +2212,7 @@ export default function Page() {
                     {q.key === "associated_criminal_conduct" && (
                       <RepeaterTable
                         data={form.watch("criminal_conduct_details") || []}
+                        fieldName="criminal_conduct_details"
                         columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
                         onAdd={(row) => form.setValue("criminal_conduct_details", [...(form.watch("criminal_conduct_details") || []), row])}
                         onEdit={(i, row) => {
@@ -2217,6 +2228,7 @@ export default function Page() {
                     {q.key === "associated_violent_org" && (
                       <RepeaterTable
                         data={form.watch("violent_org_details") || []}
+                        fieldName="violent_org_details"
                         columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
                         onAdd={(row) => form.setValue("violent_org_details", [...(form.watch("violent_org_details") || []), row])}
                         onEdit={(i, row) => {
@@ -2232,6 +2244,7 @@ export default function Page() {
                     {q.key === "national_security_risk" && (
                       <RepeaterTable
                         data={form.watch("national_security_details") || []}
+                        fieldName="national_security_details"
                         columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
                         onAdd={(row) => form.setValue("national_security_details", [...(form.watch("national_security_details") || []), row])}
                         onEdit={(i, row) => {
@@ -2247,6 +2260,7 @@ export default function Page() {
                     {q.key === "outstanding_debts" && (
                       <RepeaterTable
                         data={form.watch("outstanding_debts_details") || []}
+                        fieldName="outstanding_debts_details"
                         columns={[{ key: "applicant_name", label: "Name" }, { key: "country", label: "Country" }, { key: "details", label: "Details" }]}
                         onAdd={(row) => form.setValue("outstanding_debts_details", [...(form.watch("outstanding_debts_details") || []), row])}
                         onEdit={(i, row) => {

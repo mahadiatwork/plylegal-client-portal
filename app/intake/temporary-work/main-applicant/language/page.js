@@ -19,6 +19,7 @@ import { RepeaterTable } from "@/components/RepeaterTable";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
 
 const PROFICIENCY_LEVELS = ["Basic", "Intermediate", "Proficient", "Fluent/Native"];
@@ -43,6 +44,7 @@ const COMMON_LANGUAGES = [
 ];
 
 function LanguageDialog({ editingRow, onSave, onCancel }) {
+  const translate = useQuestionnaireCopy("labels", "languages");
   const dialogFormSchema = z.object({
     language: z.string().min(1, "Language is required"),
     proficiency: z.string().min(1, "Proficiency is required"),
@@ -66,7 +68,7 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="mb-2 block">Language *</Label>
+        <Label className="mb-2 block">{translate("Language *")}</Label>
         <Select
           value={dialogForm.watch("language")}
           onValueChange={(value) => dialogForm.setValue("language", value)}
@@ -86,7 +88,7 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Proficiency *</Label>
+        <Label className="mb-2 block">{translate("Proficiency *")}</Label>
         <Select
           value={dialogForm.watch("proficiency")}
           onValueChange={(value) => dialogForm.setValue("proficiency", value)}
@@ -107,7 +109,7 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
 
       <div>
         <Label className="text-base font-medium mb-3 block">
-          Is this your main language? *
+          {translate("Is this your main language? *")}
         </Label>
         <RadioGroup
           value={dialogForm.watch("is_main_language")}
@@ -148,6 +150,7 @@ function LanguageDialog({ editingRow, onSave, onCancel }) {
 }
 
 function EnglishTestDialog({ editingRow, onSave, onCancel }) {
+  const translate = useQuestionnaireCopy("labels", "english_tests");
   const dialogFormSchema = z.object({
     test_type: z.string().min(1, "Test type is required"),
     date_day: z.string().min(1, "Day is required"),
@@ -187,7 +190,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="mb-2 block">Test Type *</Label>
+        <Label className="mb-2 block">{translate("Test Type *")}</Label>
         <Select
           value={dialogForm.watch("test_type")}
           onValueChange={(value) => dialogForm.setValue("test_type", value)}
@@ -207,7 +210,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label className="mb-2 block">Date *</Label>
+        <Label className="mb-2 block">{translate("Date *")}</Label>
         <div className="grid grid-cols-3 gap-2">
           <Select
             value={dialogForm.watch("date_day")}
@@ -255,7 +258,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="location" className="mb-2 block">Location/Test Centre *</Label>
+        <Label htmlFor="location" className="mb-2 block">{translate("Location/Test Centre *")}</Label>
         <Input
           id="location"
           {...dialogForm.register("location")}
@@ -267,7 +270,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="reference_number" className="mb-2 block">Reference/Registration Number *</Label>
+        <Label htmlFor="reference_number" className="mb-2 block">{translate("Reference/Registration Number *")}</Label>
         <Input
           id="reference_number"
           {...dialogForm.register("reference_number")}
@@ -279,7 +282,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div>
-        <Label htmlFor="overall_score" className="mb-2 block">Overall Score *</Label>
+        <Label htmlFor="overall_score" className="mb-2 block">{translate("Overall Score *")}</Label>
         <Input
           id="overall_score"
           {...dialogForm.register("overall_score")}
@@ -291,10 +294,10 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div className="border-t pt-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Sub-scores (optional)</h4>
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">{translate("Sub-scores (optional)")}</h4>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="listening" className="mb-2 block text-sm">Listening</Label>
+            <Label htmlFor="listening" className="mb-2 block text-sm">{translate("Listening")}</Label>
             <Input
               id="listening"
               {...dialogForm.register("listening")}
@@ -302,7 +305,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
           <div>
-            <Label htmlFor="reading" className="mb-2 block text-sm">Reading</Label>
+            <Label htmlFor="reading" className="mb-2 block text-sm">{translate("Reading")}</Label>
             <Input
               id="reading"
               {...dialogForm.register("reading")}
@@ -310,7 +313,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
           <div>
-            <Label htmlFor="writing" className="mb-2 block text-sm">Writing</Label>
+            <Label htmlFor="writing" className="mb-2 block text-sm">{translate("Writing")}</Label>
             <Input
               id="writing"
               {...dialogForm.register("writing")}
@@ -318,7 +321,7 @@ function EnglishTestDialog({ editingRow, onSave, onCancel }) {
             />
           </div>
           <div>
-            <Label htmlFor="speaking" className="mb-2 block text-sm">Speaking</Label>
+            <Label htmlFor="speaking" className="mb-2 block text-sm">{translate("Speaking")}</Label>
             <Input
               id="speaking"
               {...dialogForm.register("speaking")}
@@ -352,6 +355,9 @@ export default function LanguagePage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const draftSnap = useSnapshot(draftStore);
+  const translateLanguages = useQuestionnaireCopy("labels", "languages");
+  const translateTests = useQuestionnaireCopy("labels", "english_tests");
+  const translateStudyDetails = useQuestionnaireCopy("labels", "studied_in_english_details");
   const draft = draftSnap.draft;
 
   const profileId = searchParams.get('profileId');
@@ -496,9 +502,10 @@ export default function LanguagePage() {
               {/* Languages Repeater (shown if No) */}
               {isEnglishMainLanguage === "no" && (
                 <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Languages Used</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{translateLanguages("Languages Used")}</h3>
                   <RepeaterTable
                     data={languages}
+                    fieldName="languages"
                     columns={[
                       { key: "language", label: "Language" },
                       { key: "proficiency", label: "Proficiency" },
@@ -553,9 +560,10 @@ export default function LanguagePage() {
               {/* English Test Results Repeater (shown if Yes) */}
               {hasEnglishTest === "yes" && (
                 <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">English Test Results</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{translateTests("English Test Results")}</h3>
                   <RepeaterTable
                     data={englishTests}
+                    fieldName="english_tests"
                     columns={[
                       { key: "date_day", label: "Date", format: (row) => `${row.date_day}/${row.date_month}/${row.date_year}` },
                       { key: "test_type", label: "Test Type" },
@@ -612,7 +620,7 @@ export default function LanguagePage() {
               {studiedInEnglish === "yes" && (
                 <div className="mt-4">
                   <Label htmlFor="studied_in_english_details" className="mb-2 block">
-                    Please provide details <span className="text-gray-400 font-normal">(institution name, course, years attended)</span>
+                    {translateStudyDetails("Please provide details")} <span className="text-gray-400 font-normal">{translateStudyDetails("(institution name, course, years attended)")}</span>
                   </Label>
                   <textarea
                     id="studied_in_english_details"

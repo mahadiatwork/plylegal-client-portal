@@ -3,7 +3,7 @@ const YES_NO_OPTIONS = [
   { value: "no", label: "No" },
 ];
 
-const CHARACTER_QUESTIONS = [
+export const TEMPORARY_WORK_CHARACTER_QUESTIONS = [
   {
     key: "char_q01",
     label: "Has any applicant ever been charged with any offence that is currently awaiting legal action?",
@@ -149,7 +149,7 @@ export const temporaryWork482Definition = {
           ],
         },
       ],
-      questions: CHARACTER_QUESTIONS.map(makeCharacterQuestion),
+      questions: TEMPORARY_WORK_CHARACTER_QUESTIONS.map(makeCharacterQuestion),
     },
   ],
 };

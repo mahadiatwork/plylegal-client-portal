@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StickyNav } from "@/components/StickyNav";
 import { FormNavigation } from "@/components/FormNavigation";
 import { RepeaterTable } from "@/components/RepeaterTable";
+import { QuestionnaireCopyText } from "@/components/questionnaire/QuestionnaireCopyContext";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
@@ -156,7 +157,7 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
       </div>
 
       <div className="pt-4 border-t border-gray-200">
-        <h3 className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</h3>
+        <QuestionnaireCopyText as="h3" className="text-base font-medium text-gray-900 mb-3">Other Name Evidence</QuestionnaireCopyText>
 
         <div className="mb-4">
           <Label className="text-sm font-normal mb-2 block">
@@ -509,6 +510,7 @@ export default function Page() {
                 <div className="pl-0 mt-4">
                   <RepeaterTable
                     data={otherNames}
+                    fieldName="other_names"
                     columns={otherNameColumns}
                     onAdd={(row) => updateOtherNames([...otherNames, row])}
                     onEdit={(index, row) => {
