@@ -64,15 +64,43 @@ test("loads the current shared-folder URL from the owned application's Zoho Deal
   }]);
 });
 
-test("uses a validated stored URL and never requests an invalid Deal id", async () => {
+test("uses a validated stored URL only for applications without a usable Deal id", async () => {
   let calls = 0;
   const client = { async getRecord() { calls += 1; } };
   const storedUrl = "https://workdrive.zohopublic.com.au/external/stored-client-folder";
 
   assert.deepEqual(
-    await loadClientSharedFolderAccess({ zohoId: "123", clientSharedFolderUrl: storedUrl }, client),
+    await loadClientSharedFolderAccess({ clientSharedFolderUrl: storedUrl }, client),
     { url: storedUrl, mode: "external" },
   );
   assert.equal(await loadClientSharedFolderAccess({ zohoId: "../Contacts/123" }, client), null);
   assert.equal(calls, 0);
+});
+
+test("the current Zoho folder replaces a stale stored folder", async () => {
+  const url = "https://workdrive.zohoexternal.com.au/file/current-folder";
+  const client = { async getRecord() { return { Matter_Workdrive_Folder_URL: url }; } };
+
+  assert.deepEqual(await loadClientSharedFolderAccess({
+    zohoId: "123456789",
+    clientSharedFolderUrl: "https://workdrive.zohopublic.com.au/external/stale-folder",
+  }, client), { url, mode: "embed" });
+});
+
+test("clearing or invalidating the Zoho field never revives a stored folder", async () => {
+  for (const field of [null, "", "https://example.test/folder"]) {
+    const client = { async getRecord() { return { Matter_Workdrive_Folder_URL: field }; } };
+    assert.equal(await loadClientSharedFolderAccess({
+      zohoId: "123456789",
+      clientSharedFolderUrl: "https://workdrive.zohopublic.com.au/external/stale-folder",
+    }, client), null);
+  }
+});
+
+test("a failed Zoho lookup is an error instead of an empty shared folder", async () => {
+  const client = { async getRecord() { return null; } };
+  await assert.rejects(
+    loadClientSharedFolderAccess({ zohoId: "123456789" }, client),
+    /Unable to load the shared folder from Zoho/,
+  );
 });

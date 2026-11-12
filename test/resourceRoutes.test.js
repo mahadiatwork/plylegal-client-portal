@@ -23,7 +23,9 @@ async function loadRoute(entry) {
 const template = await loadRoute("app/api/resources/template/route.js");
 const shared = await loadRoute("app/api/resources/shared/route.js");
 const matter = await loadRoute("app/api/resources/matter/route.js");
+const sharedFolder = await loadRoute("app/api/matters/[matterId]/shared-folder/route.js");
 const preview = await loadRoute("app/api/matters/[matterId]/resources/[resourceId]/preview/route.js");
+const axios = Module.createRequire(import.meta.url)("axios");
 const root = "projects/resources-test/databases/(default)/documents";
 const shareUrl = "https://workdrive.zohopublic.com.au/external/resource-share";
 
@@ -157,6 +159,98 @@ const request = (route = "template", token = "signed-client-token", applicationI
   `https://portal.example/api/resources/${route}?applicationId=${encodeURIComponent(applicationId)}${source ? `&source=${encodeURIComponent(source)}` : ""}`,
   { headers: token ? { Authorization: `Bearer ${token}` } : {} },
 );
+
+function setupSharedFolderZoho(t, folderUrl) {
+  process.env.ACCESSTOKEN_URL = "https://zoho.example.test/token";
+  const deal = { id: "123456789", Matter_Workdrive_Folder_URL: folderUrl };
+  const calls = [];
+  const previousAdapter = axios.defaults.adapter;
+  t.after(() => { axios.defaults.adapter = previousAdapter; });
+  axios.defaults.adapter = async (config) => {
+    calls.push(config);
+    const data = config.url === process.env.ACCESSTOKEN_URL
+      ? { access_token: "shared-folder-test-token" }
+      : { data: [deal] };
+    return { data, status: 200, statusText: "OK", headers: {}, config };
+  };
+  return { deal, calls };
+}
+
+const sharedFolderRequest = (token = "signed-client-token", matterId = "matter-1") => [
+  new NextRequest(`https://portal.example/api/matters/${encodeURIComponent(matterId)}/shared-folder`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }),
+  { params: Promise.resolve({ matterId }) },
+];
+
+test("the shared-folder endpoint reads the current Zoho folder without querying portal resources", async (t) => {
+  const { documents, calls: firestoreCalls } = setup(t);
+  const url = "https://workdrive.zohoexternal.com.au/file/live-folder";
+  const { calls, deal } = setupSharedFolderZoho(t, url);
+  Object.assign(documents.get("applications/matter-1"), {
+    zohoId: "123456789",
+    clientSharedFolderUrl: "https://workdrive.zohoexternal.com.au/file/stale-folder",
+  });
+
+  const response = await sharedFolder.GET(...sharedFolderRequest());
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(await response.json(), { success: true, sharedFolder: { url, mode: "embed" } });
+  const crmCall = calls.find((call) => call.url.endsWith("/Deals/123456789"));
+  assert.deepEqual(crmCall.params, { fields: "id,Matter_Workdrive_Folder_URL" });
+  assert.equal(crmCall.headers.Authorization, "Zoho-oauthtoken shared-folder-test-token");
+  assert.equal(firestoreCalls.length, 1);
+  assert.ok(firestoreCalls[0].url.endsWith("/applications/matter-1"));
+
+  deal.Matter_Workdrive_Folder_URL = "https://workdrive.zohopublic.com.au/external/updated-folder";
+  assert.deepEqual(await (await sharedFolder.GET(...sharedFolderRequest())).json(), {
+    success: true,
+    sharedFolder: { url: deal.Matter_Workdrive_Folder_URL, mode: "external" },
+  });
+
+  deal.Matter_Workdrive_Folder_URL = null;
+  assert.deepEqual(await (await sharedFolder.GET(...sharedFolderRequest())).json(), {
+    success: true, sharedFolder: null,
+  });
+});
+
+test("the shared-folder endpoint rejects unauthorized, missing, and invalid matters before calling Zoho", async (t) => {
+  const { documents } = setup(t);
+  const { calls } = setupSharedFolderZoho(t, "https://workdrive.zohoexternal.com.au/file/private-folder");
+  Object.assign(documents.get("applications/matter-1"), { userId: "another-owner", zohoId: "123456789" });
+
+  for (const [token, id, status] of [
+    ["", "matter-1", 401],
+    ["invalid-token", "matter-1", 401],
+    ["signed-client-token", "matter-1", 403],
+    ["signed-client-token", "missing-matter", 404],
+    ["signed-client-token", "../other-matter", 400],
+  ]) {
+    const response = await sharedFolder.GET(...sharedFolderRequest(token, id));
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.doesNotMatch(JSON.stringify(await response.json()), /private-folder/);
+  }
+  assert.equal(calls.length, 0);
+});
+
+test("the shared-folder endpoint rejects unsafe links and reports failed CRM lookups", async (t) => {
+  const { documents } = setup(t);
+  setupSharedFolderZoho(t, "https://workdrive.zohopublic.com.au.attacker.test/file/unsafe");
+  documents.get("applications/matter-1").zohoId = "123456789";
+
+  assert.deepEqual(await (await sharedFolder.GET(...sharedFolderRequest())).json(), {
+    success: true, sharedFolder: null,
+  });
+
+  axios.defaults.adapter = async () => { throw new Error("private-zoho-error-sentinel"); };
+  const response = await sharedFolder.GET(...sharedFolderRequest());
+  assert.equal(response.status, 502);
+  const data = await response.json();
+  assert.equal(data.success, false);
+  assert.match(data.error, /Unable to load your shared folder/);
+  assert.doesNotMatch(JSON.stringify(data), /private-zoho-error-sentinel/);
+});
 
 for (const slug of ["482", "186", "309", "801", "820", "866"]) {
   test(`${slug} resources load without Admin credentials, preserving categories, order and links`, async (t) => {

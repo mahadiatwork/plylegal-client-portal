@@ -2,6 +2,10 @@
 
 The client portal reads the current Zoho Deal field `Matter_Workdrive_Folder_URL` when the client opens the **Shared Files** tab.
 
+The tab uses `GET /api/matters/{applicationId}/shared-folder`. This endpoint verifies the Firebase session and application ownership before reading the linked Zoho Deal. It does not query the portal's resource library or require individually uploaded Shared Files records. The WorkDrive folder is the Shared Files content source; the Resources tab remains separate.
+
+For applications with a valid `zohoId`, the current CRM field takes precedence over a stored `clientSharedFolderUrl`, including when the CRM field is cleared. Applications without a usable Zoho Deal ID may still use a validated legacy `clientSharedFolderUrl`. A failed CRM lookup shows a retry action rather than reporting an empty folder. Folder responses use `Cache-Control: private, no-store`.
+
 - A published WorkDrive permalink such as `https://workdrive.zohoexternal.com.au/file/{resource_id}` is rendered inside the portal.
 - An existing custom share link such as `https://workdrive.zohopublic.com.au/external/{link_id}` remains available through **Open in WorkDrive**, but cannot be used as the inline folder viewer.
 - Other URLs are rejected by the portal.
