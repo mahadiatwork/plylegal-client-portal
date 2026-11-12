@@ -1,18 +1,17 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/review-pdf/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { getDb } from '@/lib/firebase-admin';
 
 /**
  * API Route: Fetch Draft/Questionnaire Data by Matter ID
- * 
+ *
  * GET /api/review-pdf/application/[matterId]/draft
- * 
- * First finds the application by zohoId (matterId), then loads the draft/questionnaire
- * data from the application's subcollection.
+ *
+ * Finds the application by zohoId (matterId), then loads its questionnaire
+ * data. Uses the Admin SDK so Firestore rules stay closed to the public.
  */
 export async function GET(request, { params }) {
   try {
-    const { matterId } = params;
+    const { matterId } = await params;
 
     if (!matterId) {
       return NextResponse.json(
@@ -21,55 +20,51 @@ export async function GET(request, { params }) {
       );
     }
 
-    console.log(`🔍 Fetching draft for matterId: ${matterId}`);
+    const dbResult = getDb();
+    if (!dbResult.ok) {
+      console.error('review-pdf: Firestore admin unavailable:', dbResult.error);
+      return NextResponse.json(
+        { success: false, error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+    const db = dbResult.db;
 
-    // Step 1: Find application by zohoId
-    const applicationsRef = collection(db, 'applications');
-    const q = query(applicationsRef, where('zohoId', '==', matterId));
-    const querySnapshot = await getDocs(q);
+    const appSnapshot = await db
+      .collection('applications')
+      .where('zohoId', '==', String(matterId))
+      .limit(1)
+      .get();
 
-    if (querySnapshot.empty) {
-      console.log(`❌ No application found with zohoId: ${matterId}`);
+    if (appSnapshot.empty) {
       return NextResponse.json(
         { success: false, error: 'Application not found' },
         { status: 404 }
       );
     }
 
-    const appDoc = querySnapshot.docs[0];
-    const appId = appDoc.id;
+    const appId = appSnapshot.docs[0].id;
+    const draftSnap = await db
+      .collection('applications').doc(appId)
+      .collection('data').doc('questionnaire')
+      .get();
 
-    console.log(`✅ Found application: ${appId}, fetching draft data...`);
-
-    // Step 2: Load draft from applications/{appId}/data/questionnaire
-    const draftRef = doc(db, 'applications', appId, 'data', 'questionnaire');
-    const draftSnap = await getDoc(draftRef);
-
-    if (!draftSnap.exists()) {
-      console.log(`⚠️ No draft data found for application: ${appId}`);
+    if (!draftSnap.exists) {
       return NextResponse.json({
         success: true,
         draft: {},
-        message: 'No questionnaire data available'
+        message: 'No questionnaire data available',
       });
     }
 
-    const draftData = draftSnap.data();
     // Remove Firebase metadata
-    const { updatedAt, ...draft } = draftData;
-
-    console.log(`✅ Draft data loaded successfully`);
-
-    return NextResponse.json({
-      success: true,
-      draft
-    });
+    const { updatedAt, ...draft } = draftSnap.data();
+    return NextResponse.json({ success: true, draft });
   } catch (error) {
     console.error('❌ Error fetching draft:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch draft data' },
+      { success: false, error: 'Failed to fetch draft data' },
       { status: 500 }
     );
   }
 }
-
