@@ -7,12 +7,12 @@
 
 import { BaseAdapter } from './base';
 import { auth, db } from '@/lib/firebase';
-import { ZohoCRMClient } from '@/lib/zohoClient';
 import {
   mapZohoDealToVisaTypeCode,
   normalizeSkillsInDemandTypeLabel,
 } from '@/lib/visaDisplay';
 import { nanoid } from 'nanoid';
+import { diffDraftKeys, draftSignatures } from '@/lib/draftSync';
 import { applicationsStore } from '@/stores/applicationsStore';
 import {
   signInWithEmailAndPassword,
@@ -42,6 +42,8 @@ export class FirebaseAdapter extends BaseAdapter {
     }
     this.auth = auth;
     this.db = db;
+    // applicationId -> { topLevelKey: JSON signature } of the last loaded/saved draft
+    this._draftBaselines = new Map();
   }
   
   /**
@@ -139,10 +141,14 @@ export class FirebaseAdapter extends BaseAdapter {
               .then(async (response) => {
                 const result = await response.json();
                 if (result.success) {
+                  // Let the applications page skip its own immediate re-sync
+                  try {
+                    sessionStorage.setItem(`ply_deals_synced_at:${userCredential.user.uid}`, String(Date.now()));
+                  } catch {}
                   // Store raw deals data in store for JSON display
                   applicationsStore.rawDealsData = result.rawDealsData || [];
                   // Reload applications from Firebase to show the newly saved deals
-                  await applicationsStore.loadApplications(userCredential.user.uid);
+                  await applicationsStore.loadApplications(userCredential.user.uid, { force: true });
                 } else {
                   console.error('⚠️ Failed to fetch deals from Zoho:', result.error);
                 }
@@ -215,6 +221,7 @@ export class FirebaseAdapter extends BaseAdapter {
   async logout() {
     try {
       await signOut(this.auth);
+      this._draftBaselines.clear();
       return { success: true };
     } catch (error) {
       console.error('Firebase logout error:', error);
@@ -339,381 +346,6 @@ export class FirebaseAdapter extends BaseAdapter {
     }
   }
   
-  /**
-   * Populate user profile and applications from Zoho CRM after auto-registration
-   * @param {string} userId - Firebase user ID
-   * @param {string} email - User email address
-   * @returns {Promise<{success: boolean, populated: boolean, error?: string}>}
-   */
-  async populateFromZoho(userId, email) {
-    try {
-      const zohoClient = new ZohoCRMClient();
-      
-      // Find contact by email
-      const contact = await zohoClient.findContactByEmail(email);
-      
-      if (!contact) {
-        return { success: true, populated: false };
-      }
-      
-      // Map Zoho contact fields to Firebase profile structure
-      // Note: Zoho uses exact field names like First_Name, Last_Name, Mailing_State, etc.
-      const profileData = {
-        // Use exact Zoho field names (with underscores)
-        firstName: contact.First_Name || '',
-        lastName: contact.Last_Name || '',
-        phone: contact.Phone || contact.Mobile || '',
-        mobile: contact.Mobile || '',
-        streetAddress: contact.Mailing_Street || '',
-        suburb: contact.Mailing_Suburb || '',
-        // Mailing_State might be null, check Pick_List_1 as fallback (custom field for state)
-        state: contact.Mailing_State || contact.Pick_List_1 || '',
-        postcode: contact.Mailing_Zip || '',
-        country: contact.Mailing_Country || '',
-        
-        // Zoho-specific fields
-        zohoContactId: contact.id,
-        zohoAccountName: contact.Account_Name?.name || '',
-        zohoAccountId: contact.Account_Name?.id || '',
-        zohoOwner: contact.Owner?.name || '',
-        zohoOwnerId: contact.Owner?.id || '',
-        
-        // Additional Zoho fields
-        mailingStreet: contact.Mailing_Street || '',
-        mailingCity: contact.Mailing_Suburb || '', // Mailing_City might be null, use Mailing_Suburb
-        mailingState: contact.Mailing_State || contact.Pick_List_1 || '',
-        mailingZip: contact.Mailing_Zip || '',
-        mailingCountry: contact.Mailing_Country || '',
-        
-        // Additional useful fields from Zoho
-        dateOfBirth: contact.Date_of_Birth || '',
-        fullName: contact.Full_Name || '',
-        
-        // Metadata
-        zohoLastSyncedAt: new Date().toISOString(),
-        syncSource: 'zoho', // Prevent sync back to Zoho
-      };
-      
-      console.log('📋 Mapped profile data:', JSON.stringify(profileData, null, 2));
-
-      // Fetch dependencies from Partner_Dependents related list
-      try {
-        const dependents = await zohoClient.getRelatedRecords('Contacts', contact.id, 'Partner_Dependents');
-        
-        if (dependents && dependents.length > 0) {
-          console.log(`📋 Found ${dependents.length} dependents in Partner_Dependents related list`);
-          const dependencies = dependents.map(dep => {
-            // Parse Name field to get lastName if Last_Name is not available
-            // Name format might be "First Last" or just "Last"
-            const fullName = dep.Name || '';
-            const nameParts = fullName.split(' ');
-            const lastName = dep.Last_Name || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || '');
-            
-            return {
-              firstName: dep.First_Name || '',
-              lastName: lastName,
-              relationship: dep.Relationship_to_Applicant || dep.Relationship || dep.relationship || '',
-              dateOfBirth: dep.Date_of_Birth || dep.dateOfBirth || '',
-              citizenship: dep.Citizenship || dep.citizenship || '',
-              gender: dep.Gender || '',
-              email: dep.Email || '',
-            };
-          });
-          
-          if (dependencies.length > 0) {
-            profileData.dependencies = dependencies;
-            console.log('✅ Loaded dependencies from Partner_Dependents related list');
-          }
-        } else {
-          console.log('📋 No dependents found in Partner_Dependents related list');
-          profileData.dependencies = [];
-        }
-      } catch (depError) {
-        console.error('⚠️ Failed to fetch dependencies from related list:', depError.message);
-        profileData.dependencies = [];
-      }
-
-      // Check if profile has all required fields to mark as complete
-      const hasRequiredFields = profileData.firstName && profileData.lastName && 
-                               profileData.phone && profileData.streetAddress && 
-                               profileData.suburb && profileData.state && 
-                               profileData.postcode && profileData.country;
-      
-      if (hasRequiredFields) {
-        profileData.profileCompleted = true;
-        console.log('✅ Profile has all required fields, marking as complete');
-      } else {
-        console.log('⚠️ Profile missing some required fields:', {
-          hasFirstName: !!profileData.firstName,
-          hasLastName: !!profileData.lastName,
-          hasPhone: !!profileData.phone,
-          hasStreetAddress: !!profileData.streetAddress,
-          hasSuburb: !!profileData.suburb,
-          hasState: !!profileData.state,
-          hasPostcode: !!profileData.postcode,
-          hasCountry: !!profileData.country,
-        });
-      }
-
-      // Update Firebase profile
-      const updateResult = await this.updateUserProfile(userId, profileData);
-      
-      if (updateResult.success) {
-        // Verify the update by reading the profile back
-        const updatedProfile = await this.getUserProfile(userId);
-        
-        if (!updatedProfile) {
-          console.warn('⚠️ Profile update may have failed - could not read profile back');
-        }
-      } else {
-        console.error('❌ Failed to update profile:', updateResult.error);
-      }
-
-      // Fetch Deals (Visa Applications) from related list
-      // This is non-blocking - if it fails, profile population still succeeds
-      try {
-        const deals = await zohoClient.getRelatedRecords('Contacts', contact.id, 'Deals');
-        
-        if (deals && deals.length > 0) {
-          for (const deal of deals) {
-            
-            try {
-              // Check if application already exists by zohoId
-              const appsRef = collection(this.db, 'applications');
-              const appsQuery = query(appsRef, where('zohoId', '==', deal.id));
-              const existingApps = await getDocs(appsQuery);
-              
-              let appId;
-              let isNew = false;
-              
-              if (!existingApps.empty) {
-                // Update existing application
-                const existingApp = existingApps.docs[0];
-                appId = existingApp.id;
-                
-                // Extract Visa Type from Deal_Name or use Visa_Type field
-                const dealName = deal.Deal_Name || deal.DealName || '';
-                let visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
-                visaType = normalizeSkillsInDemandTypeLabel(visaType);
-                const visaTypeCode = this.mapDealToVisaType(deal);
-
-                await updateDoc(doc(this.db, 'applications', appId), {
-                  userId: userId,
-                  reference: dealName || existingApp.data().reference, // Reference = Deal_Name
-                  type: visaType, // type = Visa_Type (normalized for Skills in Demand / 482)
-                  visaTypeCode,
-                  status: this.mapDealStageToStatus(deal.Stage || deal.Deal_Stage || 'draft'), // status = Stage
-                  closingDate: deal.Closing_Date || existingApp.data().closingDate || '', // Closing_Date
-                  lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || new Date().toISOString(), // Last updated time
-                  updatedAt: serverTimestamp(),
-                  zohoId: deal.id, // Reference to deal number
-                  publicReviewAccess: true,
-                });
-              } else {
-                // Create new application
-                appId = nanoid(12);
-                isNew = true;
-                
-              const now = new Date();
-              
-              // Extract Visa Type from Deal_Name or use Visa_Type field
-              // Deal_Name format: "Name - Visa Type (Subclass XXX)"
-              const dealName = deal.Deal_Name || deal.DealName || '';
-              let visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
-              visaType = normalizeSkillsInDemandTypeLabel(visaType);
-
-              const newApp = {
-                id: appId,
-                userId: userId,
-                reference: dealName || `PLY-${appId.toUpperCase()}`, // Reference = Deal_Name
-                type: visaType, // type = Visa_Type (extracted from Deal_Name or field)
-                visaTypeCode: this.mapDealToVisaType(deal),
-                status: this.mapDealStageToStatus(deal.Stage || deal.Deal_Stage || 'draft'), // status = Stage
-                closingDate: deal.Closing_Date || '', // Closing_Date from Zoho
-                updated: now.toLocaleDateString('en-AU', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                }),
-                lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || now.toISOString(), // Last updated time from Zoho
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                zohoId: deal.id, // Reference to deal number in Zoho
-                publicReviewAccess: true,
-              };
-                
-                await setDoc(doc(this.db, 'applications', appId), newApp);
-              }
-            } catch (dealError) {
-              console.error(`⚠️ Failed to process Deal ${deal.id}:`, dealError.message);
-              // Continue with other deals even if one fails
-            }
-          }
-        }
-      } catch (dealsError) {
-        console.error('⚠️ Failed to fetch deals from related list (non-critical):', dealsError.message);
-        // Don't fail profile population if deals fail - user can still complete registration
-      }
-
-      return { success: true, populated: true };
-    } catch (error) {
-      console.error('❌ Error populating from Zoho CRM:', error.message);
-      // Return success but indicate no population happened
-      // This ensures registration doesn't fail if Zoho check fails
-      return { success: true, populated: false, error: error.message };
-    }
-  }
-
-  /**
-   * Fetch deals/applications from Zoho CRM and save to Firebase
-   * This is called on login and when manually fetching
-   * @param {string} userId - Firebase user ID
-   * @param {string} zohoContactId - Zoho contact ID
-   */
-  async fetchDealsFromZoho(userId, zohoContactId) {
-    try {
-      const zohoClient = new ZohoCRMClient();
-      
-      // STEP 1: Fetch Deals directly from Zoho CRM (not from Firebase)
-      const deals = await zohoClient.getRelatedRecords('Contacts', zohoContactId, 'Deals');
-      
-      if (!deals || deals.length === 0) {
-        applicationsStore.rawDealsData = [];
-        // Zoho is source of truth: remove CRM-linked rows when no deals returned
-        try {
-          const appsRef = collection(this.db, 'applications');
-          const allQ = query(appsRef, where('userId', '==', userId));
-          const snap = await getDocs(allQ);
-          for (const d of snap.docs) {
-            const data = d.data();
-            if (data.zohoId) {
-              await deleteDoc(doc(this.db, 'applications', d.id));
-            }
-          }
-        } catch (e) {
-          console.error('⚠️ Failed to prune stale CRM applications:', e.message);
-        }
-        const remaining = await this.loadApplications(userId);
-        applicationsStore.applications = remaining;
-        return remaining;
-      }
-      
-      // STEP 2: Convert Zoho deals to application format and update store immediately
-      const applicationsFromZoho = [];
-      
-      for (const deal of deals) {
-        
-        try {
-          // Extract Visa Type from Deal_Name or use Visa_Type field
-          const dealName = deal.Deal_Name || deal.DealName || '';
-          let visaType = deal.Visa_Type || this.extractVisaTypeFromDealName(dealName) || 'Visa Application';
-          visaType = normalizeSkillsInDemandTypeLabel(visaType);
-          const now = new Date();
-          
-          // Convert deal to application format
-          const applicationData = {
-            reference: dealName, // Reference = Deal_Name
-            type: visaType, // type = Visa_Type
-            visaTypeCode: this.mapDealToVisaType(deal),
-            status: this.mapDealStageToStatus(deal.Stage || deal.Deal_Stage || 'draft'), // status = Stage
-            closingDate: deal.Closing_Date || '', // Closing_Date
-            updated: now.toLocaleDateString('en-AU', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            }),
-            lastUpdated: deal.Modified_Time || deal.Last_Activity_Time || now.toISOString(), // Last updated time
-            zohoId: deal.id, // Reference to deal number in Zoho
-            userId: userId,
-          };
-          
-          // STEP 3: Check if application already exists in Firebase by zohoId
-          const appsRef = collection(this.db, 'applications');
-          const appsQuery = query(appsRef, where('zohoId', '==', deal.id));
-          const existingApps = await getDocs(appsQuery);
-          
-          let appId;
-          let isNew = false;
-          
-          if (!existingApps.empty) {
-            // Application exists - keep the existing Firebase id
-            const existingApp = existingApps.docs[0];
-            appId = existingApp.id;
-            const existingAppData = existingApp.data();
-            
-            // Update with Zoho data (keep existing Firebase id)
-            await updateDoc(doc(this.db, 'applications', appId), {
-              ...applicationData,
-              id: appId, // Keep existing Firebase id
-              publicReviewAccess: true,
-              updatedAt: serverTimestamp(),
-            });
-            
-            // Use existing Firebase id for the application object
-            applicationData.id = appId;
-            // Preserve existing createdAt timestamp (convert Firestore timestamp to ISO string if needed)
-            const existingCreatedAt = existingAppData.createdAt;
-            if (existingCreatedAt?.toDate) {
-              applicationData.createdAt = existingCreatedAt.toDate().toISOString();
-            } else if (existingCreatedAt?.toISOString) {
-              applicationData.createdAt = existingCreatedAt.toISOString();
-            } else {
-              applicationData.createdAt = existingCreatedAt || now.toISOString();
-            }
-          } else {
-            // Application doesn't exist - create new one in Firebase
-            appId = nanoid(12);
-            isNew = true;
-            
-            const newApp = {
-              id: appId,
-              ...applicationData,
-              publicReviewAccess: true,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            };
-            
-            await setDoc(doc(this.db, 'applications', appId), newApp);
-            
-            applicationData.id = appId;
-            applicationData.createdAt = now.toISOString();
-          }
-          
-          applicationsFromZoho.push(applicationData);
-        } catch (dealError) {
-          console.error(`⚠️ Failed to process Deal ${deal.id}:`, dealError.message);
-          // Continue with other deals even if one fails
-        }
-      }
-      
-      // STEP 4: Zoho is source of truth — remove Firebase rows not in this CRM sync
-      const syncedIds = new Set(applicationsFromZoho.map((a) => a.id).filter(Boolean));
-      try {
-        const appsRef = collection(this.db, 'applications');
-        const allQ = query(appsRef, where('userId', '==', userId));
-        const allSnap = await getDocs(allQ);
-        for (const d of allSnap.docs) {
-          if (syncedIds.has(d.id)) continue;
-          console.log(`🗑️ Removing application not in current Zoho deals: ${d.id}`);
-          await deleteDoc(doc(this.db, 'applications', d.id));
-        }
-      } catch (e) {
-        console.error('⚠️ Failed to prune orphan applications:', e.message);
-      }
-
-      // STEP 5: Update applicationsStore with Zoho data
-      applicationsStore.applications = applicationsFromZoho;
-      applicationsStore.rawDealsData = deals; // Store raw deals JSON for debugging
-      
-      return applicationsFromZoho;
-    } catch (error) {
-      console.error('❌ Error fetching deals from Zoho CRM (non-critical):', error.message);
-      // Don't throw - return gracefully so login doesn't break
-      // The app will work fine without deals, they'll just be fetched later
-      return [];
-    }
-  }
-
   /**
    * Extract Visa Type from Deal Name
    * Deal_Name format: "Name - Visa Type (Subclass XXX)"
@@ -869,22 +501,29 @@ export class FirebaseAdapter extends BaseAdapter {
       }
       
       // Save draft to application's questionnaire data
+      // setDoc({ merge: true }) merges server-side, so no read-before-write is needed.
       const draftRef = doc(this.db, 'applications', applicationId, 'data', 'questionnaire');
-      const draftSnap = await getDoc(draftRef);
-      
-      // Merge with existing data
-      const currentDraft = draftSnap.exists() ? draftSnap.data() : {};
-      const updatedDraft = { ...currentDraft, ...data };
-      
+
       // Clean undefined values (Firestore doesn't accept them)
-      const cleanedDraft = this.cleanDataForFirestore(updatedDraft);
-      
+      const cleanedDraft = this.cleanDataForFirestore({ ...data });
+
+      // Only send top-level keys that differ from the last loaded/saved state.
+      // The merge write leaves the other keys untouched on the server, so the
+      // result is identical but the payload stays small as the draft grows.
+      const baseline = this._draftBaselines.get(applicationId);
+      const { changed, signatures: nextSignatures } = diffDraftKeys(cleanedDraft, baseline);
+
+      if (baseline && Object.keys(changed).length === 0) {
+        return { success: true, draft: cleanedDraft };
+      }
+
       // Save to Firestore
       await setDoc(draftRef, {
-        ...cleanedDraft,
+        ...changed,
         updatedAt: serverTimestamp()
       }, { merge: true });
-      
+
+      this._draftBaselines.set(applicationId, { ...(baseline || {}), ...nextSignatures });
       return { success: true, draft: cleanedDraft };
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -910,6 +549,12 @@ export class FirebaseAdapter extends BaseAdapter {
       const data = draftSnap.data();
       // Remove Firebase metadata
       const { updatedAt, ...draftData } = data;
+
+      // Remember what is stored so later saves can send only the changed keys
+      this._draftBaselines.set(
+        applicationId,
+        draftSignatures(this.cleanDataForFirestore({ ...draftData }))
+      );
       
       return draftData;
     } catch (error) {
@@ -929,6 +574,7 @@ export class FirebaseAdapter extends BaseAdapter {
       
       const draftRef = doc(this.db, 'applications', applicationId, 'data', 'questionnaire');
       await deleteDoc(draftRef);
+      this._draftBaselines.delete(applicationId);
       
       return { success: true };
     } catch (error) {

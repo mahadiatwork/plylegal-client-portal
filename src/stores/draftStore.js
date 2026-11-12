@@ -3,6 +3,7 @@
 import { proxy } from "valtio";
 import { getTargetVisaProgress } from "@/lib/targetVisaPages";
 import { getAdapter } from "@/lib/adapters";
+import { dedupeInFlight } from "@/lib/draftSync";
 import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
 import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
 import { DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY } from "@/lib/questionnaires/answers";
@@ -665,6 +666,8 @@ function reconcileProfileDetails(candidateDraft, profileId, details) {
     return next;
   });
 }
+
+const inflightDraftLoads = new Map();
 
 export const draftStore = proxy({
   draft: {},
@@ -1386,7 +1389,14 @@ export const draftStore = proxy({
     }
   },
 
-  async loadDraft(applicationId) {
+  // Concurrent callers (layout + page effects fire on the same mount) share one
+  // in-flight load per application instead of each hitting Firestore.
+  loadDraft(applicationId) {
+    const appId = applicationId || this.currentApplicationId;
+    return dedupeInFlight(inflightDraftLoads, appId, () => this._loadDraftNow(applicationId));
+  },
+
+  async _loadDraftNow(applicationId) {
     try {
       this.isLoading = true;
 
@@ -1397,7 +1407,12 @@ export const draftStore = proxy({
         return {};
       }
 
-      const data = await db.loadDraft(appId);
+      // Independent reads: run in parallel instead of three sequential round trips
+      const [data, completionData, prefill] = await Promise.all([
+        db.loadDraft(appId),
+        db.loadCompletionStatus(appId),
+        db.getPrefill(),
+      ]);
       this.draft = data || {};
 
       // Restore visaContext from persisted draft data
@@ -1405,20 +1420,17 @@ export const draftStore = proxy({
         this.visaContext = this.draft.visaContext;
       }
 
-      // Load completion status
-      const completionData = await db.loadCompletionStatus(appId);
-
       // If there is no draft data, clear any stale completion status
       if (!this.draft || Object.keys(this.draft).length === 0) {
         this.completionStatus = {};
-        // Persist the cleared status so the UI does not show completed steps
-        await db.saveCompletionStatus({}, appId);
+        // Only write when there is actually stale status to clear
+        if (completionData && Object.keys(completionData).length > 0) {
+          await db.saveCompletionStatus({}, appId);
+        }
       } else {
         this.completionStatus = completionData || {};
       }
 
-      // Load prefill setting
-      const prefill = await db.getPrefill();
       this.shouldPrefill = prefill;
 
       this.isLoading = false;
