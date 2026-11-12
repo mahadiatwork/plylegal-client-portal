@@ -1,14 +1,16 @@
-# Client shared WorkDrive folder
+# Shared WorkDrive folders
 
-The client portal reads the current Zoho Deal field `Matter_Workdrive_Folder_URL` when the client opens the **Shared Files** tab.
+The admin portal has a **Shared Folder** matter tab. It reads the linked Zoho Deal field `Matter_Workdrive_Folder_URL` through the admin-session-protected `/api/matter/{matterId}/shared-folder` endpoint and embeds the validated WorkDrive URL in an iframe.
 
-The tab uses `GET /api/matters/{applicationId}/shared-folder`. This endpoint verifies the Firebase session and application ownership before reading the linked Zoho Deal. It does not query the portal's resource library or require individually uploaded Shared Files records. The WorkDrive folder is the Shared Files content source; the Resources tab remains separate.
+The client portal **Shared Files** tab currently embeds this fixed shared folder for all matters:
 
-For applications with a valid `zohoId`, the current CRM field takes precedence over a stored `clientSharedFolderUrl`, including when the CRM field is cleared. Applications without a usable Zoho Deal ID may still use a validated legacy `clientSharedFolderUrl`. A failed CRM lookup shows a retry action rather than reporting an empty folder. Folder responses use `Cache-Control: private, no-store`.
+https://workdrive.zohopublic.com.au/external/c11f82790e89f675a5e4eb885e5e14b385b36b7822a467637b1f32f495b416d1
 
-- A published WorkDrive permalink such as `https://workdrive.zohoexternal.com.au/file/{resource_id}` is rendered inside the portal.
-- An existing custom share link such as `https://workdrive.zohopublic.com.au/external/{link_id}` remains available through **Open in WorkDrive**, but cannot be used as the inline folder viewer.
-- Other URLs are rejected by the portal.
+Client folder endpoints verify the Firebase session and matter ownership, then return the fixed URL with embed mode. They do not fetch the admin CRM folder or use a stored matter folder URL. Both portals keep an **Open in WorkDrive** link alongside the iframe. Folder responses use `Cache-Control: private, no-store`.
+
+## Optional published permalinks
+
+The older Deluge example below can create a published permalink when needed. Publishing a permalink is not required by the current fixed client folder view.
 
 ## Deluge change
 

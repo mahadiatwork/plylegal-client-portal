@@ -34,7 +34,6 @@ function ClientSharedFolder({ folder }) {
         </a>
       </div>
 
-      {folder.mode === "embed" ? (
         <div className="bg-white p-2 sm:p-4">
           <iframe
             src={folder.url}
@@ -46,13 +45,6 @@ function ClientSharedFolder({ folder }) {
             allow="fullscreen"
           />
         </div>
-      ) : (
-        <div className="flex flex-col items-center px-6 py-12 text-center">
-          <Folder className="h-12 w-12 text-[#AAB4B5]" />
-          <h3 className="mt-4 font-serif text-xl font-bold text-[#103F37]">Your shared folder is ready</h3>
-          <p className="mt-2 max-w-md text-sm text-[#667579]">Open the folder in WorkDrive to browse the files shared for this matter.</p>
-        </div>
-      )}
     </section>
   );
 }

@@ -1,16 +1,6 @@
-import zohoClient from "./zohoClient.js";
-import { getClientSharedFolderAccess } from "./clientSharedFolder.js";
+export const CLIENT_SHARED_FOLDER_URL = "https://workdrive.zohopublic.com.au/external/c11f82790e89f675a5e4eb885e5e14b385b36b7822a467637b1f32f495b416d1";
 
-const CLIENT_SHARED_FOLDER_FIELDS = "id,Matter_Workdrive_Folder_URL";
-
-export async function loadClientSharedFolderAccess(application, client = zohoClient) {
-  const dealId = String(application?.zohoId || "").trim();
-  if (!/^\d+$/.test(dealId)) {
-    return getClientSharedFolderAccess(application?.clientSharedFolderUrl);
-  }
-
-  // The CRM field is authoritative, including when the team clears the link.
-  const deal = await client.getRecord("Deals", dealId, CLIENT_SHARED_FOLDER_FIELDS);
-  if (!deal) throw new Error("Unable to load the shared folder from Zoho");
-  return getClientSharedFolderAccess(deal.Matter_Workdrive_Folder_URL);
+// The client folder is intentionally separate from the admin matter's CRM folder.
+export async function loadClientSharedFolderAccess() {
+  return { url: CLIENT_SHARED_FOLDER_URL, mode: "embed" };
 }
