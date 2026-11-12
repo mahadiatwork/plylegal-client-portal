@@ -1,6 +1,7 @@
 import { questionnaireDefinitions } from "./temporaryWork482.definition.js";
 import { loadAuthenticatedQuestionnaireDefinition } from "./remoteLoading.js";
 import { findQuestionnaireDefinitionPage } from "./pageRoutes.js";
+import { createTtlCache } from "../ttlCache.js";
 import {
   isSafeQuestionnaireRoute,
   validateQuestionnaireDefinition,
@@ -201,7 +202,23 @@ async function readServerDefinition(args, token) {
   return normalizeQuestionnaireDefinition(payload.definition);
 }
 
-async function loadFirestoreDefinitionUnchecked(args = {}) {
+// Published definitions change rarely. Share in-flight requests and keep
+// successful results briefly so the layout and each page don't refetch them.
+const definitionCache = createTtlCache({ ttlMs: 60_000 });
+
+export function invalidateQuestionnaireDefinitionCache() {
+  definitionCache.clear();
+}
+
+function definitionCacheKey(args = {}) {
+  return JSON.stringify([args.definitionId || "", args.visaType || "", args.visaContext ?? ""]);
+}
+
+function loadFirestoreDefinitionUnchecked(args = {}) {
+  return definitionCache.get(definitionCacheKey(args), () => fetchFirestoreDefinition(args));
+}
+
+async function fetchFirestoreDefinition(args = {}) {
   if (!canLoadRemoteDefinitions()) return null;
 
   const [firestore, firebase] = await Promise.all([
