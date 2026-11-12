@@ -41,7 +41,7 @@ const SUPPORTED_VISIBLE_IF_OPERATORS = new Set([
 const SAFE_ROUTE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const SAFE_DATA_KEY = /^[A-Za-z0-9](?:[A-Za-z0-9_-]{0,254}[A-Za-z0-9])?$/;
 const RESERVED_DATA_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-const RESERVED_WORKFLOW_ROUTE = /\/(?:start|profile|submit)$/;
+const RESERVED_WORKFLOW_ROUTE = /\/submit$/;
 const PROFILE_QUESTIONNAIRE_ROUTE = /^\/intake\/(?:temporary-work|partner|protection)\/(?:main-applicant|spouse-partner|children\/[^/]+|non-migrating\/[^/]+)\//;
 const SUPPORTED_TEMPORARY_WORK_VISA_CONTEXTS = new Set(["482", "186"]);
 

@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, CheckCircle2, HelpCircle, Info, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { QuestionnaireCopyText } from "@/components/questionnaire/QuestionnaireCopyContext";
 import { cn } from "@/lib/utils";
 
 export function IntakeStartPageContent({
@@ -41,16 +42,16 @@ export function IntakeStartPageContent({
 
         {/* Section Title & Description */}
         <div className="pt-6">
-          <h1 className="font-serif text-3xl sm:text-[34px] font-bold tracking-tight text-[#0D3339]">
+          <QuestionnaireCopyText as="h1" kind="title" className="font-serif text-3xl sm:text-[34px] font-bold tracking-tight text-[#0D3339]">
             Getting started
-          </h1>
+          </QuestionnaireCopyText>
           <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-            <p>
+            <QuestionnaireCopyText as="p" kind="body">
               This questionnaire is the foundation of your visa application. Please complete each section carefully and provide as much detail as you can. If you are unsure about any question, let us know and we will guide you through it.
-            </p>
-            <p>
+            </QuestionnaireCopyText>
+            <QuestionnaireCopyText as="p" kind="body">
               Once submitted, we will review your responses and use this information to prepare your visa application.
-            </p>
+            </QuestionnaireCopyText>
           </div>
         </div>
 
@@ -82,7 +83,8 @@ export function IntakeStartPageContent({
           <div className="flex items-start gap-3.5">
             <Info className="h-7 w-7 text-[#7059CF] shrink-0 stroke-[1.8] mt-0.5" />
             <p className="text-sm leading-6 text-slate-700">
-              <strong className="font-semibold text-slate-900">Accuracy matters.</strong> Incomplete or incorrect information can lead to delays, refusal, or visa cancellation. If you are unsure about anything, let us know.
+              <QuestionnaireCopyText as="strong" kind="body" className="font-semibold text-slate-900">Accuracy matters.</QuestionnaireCopyText>{" "}
+              <QuestionnaireCopyText kind="body">Incomplete or incorrect information can lead to delays, refusal, or visa cancellation. If you are unsure about anything, let us know.</QuestionnaireCopyText>
             </p>
           </div>
         </div>
@@ -114,9 +116,9 @@ export function IntakeStartPageContent({
             >
               {started && <Check className="h-3.5 w-3.5 stroke-[3]" />}
             </div>
-            <span className="text-sm font-medium text-slate-800">
+            <QuestionnaireCopyText as="span" kind="labels" className="text-sm font-medium text-slate-800">
               I confirm that the information I provide will be accurate to the best of my knowledge.
-            </span>
+            </QuestionnaireCopyText>
           </label>
           {error && (
             <p className="mt-2 text-xs font-medium text-red-600 pl-8.5">
@@ -131,7 +133,7 @@ export function IntakeStartPageContent({
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EBE7FE] text-[#7A64D6]">
               <Lock className="h-4 w-4" />
             </div>
-            <span>You can save your progress and return anytime.</span>
+            <QuestionnaireCopyText as="span" kind="body">You can save your progress and return anytime.</QuestionnaireCopyText>
           </div>
 
           <button

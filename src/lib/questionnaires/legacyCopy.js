@@ -72,6 +72,10 @@ function collectPresentationCopy(maps, question, path) {
     if (typeof value !== "string" && typeof original !== "string") return;
     addCopy(field, original ?? value, value);
     addCopy(maps.labels, original ?? value, value);
+    const scopedPath = `${path}.presentation.${key}`;
+    const scoped = maps.fields.get(scopedPath) || new Map();
+    addCopy(scoped, original ?? value, value);
+    maps.fields.set(scopedPath, scoped);
   };
   add("addLabel", presentation.addLabel, originals.addLabel);
   add("emptyMessage", presentation.emptyMessage, originals.emptyMessage);
@@ -93,8 +97,7 @@ function collectPresentationCopy(maps, question, path) {
   if (presentation.actions) {
     Object.entries(presentation.actions).forEach(([action, value]) => {
       const originalValue = originals.actions?.[action];
-      addCopy(field, originalValue ?? value, value);
-      addCopy(maps.labels, originalValue ?? value, value);
+      add(`actions.${action}`, value, originalValue);
     });
   }
   if (presentation.rowFormatter && typeof presentation.rowFormatter === "string") {

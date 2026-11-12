@@ -39,6 +39,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { QuestionnaireCopyText, useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -240,15 +241,20 @@ function isQuestionnaireImportCandidate(app, currentId) {
 
 function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant, mainApplicantPrefill, availableCrmDependents = [], isSaving = false, relationships }) {
   const [selectedCrmId, setSelectedCrmId] = useState(null);
+  const copyLabels = useQuestionnaireCopy("labels");
+  const copyAddDialogTitle = useQuestionnaireCopy("labels", "applicants.presentation.addDialogTitle");
+  const copyEditDialogTitle = useQuestionnaireCopy("labels", "applicants.presentation.editDialogTitle");
+  const copyCancelAction = useQuestionnaireCopy("labels", "applicants.presentation.actions.cancel");
+  const copyRelationship = useQuestionnaireCopy("labels", "applicants.relationship");
+  const copyGivenNames = useQuestionnaireCopy("labels", "applicants.given_names");
+  const copyFamilyName = useQuestionnaireCopy("labels", "applicants.family_name");
+  const copyGender = useQuestionnaireCopy("labels", "applicants.gender");
+  const copyDateOfBirth = useQuestionnaireCopy("labels", "applicants.date_of_birth");
 
   const form = useForm({
     resolver: zodResolver(profileSchema),
     defaultValues: getProfileDefaults(hasMainApplicant, mainApplicantPrefill),
   });
-
-  const getRelationshipLabel = (rel) => {
-    return relationships.find(r => r.value === rel)?.label || rel;
-  };
 
   // Reset form + CRM selection when dialog opens/closes
   useEffect(() => {
@@ -302,7 +308,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
         <DialogHeader>
-          <DialogTitle>{editingProfile ? "Edit Person" : "Add Person"}</DialogTitle>
+          <DialogTitle>{editingProfile ? copyEditDialogTitle("Edit Person") : copyAddDialogTitle("Add Person")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
 
@@ -363,7 +369,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
           {/* Relationship */}
           <div>
             <Label className="mb-2 block font-medium">
-              Relationship to Application <span className="text-red-600">*</span>
+              {copyRelationship("Relationship to Application")} <span className="text-red-600">*</span>
             </Label>
             <Select
               value={form.watch("relationship")}
@@ -379,7 +385,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
                     value={r.value}
                     disabled={r.value === "main_applicant" && hasMainApplicant && editingProfile?.relationship !== "main_applicant"}
                   >
-                    {r.label}
+                    {copyRelationship(r.label)}
                     {r.value === "main_applicant" && hasMainApplicant && editingProfile?.relationship !== "main_applicant" && " (already added)"}
                   </SelectItem>
                 ))}
@@ -394,7 +400,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="given_names" className="mb-1 block font-medium">
-                Given Name(s) <span className="text-red-600">*</span>
+                {copyGivenNames("Given Name(s)")} <span className="text-red-600">*</span>
               </Label>
               <Input
                 id="given_names"
@@ -408,7 +414,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
             </div>
             <div>
               <Label htmlFor="family_name" className="mb-1 block font-medium">
-                Family Name <span className="text-red-600">*</span>
+                {copyFamilyName("Family Name")} <span className="text-red-600">*</span>
               </Label>
               <Input
                 id="family_name"
@@ -427,7 +433,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
 
           {/* Gender */}
           <div>
-            <Label className="mb-2 block font-medium">Gender</Label>
+            <Label className="mb-2 block font-medium">{copyGender("Gender")}</Label>
             <RadioGroup
               value={form.watch("gender")}
               onValueChange={(v) => form.setValue("gender", v)}
@@ -437,7 +443,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
                 <div key={g} className="flex items-center gap-2">
                   <RadioGroupItem value={g} id={`gender-${g}`} />
                   <Label htmlFor={`gender-${g}`} className="font-normal cursor-pointer text-sm">
-                    {g}
+                    {copyGender(g)}
                   </Label>
                 </div>
               ))}
@@ -446,7 +452,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
 
           {/* Date of Birth */}
           <div>
-            <Label className="mb-2 block font-medium">Date of Birth</Label>
+            <Label className="mb-2 block font-medium">{copyDateOfBirth("Date of Birth")}</Label>
             <div className="grid grid-cols-3 gap-2">
               <Select value={form.watch("birth_day")} onValueChange={(v) => form.setValue("birth_day", v)}>
                 <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
@@ -464,7 +470,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>{copyCancelAction("Cancel")}</Button>
           <Button
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
@@ -475,7 +481,7 @@ function ProfileDialog({ open, onClose, onSave, editingProfile, hasMainApplicant
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              editingProfile ? "Save Changes" : "Add Person"
+              editingProfile ? "Save Changes" : copyLabels("Add Person")
             )}
           </Button>
         </DialogFooter>
@@ -512,6 +518,11 @@ export default function VisaProfilePage({
   const authSnap = useSnapshot(authStore);
   const appsSnap = useSnapshot(applicationsStore);
   const { toast } = useToast();
+  const copyBody = useQuestionnaireCopy("body");
+  const copyIntro = useQuestionnaireCopy("intro");
+  const copyAddLabel = useQuestionnaireCopy("labels", "applicants.presentation.addLabel");
+  const copyEmptyMessage = useQuestionnaireCopy("labels", "applicants.presentation.emptyMessage");
+  const copyRelationship = useQuestionnaireCopy("labels", "applicants.relationship");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
@@ -591,7 +602,7 @@ export default function VisaProfilePage({
   });
 
   const getRelationshipLabel = (rel) => {
-    return relationships.find(r => r.value === rel)?.label || rel;
+    return copyRelationship(relationships.find(r => r.value === rel)?.label || rel);
   };
 
   const handleAddProfile = async (data) => {
@@ -794,27 +805,27 @@ export default function VisaProfilePage({
             <div className="w-10 h-10 rounded-full bg-[#E2EBE5] flex items-center justify-center shrink-0">
               <Users className="w-5 h-5 text-[#244D42]" />
             </div>
-            Included Applicants
+            <QuestionnaireCopyText kind="title">Included Applicants</QuestionnaireCopyText>
           </CardTitle>
           <p className="text-sm text-slate-600 mt-1">
-            Add everyone included in this application. Start with the main applicant, then add any family members included in the application.
+            <QuestionnaireCopyText kind="body">Add everyone included in this application. Start with the main applicant, then add any family members included in the application.</QuestionnaireCopyText>
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Main Applicant</h3>
-            <p className="text-sm text-gray-600 mt-1">Add the primary applicant first.</p>
+            <QuestionnaireCopyText as="h3" kind="body" className="text-base font-semibold text-gray-900">Main Applicant</QuestionnaireCopyText>
+            <QuestionnaireCopyText as="p" kind="body" className="text-sm text-gray-600 mt-1">Add the primary applicant first.</QuestionnaireCopyText>
           </div>
           <div>
-            <h3 className="text-base font-semibold text-gray-900 mt-4">Family Members</h3>
-            <p className="text-sm text-gray-600 mt-1">Next add any spouse or partner, followed by each dependent child included in the application.</p>
+            <QuestionnaireCopyText as="h3" kind="body" className="text-base font-semibold text-gray-900 mt-4">Family Members</QuestionnaireCopyText>
+            <QuestionnaireCopyText as="p" kind="body" className="text-sm text-gray-600 mt-1">Next add any spouse or partner, followed by each dependent child included in the application.</QuestionnaireCopyText>
           </div>
           {/* Info banner */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-            <p className="font-bold mb-1" style={{ color: '#4F726B' }}>Who should be added?</p>
+            <QuestionnaireCopyText as="p" kind="intro" className="font-bold mb-1" style={{ color: '#4F726B' }}>Who should be added?</QuestionnaireCopyText>
             <ul className="space-y-1 list-disc list-inside">
               {infoItems.map((item, index) => (
-                <li key={index} style={{ color: '#4F726B' }} className="font-bold">{item}</li>
+                <li key={index} style={{ color: '#4F726B' }} className="font-bold">{copyIntro(item)}</li>
               ))}
             </ul>
           </div>
@@ -908,8 +919,8 @@ export default function VisaProfilePage({
           ) : (
             <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl">
               <UserCircle2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No persons added yet</p>
-              <p className="text-sm text-gray-400 mt-1">Start by adding the main applicant</p>
+              <p className="text-gray-500 font-medium">{copyEmptyMessage("No persons added yet")}</p>
+              <p className="text-sm text-gray-400 mt-1">{copyBody("Start by adding the main applicant")}</p>
             </div>
           )}
 
@@ -922,7 +933,7 @@ export default function VisaProfilePage({
             data-testid="button-add-profile"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Person
+            {copyAddLabel("Add Person")}
           </Button>
 
           {hasMainApplicant && !isSubmitted && importCandidates.length > 0 && (

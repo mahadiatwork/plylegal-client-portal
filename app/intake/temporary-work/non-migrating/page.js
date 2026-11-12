@@ -34,6 +34,11 @@ import {
 } from "lucide-react";
 import { FormNavigation } from "@/components/FormNavigation";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import {
+  QuestionnaireCopyFieldScope,
+  QuestionnaireCopyText,
+  useQuestionnaireCopy,
+} from "@/components/questionnaire/QuestionnaireCopyContext";
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MONTHS = [
@@ -105,6 +110,36 @@ const MONTH_NUM_TO_NAME_NMF = {
   "05": "May", "06": "June", "07": "July", "08": "August",
   "09": "September", "10": "October", "11": "November", "12": "December",
 };
+
+function CopyLabel({ children, fieldName, ...props }) {
+  return (
+    <QuestionnaireCopyText as={Label} kind="labels" fieldName={fieldName} {...props}>
+      {children}
+    </QuestionnaireCopyText>
+  );
+}
+
+function CopyInput({ fieldName, placeholder, ...props }) {
+  const copyPlaceholder = useQuestionnaireCopy("placeholders", fieldName);
+  return <Input {...props} placeholder={copyPlaceholder(placeholder)} />;
+}
+
+function CopySelectValue({ fieldName, placeholder }) {
+  const copyPlaceholder = useQuestionnaireCopy("placeholders", fieldName);
+  return <SelectValue placeholder={copyPlaceholder(placeholder)} />;
+}
+
+function CopyOption({ children, fieldName }) {
+  return <QuestionnaireCopyText kind="options" fieldName={fieldName}>{children}</QuestionnaireCopyText>;
+}
+
+function CopySectionHeading({ children }) {
+  return (
+    <QuestionnaireCopyText as="h3" kind="labels" className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">
+      {children}
+    </QuestionnaireCopyText>
+  );
+}
 
 function getNmfDisplayName(member) {
   const family = member.passport?.family_name || "";
@@ -339,7 +374,7 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
 
   const YesNoRadio = ({ name, label }) => (
     <div>
-      <Label className="mb-2 block font-medium">{label}</Label>
+      <CopyLabel fieldName={name} className="mb-2 block font-medium">{label}</CopyLabel>
       <RadioGroup
         value={form.watch(name)}
         onValueChange={(v) => form.setValue(name, v)}
@@ -348,7 +383,9 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
         {["yes", "no"].map((v) => (
           <div key={v} className="flex items-center gap-2">
             <RadioGroupItem value={v} id={`${name}-${v}`} />
-            <Label htmlFor={`${name}-${v}`} className="font-normal cursor-pointer capitalize">{v === "yes" ? "Yes" : "No"}</Label>
+            <CopyLabel fieldName={name} htmlFor={`${name}-${v}`} className="font-normal cursor-pointer capitalize">
+              <CopyOption fieldName={name}>{v === "yes" ? "Yes" : "No"}</CopyOption>
+            </CopyLabel>
           </div>
         ))}
       </RadioGroup>
@@ -356,10 +393,15 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
   );
 
   return (
+    <QuestionnaireCopyFieldScope fieldName="members">
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
         <DialogHeader>
-          <DialogTitle>{editingMember ? "Edit Other Family Member" : "Add Other Family Member"}</DialogTitle>
+          {editingMember ? (
+            <QuestionnaireCopyText as={DialogTitle} fieldName="presentation.editDialogTitle">Edit Other Family Member</QuestionnaireCopyText>
+          ) : (
+            <QuestionnaireCopyText as={DialogTitle} fieldName="presentation.addDialogTitle">Add Other Family Member</QuestionnaireCopyText>
+          )}
         </DialogHeader>
         <div className="space-y-6 py-2">
 
@@ -419,14 +461,14 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
 
           {/* Relationship */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Relationship</h3>
+            <CopySectionHeading>Relationship</CopySectionHeading>
             <div>
-              <Label className="mb-2 block font-medium">Relationship to Main Applicant <span className="text-red-600">*</span></Label>
+              <CopyLabel fieldName="relationship" className="mb-2 block font-medium">Relationship to Main Applicant <span className="text-red-600">*</span></CopyLabel>
               <Select value={form.watch("relationship")} onValueChange={(v) => form.setValue("relationship", v)}>
-                <SelectTrigger><SelectValue placeholder="Select relationship..." /></SelectTrigger>
+                <SelectTrigger><CopySelectValue fieldName="relationship" placeholder="Select relationship..." /></SelectTrigger>
                 <SelectContent>
                   {NON_MIGRATING_RELATIONSHIPS.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    <SelectItem key={r.value} value={r.value}><CopyOption fieldName="relationship">{r.label}</CopyOption></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -435,12 +477,12 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
               )}
             </div>
             <div>
-              <Label className="mb-2 block font-medium">Relationship Status</Label>
+              <CopyLabel fieldName="relationship_status" className="mb-2 block font-medium">Relationship Status</CopyLabel>
               <Select value={form.watch("relationship_status")} onValueChange={(v) => form.setValue("relationship_status", v)}>
-                <SelectTrigger><SelectValue placeholder="Select status..." /></SelectTrigger>
+                <SelectTrigger><CopySelectValue fieldName="relationship_status" placeholder="Select status..." /></SelectTrigger>
                 <SelectContent>
                   {RELATIONSHIP_STATUSES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    <SelectItem key={s.value} value={s.value}><CopyOption fieldName="relationship_status">{s.label}</CopyOption></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -449,22 +491,22 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
 
           {/* Passport */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Passport Details</h3>
+            <CopySectionHeading>Passport Details</CopySectionHeading>
             <YesNoRadio name="has_current_passport" label="Does this person have a current passport?" />
             {hasPassport && (
               <div className="space-y-3 pl-4 border-l-2 border-gray-100">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="mb-1 block font-medium">Family Name</Label>
-                    <Input {...form.register("passport_family_name")} placeholder="Family name on passport" />
+                    <CopyLabel fieldName="passport_family_name" className="mb-1 block font-medium">Family Name</CopyLabel>
+                    <CopyInput fieldName="passport_family_name" {...form.register("passport_family_name")} placeholder="Family name on passport" />
                   </div>
                   <div>
-                    <Label className="mb-1 block font-medium">Given Names</Label>
-                    <Input {...form.register("passport_given_names")} placeholder="Given names on passport" />
+                    <CopyLabel fieldName="passport_given_names" className="mb-1 block font-medium">Given Names</CopyLabel>
+                    <CopyInput fieldName="passport_given_names" {...form.register("passport_given_names")} placeholder="Given names on passport" />
                   </div>
                 </div>
                 <div>
-                  <Label className="mb-2 block font-medium">Sex</Label>
+                  <CopyLabel fieldName="passport_sex" className="mb-2 block font-medium">Sex</CopyLabel>
                   <RadioGroup
                     value={form.watch("passport_sex")}
                     onValueChange={(v) => form.setValue("passport_sex", v)}
@@ -473,13 +515,13 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
                     {["Male", "Female", "Other"].map((g) => (
                       <div key={g} className="flex items-center gap-2">
                         <RadioGroupItem value={g} id={`passport-sex-${g}`} />
-                        <Label htmlFor={`passport-sex-${g}`} className="font-normal cursor-pointer">{g}</Label>
+                        <CopyLabel fieldName="passport_sex" htmlFor={`passport-sex-${g}`} className="font-normal cursor-pointer"><CopyOption fieldName="passport_sex">{g}</CopyOption></CopyLabel>
                       </div>
                     ))}
                   </RadioGroup>
                 </div>
                 <div>
-                  <Label className="mb-2 block font-medium">Date of Birth</Label>
+                  <CopyLabel fieldName="passport_date_of_birth" className="mb-2 block font-medium">Date of Birth</CopyLabel>
                   <div className="grid grid-cols-3 gap-2">
                     <Select value={form.watch("passport_dob_day")} onValueChange={(v) => form.setValue("passport_dob_day", v)}>
                       <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
@@ -501,92 +543,92 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
 
           {/* Identity Documents */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Identity Documents</h3>
+            <CopySectionHeading>Identity Documents</CopySectionHeading>
             <YesNoRadio name="has_national_identity_card" label="Does this person have a national identity card?" />
             <YesNoRadio name="has_other_identity_documents" label="Does this person have any other identity documents?" />
           </div>
 
           {/* Place of Birth */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Place of Birth</h3>
+            <CopySectionHeading>Place of Birth</CopySectionHeading>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="mb-1 block font-medium">Town or City</Label>
-                <Input {...form.register("place_of_birth_town")} placeholder="Town or city" />
+                <CopyLabel fieldName="place_of_birth_town" className="mb-1 block font-medium">Town or City</CopyLabel>
+                <CopyInput fieldName="place_of_birth_town" {...form.register("place_of_birth_town")} placeholder="Town or city" />
               </div>
               <div>
-                <Label className="mb-1 block font-medium">State or Province</Label>
-                <Input {...form.register("place_of_birth_state")} placeholder="State or province" />
+                <CopyLabel fieldName="place_of_birth_state" className="mb-1 block font-medium">State or Province</CopyLabel>
+                <CopyInput fieldName="place_of_birth_state" {...form.register("place_of_birth_state")} placeholder="State or province" />
               </div>
             </div>
             <div>
-              <Label className="mb-1 block font-medium">Country</Label>
-              <Input {...form.register("place_of_birth_country")} placeholder="Country of birth" />
+              <CopyLabel fieldName="place_of_birth_country" className="mb-1 block font-medium">Country</CopyLabel>
+              <CopyInput fieldName="place_of_birth_country" {...form.register("place_of_birth_country")} placeholder="Country of birth" />
             </div>
           </div>
 
           {/* Contact Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Address and Phone</h3>
+            <CopySectionHeading>Address and Phone</CopySectionHeading>
             <div>
-              <Label className="mb-1 block font-medium">Phone Number</Label>
-              <Input {...form.register("contact_phone")} placeholder="Phone number" />
+              <CopyLabel fieldName="contact_phone" className="mb-1 block font-medium">Phone Number</CopyLabel>
+              <CopyInput fieldName="contact_phone" {...form.register("contact_phone")} placeholder="Phone number" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="mb-1 block font-medium">Address Line 1</Label>
-                <Input {...form.register("address_line_1")} placeholder="Street address" />
+                <CopyLabel fieldName="address_line_1" className="mb-1 block font-medium">Address Line 1</CopyLabel>
+                <CopyInput fieldName="address_line_1" {...form.register("address_line_1")} placeholder="Street address" />
               </div>
               <div>
-                <Label className="mb-1 block font-medium">Address Line 2</Label>
-                <Input {...form.register("address_line_2")} placeholder="Apartment, unit, etc." />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1 block font-medium">Suburb / City</Label>
-                <Input {...form.register("address_suburb")} placeholder="Suburb or city" />
-              </div>
-              <div>
-                <Label className="mb-1 block font-medium">State / Province</Label>
-                <Input {...form.register("address_state")} placeholder="State or province" />
+                <CopyLabel fieldName="address_line_2" className="mb-1 block font-medium">Address Line 2</CopyLabel>
+                <CopyInput fieldName="address_line_2" {...form.register("address_line_2")} placeholder="Apartment, unit, etc." />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="mb-1 block font-medium">Postcode</Label>
-                <Input {...form.register("address_postcode")} placeholder="Postcode" />
+                <CopyLabel fieldName="address_suburb" className="mb-1 block font-medium">Suburb / City</CopyLabel>
+                <CopyInput fieldName="address_suburb" {...form.register("address_suburb")} placeholder="Suburb or city" />
               </div>
               <div>
-                <Label className="mb-1 block font-medium">Country</Label>
-                <Input {...form.register("address_country")} placeholder="Country" />
+                <CopyLabel fieldName="address_state" className="mb-1 block font-medium">State / Province</CopyLabel>
+                <CopyInput fieldName="address_state" {...form.register("address_state")} placeholder="State or province" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <CopyLabel fieldName="address_postcode" className="mb-1 block font-medium">Postcode</CopyLabel>
+                <CopyInput fieldName="address_postcode" {...form.register("address_postcode")} placeholder="Postcode" />
+              </div>
+              <div>
+                <CopyLabel fieldName="address_country" className="mb-1 block font-medium">Country</CopyLabel>
+                <CopyInput fieldName="address_country" {...form.register("address_country")} placeholder="Country" />
               </div>
             </div>
           </div>
 
           {/* Other Names */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Other Names / Spellings</h3>
+            <CopySectionHeading>Other Names / Spellings</CopySectionHeading>
             {otherNameFields.map((field, index) => (
               <div key={field.id} className="grid grid-cols-3 gap-2 items-end">
                 <div>
-                  <Label className="mb-1 block font-medium text-xs">Family Name</Label>
-                  <Input {...form.register(`other_names.${index}.family_name`)} placeholder="Family name" />
+                  <CopyLabel fieldName="other_names.other_name_family_name" className="mb-1 block font-medium text-xs">Family Name</CopyLabel>
+                  <CopyInput fieldName="other_names.other_name_family_name" {...form.register(`other_names.${index}.family_name`)} placeholder="Family name" />
                 </div>
                 <div>
-                  <Label className="mb-1 block font-medium text-xs">Given Names</Label>
-                  <Input {...form.register(`other_names.${index}.given_names`)} placeholder="Given names" />
+                  <CopyLabel fieldName="other_names.other_name_given_names" className="mb-1 block font-medium text-xs">Given Names</CopyLabel>
+                  <CopyInput fieldName="other_names.other_name_given_names" {...form.register(`other_names.${index}.given_names`)} placeholder="Given names" />
                 </div>
                 <div className="flex gap-1 items-end">
                   <div className="flex-1">
-                    <Label className="mb-1 block font-medium text-xs">Type</Label>
+                    <CopyLabel fieldName="other_names.other_name_type" className="mb-1 block font-medium text-xs">Type</CopyLabel>
                     <Select
                       value={form.watch(`other_names.${index}.type`)}
                       onValueChange={(v) => form.setValue(`other_names.${index}.type`, v)}
                     >
-                      <SelectTrigger className="text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                      <SelectTrigger className="text-xs"><CopySelectValue fieldName="other_names.other_name_type" placeholder="Type" /></SelectTrigger>
                       <SelectContent>
-                        {OTHER_NAME_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                        {OTHER_NAME_TYPES.map((t) => <SelectItem key={t.value} value={t.value}><CopyOption fieldName="other_names.other_name_type">{t.label}</CopyOption></SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -604,31 +646,31 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
               onClick={() => appendOtherName({ family_name: "", given_names: "", type: "" })}
               className="text-xs"
             >
-              <Plus className="w-3 h-3 mr-1" /> Add Other Name
+              <Plus className="w-3 h-3 mr-1" /> <QuestionnaireCopyText fieldName="other_names.presentation.addLabel">Add Other Name</QuestionnaireCopyText>
             </Button>
           </div>
 
           {/* Citizenship */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Citizenship</h3>
+            <CopySectionHeading>Citizenship</CopySectionHeading>
             <YesNoRadio name="citizenship_has_other" label="Does this person hold citizenship of any other country?" />
             {hasCitizenshipOther && (
               <div>
-                <Label className="mb-1 block font-medium">Countries (comma-separated)</Label>
-                <Input {...form.register("citizenship_countries")} placeholder="e.g. India, United Kingdom" />
+                <CopyLabel fieldName="citizenship_countries" className="mb-1 block font-medium">Countries (comma-separated)</CopyLabel>
+                <CopyInput fieldName="citizenship_countries" {...form.register("citizenship_countries")} placeholder="e.g. India, United Kingdom" />
               </div>
             )}
           </div>
 
           {/* Health */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-1">Health</h3>
+            <CopySectionHeading>Health</CopySectionHeading>
             <YesNoRadio name="requires_health_examination" label="Does this person require a health examination?" />
           </div>
 
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}><QuestionnaireCopyText fieldName="presentation.actions.cancel">Cancel</QuestionnaireCopyText></Button>
           <Button
             type="button"
             onClick={form.handleSubmit(handleSubmit)}
@@ -638,12 +680,15 @@ function NonMigratingMemberDialog({ open, onClose, onSave, editingMember, availa
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              editingMember ? "Save Changes" : "Add Member"
+              editingMember
+                ? <QuestionnaireCopyText fieldName="presentation.actions.edit">Save Changes</QuestionnaireCopyText>
+                : <QuestionnaireCopyText fieldName="presentation.actions.confirm">Add Member</QuestionnaireCopyText>
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </QuestionnaireCopyFieldScope>
   );
 }
 
@@ -657,6 +702,7 @@ export default function NonMigratingMembersPage() {
   const { startNavigation } = useNavigationLoading();
   const visaType = getVisaTypeFromPath(pathname);
   const completionPrefix = getNonMigratingCompletionPrefix(visaType);
+  const copyRelationshipOption = useQuestionnaireCopy("options", "members.relationship");
 
   const [nmfDialogOpen, setNmfDialogOpen] = useState(false);
   const [editingNmf, setEditingNmf] = useState(null);
@@ -844,16 +890,16 @@ export default function NonMigratingMembersPage() {
   return (
     <Card className="rounded-2xl shadow-md bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Other Family</CardTitle>
-        <p className="text-sm text-gray-600 mt-2">
+        <QuestionnaireCopyText as={CardTitle} kind="title" className="text-2xl font-semibold">Other Family</QuestionnaireCopyText>
+        <QuestionnaireCopyText as="p" kind="intro" className="text-sm text-gray-600 mt-2">
           Add any non-migrating family members who are not included in this visa application, including children, parents and siblings.
-        </p>
+        </QuestionnaireCopyText>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
-          <Label className="text-sm font-medium text-gray-900">
+          <QuestionnaireCopyText as={Label} kind="labels" fieldName="has_other_family" className="text-sm font-medium text-gray-900">
             Do you have any non-migrating family members not included in the application, such as a spouse or partner, child, parent or sibling?
-          </Label>
+          </QuestionnaireCopyText>
           <RadioGroup
             value={hasOtherFamily || ""}
             onValueChange={(v) => setHasOtherFamily(v)}
@@ -861,11 +907,11 @@ export default function NonMigratingMembersPage() {
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="yes" id="other-family-yes" />
-              <Label htmlFor="other-family-yes" className="text-sm font-normal cursor-pointer">Yes</Label>
+              <QuestionnaireCopyText as={Label} kind="options" fieldName="has_other_family" htmlFor="other-family-yes" className="text-sm font-normal cursor-pointer">Yes</QuestionnaireCopyText>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="no" id="other-family-no" />
-              <Label htmlFor="other-family-no" className="text-sm font-normal cursor-pointer">No</Label>
+              <QuestionnaireCopyText as={Label} kind="options" fieldName="has_other_family" htmlFor="other-family-no" className="text-sm font-normal cursor-pointer">No</QuestionnaireCopyText>
             </div>
           </RadioGroup>
         </div>
@@ -895,7 +941,7 @@ export default function NonMigratingMembersPage() {
                             Other Family
                           </span>
                           <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-gray-100 text-gray-700 border-gray-200">
-                            {getNmfRelationshipLabel(member.relationship)}
+                            {copyRelationshipOption(getNmfRelationshipLabel(member.relationship))}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
@@ -942,7 +988,7 @@ export default function NonMigratingMembersPage() {
             ) : (
               <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
                 <UserMinus className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                <p className="text-gray-400 text-sm">No other family members added</p>
+                <QuestionnaireCopyText as="p" fieldName="members.presentation.emptyMessage" className="text-gray-400 text-sm">No other family members added</QuestionnaireCopyText>
               </div>
             )}
 
@@ -954,7 +1000,7 @@ export default function NonMigratingMembersPage() {
               data-testid="button-add-non-migrating"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Other Family Member
+              <QuestionnaireCopyText fieldName="members.presentation.addLabel">Add Other Family Member</QuestionnaireCopyText>
             </Button>
           </>
         )}

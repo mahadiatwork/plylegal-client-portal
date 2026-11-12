@@ -433,6 +433,9 @@ test("static questionnaire choices support the shipped visa subclass catalogs", 
 
 test("only safe internal intake routes are accepted", () => {
   assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/all-applicants/character"), true);
+  assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/start"), true);
+  assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/profile"), true);
+  assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/submit"), false);
   assert.equal(isSafeQuestionnaireRoute("/applications/482/questionnaire"), false);
   assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/../admin"), false);
   assert.equal(isSafeQuestionnaireRoute("/intake/temporary-work/page?preview=1"), false);
@@ -643,7 +646,7 @@ test("dynamic completion stamps survive copy-only revisions but reject behaviora
   ), false);
 });
 
-test("storage keys and workflow-only routes are rejected", () => {
+test("unsafe storage keys and the submit workflow route are rejected", () => {
   const broken = structuredClone(temporaryWork482Definition);
   broken.pages[0].sectionKey = "constructor.prototype.polluted";
   broken.pages[0].questions[0].answerKey = "nested.answer";
