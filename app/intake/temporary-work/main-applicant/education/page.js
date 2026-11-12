@@ -421,6 +421,15 @@ function EducationDialog({ editingRow, onSave, onCancel }) {
             <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.institution_postcode.message}</p>
           )}
         </div>
+
+        <div className="mb-4">
+          <Label htmlFor="certificate_number" className="mb-2 block">Certificate Number</Label>
+          <Input
+            id="certificate_number"
+            {...dialogForm.register("certificate_number")}
+            data-testid="input-certificate-number"
+          />
+        </div>
       </div>
 
       <DialogFooter>

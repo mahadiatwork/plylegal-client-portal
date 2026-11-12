@@ -84,7 +84,7 @@ test("866 legacy government IDs convert only when safe", () => {
   assert.equal(normalized.identity_import_review[0].document_type, "Village ID");
 });
 
-test("route-specific extras are validated and unknown fields are preserved", () => {
+test("identity extras are validated for 482, Partner and Protection while unknown fields are preserved", () => {
   const normalized = normalizeIdentityForVisa({
     ...completeBase,
     custom_legacy_field: { keep: true },
@@ -96,7 +96,8 @@ test("route-specific extras are validated and unknown fields are preserved", () 
   }, "partner", profile);
 
   assert.deepEqual(normalized.custom_legacy_field, { keep: true });
-  assert.deepEqual(validateIdentityForVisa(normalized, "temporary-work"), []);
+  assert(validateIdentityForVisa(normalized, "temporary-work").includes("Statelessness details"));
+  assert(validateIdentityForVisa(normalized, "temporary-work").includes("Residence rights details"));
   assert(validateIdentityForVisa(normalized, "partner").includes("Statelessness details"));
   assert(validateIdentityForVisa(normalized, "partner").includes("Residence rights details"));
 });

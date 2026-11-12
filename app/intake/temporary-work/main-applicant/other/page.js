@@ -21,6 +21,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { showCompletionIssuesToast } from "@/lib/temporaryWorkCompletionUi";
+import { COUNTRIES } from "@/reuseable/countries";
 
 const formSchema = z.object({
   // Question 1: Other Names
@@ -302,12 +303,19 @@ function OtherNameDialog({ editingRow, onSave, onCancel }) {
 
             <div>
               <Label htmlFor="issuing_country">Issuing Country</Label>
-              <Input
-                id="issuing_country"
-                placeholder="Choose country"
-                {...dialogForm.register("issuing_country")}
-                data-testid="input-issuing-country"
-              />
+              <Select
+                value={dialogForm.watch("issuing_country")}
+                onValueChange={(value) => dialogForm.setValue("issuing_country", value, { shouldValidate: true, shouldDirty: true })}
+              >
+                <SelectTrigger id="issuing_country" data-testid="select-issuing-country">
+                  <SelectValue placeholder="Choose Country" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

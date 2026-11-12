@@ -114,6 +114,10 @@ export default function IntakeLayout({ children }) {
       ? (internalPathname.match(/^\/intake\/(?:temporary-work|partner|protection)\/children\/([^/]+)\/(?:details|other|identity|custody)/) || [])[1] ??
       null
       : null;
+  const nonMigratingMemberIdFromPath =
+    typeof pathname === "string"
+      ? (internalPathname.match(/^\/intake\/(?:temporary-work|partner|protection)\/non-migrating\/([^/]+)\//) || [])[1] ?? null
+      : null;
 
   const effectiveProfileId = profileIdFromUrl ?? childProfileIdFromPath;
 
@@ -276,6 +280,26 @@ export default function IntakeLayout({ children }) {
       }
     }
   }, [mounted, internalPathname]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const activeKeys = [
+      effectiveProfileId ? `profile-${effectiveProfileId}` : null,
+      nonMigratingMemberIdFromPath ? `nmf-${nonMigratingMemberIdFromPath}` : null,
+    ].filter(Boolean);
+    if (!activeKeys.length) return;
+    setExpandedSections((previous) => {
+      const next = new Set(previous);
+      let changed = false;
+      activeKeys.forEach((key) => {
+        if (!next.has(key)) {
+          next.add(key);
+          changed = true;
+        }
+      });
+      return changed ? next : previous;
+    });
+  }, [effectiveProfileId, internalPathname, mounted, nonMigratingMemberIdFromPath]);
 
   const toggleSection = (href) => {
     setExpandedSections((prev) => {
@@ -473,7 +497,7 @@ export default function IntakeLayout({ children }) {
                             return (
                               <Collapsible
                                 key={`profile-${profileKey}`}
-                                open={isProfileExpanded || isThisProfileActive}
+                                open={isProfileExpanded}
                                 onOpenChange={() => toggleSection(`profile-${profileKey}`)}
                                 className="pt-1"
                               >
@@ -493,7 +517,7 @@ export default function IntakeLayout({ children }) {
                                       <ChevronDown
                                         className={cn(
                                           "w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0",
-                                          (isProfileExpanded || isThisProfileActive) && "transform rotate-180"
+                                          isProfileExpanded && "transform rotate-180"
                                         )}
                                       />
                                     </button>
@@ -636,7 +660,7 @@ export default function IntakeLayout({ children }) {
                           return (
                             <Collapsible
                               key={nmfKey}
-                              open={isNmfExpanded || isNmfActive}
+                              open={isNmfExpanded}
                               onOpenChange={() => toggleSection(nmfKey)}
                               className="pt-1"
                             >
@@ -685,7 +709,7 @@ export default function IntakeLayout({ children }) {
                                       <ChevronDown
                                         className={cn(
                                           "w-4 h-4 text-slate-400 transition-transform duration-200",
-                                          (isNmfExpanded || isNmfActive) && "transform rotate-180"
+                                          isNmfExpanded && "transform rotate-180"
                                         )}
                                       />
                                     </div>

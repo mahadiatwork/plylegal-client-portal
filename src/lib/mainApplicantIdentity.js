@@ -26,7 +26,7 @@ export const IDENTITY_LEGACY_ROOT_BY_VISA = {
   protection: "protection_identity",
 };
 
-const EXTRA_VISAS = new Set(["partner", "protection"]);
+const EXTRA_VISAS = new Set(["temporary-work", "partner", "protection"]);
 const RECOGNIZED_OTHER_DOC_TYPES = new Set(OTHER_IDENTITY_DOC_TYPES);
 
 export function hasIdentityExtras(visaType) {

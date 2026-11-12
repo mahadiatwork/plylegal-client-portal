@@ -627,20 +627,6 @@ function PassportDialog({ editingRow: row, onSave: onSubmit, onCancel }) {
   );
 }
 
-function getChildAgeFromProfile(profile) {
-  const { date_of_birth_day, date_of_birth_month, date_of_birth_year } = profile || {};
-  if (!date_of_birth_day || !date_of_birth_month || !date_of_birth_year) return null;
-  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const monthIndex = months.indexOf(date_of_birth_month);
-  if (monthIndex === -1) return null;
-  const dob = new Date(Number(date_of_birth_year), monthIndex, Number(date_of_birth_day));
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const m = today.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-  return age;
-}
-
 export default function ChildProfileIdentityPage() {
   const router = useRouter();
   const { startNavigation } = useNavigationLoading();
@@ -725,8 +711,6 @@ export default function ChildProfileIdentityPage() {
   const passports = form.watch("passports") || [];
   const otherIdentityDocuments = form.watch("other_identity_documents") || [];
   const hasSoleCustody = form.watch("has_sole_custody");
-
-  const childAge = getChildAgeFromProfile(profile);
 
   const nidDays = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const nidMonths = [
@@ -1063,9 +1047,7 @@ export default function ChildProfileIdentityPage() {
           />
         </div>
 
-        {/* Child Custody Details - Only for applicants under 18 */}
-        {childAge !== null && childAge < 18 && (
-          <div className="space-y-4 pt-6 border-t">
+        <div className="space-y-4 pt-6 border-t">
             <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Child Custody Details</h2>
             <h3 className="text-lg font-semibold text-gray-900">Child custody details</h3>
             
@@ -1100,8 +1082,7 @@ export default function ChildProfileIdentityPage() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+        </div>
 
         {/* Desktop Navigation */}
           <FormNavigation

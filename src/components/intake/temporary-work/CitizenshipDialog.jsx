@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
+import { COUNTRIES } from "@/reuseable/countries";
 
 export const CITIZENSHIP_REASON_OPTIONS = ["Birth", "Descent", "Naturalisation"];
 
@@ -100,12 +101,19 @@ export function CitizenshipDialog({ editingRow: row, onSave: onSubmit, onCancel 
     <div className="space-y-4">
       <div>
         <Label htmlFor="country">Country of Citizenship</Label>
-        <Input
-          id="country"
-          {...dialogForm.register("country")}
-          placeholder="Choose Country"
-          data-testid="input-citizenship-country"
-        />
+        <Select
+          value={dialogForm.watch("country")}
+          onValueChange={(value) => dialogForm.setValue("country", value, { shouldValidate: true, shouldDirty: true })}
+        >
+          <SelectTrigger id="country" data-testid="select-citizenship-country">
+            <SelectValue placeholder="Choose Country" />
+          </SelectTrigger>
+          <SelectContent position="popper" className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country} value={country}>{country}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {dialogForm.formState.errors.country && (
           <p className="text-sm text-red-600 mt-1">{dialogForm.formState.errors.country.message}</p>
         )}
