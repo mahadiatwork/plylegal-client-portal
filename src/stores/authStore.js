@@ -2,6 +2,7 @@
 
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
+import { queryClient } from "@/lib/queryClient";
 
 // Get database adapter (Firebase or localStorage based on env)
 const db = getAdapter();
@@ -62,6 +63,7 @@ export const authStore = proxy({
   async logout() {
     try {
       await db.logout();
+      queryClient.clear();
       // Set to null (immutable update)
       this.user = null;
       this.userProfile = null;

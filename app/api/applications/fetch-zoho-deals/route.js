@@ -5,6 +5,7 @@ import {
   mapZohoDealToVisaTypeCode,
   normalizeSkillsInDemandTypeLabel,
 } from '@/lib/visaDisplay';
+import { planApplicationCleanup } from '@/lib/dealSync';
 
 // Firebase REST API helper - uses the web API key with user's ID token for authentication
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -547,61 +548,37 @@ async function runDealSync({ userId, zohoContactId, idToken, source, requestMeta
     }))
   );
 
-  const finalApps = await loadApplicationsServer(userId, idToken, requestMeta);
-  logSync(requestMeta, `Final count in Firebase before cleanup: ${finalApps?.length || 0} applications`);
+  // Single reload: derive duplicates and orphans from one list instead of
+  // reloading between each cleanup step.
+  const finalApps = await loadApplicationsServer(userId, idToken, requestMeta) || [];
+  logSync(requestMeta, `Final count in Firebase before cleanup: ${finalApps.length} applications`);
 
-  const duplicatesByZohoId = [];
-  const seenZohoIds = new Map();
-  for (const app of finalApps || []) {
-    if (!app.zohoId) continue;
-    if (seenZohoIds.has(app.zohoId)) {
-      duplicatesByZohoId.push(app);
-    } else {
-      seenZohoIds.set(app.zohoId, app);
-    }
-  }
+  const { duplicates: duplicatesByZohoId, orphans } = planApplicationCleanup(finalApps, deals);
 
-  let removedCount = 0;
-  if (duplicatesByZohoId.length > 0) {
-    logSync(requestMeta, `Found ${duplicatesByZohoId.length} duplicate applications by zohoId. Removing duplicates...`);
-    for (const duplicate of duplicatesByZohoId) {
+  const deleteAll = async (apps, label) => {
+    const results = await Promise.all(apps.map(async (app) => {
       try {
-        logSync(
-          requestMeta,
-          `Deleting duplicate application ${duplicate.id} (zohoId: ${duplicate.zohoId}, reference: ${duplicate.reference})`
-        );
-        const deleteResult = await deleteApplicationServer(duplicate.id, idToken);
-        if (deleteResult.success) removedCount++;
-      } catch (deleteError) {
-        console.error(`❌ Failed to delete duplicate ${duplicate.id}:`, deleteError.message);
+        logSync(requestMeta, `Deleting ${label} application ${app.id} (zohoId: ${app.zohoId}, reference: ${app.reference || ''})`);
+        const deleteResult = await deleteApplicationServer(app.id, idToken);
+        return Boolean(deleteResult.success);
+      } catch (error) {
+        console.error(`❌ Failed to delete ${label} ${app.id}:`, error.message);
+        return false;
       }
-    }
-    logSync(requestMeta, `Removed ${removedCount} duplicate applications`);
-  }
+    }));
+    return results.filter(Boolean).length;
+  };
 
-  const currentDealZohoIds = new Set(deals.map((deal) => String(deal.id)));
-  let orphansRemoved = 0;
-  const appsAfterDupes = await loadApplicationsServer(userId, idToken, requestMeta);
-  for (const app of appsAfterDupes || []) {
-    if (!app.zohoId || currentDealZohoIds.has(app.zohoId)) continue;
-    try {
-      logSync(
-        requestMeta,
-        `Removing application not in current Zoho CRM deal list: ${app.id} (zohoId: ${app.zohoId}, reference: ${app.reference || ''})`
-      );
-      const deleteResult = await deleteApplicationServer(app.id, idToken);
-      if (deleteResult.success) orphansRemoved++;
-    } catch (error) {
-      console.error(`❌ Failed to remove orphan application ${app.id}:`, error.message);
-    }
-  }
-
+  const [removedCount, orphansRemoved] = await Promise.all([
+    deleteAll(duplicatesByZohoId, 'duplicate'),
+    deleteAll(orphans, 'orphan'),
+  ]);
+  if (removedCount > 0) logSync(requestMeta, `Removed ${removedCount} duplicate applications`);
   if (orphansRemoved > 0) {
     logSync(requestMeta, `Removed ${orphansRemoved} application(s) not present in current CRM deals`);
   }
 
-  const finalAppsAfterCleanup = await loadApplicationsServer(userId, idToken, requestMeta);
-  logSync(requestMeta, `Final count in Firebase after cleanup: ${finalAppsAfterCleanup?.length || 0} applications`);
+  const finalAppsAfterCleanup = { length: finalApps.length - removedCount - orphansRemoved };
 
   return {
     success: true,

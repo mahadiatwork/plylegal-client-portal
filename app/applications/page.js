@@ -11,6 +11,10 @@ import { auth } from "@/lib/firebase";
 import { formatVisaApplicationType, getApplicationSlug } from "@/lib/visaDisplay";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
 import { Riple } from "react-loading-indicators";
+import { shouldSyncDeals } from "@/lib/dealSync";
+
+// Minimum gap between background Zoho syncs for the same user (per browser session)
+const DEALS_SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000;
 
 function getStatusLabel(status) {
   return typeof status === "string" && status.trim() ? status.trim() : "Draft";
@@ -206,37 +210,39 @@ export default function ApplicationsPage() {
 
   useEffect(() => {
     const initPageData = async () => {
-      if (!authSnap.user?.id) return;
+      const userId = authSnap.user?.id;
+      if (!userId || hasSynced) return;
+      setHasSynced(true);
 
-      if (!hasSynced) {
-        setHasSynced(true);
+      // 1. Show what is already in Firestore immediately.
+      await applicationsStore.loadApplications(userId);
+      setIsSyncing(false);
 
-        if (authSnap.userProfile?.zohoContactId) {
-          try {
-            const idToken = await auth.currentUser?.getIdToken();
+      // 2. Refresh from Zoho in the background, at most once per interval.
+      const zohoContactId = authSnap.userProfile?.zohoContactId;
+      if (!zohoContactId) return;
 
-            const response = await fetch("/api/applications/fetch-zoho-deals", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: authSnap.user.id,
-                zohoContactId: authSnap.userProfile.zohoContactId,
-                idToken,
-                source: "applications-page",
-              }),
-            });
+      const syncKey = `ply_deals_synced_at:${userId}`;
+      try {
+        const lastSyncedAt = Number(sessionStorage.getItem(syncKey) || 0);
+        if (!shouldSyncDeals({ lastSyncedAt, now: Date.now(), minIntervalMs: DEALS_SYNC_MIN_INTERVAL_MS })) return;
+      } catch {}
 
-            const result = await response.json();
-            if (result.success) {
-              applicationsStore.rawDealsData = result.rawDealsData || [];
-            }
-          } catch (error) {
-            console.error("Sync failed:", error.message);
-          }
+      try {
+        const idToken = await auth.currentUser?.getIdToken();
+        const response = await fetch("/api/applications/fetch-zoho-deals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, zohoContactId, idToken, source: "applications-page" }),
+        });
+        const result = await response.json();
+        if (result.success) {
+          try { sessionStorage.setItem(syncKey, String(Date.now())); } catch {}
+          applicationsStore.rawDealsData = result.rawDealsData || [];
+          await applicationsStore.loadApplications(userId, { force: true });
         }
-
-        await applicationsStore.loadApplications(authSnap.user.id);
-        setIsSyncing(false);
+      } catch (error) {
+        console.error("Sync failed:", error.message);
       }
     };
 

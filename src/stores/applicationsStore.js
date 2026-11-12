@@ -2,6 +2,11 @@
 
 import { proxy } from "valtio";
 import { getAdapter } from "@/lib/adapters";
+import { queryClient } from "@/lib/queryClient";
+
+// Applications are shared across many pages; serve repeat loads from cache briefly.
+const APPLICATIONS_STALE_MS = 30_000;
+const applicationsKey = (userId) => ["applications", userId];
 
 // Lazy get adapter to avoid circular dependency issues
 const getDb = () => {
@@ -43,7 +48,7 @@ export const applicationsStore = proxy({
   rawDealsData: null, // Store raw deals JSON from Zoho CRM for debugging
   
   // Actions
-  async loadApplications(userId) {
+  async loadApplications(userId, { force = false } = {}) {
     try {
       this.isLoading = true;
       const db = getDb();
@@ -52,7 +57,12 @@ export const applicationsStore = proxy({
         this.isLoading = false;
         return [];
       }
-      const apps = await db.loadApplications(userId);
+      if (force) await queryClient.invalidateQueries({ queryKey: applicationsKey(userId), refetchType: "none" });
+      const apps = await queryClient.fetchQuery({
+        queryKey: applicationsKey(userId),
+        queryFn: () => db.loadApplications(userId),
+        staleTime: APPLICATIONS_STALE_MS,
+      });
       this.applications = apps || [];
       this.isLoading = false;
       return this.applications;
@@ -77,6 +87,7 @@ export const applicationsStore = proxy({
       
       if (result.success) {
         // Add to local state (immutable update)
+        queryClient.removeQueries({ queryKey: ["applications"] });
         this.applications = [...this.applications, result.application];
         return { success: true, application: result.application };
       }
@@ -102,6 +113,7 @@ export const applicationsStore = proxy({
         }
 
         // Update local state (immutable update)
+        queryClient.removeQueries({ queryKey: ["applications"] });
         this.applications = this.applications.map(app =>
           app.id === id ? result.application : app
         );
@@ -125,6 +137,7 @@ export const applicationsStore = proxy({
       
       if (result.success) {
         // Remove from local state (immutable update)
+        queryClient.removeQueries({ queryKey: ["applications"] });
         this.applications = this.applications.filter(app => app.id !== id);
         return { success: true };
       }
