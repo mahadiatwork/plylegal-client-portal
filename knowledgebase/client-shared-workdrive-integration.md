@@ -1,79 +1,9 @@
-# Shared WorkDrive folders
+# Matter WorkDrive folders
 
-The admin portal has a **Shared Folder** matter tab. It reads the linked Zoho Deal field `Matter_Workdrive_Folder_URL` through the admin-session-protected `/api/matter/{matterId}/shared-folder` endpoint and embeds the validated WorkDrive URL in an iframe.
+The admin matter header has a **Matter Folder** button beside Completion. Its session-protected `/api/matter/{matterId}/shared-folder` endpoint reads the Deal's `Matter_Folder_URL` from Zoho CRM and accepts only HTTPS WorkDrive URLs. The old Shared Folder tab URL redirects to Resources.
 
-The client portal **Shared Files** tab currently embeds this fixed shared folder for all matters:
+The client portal's **Shared Files** page loads the current matter's `Client_Shared_URL` from the Zoho Deal. The API first checks the Firebase session and confirms that the Firestore application belongs to the client. Only a public WorkDrive `/external/{token}` share URL is returned. The page embeds the link and offers **Open in WorkDrive** if the browser cannot show it in the frame. Responses use `Cache-Control: private, no-store`.
 
-https://workdrive.zohopublic.com.au/external/c11f82790e89f675a5e4eb885e5e14b385b36b7822a467637b1f32f495b416d1
+The full copy-and-paste Deluge function is maintained in the Ply-Legal workspace as `workdrive_folder_structure.deluge`. It creates or reuses the matter folder and its `CLIENT SHARED` subfolder, preserves the published link in `Matter_Workdrive_Folder_URL`, and creates or reuses a view-only custom external link in `Client_Shared_URL`. The function can be rerun for existing matters to fill missing fields without recreating their folder structure.
 
-Client folder endpoints verify the Firebase session and matter ownership, then return the fixed URL with embed mode. They do not fetch the admin CRM folder or use a stored matter folder URL. Both portals keep an **Open in WorkDrive** link alongside the iframe. Folder responses use `Cache-Control: private, no-store`.
-
-## Optional published permalinks
-
-The older Deluge example below can create a published permalink when needed. Publishing a permalink is not required by the current fixed client folder view.
-
-## Deluge change
-
-Replace the `CREATE EXTERNAL SHARE LINK FOR "CLIENT SHARED"` block with the publish/embed API call below. The existing CRM write-back can remain unchanged because `clientSharedLinkUrl` will now contain the embeddable permalink.
-
-```deluge
-// ===================== CREATE EMBED LINK FOR "CLIENT SHARED" =====================
-clientSharedLinkUrl = "";
-if(clientSharedId != "")
-{
-	publishAttr = Map();
-	publishAttr.put("shared_type","publish");
-	publishAttr.put("role_id","34");
-	publishAttr.put("resource_id",clientSharedId);
-
-	publishData = Map();
-	publishData.put("attributes",publishAttr);
-	publishData.put("type","permissions");
-
-	publishBody = Map();
-	publishBody.put("data",publishData);
-
-	publishHeaders = Map();
-	publishHeaders.put("Accept","application/vnd.api+json");
-	publishHeaders.put("Content-Type","application/vnd.api+json");
-
-	publishResp = invokeurl
-	[
-		url :"https://www.zohoapis.com.au/workdrive/api/v1/permissions"
-		type :POST
-		parameters:publishBody.toString()
-		headers:publishHeaders
-		connection:"workdrive_conn"
-	];
-
-	if(publishResp != null)
-	{
-		publishResponseData = publishResp.get("data");
-		if(publishResponseData != null)
-		{
-			publishAttributes = publishResponseData.get("attributes");
-			if(publishAttributes != null)
-			{
-				clientSharedLinkUrl = ifnull(publishAttributes.get("permalink"),"");
-			}
-		}
-	}
-}
-```
-
-The `workdrive_conn` connection needs the `WorkDrive.files.sharing.CREATE` scope. WorkDrive external sharing and permalink/embed sharing must also be enabled for the team folder.
-
-## Existing share-link block
-
-If the custom `/links` call is retained for a separate new-tab link, add the required `request_user_data` value and read the documented `link` response attribute:
-
-```deluge
-linkAttr.put("request_user_data",false);
-clientSharedLinkUrl = ifnull(linkAttributes.get("link"),"");
-```
-
-Do not store that custom share URL in `Matter_Workdrive_Folder_URL` when an inline published permalink is available; the portal uses that CRM field as the embed source.
-
-## Existing matters
-
-The current function exits when `Matter_Folder_ID` is already populated, so it will not update existing matters. Backfill `Matter_Workdrive_Folder_URL` for those Deals with a published permalink for their `CLIENT SHARED` folder, or run a separate idempotent backfill function that only creates the publish permission and updates this field.
+The `workdrive_conn` connection needs `WorkDrive.files.READ`, `WorkDrive.files.CREATE`, `WorkDrive.files.sharing.CREATE`, and `WorkDrive.links.CREATE`. The team folder must allow external share links. WorkDrive's [custom link API](https://www.zoho.com/workdrive/developer/docs/api/v1/create-external-share-custom-link.html) and [link listing API](https://www.zoho.com/workdrive/developer/docs/api/v1/get-file-folder-external-share-links.html) describe the required fields and responses.

@@ -4,7 +4,6 @@ import { Module } from "node:module";
 import path from "node:path";
 import { build } from "esbuild";
 import { NextRequest } from "next/server.js";
-import { CLIENT_SHARED_FOLDER_URL } from "../src/lib/clientSharedFolder.server.js";
 import { getFirebaseIdentityAuth } from "../src/lib/firebaseIdentity.js";
 import { createPreviewToken, getPreviewCookieName } from "../src/lib/workdrivePreview.js";
 
@@ -12,6 +11,20 @@ async function loadRoute(entry) {
   const result = await build({
     entryPoints: [entry], bundle: true, write: false, platform: "node",
     format: "cjs", packages: "external", logLevel: "silent",
+    plugins: [{
+      name: "client-folder-crm",
+      setup(pluginBuild) {
+        pluginBuild.onResolve({ filter: /zohoClient\.js$/ }, (args) => (
+          args.importer.endsWith("clientSharedFolder.server.js")
+            ? { path: "client-folder-crm", namespace: "test-crm" }
+            : null
+        ));
+        pluginBuild.onLoad({ filter: /.*/, namespace: "test-crm" }, () => ({
+          contents: "export class ZohoCRMClient { makeRequest(...args) { return globalThis.__clientFolderCrm.makeRequest(...args); } }",
+          loader: "js",
+        }));
+      },
+    }],
   });
   const filename = path.resolve("test", "resource-route-bundle.cjs");
   const module = new Module(filename);
@@ -119,6 +132,13 @@ function setup(t, slug = "482") {
     }],
   ]);
   const calls = [];
+  const crmCalls = [];
+  const crmDeal = { Client_Shared_URL: "https://workdrive.zohoexternal.com.au/external/client-folder" };
+  globalThis.__clientFolderCrm = { async makeRequest(...args) {
+    crmCalls.push(args);
+    return { data: [crmDeal] };
+  } };
+  t.after(() => { delete globalThis.__clientFolderCrm; });
   let failureStatus = null;
   t.mock.method(globalThis, "fetch", async (input, options = {}) => {
     const url = String(input);
@@ -152,7 +172,7 @@ function setup(t, slug = "482") {
     const data = documents.get(docPath);
     return data ? Response.json({ name: `${root}/${docPath}`, fields: fields(data) }) : Response.json({}, { status: 404 });
   });
-  return { documents, calls, templateSlug, failWith: (status) => { failureStatus = status; } };
+  return { documents, calls, crmCalls, crmDeal, templateSlug, failWith: (status) => { failureStatus = status; } };
 }
 
 const request = (route = "template", token = "signed-client-token", applicationId = "matter-1", source = "") => new NextRequest(
@@ -167,8 +187,8 @@ const sharedFolderRequest = (token = "signed-client-token", matterId = "matter-1
   { params: Promise.resolve({ matterId }) },
 ];
 
-test("the client folder endpoint returns the fixed embed without reading CRM or portal resources", async (t) => {
-  const { documents, calls } = setup(t);
+test("the client folder endpoint reads only the owned matter's CRM share link", async (t) => {
+  const { documents, calls, crmCalls, crmDeal } = setup(t);
   Object.assign(documents.get("applications/matter-1"), {
     zohoId: "123456789",
     clientSharedFolderUrl: "https://workdrive.zohoexternal.com.au/file/admin-folder-sentinel",
@@ -177,14 +197,15 @@ test("the client folder endpoint returns the fixed embed without reading CRM or 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
   const data = await response.json();
-  assert.deepEqual(data, { success: true, sharedFolder: { url: CLIENT_SHARED_FOLDER_URL, mode: "embed" } });
+  assert.deepEqual(data, { success: true, sharedFolder: { url: crmDeal.Client_Shared_URL, mode: "external" } });
   assert.doesNotMatch(JSON.stringify(data), /admin-folder-sentinel/);
   assert.equal(calls.length, 1);
   assert.ok(calls[0].url.endsWith("/applications/matter-1"));
+  assert.deepEqual(crmCalls, [["get", "/Deals/123456789", null, { fields: "id,Client_Shared_URL" }]]);
 });
 
 test("the client folder endpoint still requires a session and matter ownership", async (t) => {
-  const { documents } = setup(t);
+  const { documents, crmCalls } = setup(t);
   documents.get("applications/matter-1").userId = "another-owner";
   for (const [token, id, status] of [
     ["", "matter-1", 401], ["invalid-token", "matter-1", 401],
@@ -196,6 +217,7 @@ test("the client folder endpoint still requires a session and matter ownership",
     assert.equal(response.status, status);
     assert.equal(response.headers.get("cache-control"), "private, no-store");
   }
+  assert.equal(crmCalls.length, 0);
 });
 
 for (const slug of ["482", "186", "309", "801", "820", "866"]) {
@@ -535,12 +557,13 @@ test("matter resources are owner-scoped, active-only, ordered, and stripped of r
 });
 
 test("shared files load their own resources and categories", async (t) => {
-  const { documents } = setup(t);
+  const { documents, crmDeal } = setup(t);
   documents.get("applications/matter-1").sharedFileCategories = [
     { name: "Client documents", icon: "folder" },
   ];
   documents.get("applications/matter-1").clientSharedFolderUrl =
     "https://workdrive.zohoexternal.com.au/file/client-shared-folder";
+  documents.get("applications/matter-1").zohoId = "123456789";
   documents.set("applications/matter-1/resources/shared-file", {
     status: "active", type: "file", source: "sharedFiles", title: "Case summary.pdf",
     workDriveShareUrl: shareUrl, downloadAllowed: false, category: "Client documents",
@@ -555,25 +578,30 @@ test("shared files load their own resources and categories", async (t) => {
   assert.equal(data.items[0].viewerUrl, shareUrl);
   assert.equal(data.items[0].downloadAllowed, false);
   assert.deepEqual(data.sharedFolder, {
-    url: CLIENT_SHARED_FOLDER_URL,
-    mode: "embed",
+    url: crmDeal.Client_Shared_URL,
+    mode: "external",
   });
 });
 
-test("shared files use the configured folder regardless of legacy matter links", async (t) => {
-  const { documents } = setup(t);
+test("shared files use the CRM folder regardless of legacy matter links", async (t) => {
+  const { documents, crmDeal } = setup(t);
   const application = documents.get("applications/matter-1");
+  application.zohoId = "123456789";
 
   application.clientSharedFolderUrl = "https://workdrive.zohopublic.com.au/external/client-folder";
   let data = await (await matter.GET(request("matter", "signed-client-token", "matter-1", "sharedFiles"))).json();
   assert.deepEqual(data.sharedFolder, {
-    url: CLIENT_SHARED_FOLDER_URL,
-    mode: "embed",
+    url: crmDeal.Client_Shared_URL,
+    mode: "external",
   });
 
   application.clientSharedFolderUrl = "https://workdrive.zohopublic.com.au.attacker.test/external/client-folder";
   data = await (await matter.GET(request("matter", "signed-client-token", "matter-1", "sharedFiles"))).json();
-  assert.deepEqual(data.sharedFolder, { url: CLIENT_SHARED_FOLDER_URL, mode: "embed" });
+  assert.deepEqual(data.sharedFolder, { url: crmDeal.Client_Shared_URL, mode: "external" });
+
+  crmDeal.Client_Shared_URL = "https://workdrive.zoho.com.au/folder/internal-matter";
+  data = await (await matter.GET(request("matter", "signed-client-token", "matter-1", "sharedFiles"))).json();
+  assert.equal(data.sharedFolder, null);
 
   data = await (await matter.GET(request("matter"))).json();
   assert.equal(data.sharedFolder, null);

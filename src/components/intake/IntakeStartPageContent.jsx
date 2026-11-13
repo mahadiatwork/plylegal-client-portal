@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, CheckCircle2, HelpCircle, Info, Loader2, Lock } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Info, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuestionnaireCopyText } from "@/components/questionnaire/QuestionnaireCopyContext";
 import { cn } from "@/lib/utils";
@@ -27,17 +27,10 @@ export function IntakeStartPageContent({
         }}
       >
         {/* Top Meta Header */}
-        <div className="flex items-center justify-between border-b border-[#EBE7DF] pb-4">
+        <div className="border-b border-[#EBE7DF] pb-4">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
             SECTION 1 OF {totalSections}
           </span>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 border border-slate-300/80 bg-white rounded-lg px-3 py-1.5 transition-colors shadow-2xs"
-          >
-            <HelpCircle className="h-3.5 w-3.5 text-slate-600" />
-            <span>Need help?</span>
-          </button>
         </div>
 
         {/* Section Title & Description */}

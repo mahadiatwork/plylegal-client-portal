@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, Loader2, UserRound, ChevronDown } from "lucide-react";
+import { LogOut, Menu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authStore } from "@/stores";
 import { useSnapshot } from "valtio";
@@ -75,7 +75,7 @@ export function AppHeader({ onMenuClick, variant = "default", className }) {
 
           {/* Right side */}
           <div className="flex items-center gap-4 sm:gap-6">
-            {/* User Avatar + Name + Dropdown indicator */}
+            {/* User Avatar + Name */}
             {snap.user && (
               <div className="flex items-center gap-2 cursor-default select-none">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E2EBE5] text-xs font-semibold text-[#244D42]">
@@ -84,7 +84,6 @@ export function AppHeader({ onMenuClick, variant = "default", className }) {
                 <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-800">
                   {firstName}
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
               </div>
             )}
 

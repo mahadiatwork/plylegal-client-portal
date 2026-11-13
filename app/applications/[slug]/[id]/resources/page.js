@@ -109,6 +109,29 @@ function ResourceTypePill({ type }) {
   );
 }
 
+function ResourceOverviewItem({ item, categoryName, onSelectCategory }) {
+  const viewerUrl = item.kind === "file" ? getResourceViewerUrl(item) : "";
+  const className = "group flex h-9 w-full items-center gap-3 text-left";
+  const content = (
+    <div className="flex min-w-0 items-center gap-6">
+      <ResourceTypePill type={item.type} />
+      <span className="truncate text-sm font-medium text-[#203F46] transition-colors group-hover:text-[#0D5A49]">
+        {item.name}
+      </span>
+    </div>
+  );
+
+  return viewerUrl ? (
+    <a href={viewerUrl} target="_blank" rel="noopener noreferrer" className={className} aria-label={`View ${item.name}`}>
+      {content}
+    </a>
+  ) : (
+    <button type="button" onClick={() => onSelectCategory(categoryName)} className={className}>
+      {content}
+    </button>
+  );
+}
+
 function getCategorySurface(name = "") {
   const normalizedName = String(name).toLowerCase();
   if (normalizedName.includes("government") || normalizedName.includes("visa process")) return "bg-[#E7F2EE] text-[#195A48]";
@@ -246,57 +269,6 @@ export default function ResourcesPage() {
       });
     });
 
-    // Provide default mockup items if db returned empty items for beautiful visual display
-    if (items.length === 0) {
-      const govCat = categoryMap.get("visa process and government information");
-      if (govCat && govCat.items.length === 0) {
-        govCat.items = [
-          { id: "1", name: "Visa process overview", type: "Guide", kind: "note", description: "Key steps, timeframes and what to expect when applying for a Subclass 482 visa." },
-          { id: "2", name: "Importing your visa application via ImmiAccount", type: "Guide", kind: "note", description: "Step-by-step instructions for importing a previously lodged or started application into your ImmiAccount." },
-          { id: "3", name: "Visa processing times (Department of Home Affairs)", type: "Link", kind: "link", externalUrl: "https://immi.homeaffairs.gov.au", description: "Latest processing times from the Department of Home Affairs for Subclass 482 visa applications." },
-          { id: "4", name: "Department of Home Affairs - Subclass 482", type: "Link", kind: "link", externalUrl: "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/temporary-skill-shortage-482", description: "Official Department of Home Affairs information about the Subclass 482 visa." },
-          { id: "5", name: "Understanding visa conditions", type: "Note", kind: "note", description: "Information about common visa conditions that may apply to Subclass 482 visa holders." },
-        ];
-      }
-
-      const docCat = categoryMap.get("documents and evidence");
-      if (docCat && docCat.items.length === 0) {
-        docCat.items = [
-          { id: "6", name: "How to prepare and upload documents", type: "Guide", kind: "note", description: "Best practices for preparing, scanning and uploading supporting documents." },
-          { id: "7", name: "Employment reference guide", type: "Guide", kind: "note", description: "Guidelines on what should be included in an employment reference letter." },
-          { id: "8", name: "Qualifications and skills evidence", type: "Checklist", kind: "note", description: "Checklist of mandatory educational qualifications and certified documents." },
-          { id: "9", name: "Document examples", type: "File", kind: "file", description: "Example templates and formatted evidence samples." },
-        ];
-      }
-
-      const reqCat = categoryMap.get("key requirements");
-      if (reqCat && reqCat.items.length === 0) {
-        reqCat.items = [
-          { id: "10", name: "English language requirements", type: "Guide", kind: "note", description: "Approved language test scores and exemption criteria." },
-          { id: "11", name: "Health examinations", type: "Note", kind: "note", description: "Medical booking steps and Bupa health assessment requirements." },
-          { id: "12", name: "Police checks", type: "Guide", kind: "note", description: "Australian Federal Police and overseas character clearances." },
-        ];
-      }
-
-      const polCat = categoryMap.get("our policies and important information");
-      if (polCat && polCat.items.length === 0) {
-        polCat.items = [
-          { id: "13", name: "Our communications policy", type: "Note", kind: "note", description: "How we communicate and expected response times." },
-          { id: "14", name: "Our use of AI", type: "Note", kind: "note", description: "How artificial intelligence helps us prepare accurate applications securely." },
-          { id: "15", name: "Privacy policy", type: "Link", kind: "link", externalUrl: "https://plylegal.com/privacy", description: "Read how we store and protect your confidential information." },
-          { id: "16", name: "Terms of engagement", type: "Link", kind: "link", externalUrl: "https://plylegal.com/terms", description: "Our formal terms of engagement and legal obligations." },
-        ];
-      }
-
-      const tempCat = categoryMap.get("templates and forms");
-      if (tempCat && tempCat.items.length === 0) {
-        tempCat.items = [
-          { id: "17", name: "Employment reference template", type: "File", kind: "file", description: "Standard template for previous employers to draft letters." },
-          { id: "18", name: "Personal statement template", type: "File", kind: "file", description: "Template for drafting personal statements and affidavits." },
-        ];
-      }
-    }
-
     return Array.from(categoryMap.values());
   }, [template?.categories, items]);
 
@@ -380,7 +352,7 @@ export default function ResourcesPage() {
               {/* Resource Detail Cards List */}
               <div className="space-y-3">
                 {filteredCategoryItems.map((item) => {
-                  const isLink = item.kind === "link" || item.externalUrl;
+                  const isLink = item.kind === "link";
                   const isFile = item.kind === "file";
                   const viewerUrl = isFile ? getResourceViewerUrl(item) : "";
                   const actionUrl = isLink ? item.externalUrl : viewerUrl;
@@ -407,6 +379,10 @@ export default function ResourcesPage() {
                             <p className="mt-1 text-sm text-slate-600 leading-relaxed">
                               {item.description}
                             </p>
+                          )}
+
+                          {isFile && !viewerUrl && (
+                            <p className="mt-2 text-sm text-slate-600">Document preview is not available yet.</p>
                           )}
 
                           {item.kind === "note" && (item.noteHtml || item.noteText) && (
@@ -496,7 +472,11 @@ export default function ResourcesPage() {
 
               {/* Category Cards Stack */}
               <div className="space-y-3">
-                {categories.map((category) => {
+                {resourcesError || resourcesLoading || items.length === 0 ? (
+                  <p className="rounded-lg border border-[#E4E2DD] bg-white p-6 text-sm text-slate-600" role={resourcesError ? "alert" : "status"}>
+                    {resourcesError || (resourcesLoading ? "Loading resources..." : "No resources have been published yet.")}
+                  </p>
+                ) : categories.map((category) => {
                   const Icon = getCategoryIcon(category.name, category.icon);
                   const displayItems = category.items.slice(0, 4);
 
@@ -527,19 +507,12 @@ export default function ResourcesPage() {
                         <div className="flex items-center px-5 py-2 sm:px-6">
                           <div className="w-full divide-y divide-[#E8E6E2]">
                             {displayItems.map((item) => (
-                              <button
-                                type="button"
+                              <ResourceOverviewItem
                                 key={item.id || item.name}
-                                onClick={() => setSelectedCategoryName(category.name)}
-                                className="group flex h-9 w-full cursor-pointer items-center gap-3 text-left"
-                              >
-                                <div className="flex min-w-0 items-center gap-6">
-                                  <ResourceTypePill type={item.type} />
-                                  <span className="truncate text-sm font-medium text-[#203F46] transition-colors group-hover:text-[#0D5A49]">
-                                    {item.name}
-                                  </span>
-                                </div>
-                              </button>
+                                item={item}
+                                categoryName={category.name}
+                                onSelectCategory={setSelectedCategoryName}
+                              />
                             ))}
                           </div>
                         </div>
