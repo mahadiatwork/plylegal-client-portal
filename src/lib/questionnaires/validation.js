@@ -1,3 +1,4 @@
+import { isQuestionnaireDisplayItem } from "./contentItems.js";
 import { validateDefinitionCrmMappings } from "../crm/questionnaireCrmContract.js";
 
 export const SUPPORTED_QUESTION_TYPES = new Set([
@@ -246,7 +247,29 @@ function validateOptions(question, path, issues) {
   }
 }
 
+const DISPLAY_ITEM_FIELDS = new Set(["id", "type", "label", "visibleIf", "metadata"]);
+
+/** Headings / explanatory text: id + text only; never counted as questions. */
+function validateDisplayItem(item, path, state, issues) {
+  if (!isNonEmptyString(item.id)) {
+    issues.push(`${path}.id is required`);
+  } else if (state.seenQuestionIds.has(item.id)) {
+    issues.push(`${path}.id "${item.id}" is duplicated across the definition`);
+  } else {
+    state.seenQuestionIds.add(item.id);
+  }
+  if (!isNonEmptyString(item.label)) issues.push(`${path}.label is required`);
+  Object.keys(item).filter((key) => !DISPLAY_ITEM_FIELDS.has(key)).forEach((key) => {
+    issues.push(`${path}.${key} is not supported on ${item.type} content`);
+  });
+  validateVisibleIf(item.visibleIf, path, issues);
+}
+
 function validateQuestion(question, path, state, issues, depth = 1) {
+  if (isQuestionnaireDisplayItem(question)) {
+    validateDisplayItem(question, path, state, issues);
+    return;
+  }
   state.questionCount += 1;
   if (state.questionCount > QUESTIONNAIRE_LIMITS.maxQuestionsPerPage && !state.hasQuestionLimitIssue) {
     issues.push(`${state.pagePath} cannot contain more than ${QUESTIONNAIRE_LIMITS.maxQuestionsPerPage} questions including follow-ups`);

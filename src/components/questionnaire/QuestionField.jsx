@@ -13,6 +13,7 @@ import { getQuestionnaireDayOptions, getQuestionnaireMonthOptions } from "@/lib/
 import { getQuestionnaireCountryOptions } from "@/lib/questionnaires/presentation";
 import { getQuestionnaireRowDefaults, scopeQuestionnaireRowField } from "@/lib/questionnaires/repeaters";
 import { SchemaRepeaterTable } from "@/components/questionnaire/SchemaRepeaterTable";
+import { isQuestionnaireDisplayItem } from "@/lib/questionnaires/contentItems";
 
 const YES_NO_OPTIONS = [
   { value: "yes", label: "Yes" },
@@ -464,7 +465,16 @@ function RepeaterField({ answerLayout, question, repeaterRegistry, form, optionS
   );
 }
 
+/** Heading or explanatory text placed between questions (collects no answer). */
+function QuestionnaireDisplayItem({ item }) {
+  if (item.type === "heading") {
+    return <h3 className="text-lg font-medium border-b pb-2" data-testid={`questionnaire-heading-${item.id}`}>{item.label}</h3>;
+  }
+  return <p className="text-sm text-gray-600 whitespace-pre-line" data-testid={`questionnaire-text-${item.id}`}>{item.label}</p>;
+}
+
 export function QuestionField({ answerLayout, form, optionSources, pageQuestions, question, repeaterRegistry }) {
+  if (isQuestionnaireDisplayItem(question)) return <QuestionnaireDisplayItem item={question} />;
   const options = getOptions(question, optionSources);
 
   if (answerLayout === "applicantAddresses" && question.answerKey === "addresses_by_applicant") {

@@ -360,13 +360,20 @@
       "completionKey": "temporary-work/main-applicant/details",
       "questions": [
         {
+          "id": "temporary-work-main-applicant-details-family_name-heading",
+          "type": "heading",
+          "label": "Personal Information",
+          "metadata": {
+            "originalLabel": "Personal Information"
+          }
+        },
+        {
           "id": "temporary-work-main-applicant-details-family_name",
           "answerKey": "family_name",
           "label": "Family Name",
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Family Name"
           }
         },
@@ -377,7 +384,6 @@
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Given Names"
           }
         },
@@ -402,7 +408,6 @@
             }
           ],
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Gender",
             "originalOptions": [
               {
@@ -482,7 +487,6 @@
             "year": "birth_year"
           },
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Date of Birth - Day",
             "partLabels": {
               "day": "Date of Birth - Day",
@@ -525,7 +529,6 @@
             }
           ],
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "What is your marital status?",
             "originalOptions": [
               {
@@ -630,7 +633,6 @@
             "year": "marital_status_date_year"
           },
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Date of Marriage",
             "labelByValue": {
               "field": "marital_status",
@@ -645,6 +647,14 @@
           }
         },
         {
+          "id": "temporary-work-main-applicant-details-country_of_birth-heading",
+          "type": "heading",
+          "label": "Birthplace Information",
+          "metadata": {
+            "originalLabel": "Birthplace Information"
+          }
+        },
+        {
           "id": "temporary-work-main-applicant-details-country_of_birth",
           "answerKey": "country_of_birth",
           "label": "Country of Birth",
@@ -653,7 +663,6 @@
           "required": true,
           "optionsSource": "countries",
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "Country of Birth",
             "originalPlaceholder": "Choose Country",
             "clientControl": "text"
@@ -666,7 +675,6 @@
           "type": "text",
           "required": true,
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "City or Town of Birth"
           }
         },
@@ -677,8 +685,15 @@
           "type": "text",
           "required": true,
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "State or Province of Birth"
+          }
+        },
+        {
+          "id": "temporary-work-main-applicant-details-citizenship_of_passport_country-heading",
+          "type": "heading",
+          "label": "Citizenships",
+          "metadata": {
+            "originalLabel": "Citizenships"
           }
         },
         {
@@ -688,7 +703,6 @@
           "type": "yesNo",
           "required": false,
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Is this applicant a citizen of their country of passport?"
           }
         },
@@ -699,7 +713,6 @@
           "type": "yesNo",
           "required": false,
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Is this applicant a citizen of any other country?"
           }
         },
@@ -718,7 +731,6 @@
             }
           ],
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Other citizenships",
             "originalDescription": "Enter details of each other citizenship held by this applicant.",
             "fields": [
@@ -2002,6 +2014,14 @@
           }
         },
         {
+          "id": "temporary-work-main-applicant-identity-has_national_id-heading",
+          "type": "heading",
+          "label": "National Identity Document",
+          "metadata": {
+            "originalLabel": "National Identity Document"
+          }
+        },
+        {
           "id": "temporary-work-main-applicant-identity-has_national_id",
           "answerKey": "has_national_id",
           "label": "Do you have a National ID card?",
@@ -2029,8 +2049,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "National Identity Document"
+            ]
           }
         },
         {
@@ -2128,7 +2147,6 @@
               }
             ],
             "originalLabel": "National identity card",
-            "group": "National Identity Document",
             "originalPresentation": {
               "emptyMessage": "No entries added",
               "addDialogTitle": "Add Entry",
@@ -2382,6 +2400,14 @@
           }
         },
         {
+          "id": "temporary-work-main-applicant-identity-citizen_of_country-heading",
+          "type": "heading",
+          "label": "Additional Citizenship and Residence Information",
+          "metadata": {
+            "originalLabel": "Additional Citizenship and Residence Information"
+          }
+        },
+        {
           "id": "temporary-work-main-applicant-identity-citizen_of_country",
           "answerKey": "citizen_of_country",
           "label": "Are you currently a Citizen of any Country?",
@@ -2409,8 +2435,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "Additional Citizenship and Residence Information"
+            ]
           }
         },
         {
@@ -2427,8 +2452,7 @@
             }
           ],
           "metadata": {
-            "originalLabel": "You have answered that you are not a Citizen of any Country. You must provide details of how, when and why you are stateless",
-            "group": "Additional Citizenship and Residence Information"
+            "originalLabel": "You have answered that you are not a Citizen of any Country. You must provide details of how, when and why you are stateless"
           }
         },
         {
@@ -2466,8 +2490,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "Additional Citizenship and Residence Information"
+            ]
           }
         },
         {
@@ -2704,8 +2727,7 @@
                 "actionsHeading": "Actions"
               },
               "hideLabel": true
-            },
-            "group": "Additional Citizenship and Residence Information"
+            }
           }
         },
         {
@@ -2736,8 +2758,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "Additional Citizenship and Residence Information"
+            ]
           }
         },
         {
@@ -2869,8 +2890,7 @@
                 "actionsHeading": "Actions"
               },
               "hideLabel": true
-            },
-            "group": "Additional Citizenship and Residence Information"
+            }
           }
         }
       ],
@@ -2945,6 +2965,14 @@
           }
         },
         {
+          "id": "temporary-work-main-applicant-contact-details-emergency_contact_name-heading",
+          "type": "heading",
+          "label": "Emergency Contact",
+          "metadata": {
+            "originalLabel": "Emergency Contact"
+          }
+        },
+        {
           "id": "temporary-work-main-applicant-contact-details-emergency_contact_name",
           "answerKey": "emergency_contact_name",
           "label": "Name",
@@ -2953,8 +2981,7 @@
           "required": false,
           "metadata": {
             "originalPlaceholder": "Enter emergency contact name",
-            "originalLabel": "Name",
-            "group": "Emergency Contact"
+            "originalLabel": "Name"
           }
         },
         {
@@ -2966,8 +2993,7 @@
           "required": false,
           "metadata": {
             "originalPlaceholder": "Enter emergency contact phone",
-            "originalLabel": "Phone Number",
-            "group": "Emergency Contact"
+            "originalLabel": "Phone Number"
           }
         },
         {
@@ -7543,13 +7569,20 @@
       "completionKey": "temporary-work/spouse-partner/details",
       "questions": [
         {
+          "id": "temporary-work-spouse-partner-details-family_name-heading",
+          "type": "heading",
+          "label": "Personal Information",
+          "metadata": {
+            "originalLabel": "Personal Information"
+          }
+        },
+        {
           "id": "temporary-work-spouse-partner-details-family_name",
           "answerKey": "family_name",
           "label": "Family Name",
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Family Name"
           }
         },
@@ -7560,7 +7593,6 @@
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Given Names"
           }
         },
@@ -7585,7 +7617,6 @@
             }
           ],
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Gender",
             "originalOptions": [
               {
@@ -7665,7 +7696,6 @@
             "year": "birth_year"
           },
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Date of Birth - Day",
             "partLabels": {
               "day": "Date of Birth - Day",
@@ -7708,7 +7738,6 @@
             }
           ],
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "What is your marital status?",
             "originalOptions": [
               {
@@ -7813,7 +7842,6 @@
             "year": "marital_status_date_year"
           },
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Date of Marriage",
             "labelByValue": {
               "field": "marital_status",
@@ -7828,6 +7856,14 @@
           }
         },
         {
+          "id": "temporary-work-spouse-partner-details-country_of_birth-heading",
+          "type": "heading",
+          "label": "Birthplace Information",
+          "metadata": {
+            "originalLabel": "Birthplace Information"
+          }
+        },
+        {
           "id": "temporary-work-spouse-partner-details-country_of_birth",
           "answerKey": "country_of_birth",
           "label": "Country of Birth",
@@ -7836,7 +7872,6 @@
           "required": true,
           "optionsSource": "countries",
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "Country of Birth",
             "originalPlaceholder": "Choose Country",
             "clientControl": "select"
@@ -7849,7 +7884,6 @@
           "type": "text",
           "required": true,
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "City or Town of Birth"
           }
         },
@@ -7860,8 +7894,15 @@
           "type": "text",
           "required": true,
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "State or Province of Birth"
+          }
+        },
+        {
+          "id": "temporary-work-spouse-partner-details-citizenship_of_passport_country-heading",
+          "type": "heading",
+          "label": "Citizenships",
+          "metadata": {
+            "originalLabel": "Citizenships"
           }
         },
         {
@@ -7871,7 +7912,6 @@
           "type": "yesNo",
           "required": false,
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Is this applicant a citizen of their country of passport?"
           }
         },
@@ -7882,7 +7922,6 @@
           "type": "yesNo",
           "required": false,
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Is this applicant a citizen of any other country?"
           }
         },
@@ -7901,7 +7940,6 @@
             }
           ],
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Other citizenships",
             "originalDescription": "Enter details of each other citizenship held by this applicant.",
             "fields": [
@@ -8099,13 +8137,20 @@
           }
         },
         {
+          "id": "temporary-work-spouse-partner-details-preferred_names-heading",
+          "type": "heading",
+          "label": "Other names/spellings",
+          "metadata": {
+            "originalLabel": "Other names/spellings"
+          }
+        },
+        {
           "id": "temporary-work-spouse-partner-details-preferred_names",
           "answerKey": "preferred_names",
           "label": "Preferred Names",
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Other names/spellings",
             "originalLabel": "Preferred Names"
           }
         }
@@ -8796,6 +8841,14 @@
       "completionKey": "temporary-work/spouse-partner/identity",
       "questions": [
         {
+          "id": "temporary-work-spouse-partner-identity-has_passport-heading",
+          "type": "heading",
+          "label": "Passport / Travel Document",
+          "metadata": {
+            "originalLabel": "Passport / Travel Document"
+          }
+        },
+        {
           "id": "temporary-work-spouse-partner-identity-has_passport",
           "answerKey": "has_passport",
           "label": "Do you currently hold or have you ever held a Passport or Travel Document?",
@@ -8823,8 +8876,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "Passport / Travel Document"
+            ]
           }
         },
         {
@@ -9121,7 +9173,6 @@
               }
             ],
             "originalLabel": "Passport / Travel Document",
-            "group": "Passport / Travel Document",
             "validation": {
               "rules": [
                 {
@@ -9224,6 +9275,14 @@
           }
         },
         {
+          "id": "temporary-work-spouse-partner-identity-has_national_id-heading",
+          "type": "heading",
+          "label": "National Identity Document",
+          "metadata": {
+            "originalLabel": "National Identity Document"
+          }
+        },
+        {
           "id": "temporary-work-spouse-partner-identity-has_national_id",
           "answerKey": "has_national_id",
           "label": "Do you have a National ID card?",
@@ -9251,8 +9310,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "National Identity Document"
+            ]
           }
         },
         {
@@ -9345,7 +9403,6 @@
               }
             ],
             "originalLabel": "National identity card",
-            "group": "National Identity Document",
             "originalPresentation": {
               "emptyMessage": "No entries added",
               "addDialogTitle": "Add Entry",
@@ -9406,6 +9463,14 @@
                 "actionsHeading": "Actions"
               }
             }
+          }
+        },
+        {
+          "id": "temporary-work-spouse-partner-identity-other_identity_documents-heading",
+          "type": "heading",
+          "label": "Other Identity Documents",
+          "metadata": {
+            "originalLabel": "Other Identity Documents"
           }
         },
         {
@@ -9522,7 +9587,6 @@
               }
             ],
             "originalLabel": "Other Identity Documents",
-            "group": "Other Identity Documents",
             "originalPresentation": {
               "addLabel": "Add",
               "emptyMessage": "No entries added",
@@ -9631,13 +9695,20 @@
       "completionKey": "temporary-work/children/child-profile/details",
       "questions": [
         {
+          "id": "temporary-work-children-child-profile-details-family_name-heading",
+          "type": "heading",
+          "label": "Personal Information",
+          "metadata": {
+            "originalLabel": "Personal Information"
+          }
+        },
+        {
           "id": "temporary-work-children-child-profile-details-family_name",
           "answerKey": "family_name",
           "label": "Family Name",
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Family Name"
           }
         },
@@ -9648,7 +9719,6 @@
           "type": "text",
           "required": false,
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Given Names"
           }
         },
@@ -9673,7 +9743,6 @@
             }
           ],
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Gender",
             "originalOptions": [
               {
@@ -9753,7 +9822,6 @@
             "year": "birth_year"
           },
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Date of Birth - Day",
             "partLabels": {
               "day": "Date of Birth - Day",
@@ -9796,7 +9864,6 @@
             }
           ],
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "What is your marital status?",
             "originalOptions": [
               {
@@ -9901,7 +9968,6 @@
             "year": "marital_status_date_year"
           },
           "metadata": {
-            "group": "Personal Information",
             "originalLabel": "Date of Marriage",
             "labelByValue": {
               "field": "marital_status",
@@ -9916,6 +9982,14 @@
           }
         },
         {
+          "id": "temporary-work-children-child-profile-details-country_of_birth-heading",
+          "type": "heading",
+          "label": "Birthplace Information",
+          "metadata": {
+            "originalLabel": "Birthplace Information"
+          }
+        },
+        {
           "id": "temporary-work-children-child-profile-details-country_of_birth",
           "answerKey": "country_of_birth",
           "label": "Country of Birth",
@@ -9924,7 +9998,6 @@
           "required": true,
           "optionsSource": "countries",
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "Country of Birth",
             "originalPlaceholder": "Choose Country",
             "clientControl": "text"
@@ -9937,7 +10010,6 @@
           "type": "text",
           "required": true,
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "City or Town of Birth"
           }
         },
@@ -9948,8 +10020,15 @@
           "type": "text",
           "required": true,
           "metadata": {
-            "group": "Birthplace Information",
             "originalLabel": "State or Province of Birth"
+          }
+        },
+        {
+          "id": "temporary-work-children-child-profile-details-citizenship_of_passport_country-heading",
+          "type": "heading",
+          "label": "Citizenships",
+          "metadata": {
+            "originalLabel": "Citizenships"
           }
         },
         {
@@ -9959,7 +10038,6 @@
           "type": "yesNo",
           "required": false,
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Is this applicant a citizen of their country of passport?"
           }
         },
@@ -9970,7 +10048,6 @@
           "type": "yesNo",
           "required": false,
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Is this applicant a citizen of any other country?"
           }
         },
@@ -9989,7 +10066,6 @@
             }
           ],
           "metadata": {
-            "group": "Citizenships",
             "originalLabel": "Other citizenships",
             "originalDescription": "Enter details of each other citizenship held by this applicant.",
             "fields": [
@@ -10818,6 +10894,14 @@
       "completionKey": "temporary-work/children/child-profile/identity",
       "questions": [
         {
+          "id": "temporary-work-children-child-profile-identity-has_passport-heading",
+          "type": "heading",
+          "label": "Passport / Travel Document",
+          "metadata": {
+            "originalLabel": "Passport / Travel Document"
+          }
+        },
+        {
           "id": "temporary-work-children-child-profile-identity-has_passport",
           "answerKey": "has_passport",
           "label": "Do you currently hold or have you ever held a Passport or Travel Document?",
@@ -10845,8 +10929,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "Passport / Travel Document"
+            ]
           }
         },
         {
@@ -11143,7 +11226,6 @@
               }
             ],
             "originalLabel": "Passport / Travel Document",
-            "group": "Passport / Travel Document",
             "validation": {
               "rules": [
                 {
@@ -11246,6 +11328,14 @@
           }
         },
         {
+          "id": "temporary-work-children-child-profile-identity-has_national_id-heading",
+          "type": "heading",
+          "label": "National Identity Document",
+          "metadata": {
+            "originalLabel": "National Identity Document"
+          }
+        },
+        {
           "id": "temporary-work-children-child-profile-identity-has_national_id",
           "answerKey": "has_national_id",
           "label": "Do you have a National ID card?",
@@ -11273,8 +11363,7 @@
                 "value": "no",
                 "label": "No"
               }
-            ],
-            "group": "National Identity Document"
+            ]
           }
         },
         {
@@ -11367,7 +11456,6 @@
               }
             ],
             "originalLabel": "National identity card",
-            "group": "National Identity Document",
             "originalPresentation": {
               "emptyMessage": "No entries added",
               "addDialogTitle": "Add Entry",
@@ -11428,6 +11516,14 @@
                 "actionsHeading": "Actions"
               }
             }
+          }
+        },
+        {
+          "id": "temporary-work-children-child-profile-identity-other_identity_documents-heading",
+          "type": "heading",
+          "label": "Other Identity Documents",
+          "metadata": {
+            "originalLabel": "Other Identity Documents"
           }
         },
         {
@@ -11546,7 +11642,6 @@
             ],
             "originalPlaceholder": "Enter details...",
             "originalLabel": "Other Identity Documents",
-            "group": "Other Identity Documents",
             "originalPresentation": {
               "addLabel": "Add",
               "emptyMessage": "No entries added",

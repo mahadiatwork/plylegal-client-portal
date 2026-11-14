@@ -1,4 +1,5 @@
 import { evaluateVisibleIf } from "./validation.js";
+import { isQuestionnaireDisplayItem } from "./contentItems.js";
 import {
   getContinuousHistoryIssues,
   getResidenceApplicants,
@@ -22,6 +23,8 @@ export function getQuestionnaireDatePartNames(question) {
 }
 
 export function getQuestionnaireFieldNames(question) {
+  // Headings and explanatory text store nothing.
+  if (isQuestionnaireDisplayItem(question)) return [];
   if (question.type === "dateParts") {
     return Object.values(getQuestionnaireDatePartNames(question));
   }
@@ -433,7 +436,7 @@ export function getQuestionnairePageReviewItems(page, values = {}, context = {})
 
   function appendQuestions(questions = [], ancestorsVisible = true) {
     questions.forEach((question) => {
-      if (question.metadata?.storageOnly) return;
+      if (question.metadata?.storageOnly || isQuestionnaireDisplayItem(question)) return;
       const visible = ancestorsVisible && evaluateVisibleIf(question.visibleIf, values);
       if (visible) {
         const value = getQuestionnaireReviewValue(question, values, context);
