@@ -63,7 +63,7 @@ test.describe("482 questionnaire @questionnaire-482", () => {
     await expectMainOtherNameDialogWithoutApplicationName(page);
     await goPrevious(page);
     await expect(page).toHaveURL(/\/main-applicant\/details/);
-    await expect(page.getByTestId("input-family-name")).toHaveValue(MAIN_APPLICANT.familyName);
+    await expect(page.getByTestId(await isDynamicQuestionnairePage(page) ? "input-family_name" : "input-family-name")).toHaveValue(MAIN_APPLICANT.familyName);
 
     await completeLinearFlowToSubmit(page, "low", { expectSpouse: false, expectChild: false });
     // The accepted 482 flow includes the Other Family index even with no members.
@@ -196,7 +196,8 @@ async function expectTemporaryWorkSubmitReview(page, { mainApplicant, spouse = n
   await expect(review).toContainText("Included Applicants");
   await expect(review).toContainText("Applicant 1 (Main Applicant) - Details");
   await expect(review).toContainText(`${mainApplicant.givenNames} ${mainApplicant.familyName}`);
-  await expect(review).toContainText("All Applicants - Visas");
+  // Built-in heading, or the page title from a managed definition.
+  await expect(review).toContainText(/All Applicants - Visas|All Applicants' Visas/);
 
   if (spouse) {
     await expect(review).toContainText("Applicant 2 (Spouse/Partner) - Details");
@@ -246,7 +247,8 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
     if (/\/all-applicants\/character/.test(url)) {
       await expect(page.getByTestId("dynamic-questionnaire-page")).toHaveAttribute(
         "data-questionnaire-page-id",
-        "all-applicants-character"
+        // Bundled definition id, or the admin-published id when a managed definition is loaded.
+        /^(temporary-work-)?all-applicants-character$/
       );
       await expect(page.getByText("Has any applicant ever been charged with any offence that is currently awaiting legal action?")).toBeVisible();
       coverage.sawDynamicCharacter = true;
@@ -274,13 +276,20 @@ async function completeLinearFlowToSubmit(page, branch, { expectSpouse, expectCh
   throw new Error(`Questionnaire did not reach submit page. Last URL: ${page.url()}`);
 }
 
+// Test ids differ between the hand-written page and the definition-rendered page
+// (QUESTIONNAIRE_DEFINITION_FIXTURE runs certified pages dynamically).
+async function isDynamicQuestionnairePage(page) {
+  return (await page.getByTestId("dynamic-questionnaire-page").count()) > 0;
+}
+
 async function expectMainOtherNameDialogWithoutApplicationName(page) {
-  await page.getByTestId("radio-other-names-yes").click();
-  await page.getByTestId("button-add-other-name").click();
+  const dynamic = await isDynamicQuestionnairePage(page);
+  await page.getByTestId(dynamic ? "radio-has_other_names-yes" : "radio-other-names-yes").click();
+  await page.getByTestId(dynamic ? "button-add-other-names" : "button-add-other-name").click();
   const dialog = page.getByRole("dialog").last();
   await expect(dialog).toBeVisible();
   await expect(page.getByText("Use this name in the application")).toHaveCount(0);
   await dialog.getByTestId("button-cancel").click();
   await expect(dialog).toBeHidden();
-  await page.getByTestId("radio-other-names-no").click();
+  await page.getByTestId(dynamic ? "radio-has_other_names-no" : "radio-other-names-no").click();
 }

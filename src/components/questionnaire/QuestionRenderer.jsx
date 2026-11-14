@@ -31,16 +31,21 @@ function getFieldDefaults(question) {
   return fields;
 }
 
-export function QuestionRenderer({ answerLayout, form, optionSources, pageQuestions, questions = [], repeaterRegistry = {}, values }) {
+/**
+ * Questions render in a two-column grid: every question spans both columns unless
+ * metadata.width is "half", so consecutive half-width questions sit side by side
+ * (matching the legacy pages' paired fields).
+ */
+export function QuestionRenderer({ answerLayout, form, nested = false, optionSources, pageQuestions, questions = [], repeaterRegistry = {}, values }) {
   const allPageQuestions = pageQuestions || questions;
   const displayedQuestions = questions.filter((question) => !question.metadata?.storageOnly);
   const groupHeadings = getQuestionnaireGroupHeadingIndexes(displayedQuestions, values);
   return (
-    <>
+    <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-6 ${nested ? "gap-y-6" : "gap-y-8"}`}>
       {displayedQuestions.map((question, index) => (
         <Fragment key={question.id}>
           {groupHeadings.has(index) && (
-            <h3 className="border-b border-border pb-2 pt-2 text-lg font-semibold text-foreground">
+            <h3 className="text-lg font-medium border-b pb-2 md:col-span-2">
               {groupHeadings.get(index)}
             </h3>
           )}
@@ -51,7 +56,7 @@ export function QuestionRenderer({ answerLayout, form, optionSources, pageQuesti
             values={values}
             visibleIf={question.visibleIf}
           >
-            <div className="space-y-3 border-b border-border pb-6 last:border-0 last:pb-0">
+            <div className={question.metadata?.width === "half" ? "space-y-3 min-w-0" : "space-y-3 min-w-0 md:col-span-2"}>
               <QuestionField
                 answerLayout={answerLayout}
                 form={form}
@@ -61,10 +66,11 @@ export function QuestionRenderer({ answerLayout, form, optionSources, pageQuesti
                 repeaterRegistry={repeaterRegistry}
               />
               {question.followUps?.length > 0 && (
-                <div className="mt-4 space-y-4 bg-muted/30 p-4 rounded-lg border border-border">
+                <div className="mt-6">
                   <QuestionRenderer
                     answerLayout={answerLayout}
                     form={form}
+                    nested
                     optionSources={optionSources}
                     pageQuestions={allPageQuestions}
                     questions={question.followUps}
@@ -77,6 +83,6 @@ export function QuestionRenderer({ answerLayout, form, optionSources, pageQuesti
           </ConditionalBlock>
         </Fragment>
       ))}
-    </>
+    </div>
   );
 }

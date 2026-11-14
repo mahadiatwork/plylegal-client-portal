@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { getRemoteQuestionnaireDefinitionStrict } from "@/lib/questionnaires";
 import { withQuestionnaireLoadTimeout } from "@/lib/questionnaires/remoteLoading";
 import { QuestionnaireDefinitionContent } from "@/components/questionnaire/QuestionnaireDefinitionContent";
+import { readLocalQuestionnaireDefinitionOverride } from "@/lib/questionnaires/localOverride";
 
 const ActiveQuestionnaireDefinitionContext = createContext({
   definition: null,
@@ -29,6 +30,16 @@ export function DynamicQuestionnaireOverride({
   const audienceKey = `${visaType || ""}|${visaContext || ""}`;
   const [resolved, setResolved] = useState({ key: null, definition: null, status: "idle" });
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const [localOverride, setLocalOverride] = useState({ key: null, definition: null });
+
+  // Local/e2e parity testing only; the reader is inert when Firebase is configured.
+  useEffect(() => {
+    if (remoteDefinitionsEnabled || !visaType) return;
+    setLocalOverride({
+      key: audienceKey,
+      definition: readLocalQuestionnaireDefinitionOverride({ visaType, visaContext }),
+    });
+  }, [audienceKey, remoteDefinitionsEnabled, visaContext, visaType]);
 
   const replaceDefinition = useCallback((definition) => {
     setResolved({ key: audienceKey, definition, status: "ready" });
@@ -60,7 +71,9 @@ export function DynamicQuestionnaireOverride({
 
   const activeDefinition = remoteDefinitionsEnabled && resolved.key === audienceKey
     ? resolved.definition
-    : null;
+    : !remoteDefinitionsEnabled && localOverride.key === audienceKey
+      ? localOverride.definition
+      : null;
   const contextValue = useMemo(() => ({
     definition: activeDefinition,
     replaceDefinition,

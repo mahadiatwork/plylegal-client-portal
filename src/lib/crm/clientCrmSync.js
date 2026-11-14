@@ -6,6 +6,9 @@ export async function requestQuestionnaireCrmSync({
   pageId = null,
   profileId = null,
 } = {}) {
+  // No Firebase at all (local/e2e mode): there is no CRM to reach, so report a skip
+  // rather than a failure. With Firebase configured a missing user is still a failure.
+  if (!auth) return { success: true, skipped: true, state: "idle", reason: "firebase_not_configured" };
   const token = await auth.currentUser?.getIdToken();
   if (!token) {
     return { success: false, state: "failed", error: { code: "unauthenticated", message: "Authentication required" } };

@@ -28,12 +28,19 @@ import {
   getQuestionnaireDatePartNames,
   getQuestionnaireNonMigratingMemberUpdates,
   getQuestionnairePageAnswerLayout,
+  applyQuestionnairePagePrefill,
+  preserveUnmanagedAnswers,
+  questionnairePageOwnsSection,
   getQuestionnairePageSavedValues,
   getQuestionnairePageStorageTarget,
   getQuestionnairePageStorageValues,
   getQuestionnairePageValidationIssues,
   sanitizeQuestionnairePageValues,
 } from "@/lib/questionnaires/answers";
+
+function getNestedDraftValue(draft, path) {
+  return String(path || "").split(".").filter(Boolean).reduce((value, key) => value?.[key], draft);
+}
 
 function getQuestionsFlat(questions = []) {
   return questions.flatMap((question) => [
@@ -262,11 +269,15 @@ export function DynamicQuestionnairePage({
 
   const sectionData = useMemo(() => {
     if (!pageDefinition) return {};
-    return getQuestionnairePageSavedValues(
-      draftSnap.draft,
+    return applyQuestionnairePagePrefill(
       pageDefinition,
-      resolvedProfileId,
-      nonMigratingMemberId
+      getQuestionnairePageSavedValues(
+        draftSnap.draft,
+        pageDefinition,
+        resolvedProfileId,
+        nonMigratingMemberId
+      ),
+      { draft: draftSnap.draft, profileId: resolvedProfileId }
     );
   }, [draftSnap.draft, nonMigratingMemberId, pageDefinition, resolvedProfileId]);
 
@@ -296,7 +307,12 @@ export function DynamicQuestionnairePage({
       return draftStore.saveProfileSectionData(
         storageTarget.profileId,
         storageTarget.sectionKey,
-        storageValues
+        questionnairePageOwnsSection(pageDefinition)
+          ? storageValues
+          : preserveUnmanagedAnswers(
+            draftSnap.draft?.profiles_data?.[storageTarget.profileId]?.[storageTarget.sectionKey],
+            storageValues
+          )
       );
     }
 
@@ -317,7 +333,10 @@ export function DynamicQuestionnairePage({
         : { success: false, error: "Failed to save family member answers" };
     }
 
-    return draftStore.saveSectionData(storageTarget.sectionKey, storageValues);
+    return draftStore.saveSectionData(
+      storageTarget.sectionKey,
+      preserveUnmanagedAnswers(getNestedDraftValue(draftSnap.draft, storageTarget.sectionKey), storageValues)
+    );
   };
 
   const markPageComplete = async () => {
@@ -491,16 +510,15 @@ export function DynamicQuestionnairePage({
     >
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">{presentationPageDefinition.title}</CardTitle>
+        {presentationPageDefinition.introBlocks?.length > 0 && (
+          <div className="text-sm text-gray-600 mt-2 space-y-3" data-testid="questionnaire-page-intro">
+            {presentationPageDefinition.introBlocks.map(renderIntroBlock)}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-            {presentationPageDefinition.introBlocks?.length > 0 && (
-              <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-3 text-sm text-foreground">
-                {presentationPageDefinition.introBlocks.map(renderIntroBlock)}
-              </div>
-            )}
-
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="space-y-8">
             <QuestionRenderer
               answerLayout={getQuestionnairePageAnswerLayout(presentationPageDefinition)}
               form={form}

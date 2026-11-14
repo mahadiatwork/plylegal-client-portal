@@ -15,7 +15,8 @@ export const SUPPORTED_DEFINITION_STATUSES = new Set(["draft", "active", "archiv
 export const SUPPORTED_PAGE_SCOPES = new Set(["shared", "profile"]);
 export const SUPPORTED_QUESTIONNAIRE_VISA_TYPES = new Set(["temporary-work", "partner", "protection"]);
 export const SUPPORTED_QUESTIONNAIRE_SCHEMA_VERSION = 1;
-export const SUPPORTED_QUESTION_OPTIONS_SOURCES = new Set(["applicants", "countries"]);
+// applicantIds: profile ids labelled with names (stored by legacy pages that reference applicants by id).
+export const SUPPORTED_QUESTION_OPTIONS_SOURCES = new Set(["applicants", "applicantIds", "countries"]);
 
 export const QUESTIONNAIRE_LIMITS = Object.freeze({
   maxSerializedBytes: 900 * 1024,
@@ -36,6 +37,7 @@ const SUPPORTED_VISIBLE_IF_OPERATORS = new Set([
   "notIn",
   "exists",
   "notExists",
+  "anyOf",
 ]);
 
 const SAFE_ROUTE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -139,9 +141,26 @@ function validateVisibleIf(visibleIf, path, issues) {
   }
 
   visibleIf.forEach((condition, index) => {
-    const conditionPath = `${path}.visibleIf[${index}]`;
+    validateCondition(condition, `${path}.visibleIf[${index}]`, issues, true);
+  });
+}
+
+/** One condition; "anyOf" groups (true when any nested condition matches) nest one level. */
+function validateCondition(condition, conditionPath, issues, allowGroup) {
     if (!condition || typeof condition !== "object" || Array.isArray(condition)) {
       issues.push(`${conditionPath} must be an object`);
+      return;
+    }
+    if (condition.op === "anyOf") {
+      if (!allowGroup) {
+        issues.push(`${conditionPath}.op anyOf cannot be nested`);
+      } else if (!Array.isArray(condition.value) || condition.value.length === 0) {
+        issues.push(`${conditionPath}.value must be a non-empty array of conditions for anyOf`);
+      } else if (condition.value.length > QUESTIONNAIRE_LIMITS.maxConditionsPerQuestion) {
+        issues.push(`${conditionPath}.value cannot contain more than ${QUESTIONNAIRE_LIMITS.maxConditionsPerQuestion} conditions`);
+      } else {
+        condition.value.forEach((nested, nestedIndex) => validateCondition(nested, `${conditionPath}.value[${nestedIndex}]`, issues, false));
+      }
       return;
     }
     if (!isSafeDataKey(condition.field)) {
@@ -167,6 +186,16 @@ function validateVisibleIf(visibleIf, path, issues) {
     ) {
       issues.push(`${conditionPath}.value is required for ${condition.op}`);
     }
+}
+
+/** Flatten anyOf groups so reference/cycle checks see every referenced field. */
+function flattenConditions(visibleIf, basePath) {
+  return (Array.isArray(visibleIf) ? visibleIf : []).flatMap((condition, index) => {
+    const path = `${basePath}.visibleIf[${index}]`;
+    if (isPlainObject(condition) && condition.op === "anyOf" && Array.isArray(condition.value)) {
+      return condition.value.map((nested, nestedIndex) => ({ condition: nested, path: `${path}.value[${nestedIndex}]` }));
+    }
+    return [{ condition, path }];
   });
 }
 
@@ -427,9 +456,8 @@ function validatePageConditionReferences(questions, pagePath, issues) {
   entries.forEach((target) => {
     if (!Array.isArray(target.question.visibleIf)) return;
 
-    target.question.visibleIf.forEach((condition, conditionIndex) => {
+    flattenConditions(target.question.visibleIf, target.path).forEach(({ condition, path: conditionPath }) => {
       if (!isPlainObject(condition) || typeof condition.field !== "string") return;
-      const conditionPath = `${target.path}.visibleIf[${conditionIndex}]`;
       const sourceKey = condition.field.trim();
       if (!sourceKey) return;
 
@@ -649,6 +677,8 @@ export function evaluateVisibleIf(conditions = [], values = {}) {
   return conditions.every((condition) => {
     const currentValue = values?.[condition.field];
     switch (condition.op) {
+      case "anyOf":
+        return Array.isArray(condition.value) && condition.value.some((nested) => evaluateVisibleIf([nested], values));
       case "equals":
         return currentValue === condition.value;
       case "notEquals":

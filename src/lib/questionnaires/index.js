@@ -250,6 +250,12 @@ export async function getRemoteQuestionnaireDefinition(args = {}) {
  * failures into an apparent "no active definition" result.
  */
 export async function getRemoteQuestionnaireDefinitionStrict(args = {}) {
+  if (typeof window !== "undefined" && !canLoadRemoteDefinitions()) {
+    // Local/e2e mode only: verify against the injected parity definition, if any.
+    const { readLocalQuestionnaireDefinitionOverride } = await import("./localOverride.js");
+    const override = readLocalQuestionnaireDefinitionOverride(args);
+    if (override) return override;
+  }
   return loadFirestoreDefinitionUnchecked(args);
 }
 

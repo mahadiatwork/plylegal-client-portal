@@ -1,4 +1,13 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect } from "@playwright/test";
+
+// Opt-in: QUESTIONNAIRE_DEFINITION_FIXTURE=e2e/fixtures/<definition>.json runs every seeded
+// application against that admin-exported definition (localStorage mode only), so certified
+// pages render through the dynamic renderer exactly as they would after "Make live".
+const DEFINITION_FIXTURE = process.env.QUESTIONNAIRE_DEFINITION_FIXTURE
+  ? fs.readFileSync(path.resolve(process.env.QUESTIONNAIRE_DEFINITION_FIXTURE), "utf8")
+  : null;
 
 export const DEMO_USER = {
   id: "demo-user-1",
@@ -64,6 +73,9 @@ export async function seedIntakeApplication(page, { appId, reference, slug = "48
     },
     { user: DEMO_USER, application: app, seededAppId: appId, seededDraft: draft }
   );
+  if (DEFINITION_FIXTURE) {
+    await page.evaluate((json) => localStorage.setItem("ply:questionnaireDefinitionOverride", json), DEFINITION_FIXTURE);
+  }
 }
 
 export async function seedTemporaryWorkApplication(page, { appId, reference, visaContext = "482" }) {
@@ -131,11 +143,16 @@ export async function startQuestionnaire(page, appId, slug = "482") {
   const intakeSlug = ["186", "482", "820", "866"].includes(slug) ? slug : "482";
   await page.goto(`/applications/${intakeSlug}/${appId}/questionnaire`);
   await expect(page).not.toHaveURL(/\/login/);
-  await expect(page.getByRole("heading", { name: /Questionnaire/i })).toBeVisible();
-
-  await page.getByRole("button", { name: /Start questionnaire|Continue/i }).click();
-  await expect(page).toHaveURL(new RegExp(`/applications/${escapeRegExp(intakeSlug)}/[^/]+/intake/start`));
-  await page.getByTestId("checkbox-started").click();
+  // The questionnaire tab now opens the Getting Started step directly; older builds showed
+  // an overview with a "Start questionnaire" button first.
+  const startCheckbox = page.getByTestId("checkbox-started");
+  const startButton = page.getByRole("button", { name: /Start questionnaire/i });
+  await expect(startCheckbox.or(startButton).first()).toBeVisible({ timeout: 60_000 });
+  if (!(await startCheckbox.isVisible().catch(() => false))) {
+    await startButton.click();
+  }
+  await expect(page).toHaveURL(new RegExp(`/applications/${escapeRegExp(intakeSlug)}/[^/]+/(intake/start|questionnaire)`));
+  await page.getByTestId("checkbox-started").check({ force: true });
   await page.getByTestId("button-begin").click();
   await expect(page).toHaveURL(new RegExp(`/applications/${escapeRegExp(intakeSlug)}/[^/]+/intake/profile`));
 }
@@ -171,7 +188,7 @@ export async function selectRadixByTestId(page, testId, optionName) {
 }
 
 function valueForTextControl(identifier, branch) {
-  const id = identifier.toLowerCase();
+  const id = identifier.toLowerCase().replace(/_/g, "-");
   if (id.includes("email")) return "e2e.applicant@example.com";
   if (id.includes("phone") || id.includes("mobile") || id.includes("number")) return "0400000000";
   if (id.includes("postcode") || id.includes("zip")) return "3000";
@@ -201,12 +218,13 @@ async function fillVisibleTextControls(scope, branch) {
   const count = await controls.count();
 
   for (let index = 0; index < count; index += 1) {
+    if (index >= await controls.count()) break;
     const control = controls.nth(index);
     if (!(await control.isVisible().catch(() => false))) continue;
     if (!(await control.isEnabled().catch(() => false))) continue;
 
     const tagName = await control.evaluate((node) => node.tagName.toLowerCase()).catch(() => "");
-    const type = (await control.getAttribute("type")) || "";
+    const type = (await control.getAttribute("type", { timeout: 2_000 }).catch(() => null)) || "";
     const currentValue = tagName === "textarea"
       ? await control.inputValue().catch(() => "")
       : await control.inputValue().catch(() => "");
@@ -214,10 +232,10 @@ async function fillVisibleTextControls(scope, branch) {
     if (currentValue && type !== "date") continue;
 
     const identifier = [
-      await control.getAttribute("data-testid"),
-      await control.getAttribute("name"),
-      await control.getAttribute("id"),
-      await control.getAttribute("placeholder"),
+      await control.getAttribute("data-testid", { timeout: 2_000 }).catch(() => null),
+      await control.getAttribute("name", { timeout: 2_000 }).catch(() => null),
+      await control.getAttribute("id", { timeout: 2_000 }).catch(() => null),
+      await control.getAttribute("placeholder", { timeout: 2_000 }).catch(() => null),
     ].filter(Boolean).join(" ");
     const nextValue = type === "date" ? "2020-01-01" : valueForTextControl(identifier, branch);
 
@@ -226,7 +244,7 @@ async function fillVisibleTextControls(scope, branch) {
 }
 
 function preferredSelectOptions(identifier) {
-  const id = identifier.toLowerCase();
+  const id = identifier.toLowerCase().replace(/_/g, "-");
   if (id.includes("day")) return ["01", "1"];
   if (id.includes("month")) return ["January", "01", "1"];
   if (id.includes("birth-year")) return ["1990"];
@@ -268,6 +286,7 @@ async function fillVisibleSelects(page, scope) {
   const count = await triggers.count();
 
   for (let index = 0; index < count; index += 1) {
+    if (index >= await triggers.count()) break;
     const trigger = triggers.nth(index);
     if (!(await trigger.isVisible().catch(() => false))) continue;
     if (!(await trigger.isEnabled().catch(() => false))) continue;
@@ -379,6 +398,15 @@ async function fillOpenDialog(page, branch) {
     '[data-testid="button-ok"], button:has-text("Ok"), button:has-text("Save"), button:has-text("Add")'
   ).last();
   await okButton.click();
+  // Fields revealed by earlier answers (or a slow dropdown) can be missed on the first pass:
+  // fill once more if the dialog rejected the row.
+  const closed = await expect(dialog).toBeHidden({ timeout: 1_500 }).then(() => true, () => false);
+  if (!closed) {
+    await fillVisibleSelects(page, dialog);
+    await selectVisibleRadios(dialog, branch);
+    await fillVisibleTextControls(dialog, branch);
+    await okButton.click();
+  }
   await expect(dialog).toBeHidden({ timeout: 8_000 });
 }
 
@@ -387,8 +415,10 @@ async function fillVisibleRepeaters(page, branch, seenRepeaters) {
   const count = await buttons.count();
 
   for (let index = 0; index < count; index += 1) {
+    // Adding a record can hide a conditional list, so the set of buttons may shrink.
+    if (index >= await buttons.count()) break;
     const button = buttons.nth(index);
-    const testId = await button.getAttribute("data-testid");
+    const testId = await button.getAttribute("data-testid", { timeout: 2_000 }).catch(() => null);
     const currentUrl = new URL(page.url());
     const repeaterKey = `${currentUrl.pathname}${currentUrl.search}:${testId}`;
     if (!testId || testId === "button-add-profile" || seenRepeaters.has(repeaterKey)) continue;
@@ -444,6 +474,36 @@ async function completeCountriesOfResidenceCoverage(page, seenRepeaters) {
     await dialog.getByTestId("input-suburb").fill("Melbourne");
     await dialog.getByTestId("input-state").fill("Victoria");
     await dialog.getByTestId("input-postcode").fill("3000");
+    await dialog.getByTestId("button-ok").click();
+    await expect(dialog).toBeHidden({ timeout: 8_000 });
+  }
+}
+
+async function chooseInDialog(page, dialog, trigger, optionName) {
+  await dialog.locator(trigger).first().click();
+  await page.getByRole("option", { name: optionName }).first().click();
+}
+
+/** Definition-rendered Countries of Residence: one ten-year record per applicant via the popup. */
+async function completeDynamicResidenceCoverage(page, seenRepeaters) {
+  const currentUrl = new URL(page.url());
+  const repeaterKey = `${currentUrl.pathname}${currentUrl.search}:residence-full-coverage`;
+  if (seenRepeaters.has(repeaterKey)) return;
+  seenRepeaters.add(repeaterKey);
+
+  const profiles = await getQuestionnaireProfiles(page);
+  const coverageStartYear = String(new Date().getFullYear() - 10);
+  for (const profile of profiles) {
+    await page.getByTestId("button-add-residence-records").click();
+    const dialog = page.getByRole("dialog").last();
+    await expect(dialog).toBeVisible();
+    await chooseInDialog(page, dialog, '[data-testid="select-applicant_name"]', new RegExp(`^${escapeRegExp(profile.label)}`));
+    await chooseInDialog(page, dialog, "#date_from_day", /^0?1$/);
+    await chooseInDialog(page, dialog, "#date_from_month", "January");
+    await chooseInDialog(page, dialog, "#date_from_year", coverageStartYear);
+    await chooseInDialog(page, dialog, '[data-testid="select-country"]', "Australia");
+    await dialog.locator("#address1").fill("1 E2E Test Street");
+    await dialog.locator("#suburb").fill("Melbourne");
     await dialog.getByTestId("button-ok").click();
     await expect(dialog).toBeHidden({ timeout: 8_000 });
   }
@@ -517,7 +577,7 @@ async function assertTemporaryWorkCorrectionExpectations(page) {
 export async function expectResidenceCoverageBlocksIncomplete(page) {
   const currentUrl = page.url();
   await page.getByTestId("button-next").click();
-  await expect(page.getByTestId("residence-coverage-error")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-testid="residence-coverage-error"], [data-testid="residence-records-error"]').first()).toBeVisible({ timeout: 10_000 });
   await expect(page).toHaveURL(currentUrl);
 }
 
@@ -525,14 +585,16 @@ export async function completeVisibleQuestionnairePage(page, branch, seenRepeate
   await expect(page).not.toHaveURL(/\/login/);
   await page.waitForLoadState("domcontentloaded");
   await waitForNavigationOverlayToClear(page);
-  await assertTemporaryWorkCorrectionExpectations(page);
+  // Definition-rendered pages have no legacy test ids; fill them generically.
+  const isDynamicPage = (await page.getByTestId("dynamic-questionnaire-page").count()) > 0;
+  if (!isDynamicPage) await assertTemporaryWorkCorrectionExpectations(page);
 
   if (/\/all-applicants\/countries-of-residence/.test(new URL(page.url()).pathname)) {
-    await completeCountriesOfResidenceCoverage(page, seenRepeaters);
+    await (isDynamicPage ? completeDynamicResidenceCoverage : completeCountriesOfResidenceCoverage)(page, seenRepeaters);
     return;
   }
 
-  if (/\/all-applicants\/travel-history/.test(new URL(page.url()).pathname)) {
+  if (!isDynamicPage && /\/all-applicants\/travel-history/.test(new URL(page.url()).pathname)) {
     await completeTravelHistory(page, branch, seenRepeaters);
     return;
   }
@@ -565,13 +627,17 @@ export async function goNext(page) {
   await expect(nextButton).toBeEnabled();
   await nextButton.click();
 
-  const navigated = await expect.poll(
+  // Prefer a real URL change: saving can change the page text (toasts, CRM status) before
+  // navigation completes. Fall back to a content change for same-URL steps.
+  const urlChanged = await expect.poll(() => page.url() !== currentUrl, { timeout: 20_000 })
+    .toBe(true).then(() => true, () => false);
+  const navigated = urlChanged || await expect.poll(
     async () => {
       if (page.url() !== currentUrl) return true;
       const nextMainText = await page.locator("main").innerText().catch(() => "");
       return Boolean(currentMainText && nextMainText && nextMainText !== currentMainText);
     },
-    { timeout: 90_000 }
+    { timeout: 70_000 }
   ).toBe(true).then(
     () => true,
     () => false
@@ -618,8 +684,9 @@ export async function submitQuestionnaire(page, appId) {
 
 export async function expectCompletionSummary(page, { completed, total, percentage }) {
   const sidebar = page.getByRole("complementary");
-  await expect(sidebar.getByText(`${percentage}%`, { exact: true })).toBeVisible({ timeout: 10_000 });
+  // The current sidebar shows "N of M sections complete" (the percentage label was removed).
   await expect(sidebar.getByText(`${completed} of ${total} sections complete`)).toBeVisible({ timeout: 10_000 });
+  expect(percentage).toBe(total > 0 ? Math.round((completed / total) * 100) : 0);
 }
 
 export async function seedTemporaryWorkIncompleteRequiredDraft(page, { appId, visaContext = "482" }) {

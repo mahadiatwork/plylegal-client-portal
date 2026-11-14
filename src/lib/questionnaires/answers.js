@@ -412,6 +412,11 @@ function getQuestionnaireReviewValue(question, values, context = {}) {
       ? reviewRow(value)
       : Array.isArray(value) ? value.map(reviewRow) : [];
   }
+  if (question.optionsSource === "applicantIds") {
+    // Stored as profile ids; show applicant names.
+    const nameFor = (entry) => context.applicantNamesById?.get?.(String(entry)) || entry;
+    return Array.isArray(value) ? value.map(nameFor) : value ? nameFor(value) : value;
+  }
   const options = question.type === "yesNo" && !question.options?.length
     ? [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]
     : question.options || [];
@@ -552,9 +557,36 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+/**
+ * Day options follow the stored value format so existing answers always display:
+ * an already-saved value wins, otherwise question.metadata.dateFormat.day
+ * ("padded" → "01", default "number" → "1") matches the legacy page's contract.
+ */
+export function getQuestionnaireDayOptions(question, currentValue = "") {
+  const current = String(currentValue || "");
+  const padded = /^0\d$/.test(current)
+    || (!/^\d{1,2}$/.test(current) && question?.metadata?.dateFormat?.day === "padded");
+  return Array.from({ length: 31 }, (_, index) => {
+    const label = String(index + 1);
+    return { value: padded ? label.padStart(2, "0") : label, label };
+  });
+}
+
 /** Keep extracted legacy forms on their stored month-name contract. */
 export function getQuestionnaireMonthOptions(question, currentValue = "") {
   const hasConfiguredOptions = Array.isArray(question?.monthOptions) && question.monthOptions.length > 0;
+  const preferredMonthFormat = question?.metadata?.dateFormat?.month;
+  if (!hasConfiguredOptions && preferredMonthFormat) {
+    const current = String(currentValue || "");
+    const currentIsName = MONTH_NAMES.some((month) => month.toLowerCase() === current.toLowerCase());
+    const currentIsNumber = /^\d{1,2}$/.test(current);
+    const useNames = currentIsName || (!currentIsNumber && preferredMonthFormat === "name");
+    const padded = /^0\d$/.test(current);
+    return MONTH_NAMES.map((label, index) => ({
+      value: useNames ? label : padded ? String(index + 1).padStart(2, "0") : String(index + 1),
+      label,
+    }));
+  }
   const configured = hasConfiguredOptions
     ? question.monthOptions
     : MONTH_NAMES.map((label, index) => ({ value: String(index + 1), label }));
@@ -757,8 +789,46 @@ function adaptApplicantLanguagesForForm(draft, saved) {
   return { applicants };
 }
 
+const CHILD_CUSTODY_GROUPS = ["primary_custody", "other_person_rights", "travel_impediments"];
+const yesNoFromBoolean = (value) => (value === true ? "yes" : value === false ? "no" : typeof value === "string" ? value : "");
+
+/** Child Custody stores { under_18: bool, primary_custody: { has: bool, details }, … }. */
+function adaptChildCustodyForForm(saved) {
+  const stored = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  const values = { under_18: yesNoFromBoolean(stored.under_18) };
+  CHILD_CUSTODY_GROUPS.forEach((group) => {
+    const nested = stored[group] && typeof stored[group] === "object" ? stored[group] : null;
+    values[`${group}_has`] = nested ? yesNoFromBoolean(nested.has) : yesNoFromBoolean(stored[`${group}_has`]);
+    values[`${group}_details`] = nested ? nested.details ?? "" : stored[`${group}_details`] ?? "";
+  });
+  return values;
+}
+
+function childCustodyStorageValues(values = {}) {
+  // Answers to questions an administrator added to this page are stored as-is.
+  const custodyKeys = new Set(["under_18", ...CHILD_CUSTODY_GROUPS.flatMap((group) => [`${group}_has`, `${group}_details`])]);
+  const otherAnswers = Object.fromEntries(Object.entries(values).filter(([key]) => !custodyKeys.has(key)));
+  // Unanswered stays unanswered (never silently stored as "No").
+  if (values.under_18 !== "yes" && values.under_18 !== "no") return otherAnswers;
+  if (values.under_18 === "no") return { ...otherAnswers, under_18: false };
+  return {
+    ...otherAnswers,
+    under_18: true,
+    ...Object.fromEntries(CHILD_CUSTODY_GROUPS.map((group) => [group, {
+      has: values[`${group}_has`] === "yes",
+      details: String(values[`${group}_details`] || "").trim(),
+    }])),
+  };
+}
+
+/** Layouts whose storage contract is the whole section (legacy pages replaced it on save). */
+export function questionnairePageOwnsSection(page) {
+  return getQuestionnairePageAnswerLayout(page) === "childCustody";
+}
+
 function adaptQuestionnairePageValuesForForm(draft, page, saved) {
   const answerLayout = getQuestionnairePageAnswerLayout(page);
+  if (answerLayout === "childCustody") return adaptChildCustodyForForm(saved);
   if (answerLayout === "sponsorCharacter") {
     const stored = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
     return {
@@ -808,6 +878,7 @@ function adaptQuestionnairePageValuesForForm(draft, page, saved) {
 /** Convert form-friendly layouts back to the existing persisted answer contract. */
 export function getQuestionnairePageStorageValues(page, values = {}, draft = {}) {
   const answerLayout = getQuestionnairePageAnswerLayout(page);
+  if (answerLayout === "childCustody") return childCustodyStorageValues(values);
   if (answerLayout === "sponsorCharacter") {
     const storagePath = page?.metadata?.storagePath || "familySponsor.details";
     const existingValue = getLegacyStorageValue(draft, storagePath);
@@ -1099,4 +1170,57 @@ export function getQuestionnairePageSavedValues(draft, page, profileId = null, m
     page,
     getOwnNestedValue(draft, target.sectionKey) || {},
   );
+}
+
+const PREFILL_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+
+function formatPrefillValue(value, format) {
+  const text = value === null || value === undefined ? "" : String(value).trim();
+  if (!text) return "";
+  if (format === "dayNumber") return /^\d+$/.test(text) ? String(Number(text)) : text;
+  if (format === "monthNumber") {
+    if (/^\d+$/.test(text)) return String(Number(text));
+    const index = PREFILL_MONTHS.indexOf(text.toLowerCase());
+    return index >= 0 ? String(index + 1) : "";
+  }
+  return text;
+}
+
+/**
+ * Declarative prefill (page.metadata.prefill) so promoted pages keep legacy defaults that
+ * came from outside the page's own section, e.g. names entered on the Included Applicants
+ * step. Each rule: { answerKey, mode: "always" | "whenEmpty", value? | source: "profile",
+ * field, format?: "dayNumber" | "monthNumber" }. "always" means the source stays
+ * authoritative (the profile record is updated from the details page on save).
+ */
+export function applyQuestionnairePagePrefill(page, values = {}, { draft = {}, profileId = null } = {}) {
+  const rules = Array.isArray(page?.metadata?.prefill) ? page.metadata.prefill : [];
+  if (!rules.length) return values;
+  const profile = profileId
+    ? (draft?.profiles || []).find((candidate) => String(candidate.id) === String(profileId))
+    : null;
+  const next = { ...values };
+  rules.forEach((rule) => {
+    if (!rule?.answerKey) return;
+    let sourceValue;
+    if (Object.prototype.hasOwnProperty.call(rule, "value")) sourceValue = rule.value;
+    else if (rule.source === "profile" && profile && rule.field) sourceValue = formatPrefillValue(profile[rule.field], rule.format);
+    else return;
+    if (sourceValue === undefined || sourceValue === "") return;
+    const current = next[rule.answerKey];
+    const isEmpty = current === undefined || current === null || current === "";
+    if (rule.mode === "always" || isEmpty) next[rule.answerKey] = sourceValue;
+  });
+  return next;
+}
+
+/**
+ * Section saves replace the whole stored object. Keep stored keys a page does not manage
+ * (answers to a question an administrator later removed, or values written by another
+ * page) so a managed definition can never silently delete saved answers.
+ */
+export function preserveUnmanagedAnswers(existing, storageValues) {
+  if (!existing || typeof existing !== "object" || Array.isArray(existing)) return storageValues;
+  if (!storageValues || typeof storageValues !== "object" || Array.isArray(storageValues)) return storageValues;
+  return { ...existing, ...storageValues };
 }

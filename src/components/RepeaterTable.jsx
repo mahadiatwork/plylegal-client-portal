@@ -22,6 +22,7 @@ export function RepeaterTable({
   emptyMessage = "No entries added",
   testIdPrefix = "entry",
   dialogTitle,
+  editDialogTitle,
   dialogSubtitle,
   dialogClassName,
   dialogProps = {},
@@ -214,7 +215,7 @@ export function RepeaterTable({
         >
           <DialogHeader>
             <DialogTitle>
-              {translate(dialogTitle || (editingIndex !== null ? "Edit Entry" : "Add Entry"))}
+              {translate(editingIndex !== null ? (editDialogTitle || dialogTitle || "Edit Entry") : (dialogTitle || "Add Entry"))}
             </DialogTitle>
             {dialogSubtitle && (
               <p className="text-sm text-muted-foreground mt-2">

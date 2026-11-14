@@ -1,6 +1,7 @@
 "use client";
 
 import { useController, useFieldArray, useWatch } from "react-hook-form";
+import { Plus, Trash2 } from "lucide-react";
 import { Field } from "@/components/Field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConditionalBlock } from "@/components/questionnaire/ConditionalBlock";
-import { getQuestionnaireMonthOptions } from "@/lib/questionnaires/answers";
+import { getQuestionnaireDayOptions, getQuestionnaireMonthOptions } from "@/lib/questionnaires/answers";
 import { getQuestionnaireCountryOptions } from "@/lib/questionnaires/presentation";
 import { getQuestionnaireRowDefaults, scopeQuestionnaireRowField } from "@/lib/questionnaires/repeaters";
+import { SchemaRepeaterTable } from "@/components/questionnaire/SchemaRepeaterTable";
 
 const YES_NO_OPTIONS = [
   { value: "yes", label: "Yes" },
@@ -27,11 +29,13 @@ function getOptions(question, optionSources) {
   return question.options || [];
 }
 
-function DatePartSelect({ control, monthQuestion = null, name, label, options, placeholder }) {
+function DatePartSelect({ control, dayQuestion = null, monthQuestion = null, name, label, options, placeholder }) {
   const { field, fieldState } = useController({ control, name });
   const compatibleOptions = monthQuestion
     ? getQuestionnaireMonthOptions(monthQuestion, field.value)
-    : options;
+    : dayQuestion
+      ? getQuestionnaireDayOptions(dayQuestion, field.value)
+      : options;
 
   return (
     <div className="space-y-2">
@@ -59,10 +63,6 @@ function DatePartSelect({ control, monthQuestion = null, name, label, options, p
 
 function DatePartsField({ question, form }) {
   const currentYear = new Date().getFullYear();
-  const dayOptions = Array.from({ length: 31 }, (_, index) => {
-    const value = String(index + 1);
-    return { value, label: value };
-  });
   const yearOptions = Array.from({ length: question.yearRange || 100 }, (_, index) => {
     const value = String((question.maxYear || currentYear) - index);
     return { value, label: value };
@@ -80,6 +80,7 @@ function DatePartsField({ question, form }) {
   });
   const displayLabel = dynamicLabel?.labels?.[sourceValue] || question.label;
   const partLabels = question.metadata?.partLabels || {};
+  const partPlaceholders = question.metadata?.partPlaceholders || {};
 
   return (
     <div className="space-y-3">
@@ -91,27 +92,27 @@ function DatePartsField({ question, form }) {
       )}
       {question.description && <p className="text-sm text-gray-600">{question.description}</p>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DatePartSelect control={form.control} name={names.day} label={partLabels.day || "Day"} options={dayOptions} placeholder={partLabels.day || "Day"} />
-        <DatePartSelect control={form.control} monthQuestion={question} name={names.month} label={partLabels.month || "Month"} options={[]} placeholder={partLabels.month || "Month"} />
-        <DatePartSelect control={form.control} name={names.year} label={partLabels.year || "Year"} options={yearOptions} placeholder={partLabels.year || "Year"} />
+        <DatePartSelect control={form.control} dayQuestion={question} name={names.day} label={partLabels.day || "Day"} options={[]} placeholder={partPlaceholders.day || "Choose Day"} />
+        <DatePartSelect control={form.control} monthQuestion={question} name={names.month} label={partLabels.month || "Month"} options={[]} placeholder={partPlaceholders.month || "Choose Month"} />
+        <DatePartSelect control={form.control} name={names.year} label={partLabels.year || "Year"} options={yearOptions} placeholder={partPlaceholders.year || "Choose Year"} />
       </div>
     </div>
   );
 }
 
 function RepeaterQuestions({ questions, prefix, values, form, optionSources, repeaterRegistry }) {
-  return questions.filter((question) => !question.metadata?.storageOnly).map((question) => {
+  return <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">{questions.filter((question) => !question.metadata?.storageOnly).map((question) => {
     const defaults = Object.fromEntries(Object.entries(getQuestionnaireRowDefaults([question]))
       .map(([name, value]) => [`${prefix}.${name}`, value]));
     return (
       <ConditionalBlock key={question.id} clearWhenHidden={question.clearWhenHidden} fieldDefaults={defaults} form={form} values={values} visibleIf={question.visibleIf}>
-        <div className="space-y-4">
+        <div className={question.metadata?.width === "half" ? "space-y-4 min-w-0" : "space-y-4 min-w-0 md:col-span-2"}>
           <QuestionField form={form} optionSources={optionSources} question={scopeQuestionnaireRowField(question, prefix)} repeaterRegistry={repeaterRegistry} />
           {question.followUps?.length > 0 && <RepeaterQuestions questions={question.followUps} prefix={prefix} values={values} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} />}
         </div>
       </ConditionalBlock>
     );
-  });
+  })}</div>;
 }
 
 function CountrySelectField({ question, form }) {
@@ -130,51 +131,82 @@ function CountrySelectField({ question, form }) {
   );
 }
 
-function ObjectRepeaterField({ question, form, optionSources, repeaterRegistry }) {
+/** A fixed group of fields stored as one object (not an add/delete list). */
+function ObjectGroupField({ question, form, optionSources, repeaterRegistry }) {
+  const { fieldState } = useController({ control: form.control, name: question.answerKey, defaultValue: {} });
   const values = useWatch({ control: form.control, name: question.answerKey }) || {};
-  return <div className="space-y-5 rounded-lg border border-border p-5"><RepeaterQuestions questions={question.metadata.fields} prefix={question.answerKey} values={values} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} /></div>;
-}
-
-function ArrayRepeaterField({ question, form, optionSources, repeaterRegistry }) {
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: question.answerKey, keyName: "_questionnaireRowId" });
-  const values = useWatch({ control: form.control, name: question.answerKey }) || [];
-  return (
-    <div className="space-y-4">
-      {fields.map((field, index) => (
-        <div key={field._questionnaireRowId} className="space-y-5 rounded-lg border border-border p-5">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm font-semibold">{question.label} {index + 1}</p>
-            <Button type="button" variant="outline" size="sm" onClick={() => remove(index)} aria-label={`Remove ${question.label} ${index + 1}`}>Remove</Button>
-          </div>
-          <RepeaterQuestions questions={question.metadata.fields} prefix={`${question.answerKey}.${index}`} values={values[index] || {}} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} />
-        </div>
-      ))}
-      <Button type="button" variant="outline" onClick={() => append({ id: globalThis.crypto?.randomUUID?.() || `row_${Date.now()}_${Math.random().toString(36).slice(2)}`, ...getQuestionnaireRowDefaults(question.metadata.fields) })}>{question.metadata.addLabel || `Add ${question.label}`}</Button>
-    </div>
-  );
-}
-
-function SchemaRepeaterField(props) {
-  const { question, form } = props;
-  const { fieldState } = useController({ control: form.control, name: question.answerKey, defaultValue: question.metadata.collection === "object" ? {} : [] });
   return (
     <div className="space-y-3">
       <Label className="text-sm font-medium">{question.label}{question.required && <span className="ml-1 text-red-600">*</span>}</Label>
       {question.description && <p className="text-sm text-gray-600">{question.description}</p>}
-      {question.metadata.collection === "object" ? <ObjectRepeaterField {...props} /> : <ArrayRepeaterField {...props} />}
+      <div className="space-y-5 rounded-lg border border-border p-5">
+        <RepeaterQuestions questions={question.metadata.fields} prefix={question.answerKey} values={values} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} />
+      </div>
       {fieldState.error?.message && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
     </div>
   );
 }
 
-function ApplicantIdArrayField({ question, form, optionSources }) {
+/** Records edited inline as cards (presentation.layout "inline"), like the legacy Visas page. */
+function InlineRecordsField({ question, form, optionSources, repeaterRegistry }) {
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: question.answerKey, keyName: "_questionnaireRowId" });
+  const { fieldState } = useController({ control: form.control, name: question.answerKey, defaultValue: [] });
+  const values = useWatch({ control: form.control, name: question.answerKey }) || [];
+  const presentation = question.metadata?.presentation || {};
+  const minimumRows = Number(presentation.minimumInlineRows || 0);
+  return (
+    <div className="space-y-6" data-testid={`inline-records-${String(question.answerKey).split(".").pop().replace(/_/g, "-")}`}>
+      {question.description && <p className="text-sm text-gray-600">{question.description}</p>}
+      {fields.map((field, index) => (
+        <div key={field._questionnaireRowId} className="bg-card border border-border rounded-lg p-6 space-y-6 relative">
+          {fields.length > Math.max(1, minimumRows) && (
+            <button
+              type="button"
+              onClick={() => remove(index)}
+              className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              title={presentation.actions?.delete || "Delete record"}
+              aria-label={`${presentation.actions?.delete || "Delete record"} ${index + 1}`}
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
+          <RepeaterQuestions questions={question.metadata.fields} prefix={`${question.answerKey}.${index}`} values={values[index] || {}} form={form} optionSources={optionSources} repeaterRegistry={repeaterRegistry} />
+        </div>
+      ))}
+      {fieldState.error?.message && <p className="text-sm text-red-600">{fieldState.error.message}</p>}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full py-6 border-dashed border-2 hover:bg-slate-50 flex items-center justify-center gap-2"
+        onClick={() => append(getQuestionnaireRowDefaults(question.metadata.fields))}
+        data-testid={`button-add-${String(question.answerKey).split(".").pop().replace(/_/g, "-")}`}
+      >
+        <Plus className="w-5 h-5 text-gray-400" />
+        <span className="font-semibold text-gray-600">{presentation.addLabel || `Add ${question.label}`}</span>
+      </Button>
+    </div>
+  );
+}
+
+function SchemaRepeaterField(props) {
+  const { metadata } = props.question;
+  if (metadata.collection === "object") return <ObjectGroupField {...props} />;
+  if (metadata.presentation?.layout === "inline") return <InlineRecordsField {...props} />;
+  // Lists of records use the same table + popup UI as the hand-written client pages.
+  return <SchemaRepeaterTable {...props} />;
+}
+
+/** Checkbox list storing an array: applicant ids, or any select with collection "multi-select-array". */
+function ApplicantIdArrayField({ question, form, optionSources, options: providedOptions = null }) {
   const { field, fieldState } = useController({
     control: form.control,
     name: question.answerKey,
     defaultValue: [],
   });
   const values = Array.isArray(field.value) ? field.value.map(String) : [];
-  const configured = Array.isArray(optionSources?.applicantIds) ? optionSources.applicantIds : [];
+  const configured = Array.isArray(providedOptions)
+    ? providedOptions
+    : Array.isArray(optionSources?.applicantIds) ? optionSources.applicantIds : [];
   const configuredIds = new Set(configured.map((option) => String(option.value)));
   const options = [
     ...configured,
@@ -477,6 +509,10 @@ export function QuestionField({ answerLayout, form, optionSources, pageQuestions
         options={options}
       />
     );
+  }
+
+  if (question.type === "select" && question.metadata?.collection === "multi-select-array") {
+    return <ApplicantIdArrayField question={question} form={form} optionSources={optionSources} options={options} />;
   }
 
   if (question.type === "select") {
