@@ -147,7 +147,7 @@ test("rejects unknown CRM targets, fields, and conflicting destinations", () => 
 
   const guessedField = structuredClone(temporaryWork482Definition);
   guessedField.pages.push(detailsPage("main_applicant"));
-  guessedField.pages.at(-1).questions[0].metadata.crm.fieldApiName = "Preferred_Name";
+  guessedField.pages.at(-1).questions[0].metadata.crm.fieldApiName = "Passport_Number"; // Contacts API name is Passport_No
   assert.ok(getQuestionnaireDefinitionIssues(guessedField).some((issue) => issue.includes("approved CRM catalog")));
 
   const conflict = structuredClone(temporaryWork482Definition);

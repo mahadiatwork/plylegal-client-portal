@@ -42,6 +42,8 @@ function zohoMock(t) {
     calls,
     client: {
       getAccessToken: async () => "token",
+      getContactIdentity: async () => ({ Email: "client@example.com", Secondary_Email: "" }),
+      getFieldMetadata: async () => [],
       updateRecord: async (module, recordId, fields) => {
         calls.push({ module, recordId, fields });
         return { status: "success", details: { id: recordId } };
@@ -75,7 +77,7 @@ test("writes grouped Zoho payloads from saved answers", async () => {
   const result = await synchronizeQuestionnaireCrm(
     {
       application: { id: "app-1", zohoId: "deal-1" },
-      userProfile: { zohoContactId: "contact-1" },
+      userProfile: { zohoContactId: "contact-1", email: "client@example.com" },
       definition,
       draft: {
         profiles: [{ id: "main-1", relationship: "main_applicant" }],
@@ -110,7 +112,7 @@ test("missing token and Zoho errors become durable failures", async () => {
   const missingToken = await synchronizeQuestionnaireCrm(
     {
       application: { id: "app-1" },
-      userProfile: { zohoContactId: "contact-1" },
+      userProfile: { zohoContactId: "contact-1", email: "client@example.com" },
       definition,
       draft: {
         profiles: [{ id: "main-1", relationship: "main_applicant" }],
@@ -131,7 +133,7 @@ test("missing token and Zoho errors become durable failures", async () => {
   const failed = await synchronizeQuestionnaireCrm(
     {
       application: { id: "app-1" },
-      userProfile: { zohoContactId: "contact-1" },
+      userProfile: { zohoContactId: "contact-1", email: "client@example.com" },
       definition,
       draft: {
         profiles: [{ id: "main-1", relationship: "main_applicant" }],
@@ -142,6 +144,7 @@ test("missing token and Zoho errors become durable failures", async () => {
     {
       zoho: {
         getAccessToken: async () => "token",
+        getContactIdentity: async () => ({ Email: "client@example.com" }),
         updateRecord: async () => { throw Object.assign(new Error("unavailable"), { code: "SERVICE_UNAVAILABLE" }); },
       },
       flags: { enabled: true, dryRun: false },
@@ -157,7 +160,7 @@ test("retrying the same payload is idempotent", async () => {
   const jobs = [];
   const input = {
     application: { id: "app-1", zohoId: "deal-1" },
-    userProfile: { zohoContactId: "contact-1" },
+    userProfile: { zohoContactId: "contact-1", email: "client@example.com" },
     definition,
     draft: {
       profiles: [{ id: "main-1", relationship: "main_applicant" }],
@@ -198,7 +201,7 @@ test("content items are not persisted as CRM answers during page or full synchro
   };
   const input = {
     application: { id: "app-1", zohoId: "deal-1" },
-    userProfile: { zohoContactId: "contact-1" },
+    userProfile: { zohoContactId: "contact-1", email: "client@example.com" },
     definition: seeded,
     draft: {
       profiles: [{ id: "main-1", relationship: "main_applicant" }],

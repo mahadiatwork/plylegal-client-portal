@@ -41,8 +41,32 @@ export function crmSyncDocumentId(idempotencyKey) {
   return createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 40);
 }
 
+/** Skip reasons that need a person's attention (not simply "nothing to send"). */
+export const CRM_ATTENTION_REASONS = Object.freeze(new Set([
+  "needs_confirmation",
+  "ambiguous_current_passport",
+  "ambiguous_primary_citizenship",
+  "unsupported_picklist_value",
+  "invalid_date",
+  "invalid_phone_number",
+  "ambiguous_phone_country_code",
+  "postal_details_not_shared_with_main_applicant",
+  "field_not_in_crm",
+  "field_read_only",
+  "value_too_long",
+]));
+
+// Zoho and network errors can echo questionnaire values (emails, numbers, quoted
+// text). Never persist or log those: keep only a code and a scrubbed short message.
+function scrubMessage(message) {
+  return String(message)
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[email]")
+    .replace(/\b\d{6,14}\b/g, "[number]")
+    .replace(/(["'])[^"']{1,120}\1/g, "[value]");
+}
+
 export function sanitizeCrmSyncError(error) {
-  const message = String(error?.message || "CRM synchronization failed");
+  const message = scrubMessage(error?.message || "CRM synchronization failed");
   return {
     code: error?.code || error?.status || "crm_sync_failed",
     message: message.slice(0, 300),
@@ -101,6 +125,9 @@ export function summarizeCrmMappings(mappings = []) {
     skipped: mappings.filter((item) => item.status === "skipped").map(publicMapping),
     failed: mappings.filter((item) => item.status === "failed").map(publicMapping),
     ready: mappings.filter((item) => item.status === "ready").map(publicMapping),
+    attention: mappings
+      .filter((item) => item.status === "skipped" && CRM_ATTENTION_REASONS.has(item.skipReason))
+      .map(publicMapping),
   };
 }
 

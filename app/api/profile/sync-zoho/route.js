@@ -143,8 +143,8 @@ export async function POST(request) {
     contactData.Last_Firebase_Sync = new Date().toISOString();
     
     // Log the data being sent for debugging
-    console.log('📦 Contact data being sent to Zoho:', JSON.stringify(contactData, null, 2));
-    console.log('📍 State value:', state, '→ Mailing_State:', contactData.Mailing_State);
+    // Field names only: values are personal information and must not be logged.
+    console.log('📦 Contact fields being sent to Zoho:', Object.keys(contactData).join(', '));
 
     let syncedContactId;
     let action;
@@ -152,7 +152,11 @@ export async function POST(request) {
     if (existingContact) {
       // Update existing contact
       console.log('📝 Updating existing contact:', existingContact.id);
-      await zohoClient.updateRecord('Contacts', existingContact.id, contactData);
+      const updateResult = await zohoClient.updateRecord('Contacts', existingContact.id, contactData);
+      if (updateResult?.status !== 'success') {
+        // Zoho can answer 2xx with a per-record error; only a confirmed write is a success.
+        throw new Error(updateResult?.message || 'Zoho did not confirm the contact update');
+      }
       syncedContactId = existingContact.id;
       action = 'updated';
     } else {

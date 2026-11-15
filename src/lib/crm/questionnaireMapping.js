@@ -109,6 +109,24 @@ export function buildQuestionnaireCrmProjection({
       return;
     }
 
+    // Contacts hold the main applicant only. A mapping on any other page (spouse,
+    // child, non-migrating member, shared pages) must never reach that Contact.
+    if (mapping.target === CRM_TARGETS.main_contact && profileRole !== "main_applicant") {
+      mappings.push({
+        questionId: question.id,
+        answerKey: question.answerKey,
+        pageId: page.id,
+        profileRole,
+        target: mapping.target,
+        module: mapping.module,
+        fieldApiName: mapping.fieldApiName,
+        status: "failed",
+        error: "contact_target_requires_main_applicant",
+        required: mapping.required === true,
+      });
+      return;
+    }
+
     const subjects = profilesForPage(draft, page, profileId);
     if (page.scope === "profile" && subjects.length === 0) {
       mappings.push({

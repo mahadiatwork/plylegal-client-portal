@@ -117,7 +117,7 @@ test("the published 482 definition synchronizes page and full requests through t
       profiles: [{ id: "main-1", relationship: "main_applicant", given_names: "Ada", family_name: "Lovelace" }],
       profiles_data: { "main-1": { details: { given_names: "Ada", family_name: "Lovelace" } } },
     }],
-    ["users/owner-1", { zohoContactId: "contact-1" }],
+    ["users/owner-1", { zohoContactId: "contact-1", email: "client@example.com" }],
     [`questionnaireDefinitions/${definition.id}`, definition],
   ]);
   function verifyFirestoreValue(value, path = "job") {
@@ -149,6 +149,8 @@ test("the published 482 definition synchronizes page and full requests through t
   globalThis.__crmSyncTestDatabase = { ok: true, db: { collection } };
   globalThis.__crmSyncTestZoho = {
     getAccessToken: async () => "test-token",
+    getContactIdentity: async () => ({ Email: "client@example.com", Secondary_Email: "" }),
+    getFieldMetadata: async () => [],
     updateRecord: async (module, recordId, fields) => {
       updates.push({ module, recordId, fields });
       return { status: "success", details: { id: recordId } };

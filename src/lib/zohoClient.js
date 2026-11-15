@@ -133,12 +133,13 @@ class ZohoCRMClient {
       const zohoError = zohoBody?.data?.[0] || zohoBody;
       
       // Log detailed error information
+      // Log only structural information: Zoho error details can echo field values.
       console.error('Zoho API Error:', JSON.stringify({
         status: statusCode,
         code: zohoError?.code,
-        message: zohoError?.message || error.message,
-        details: zohoError?.details || zohoBody,
-      }, null, 2));
+        api_name: zohoError?.details?.api_name,
+        json_path: zohoError?.details?.json_path,
+      }));
       
       // Create a more informative error
       if (zohoError) {
@@ -207,15 +208,11 @@ class ZohoCRMClient {
         fields ? { fields } : null
       );
       
-      // Log response structure for debugging
-      console.log(`📦 Response structure for ${moduleName}/${recordId}:`, JSON.stringify(response, null, 2));
-      
       // v7 API returns { data: [{...}] } - get first element
       const record = response.data?.[0] || null;
       
       if (!record) {
         console.warn(`⚠️ No record found at response.data[0] for ${moduleName}/${recordId}`);
-        console.warn('Response structure:', JSON.stringify(response, null, 2));
       }
       
       return record;
@@ -266,6 +263,33 @@ class ZohoCRMClient {
       console.error(`Error updating ${moduleName} record ${recordId}:`, error.message);
       throw error;
     }
+  }
+
+  /**
+   * Read-only: field configuration for a module (api_name, data_type, read_only,
+   * length, pick_list_values). Cached briefly because it rarely changes.
+   */
+  async getFieldMetadata(moduleName) {
+    const cache = (ZohoCRMClient.fieldMetadataCache ||= new Map());
+    const cached = cache.get(moduleName);
+    if (cached && Date.now() - cached.at < 10 * 60 * 1000) return cached.fields;
+    const response = await this.makeRequest('get', '/settings/fields', null, { module: moduleName });
+    const fields = Array.isArray(response?.fields) ? response.fields : [];
+    if (fields.length) cache.set(moduleName, { at: Date.now(), fields });
+    return fields;
+  }
+
+  /**
+   * Read-only identity check for a Contact: only the email fields are requested and
+   * nothing is logged.
+   */
+  async getContactIdentity(contactId) {
+    const response = await this.makeRequest('get', `/Contacts/${encodeURIComponent(contactId)}`, null, {
+      fields: 'Email,Secondary_Email',
+    });
+    const record = response?.data?.[0];
+    if (!record) return null;
+    return { Email: record.Email || '', Secondary_Email: record.Secondary_Email || '' };
   }
 
   async deleteRecord(moduleName, recordId) {

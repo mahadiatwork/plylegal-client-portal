@@ -45,6 +45,7 @@ export async function POST(request) {
       db: database.db,
       application: { id: parsed.applicationId, ...application },
       authUid: auth.uid,
+      authEmail: auth.email || null,
       mode: parsed.mode,
       pageId: parsed.pageId,
       profileId: parsed.profileId,

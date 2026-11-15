@@ -1,22 +1,18 @@
 import { getQuestionnairePageSavedValues } from "../questionnaires/answers.js";
 import { CRM_MODULES, CRM_TARGETS } from "./crmFieldCatalog.js";
 import { getQuestionnairePageProfileRole } from "./questionnaireCrmContract.js";
-
-const MONTHS = Object.freeze({
-  january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
-  july: "07", august: "08", september: "09", october: "10", november: "11", december: "12",
-});
-
-const MARITAL_STATUS = Object.freeze({
-  "never married": "Never Married or been in a De Facto Relationship",
-  "never married or been in a de facto relationship": "Never Married or been in a De Facto Relationship",
-  married: "Married",
-  "de facto relationship": "De Facto Relationship",
-  divorced: "Divorced",
-  engaged: "Engaged",
-  separated: "Separated",
-  widowed: "Widowed",
-});
+import {
+  CONTACT_SECTIONS,
+  buildContactFieldPlan,
+  contactSectionForPage,
+} from "./contactCrmProjection.js";
+import {
+  MARITAL_STATUS,
+  dateFromParts,
+  firstText,
+  isTruthyAnswer,
+  text,
+} from "./crmValueHelpers.js";
 
 const RELATIONSHIPS = Object.freeze({
   spouse: "Spouse",
@@ -24,39 +20,6 @@ const RELATIONSHIPS = Object.freeze({
   child: "Children",
   children: "Children",
 });
-
-function text(value) {
-  return value == null ? "" : String(value).trim();
-}
-
-function firstText(...values) {
-  return values.map(text).find(Boolean) || "";
-}
-
-function normalizeMonth(value) {
-  const raw = text(value);
-  if (!raw) return "";
-  if (MONTHS[raw.toLowerCase()]) return MONTHS[raw.toLowerCase()];
-  const numeric = Number(raw);
-  return Number.isInteger(numeric) && numeric >= 1 && numeric <= 12
-    ? String(numeric).padStart(2, "0")
-    : "";
-}
-
-function dateFromParts(day, month, year) {
-  const normalizedDay = text(day).padStart(2, "0");
-  const normalizedMonth = normalizeMonth(month);
-  const normalizedYear = text(year);
-  if (!/^\d{4}$/.test(normalizedYear) || !normalizedMonth || !/^\d{2}$/.test(normalizedDay)) return "";
-  const candidate = `${normalizedYear}-${normalizedMonth}-${normalizedDay}`;
-  const parsed = new Date(`${candidate}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== candidate) return "";
-  return candidate;
-}
-
-function isTruthyAnswer(value) {
-  return value === true || ["yes", "true", "1"].includes(text(value).toLowerCase());
-}
 
 function selectCurrentRow(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return {};
@@ -146,9 +109,10 @@ function canonicalMapping({
   fieldApiName,
   value,
   needsDependentCreate = false,
+  skipReason = null,
 }) {
   const base = {
-    questionId: `canonical:${snapshot.id}:${fieldApiName}`,
+    questionId: `canonical:${module}:${snapshot.id}:${fieldApiName}`,
     answerKey: fieldApiName,
     pageId: pageId || "canonical",
     profileId: snapshot.id,
@@ -163,6 +127,9 @@ function canonicalMapping({
     needsDependentCreate,
     profileSnapshot: snapshot,
   };
+  if (skipReason) {
+    return { ...base, status: "skipped", skipReason };
+  }
   if (value === "" || value === null || value === undefined) {
     return { ...base, status: "skipped", skipReason: "preserve_when_empty" };
   }
@@ -202,7 +169,13 @@ export function buildCanonicalApplicantCrmMappings({
     : null;
   const selectedRole = selectedPage ? getQuestionnairePageProfileRole(selectedPage) : null;
   const selectedSection = selectedPage ? text(selectedPage.sectionKey).toLowerCase() : null;
+  // Deals and dependent mappings keep their original section matching so their
+  // behaviour is unchanged; Contacts use the corrected section resolution.
   const sections = mode === "full" ? new Set(["details", "identity"]) : new Set([selectedSection]);
+  const selectedContactSection = selectedPage ? contactSectionForPage(selectedPage) : "";
+  const contactSections = mode === "full"
+    ? [...CONTACT_SECTIONS]
+    : (CONTACT_SECTIONS.includes(selectedContactSection) ? [selectedContactSection] : []);
   const subjects = [
     ...(draft.profiles || []).map((subject) => ({ subject, role: subject.relationship, isNonMigrating: false })),
     ...(draft.non_migrating_members || []).map((subject) => ({
@@ -220,6 +193,29 @@ export function buildCanonicalApplicantCrmMappings({
     const snapshot = subjectSnapshot({ definition, draft, subject, role, isNonMigrating });
     const page = selectedPage?.id || null;
     if (role === "main_applicant") {
+      // Contacts belong to the main applicant only and are resolved by the
+      // page's real section (profileSection / prefixed sectionKey).
+      if (contactSections.length) {
+        buildContactFieldPlan({
+          definition,
+          draft,
+          subject,
+          snapshot,
+          sections: contactSections,
+          includeHeld: mode === "full",
+        }).forEach((entry) => {
+          mappings.push(canonicalMapping({
+            snapshot,
+            pageId: page,
+            target: CRM_TARGETS.main_contact,
+            module: CRM_MODULES.Contacts,
+            recordId: userProfile.zohoContactId || null,
+            fieldApiName: entry.fieldApiName,
+            value: entry.value,
+            skipReason: entry.skipReason,
+          }));
+        });
+      }
       if (sections.has("details")) {
         const matter = {
           snapshot,
@@ -237,18 +233,6 @@ export function buildCanonicalApplicantCrmMappings({
           Country_of_Birth: snapshot.country_of_birth,
           Marital_Status: snapshot.marital_status,
           Questionnaires_Status: questionnaireStatus(draft),
-        });
-        pushFields(mappings, {
-          snapshot,
-          pageId: page,
-          target: CRM_TARGETS.main_contact,
-          module: CRM_MODULES.Contacts,
-          recordId: userProfile.zohoContactId || null,
-        }, {
-          Last_Name: snapshot.family_name,
-          First_Name: snapshot.given_names,
-          Gender: ["Male", "Female"].includes(snapshot.gender) ? snapshot.gender : "",
-          Date_of_Birth: snapshot.date_of_birth,
         });
       }
       if (sections.has("identity")) {

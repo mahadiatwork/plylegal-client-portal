@@ -6,6 +6,7 @@ import {
   summarizeCrmMappings,
 } from "./crmSyncJobs.js";
 import { buildQuestionnaireCrmProjection } from "./questionnaireMapping.js";
+import { gateFieldValue, indexFieldMetadata } from "./crmFieldGate.js";
 
 const RELATIONSHIP_MAP = Object.freeze({
   spouse: "Spouse",
@@ -77,6 +78,85 @@ async function ensureDependentRecord(group, { zoho, userProfile, persistDependen
   return recordId;
 }
 
+// Zoho confirms an update with { status: "success", code: "SUCCESS" }. Anything else
+// (null, empty, "error", partial results) is NOT a confirmed write.
+function isConfirmedWrite(result, recordId) {
+  if (!result || typeof result !== "object") return false;
+  if (result.status !== "success" && result.code !== "SUCCESS") return false;
+  const confirmedId = result.details?.id;
+  return !confirmedId || String(confirmedId) === String(recordId);
+}
+
+function normalizeEmail(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+/**
+ * The Contact id comes from the signed-in user's stored profile. Before writing,
+ * confirm in Zoho that this Contact really belongs to that person (email or
+ * secondary email matches). A mismatch or an unverifiable link blocks the write.
+ */
+async function verifyContactLink(recordId, { zoho, userProfile, authEmail }) {
+  if (typeof zoho?.getContactIdentity !== "function") {
+    throw Object.assign(new Error("contact_link_unverified"), { code: "contact_link_unverified" });
+  }
+  const identity = await zoho.getContactIdentity(recordId);
+  if (!identity) {
+    throw Object.assign(new Error("contact_link_unverified"), { code: "contact_link_unverified" });
+  }
+  const known = [userProfile?.email, authEmail].map(normalizeEmail).filter(Boolean);
+  const contactEmails = [identity.Email, identity.Secondary_Email].map(normalizeEmail).filter(Boolean);
+  if (!known.length || !contactEmails.length) {
+    throw Object.assign(new Error("contact_link_unverified"), { code: "contact_link_unverified" });
+  }
+  if (!known.some((email) => contactEmails.includes(email))) {
+    throw Object.assign(new Error("contact_link_mismatch"), { code: "contact_link_mismatch" });
+  }
+}
+
+function groupMappings(projection, group) {
+  return projection.mappings.filter((item) => (
+    item.status === "ready"
+    && item.module === group.module
+    && (item.recordId === group.recordId || (group.pendingProfileId && item.profileId === group.pendingProfileId))
+  ));
+}
+
+/**
+ * Validates Contacts values against live Zoho field metadata. Returns the retryable
+ * failures; non-retryable problems are reported as skipped (needs attention) so
+ * they do not make a job fail forever.
+ */
+function gateContactsGroup(projection, group, metadataIndex) {
+  const retryable = [];
+  groupMappings(projection, group).forEach((item) => {
+    const value = group.fields[item.fieldApiName];
+    if (value === "" || value === null || value === undefined) return;
+    const gated = gateFieldValue({
+      module: group.module,
+      fieldApiName: item.fieldApiName,
+      value,
+      metadataIndex,
+    });
+    if (gated.ok) {
+      group.fields[item.fieldApiName] = gated.value;
+      item.value = gated.value;
+      return;
+    }
+    delete group.fields[item.fieldApiName];
+    group.fieldApiNames = group.fieldApiNames.filter((name) => name !== item.fieldApiName);
+    if (gated.retryable) {
+      item.status = "failed";
+      item.error = gated.error;
+      retryable.push({ code: gated.error, message: gated.error });
+    } else {
+      item.status = "skipped";
+      item.skipReason = gated.error;
+    }
+  });
+  return retryable;
+}
+
 function markGroupMappings(projection, group, patch) {
   projection.mappings.forEach((item) => {
     if (item.status !== "ready") return;
@@ -103,6 +183,7 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
   const zoho = deps.zoho;
   const persistJob = deps.persistJob;
   const persistDependentId = deps.persistDependentId;
+  const authEmail = deps.authEmail || null;
   const now = deps.now || (() => new Date());
 
   if (!flags.enabled) {
@@ -193,6 +274,19 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
     }
   }
 
+  let contactsMetadata;
+  const verifiedContacts = new Set();
+  async function loadContactsMetadata() {
+    if (contactsMetadata !== undefined) return contactsMetadata;
+    try {
+      const fields = await zoho.getFieldMetadata?.("Contacts");
+      contactsMetadata = Array.isArray(fields) && fields.length ? indexFieldMetadata(fields) : null;
+    } catch {
+      contactsMetadata = null;
+    }
+    return contactsMetadata;
+  }
+
   if (!fatalError) {
     for (const group of projection.groups) {
       try {
@@ -209,10 +303,19 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
       if (!recordId) {
         throw Object.assign(new Error("missing_record_id"), { code: "missing_record_id" });
       }
+      if (group.module === "Contacts") {
+        if (!verifiedContacts.has(recordId)) {
+          await verifyContactLink(recordId, { zoho, userProfile, authEmail });
+          verifiedContacts.add(recordId);
+        }
+        const retryable = gateContactsGroup(projection, group, await loadContactsMetadata());
+        groupErrors.push(...retryable);
+        if (!Object.keys(group.fields).length) continue;
+      }
       const result = await zoho.updateRecord(group.module, recordId, group.fields);
-      if (!result || result.status === "error") {
-        throw Object.assign(new Error(result?.message || "Zoho update failed"), {
-          code: result?.code || "zoho_update_failed",
+      if (!isConfirmedWrite(result, recordId)) {
+        throw Object.assign(new Error(result?.message || "Zoho did not confirm the update"), {
+          code: result?.code || "zoho_update_unconfirmed",
         });
       }
       markGroupMappings(projection, group, { status: "succeeded", recordId });
