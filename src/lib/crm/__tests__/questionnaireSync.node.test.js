@@ -111,6 +111,43 @@ test("Deals-only synchronization reports a missing Matter link without attemptin
   assert.equal(calls, 0);
 });
 
+test("Deals-only sync retries valid fields when Zoho identifies one rejected field", async () => {
+  const writes = [];
+  const result = await synchronizeQuestionnaireCrm({
+    application: { id: "app-1", zohoId: "deal-1" },
+    definition,
+    draft: {
+      profiles: [{ id: "main-1", relationship: "main_applicant" }],
+      profiles_data: { "main-1": { details: { family_name: "Lovelace", country_of_birth: "Country 1 test" } } },
+    },
+    mode: "page",
+    pageId: "main-details",
+    profileId: "main-1",
+  }, {
+    zoho: {
+      getAccessToken: async () => "token",
+      getFieldMetadata: async () => ["Family_Name", "Country_of_Birth", "Questionnaires_Status"]
+        .map((api_name) => ({ api_name, data_type: "text" })),
+      updateRecord: async (module, recordId, fields) => {
+        writes.push({ module, recordId, fields: { ...fields } });
+        if (fields.Country_of_Birth) {
+          return { status: "error", code: "INVALID_DATA", details: { api_name: "Country_of_Birth" } };
+        }
+        return { status: "success", details: { id: recordId } };
+      },
+    },
+    flags: { enabled: true, dryRun: false },
+    dealsOnly: true,
+  });
+  assert.equal(result.success, true);
+  assert.equal(writes.length, 2);
+  assert.ok(writes.every(({ module }) => module === "Deals"));
+  assert.equal(writes[0].fields.Country_of_Birth, "Country 1 test");
+  assert.equal(writes[1].fields.Country_of_Birth, undefined);
+  assert.equal(writes[1].fields.Family_Name, "Lovelace");
+  assert.ok(result.summary.attention.some((item) => item.fieldApiName === "Country_of_Birth" && item.skipReason === "zoho_rejected_field"));
+});
+
 test("writes grouped Zoho payloads from saved answers", async () => {
   const { calls, client } = zohoMock();
   const jobs = [];

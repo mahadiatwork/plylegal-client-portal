@@ -4,7 +4,7 @@ import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } fro
 import { getDb } from "@/lib/firebase-admin";
 import { ZohoCRMClient } from "@/lib/zohoClient";
 import { getCrmSyncFlags } from "@/lib/crm/crmSyncFlags.js";
-import { parseCrmSyncRequestBody, runQuestionnaireCrmSync } from "@/lib/crm/runQuestionnaireCrmSync.js";
+import { parseCrmSyncRequestBody, runQuestionnaireCrmSync, runQuestionnaireCrmSyncWithClient } from "@/lib/crm/runQuestionnaireCrmSync.js";
 
 export const runtime = "nodejs";
 
@@ -33,16 +33,7 @@ export async function POST(request) {
     }
     const client = createFirestoreClient(getBearerToken(request), request.signal);
     const application = await getOwnedApplication(client, auth, parsed.applicationId);
-    const database = getDb();
-    if (!database.ok) {
-      return NextResponse.json(
-        { success: false, error: "Server configuration error" },
-        { status: 500, headers },
-      );
-    }
-
-    const result = await runQuestionnaireCrmSync({
-      db: database.db,
+    const sync = {
       // Use the document ID whose ownership was verified, even if its data contains an id field.
       application: { ...application, id: parsed.applicationId },
       mode: parsed.mode,
@@ -50,13 +41,30 @@ export async function POST(request) {
       profileId: parsed.profileId,
       zoho: new ZohoCRMClient(),
       flags,
-    });
+    };
+    const database = getDb();
+    let result;
+    if (database.ok) {
+      try {
+        result = await runQuestionnaireCrmSync({ ...sync, db: database.db });
+      } catch (error) {
+        // A failed Admin read must not block the owner-scoped Firestore path.
+        console.error("[intake/crm-sync] Admin Firestore path failed", { code: error?.code || error?.name || "unknown" });
+      }
+    }
+    if (!result) {
+      // The initial owner read's timeout may have elapsed while trying Admin.
+      result = await runQuestionnaireCrmSyncWithClient({
+        ...sync,
+        client: createFirestoreClient(getBearerToken(request), request.signal),
+      });
+    }
     return NextResponse.json(result.body, { status: result.httpStatus, headers });
   } catch (error) {
     if (error?.status) return resourceErrorResponse(error);
     console.error("[intake/crm-sync] failed", { code: error?.code || error?.name || "crm_sync_failed" });
     return NextResponse.json(
-      { success: false, error: "CRM synchronization failed" },
+      { success: false, error: { code: "crm_sync_server_error", message: "CRM synchronization failed on the server" } },
       { status: 502, headers },
     );
   }

@@ -87,6 +87,15 @@ test("network failures become retryable results and do not promise an automatic 
   assert.doesNotMatch(describeCrmSyncResult(result).message, /will be retried/i);
 });
 
+test("the CRM banner shows a safe server error code for diagnosis", () => {
+  const result = describeCrmSyncResult({ success: false, error: { code: "crm_sync_server_error" } });
+  assert.match(result.message, /crm_sync_server_error/);
+  assert.doesNotMatch(
+    describeCrmSyncResult({ success: false, error: { code: "secret value\nBearer token" } }).message,
+    /secret value|Bearer token/,
+  );
+});
+
 test("a confirmed Matter write reports fields Zoho could not accept", () => {
   const result = describeCrmSyncResult({ success: true, summary: { attention: [
     { fieldApiName: "Country_of_Birth", skipReason: "unsupported_picklist_value" },

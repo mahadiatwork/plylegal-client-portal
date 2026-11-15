@@ -99,6 +99,94 @@ test("disabled CRM synchronization does not require an admin Firestore connectio
   assert.deepEqual(await response.json(), { success: true, skipped: true, reason: "feature_disabled" });
 });
 
+function encodeFirestoreValue(value) {
+  if (value === null) return { nullValue: null };
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(encodeFirestoreValue) } };
+  if (typeof value === "object") {
+    return { mapValue: { fields: Object.fromEntries(
+      Object.entries(value).filter(([, child]) => child !== undefined)
+        .map(([key, child]) => [key, encodeFirestoreValue(child)]),
+    ) } };
+  }
+  if (typeof value === "boolean") return { booleanValue: value };
+  if (typeof value === "number") return Number.isInteger(value)
+    ? { integerValue: String(value) }
+    : { doubleValue: value };
+  return { stringValue: String(value) };
+}
+
+function encodeFirestoreFields(data) {
+  return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, encodeFirestoreValue(value)]));
+}
+
+test("a broken Admin Firestore connection falls back to owner-scoped REST reads and still writes Deals", async (t) => {
+  const previous = { ...process.env };
+  const oldDatabase = globalThis.__crmSyncTestDatabase;
+  const oldZoho = globalThis.__crmSyncTestZoho;
+  t.after(() => {
+    process.env = previous;
+    globalThis.__crmSyncTestDatabase = oldDatabase;
+    globalThis.__crmSyncTestZoho = oldZoho;
+  });
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = "crm-sync-test";
+  process.env.CRM_QUESTIONNAIRE_SYNC_ENABLED = "true";
+  process.env.CRM_QUESTIONNAIRE_SYNC_DRY_RUN = "false";
+  const applicationId = "_app-1";
+  const definition = JSON.parse(readFileSync(new URL("../e2e/fixtures/built-in-temporary-work-482.json", import.meta.url), "utf8"));
+  const draft = {
+    visaContext: "482",
+    profiles: [{ id: "main-1", relationship: "main_applicant", given_names: "Ada", family_name: "Lovelace" }],
+    profiles_data: { "main-1": { details: { given_names: "Ada", family_name: "Lovelace", country_of_birth: "Country 1 test" } } },
+  };
+  const application = { userId: "owner-1", zohoId: "deal-1", visaTypeCode: "temporary-work" };
+  const calls = [];
+  globalThis.__crmSyncTestDatabase = { ok: true, db: { collection: () => {
+    throw Object.assign(new Error("Admin credential rejected"), { code: "UNAUTHENTICATED" });
+  } } };
+  globalThis.__crmSyncTestZoho = {
+    getAccessToken: async () => "test-token",
+    getFieldMetadata: async (module) => {
+      assert.equal(module, "Deals");
+      return ["Family_Name", "Given_Name", "Questionnaires_Status"].map((api_name) => ({ api_name, data_type: "text" }));
+    },
+    updateRecord: async (module, recordId, fields) => {
+      calls.push({ module, recordId, fields });
+      return { status: "success", details: { id: recordId } };
+    },
+  };
+  t.mock.method(getFirebaseIdentityAuth(), "verifyIdToken", async () => ({ uid: "owner-1" }));
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    assert.equal(options.headers.Authorization, "Bearer signed-client-token");
+    const pathname = new URL(url).pathname;
+    if (pathname.endsWith(`/applications/${applicationId}`)) {
+      return { ok: true, status: 200, json: async () => ({ fields: encodeFirestoreFields(application) }) };
+    }
+    if (pathname.endsWith(`/applications/${applicationId}/data/questionnaire`)) {
+      return { ok: true, status: 200, json: async () => ({ fields: encodeFirestoreFields(draft) }) };
+    }
+    if (pathname.endsWith("/documents:runQuery")) {
+      assert.equal(options.method, "POST");
+      return { ok: true, status: 200, json: async () => [{ document: {
+        name: `projects/crm-sync-test/databases/(default)/documents/questionnaireDefinitions/${definition.id}`,
+        fields: encodeFirestoreFields(definition),
+      } }] };
+    }
+    throw new Error(`Unexpected Firestore read: ${pathname}`);
+  });
+
+  const body = { applicationId, mode: "page", pageId: "temporary-work-main-applicant-details", profileId: "main-1" };
+  for (const adminDatabase of [globalThis.__crmSyncTestDatabase, { ok: false }]) {
+    globalThis.__crmSyncTestDatabase = adminDatabase;
+    const response = await POST(request(body, "signed-client-token"));
+    const payload = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(payload));
+    assert.equal(payload.state, "succeeded");
+  }
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.module === "Deals" && call.recordId === "deal-1"));
+  assert.ok(calls.every((call) => call.fields.Family_Name === "Lovelace" && !Object.hasOwn(call.fields, "Country_of_Birth")));
+});
+
 for (const applicationId of ["_app-1", "-app-1"]) {
   test(`the published 482 definition synchronizes ${applicationId} through the route`, (t) => verifyPublishedSync(t, applicationId));
 }
@@ -134,6 +222,7 @@ async function verifyPublishedSync(t, applicationId) {
     }],
     [`questionnaireDefinitions/${definition.id}`, definition],
   ]);
+  let failJobWrites = false;
   function verifyFirestoreValue(value, path = "job") {
     assert.notEqual(value, undefined, `${path} cannot contain undefined`);
     if (value && typeof value === "object") {
@@ -150,6 +239,9 @@ async function verifyPublishedSync(t, applicationId) {
           collection: (child) => collection(`${documentPath}/${child}`),
           get: async () => ({ id, exists: documents.has(documentPath), data: () => documents.get(documentPath) }),
           set: async (value, options) => {
+            if (failJobWrites && documentPath.includes("/crmSync/")) {
+              throw Object.assign(new Error("audit write failed"), { code: "UNAUTHENTICATED" });
+            }
             verifyFirestoreValue(value);
             documents.set(documentPath, options?.merge ? { ...documents.get(documentPath), ...value } : value);
           },
@@ -261,4 +353,13 @@ async function verifyPublishedSync(t, applicationId) {
   assert.equal(recovered.jobId, partial.jobId);
   assert.equal(updates.at(-1).fields.Country_of_Birth, "Australia");
   assert.equal(documents.get(`applications/${applicationId}/crmSync/${partial.jobId}`).attemptCount, 2);
+
+  // Losing audit write access cannot undo a Zoho update or cause a second write.
+  documents.get(`applications/${applicationId}/data/questionnaire`).profiles_data["main-1"].details.family_name = "Hopkins";
+  failJobWrites = true;
+  const beforeAuditFailure = updates.length;
+  const auditFailureResponse = await POST(request(retryBody, "signed-client-token"));
+  assert.equal(auditFailureResponse.status, 200);
+  assert.equal((await auditFailureResponse.json()).state, "succeeded");
+  assert.equal(updates.length, beforeAuditFailure + 1);
 }

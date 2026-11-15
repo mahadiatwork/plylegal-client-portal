@@ -67,8 +67,19 @@ export async function loadPublishedDefinition(db, application, draft) {
   const audience = inferQuestionnaireAudience(application, draft);
   const active = await collection.where("status", "==", "active").get();
   const selected = selectActiveQuestionnaireDefinition(
-    active.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    active.docs.map((doc) => ({ ...doc.data(), id: doc.id })),
     audience,
+  );
+  return selected ? normalizeLoadedDefinition(selected) : null;
+}
+
+async function loadPublishedDefinitionWithClient(client, application, draft) {
+  // The signed-in applicant can read active definitions through Firestore rules.
+  // This also works when the server's Admin SDK credential cannot read Firestore.
+  const active = await client.getActiveDocuments("questionnaireDefinitions");
+  const selected = selectActiveQuestionnaireDefinition(
+    active.map(({ id, data }) => ({ ...data, id })),
+    inferQuestionnaireAudience(application, draft),
   );
   return selected ? normalizeLoadedDefinition(selected) : null;
 }
@@ -78,6 +89,46 @@ function normalizeLoadedDefinition(definition) {
   return seedDefinitionCrmMappings(
     normalizeQuestionnaireDefinition({ ...definition, pages }, pages),
   );
+}
+
+function syncHttpResponse(result) {
+  if (result.skipped) {
+    return { httpStatus: 200, body: { success: true, ...result } };
+  }
+  return {
+    httpStatus: result.success ? 200 : 502,
+    body: { success: result.success, ...result },
+  };
+}
+
+/**
+ * Fallback for deployments where the Admin SDK cannot read or persist sync jobs.
+ * The client token is used only for Firestore reads already allowed to the
+ * verified application owner. Zoho writes still happen server-side.
+ */
+export async function runQuestionnaireCrmSyncWithClient({
+  client,
+  application,
+  mode,
+  pageId,
+  profileId,
+  zoho,
+  flags,
+  now,
+}) {
+  const draft = await client.getDocument(`applications/${application.id}/data/questionnaire`) || {};
+  const definition = await loadPublishedDefinitionWithClient(client, application, draft);
+  if (!definition) {
+    return {
+      httpStatus: 409,
+      body: { success: false, error: "Published questionnaire definition was not found" },
+    };
+  }
+  const result = await synchronizeQuestionnaireCrm(
+    { application, draft, definition, mode, pageId, profileId },
+    { zoho, flags: flags || getCrmSyncFlags(), dealsOnly: true, now },
+  );
+  return syncHttpResponse(result);
 }
 
 export async function runQuestionnaireCrmSync({
@@ -107,7 +158,12 @@ export async function runQuestionnaireCrmSync({
   const persistJob = async (job) => {
     const record = { ...job };
     delete record.groups;
-    await db.collection("applications").doc(application.id).collection("crmSync").doc(job.id).set(record, { merge: true });
+    try {
+      await db.collection("applications").doc(application.id).collection("crmSync").doc(job.id).set(record, { merge: true });
+    } catch (error) {
+      // Audit storage must not turn a confirmed Zoho Deal write into a failure.
+      console.error("[intake/crm-sync] job audit write failed", { code: error?.code || error?.name || "unknown" });
+    }
   };
 
   const projection = buildQuestionnaireCrmProjection({
@@ -152,11 +208,5 @@ export async function runQuestionnaireCrmSync({
     },
   );
 
-  if (result.skipped) {
-    return { httpStatus: 200, body: { success: true, ...result } };
-  }
-  if (!result.success) {
-    return { httpStatus: 502, body: { success: false, ...result } };
-  }
-  return { httpStatus: 200, body: { success: true, ...result } };
+  return syncHttpResponse(result);
 }

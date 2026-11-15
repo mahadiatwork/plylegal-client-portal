@@ -160,6 +160,16 @@ function gateContactsGroup(projection, group, metadataIndex) {
 // The Deals fields shown in the CRM layout are the only questionnaire destinations
 // used by the client sync. Check live field types when available, and omit values
 // that Zoho cannot accept rather than rejecting the whole saved page.
+function omitDealsField(projection, group, fieldApiName, reason) {
+  delete group.fields[fieldApiName];
+  group.fieldApiNames = group.fieldApiNames.filter((name) => name !== fieldApiName);
+  for (const item of groupMappings(projection, group)) {
+    if (item.fieldApiName !== fieldApiName) continue;
+    item.status = "skipped";
+    item.skipReason = reason;
+  }
+}
+
 function gateDealsGroup(projection, group, metadataIndex) {
   for (const fieldApiName of [...group.fieldApiNames]) {
     const value = group.fields[fieldApiName];
@@ -169,14 +179,35 @@ function gateDealsGroup(projection, group, metadataIndex) {
       group.fields[fieldApiName] = gated.value;
       continue;
     }
-    delete group.fields[fieldApiName];
-    group.fieldApiNames = group.fieldApiNames.filter((name) => name !== fieldApiName);
-    for (const item of groupMappings(projection, group)) {
-      if (item.fieldApiName !== fieldApiName) continue;
-      item.status = "skipped";
-      item.skipReason = gated.error;
-    }
+    omitDealsField(projection, group, fieldApiName, gated.error);
   }
+}
+
+function rejectedDealsField(result, group) {
+  if (result?.code !== "INVALID_DATA" && result?.code !== "INVALID_FIELD") return null;
+  const fieldApiName = result?.details?.api_name;
+  return typeof fieldApiName === "string" && Object.hasOwn(group.fields, fieldApiName)
+    ? fieldApiName
+    : null;
+}
+
+async function updateDealsRecord(zoho, projection, group, recordId) {
+  while (Object.keys(group.fields).length) {
+    let result;
+    try {
+      result = await zoho.updateRecord("Deals", recordId, group.fields);
+    } catch (error) {
+      const fieldApiName = rejectedDealsField(error, group);
+      if (!fieldApiName) throw error;
+      omitDealsField(projection, group, fieldApiName, "zoho_rejected_field");
+      continue;
+    }
+    if (isConfirmedWrite(result, recordId)) return result;
+    const fieldApiName = rejectedDealsField(result, group);
+    if (!fieldApiName) return result;
+    omitDealsField(projection, group, fieldApiName, "zoho_rejected_field");
+  }
+  throw Object.assign(new Error("No Matter fields could be synchronized"), { code: "no_deal_fields_accepted" });
 }
 
 function markGroupMappings(projection, group, patch) {
@@ -356,7 +387,9 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
           continue;
         }
       }
-      const result = await zoho.updateRecord(group.module, recordId, group.fields);
+      const result = dealsOnly && group.module === "Deals"
+        ? await updateDealsRecord(zoho, projection, group, recordId)
+        : await zoho.updateRecord(group.module, recordId, group.fields);
       if (!isConfirmedWrite(result, recordId)) {
         throw Object.assign(new Error(result?.message || "Zoho did not confirm the update"), {
           code: result?.code || "zoho_update_unconfirmed",

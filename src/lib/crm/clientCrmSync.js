@@ -69,8 +69,12 @@ export function describeCrmSyncResult(result) {
         : "Saved and synchronized to the Matter in CRM.",
     };
   }
+  const rawCode = result.error && typeof result.error === "object" ? result.error.code : null;
+  const code = typeof rawCode === "string" && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(rawCode)
+    ? rawCode
+    : null;
   return {
     state: "failed",
-    message: "Saved. CRM synchronization failed. Select Retry CRM sync to try again.",
+    message: `Saved. CRM synchronization failed${code ? ` (${code})` : ""}. Select Retry CRM sync to try again.`,
   };
 }
