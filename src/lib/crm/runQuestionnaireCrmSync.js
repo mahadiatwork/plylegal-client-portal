@@ -89,6 +89,10 @@ export async function runQuestionnaireCrmSync({
   flags,
   now,
 }) {
+  const syncFlags = flags || getCrmSyncFlags();
+  if (!syncFlags.enabled) {
+    return { httpStatus: 200, body: { success: true, skipped: true, reason: "feature_disabled" } };
+  }
   const draftSnap = await db.collection("applications").doc(application.id).collection("data").doc("questionnaire").get();
   const draft = draftSnap.exists ? draftSnap.data() : {};
   const userSnap = await db.collection("users").doc(authUid).get();
@@ -153,7 +157,7 @@ export async function runQuestionnaireCrmSync({
     },
     {
       zoho,
-      flags: flags || getCrmSyncFlags(),
+      flags: syncFlags,
       persistJob,
       persistDependentId,
       existingJob: existingJob?.state === CRM_SYNC_STATES.succeeded ? existingJob : existingJob,

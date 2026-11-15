@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseCrmSyncRequestBody } from "../runQuestionnaireCrmSync.js";
+import { seedDefinitionCrmMappings } from "../questionnaireCrmSeed.js";
 import { synchronizeQuestionnaireCrm } from "../questionnaireSync.js";
 
 
@@ -178,4 +179,46 @@ test("retrying the same payload is idempotent", async () => {
   assert.equal(first.success, true);
   assert.equal(second.idempotent, true);
   assert.equal(calls.length, 2);
+});
+
+test("content items are not persisted as CRM answers during page or full synchronization", async () => {
+  const form = structuredClone(definition);
+  form.pages[0].questions.unshift(
+    { id: "heading-1", type: "heading", label: "Personal information" },
+    { id: "paragraph-1", type: "paragraph", label: "Provide your details." },
+  );
+  const seeded = seedDefinitionCrmMappings(form);
+  const { client, calls } = zohoMock();
+  const jobs = [];
+  const checkFirestoreValue = (value, path = "job") => {
+    assert.notEqual(value, undefined, `${path} cannot contain undefined`);
+    if (value && typeof value === "object") {
+      for (const [key, item] of Object.entries(value)) checkFirestoreValue(item, `${path}.${key}`);
+    }
+  };
+  const input = {
+    application: { id: "app-1", zohoId: "deal-1" },
+    userProfile: { zohoContactId: "contact-1" },
+    definition: seeded,
+    draft: {
+      profiles: [{ id: "main-1", relationship: "main_applicant" }],
+      profiles_data: { "main-1": { details: { family_name: "Lovelace" } } },
+    },
+  };
+
+  for (const mode of ["page", "full"]) {
+    const result = await synchronizeQuestionnaireCrm({
+      ...input,
+      mode,
+      ...(mode === "page" ? { pageId: "main-details", profileId: "main-1" } : {}),
+    }, {
+      zoho: client,
+      flags: { enabled: true, dryRun: false },
+      persistJob: async (job) => { checkFirestoreValue(job); jobs.push(job); },
+    });
+    assert.equal(result.success, true);
+    assert.equal(result.summary.skipped.some((item) => ["heading-1", "paragraph-1"].includes(item.questionId)), false);
+  }
+  assert.equal(calls.length, 4);
+  assert.equal(jobs.filter((job) => job.state === "succeeded").length, 2);
 });

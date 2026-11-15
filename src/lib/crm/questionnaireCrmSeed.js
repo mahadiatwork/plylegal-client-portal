@@ -1,5 +1,6 @@
 import { CRM_CLEAR_POLICIES, CRM_MAPPING_MODES, CRM_TARGETS } from "./crmFieldCatalog.js";
 import { getQuestionnairePageProfileRole } from "./questionnaireCrmContract.js";
+import { isQuestionnaireDisplayItem } from "../questionnaires/contentItems.js";
 
 function profileTarget(role) {
   if (role === "main_applicant") {
@@ -92,6 +93,7 @@ function identityMapping(question, role) {
 }
 
 function seedQuestion(question, page, inRepeater = false) {
+  if (isQuestionnaireDisplayItem(question)) return question;
   const existing = question?.metadata?.crm;
   const keepExisting = existing?.mode === CRM_MAPPING_MODES.field
     || existing?.mode === CRM_MAPPING_MODES.portal_only;
@@ -129,6 +131,7 @@ export function describeCrmSeedPlan(definition) {
   const rows = [];
   const walk = (questions, page, inRepeater) => {
     (questions || []).forEach((question) => {
+      if (isQuestionnaireDisplayItem(question)) return;
       const seeded = seedQuestion(question, page, inRepeater);
       rows.push({
         definitionId: definition.id,

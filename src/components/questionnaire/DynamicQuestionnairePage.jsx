@@ -536,7 +536,7 @@ export function DynamicQuestionnairePage({
                       ? "Saved. CRM synchronization pending."
                       : draftSnap.crmSync.state === "succeeded"
                         ? "Saved and synchronized to CRM."
-                        : "Saved. CRM synchronization failed and will be retried.")}
+                        : "Saved. CRM synchronization failed. Select Retry CRM sync to try again.")}
                 </p>
                 {draftSnap.crmSync.retryable ? (
                   <button

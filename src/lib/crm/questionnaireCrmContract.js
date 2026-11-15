@@ -8,6 +8,7 @@ import {
   getCrmCatalogField,
   moduleForCrmTarget,
 } from "./crmFieldCatalog.js";
+import { isQuestionnaireDisplayItem } from "../questionnaires/contentItems.js";
 
 const CRM_FIELDS = new Set([
   "mode",
@@ -46,6 +47,7 @@ export function walkQuestionnaireQuestions(definition, visit) {
     const walk = (questions, path, inRepeater) => {
       if (!Array.isArray(questions)) return;
       questions.forEach((question, index) => {
+        if (isQuestionnaireDisplayItem(question)) return;
         const questionPath = `${path}[${index}]`;
         visit({
           question,

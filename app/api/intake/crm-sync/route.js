@@ -3,6 +3,7 @@ import { getBearerToken, requireClient, verifyFirebaseIdentity } from "@/lib/ser
 import { createFirestoreClient, getOwnedApplication, resourceErrorResponse } from "@/lib/firestoreClient";
 import { getDb } from "@/lib/firebase-admin";
 import { ZohoCRMClient } from "@/lib/zohoClient";
+import { getCrmSyncFlags } from "@/lib/crm/crmSyncFlags.js";
 import { parseCrmSyncRequestBody, runQuestionnaireCrmSync } from "@/lib/crm/runQuestionnaireCrmSync.js";
 
 export const runtime = "nodejs";
@@ -23,6 +24,13 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: parsed.error }, { status: parsed.status, headers });
     }
 
+    const flags = getCrmSyncFlags();
+    if (!flags.enabled) {
+      return NextResponse.json(
+        { success: true, skipped: true, reason: "feature_disabled" },
+        { headers },
+      );
+    }
     const client = createFirestoreClient(getBearerToken(request), request.signal);
     const application = await getOwnedApplication(client, auth, parsed.applicationId);
     const database = getDb();
@@ -41,6 +49,7 @@ export async function POST(request) {
       pageId: parsed.pageId,
       profileId: parsed.profileId,
       zoho: new ZohoCRMClient(),
+      flags,
     });
     return NextResponse.json(result.body, { status: result.httpStatus, headers });
   } catch (error) {

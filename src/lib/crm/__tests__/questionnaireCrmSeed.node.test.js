@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getCrmCoverageSummary } from "../questionnaireCrmContract.js";
-import { seedDefinitionCrmMappings } from "../questionnaireCrmSeed.js";
+import { describeCrmSeedPlan, seedDefinitionCrmMappings } from "../questionnaireCrmSeed.js";
 
 test("seed mappings classify identity fields and leave the rest portal-only", () => {
   const seeded = seedDefinitionCrmMappings({
@@ -34,4 +34,19 @@ test("seed mappings classify identity fields and leave the rest portal-only", ()
   assert.equal(coverage.unconfigured, 0);
   assert.equal(coverage.mapped, 1);
   assert.equal(coverage.portalOnly, 3);
+});
+
+test("headings and explanatory text are not seeded or counted as CRM questions", () => {
+  const heading = { id: "heading", type: "heading", label: "Details" };
+  const paragraph = { id: "paragraph", type: "paragraph", label: "Provide your details." };
+  const form = {
+    pages: [{
+      id: "details",
+      questions: [heading, paragraph, { id: "notes", answerKey: "notes", type: "text" }],
+    }],
+  };
+  const seeded = seedDefinitionCrmMappings(form);
+  assert.deepEqual(seeded.pages[0].questions.slice(0, 2), [heading, paragraph]);
+  assert.deepEqual(getCrmCoverageSummary(seeded), { mapped: 0, portalOnly: 1, unconfigured: 0, total: 1 });
+  assert.deepEqual(describeCrmSeedPlan(form).map((row) => row.questionId), ["notes"]);
 });
