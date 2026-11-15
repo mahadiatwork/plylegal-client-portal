@@ -59,7 +59,15 @@ export function describeCrmSyncResult(result) {
     return { state: "pending", message: "Saved. CRM synchronization is in dry-run mode." };
   }
   if (result.success) {
-    return { state: "succeeded", message: "Saved and synchronized to CRM." };
+    const attentionCount = new Set((result.summary?.attention || []).map((item) =>
+      item.fieldApiName ? `${item.module}:${item.fieldApiName}` : `${item.pageId}:${item.questionId}`
+    )).size;
+    return {
+      state: "succeeded",
+      message: attentionCount
+        ? `Saved to the Matter in CRM. ${attentionCount} field${attentionCount === 1 ? "" : "s"} could not be mapped and may need review.`
+        : "Saved and synchronized to the Matter in CRM.",
+    };
   }
   return {
     state: "failed",

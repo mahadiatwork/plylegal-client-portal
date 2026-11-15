@@ -68,11 +68,26 @@ export function buildQuestionnaireCrmProjection({
   mode = "full",
   pageId = null,
   profileId = null,
+  dealsOnly = false,
 } = {}) {
   const mappings = [];
   walkQuestionnaireQuestions(definition, ({ question, page, profileRole, inRepeater }) => {
     if (mode === "page" && pageId && page.id !== pageId) return;
     const mapping = normalizeCrmMapping(question?.metadata?.crm);
+    if (dealsOnly && mapping?.module && mapping.module !== "Deals") {
+      mappings.push({
+        questionId: question.id,
+        answerKey: question.answerKey,
+        pageId: page.id,
+        profileRole,
+        target: mapping.target,
+        module: mapping.module,
+        fieldApiName: mapping.fieldApiName,
+        status: "skipped",
+        skipReason: "deals_only",
+      });
+      return;
+    }
     if (!mapping || mapping.invalid || mapping.mode === CRM_MAPPING_MODES.unconfigured) {
       mappings.push({
         questionId: question.id,
@@ -224,6 +239,7 @@ export function buildQuestionnaireCrmProjection({
     mode,
     pageId,
     profileId,
+    dealsOnly,
   }));
 
   const groups = [];

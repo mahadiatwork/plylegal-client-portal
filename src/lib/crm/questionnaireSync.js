@@ -157,6 +157,28 @@ function gateContactsGroup(projection, group, metadataIndex) {
   return retryable;
 }
 
+// The Deals fields shown in the CRM layout are the only questionnaire destinations
+// used by the client sync. Check live field types when available, and omit values
+// that Zoho cannot accept rather than rejecting the whole saved page.
+function gateDealsGroup(projection, group, metadataIndex) {
+  for (const fieldApiName of [...group.fieldApiNames]) {
+    const value = group.fields[fieldApiName];
+    if (value === "" || value === null || value === undefined) continue;
+    const gated = gateFieldValue({ module: "Deals", fieldApiName, value, metadataIndex });
+    if (gated.ok) {
+      group.fields[fieldApiName] = gated.value;
+      continue;
+    }
+    delete group.fields[fieldApiName];
+    group.fieldApiNames = group.fieldApiNames.filter((name) => name !== fieldApiName);
+    for (const item of groupMappings(projection, group)) {
+      if (item.fieldApiName !== fieldApiName) continue;
+      item.status = "skipped";
+      item.skipReason = gated.error;
+    }
+  }
+}
+
 function markGroupMappings(projection, group, patch) {
   projection.mappings.forEach((item) => {
     if (item.status !== "ready") return;
@@ -185,6 +207,7 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
   const persistDependentId = deps.persistDependentId;
   const authEmail = deps.authEmail || null;
   const now = deps.now || (() => new Date());
+  const dealsOnly = deps.dealsOnly === true;
 
   if (!flags.enabled) {
     return {
@@ -203,6 +226,7 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
     mode,
     pageId,
     profileId,
+    dealsOnly,
   });
 
   const job = buildCrmSyncJobRecord({
@@ -218,7 +242,8 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
   });
 
   if (deps.existingJob?.state === CRM_SYNC_STATES.succeeded
-    && deps.existingJob.idempotencyKey === job.idempotencyKey) {
+    && deps.existingJob.idempotencyKey === job.idempotencyKey
+    && !deps.existingJob.summary?.attention?.some((item) => item.skipReason === "field_metadata_unavailable")) {
     return {
       success: true,
       jobId: deps.existingJob.id,
@@ -275,6 +300,7 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
   }
 
   let contactsMetadata;
+  let dealsMetadata;
   const verifiedContacts = new Set();
   async function loadContactsMetadata() {
     if (contactsMetadata !== undefined) return contactsMetadata;
@@ -285,6 +311,17 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
       contactsMetadata = null;
     }
     return contactsMetadata;
+  }
+
+  async function loadDealsMetadata() {
+    if (dealsMetadata !== undefined) return dealsMetadata;
+    try {
+      const fields = await zoho.getFieldMetadata?.("Deals");
+      dealsMetadata = Array.isArray(fields) && fields.length ? indexFieldMetadata(fields) : null;
+    } catch {
+      dealsMetadata = null;
+    }
+    return dealsMetadata;
   }
 
   if (!fatalError) {
@@ -311,6 +348,13 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
         const retryable = gateContactsGroup(projection, group, await loadContactsMetadata());
         groupErrors.push(...retryable);
         if (!Object.keys(group.fields).length) continue;
+      }
+      if (dealsOnly && group.module === "Deals") {
+        gateDealsGroup(projection, group, await loadDealsMetadata());
+        if (!Object.keys(group.fields).length) {
+          groupErrors.push({ code: "no_deal_fields_accepted", message: "No Matter fields could be synchronized" });
+          continue;
+        }
       }
       const result = await zoho.updateRecord(group.module, recordId, group.fields);
       if (!isConfirmedWrite(result, recordId)) {
@@ -350,7 +394,10 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
 
   const firstError = fatalError
     ? sanitizeCrmSyncError(fatalError)
-    : groupErrors[0] || { code: "crm_projection_failed", message: "One or more CRM fields could not be synchronized" };
+    : groupErrors[0] || {
+      code: summary.failed[0]?.error || "crm_projection_failed",
+      message: "One or more CRM fields could not be synchronized",
+    };
   const failed = {
     ...job,
     state: CRM_SYNC_STATES.failed,

@@ -46,7 +46,7 @@ function firstCitizenship(details, identity, passportCountry) {
 function pageFor(definition, role, sectionKey) {
   return (definition?.pages || []).find((page) => (
     getQuestionnairePageProfileRole(page) === role
-    && text(page.sectionKey).toLowerCase() === sectionKey
+    && contactSectionForPage(page) === sectionKey
   ));
 }
 
@@ -163,16 +163,19 @@ export function buildCanonicalApplicantCrmMappings({
   mode = "full",
   pageId = null,
   profileId = null,
+  dealsOnly = false,
 } = {}) {
   const selectedPage = mode === "page"
     ? (definition?.pages || []).find((page) => page.id === pageId)
     : null;
   const selectedRole = selectedPage ? getQuestionnairePageProfileRole(selectedPage) : null;
   const selectedSection = selectedPage ? text(selectedPage.sectionKey).toLowerCase() : null;
-  // Deals and dependent mappings keep their original section matching so their
-  // behaviour is unchanged; Contacts use the corrected section resolution.
-  const sections = mode === "full" ? new Set(["details", "identity"]) : new Set([selectedSection]);
+  // The Deals-only path resolves the published page's profile section, including
+  // built-in routes whose section keys are prefixed by the visa type.
   const selectedContactSection = selectedPage ? contactSectionForPage(selectedPage) : "";
+  const sections = mode === "full"
+    ? new Set(["details", "identity"])
+    : new Set([dealsOnly ? selectedContactSection : selectedSection]);
   const contactSections = mode === "full"
     ? [...CONTACT_SECTIONS]
     : (CONTACT_SECTIONS.includes(selectedContactSection) ? [selectedContactSection] : []);
@@ -195,7 +198,7 @@ export function buildCanonicalApplicantCrmMappings({
     if (role === "main_applicant") {
       // Contacts belong to the main applicant only and are resolved by the
       // page's real section (profileSection / prefixed sectionKey).
-      if (contactSections.length) {
+      if (!dealsOnly && contactSections.length) {
         buildContactFieldPlan({
           definition,
           draft,
@@ -247,8 +250,35 @@ export function buildCanonicalApplicantCrmMappings({
           State_or_Province_of_Birth: snapshot.passport_number,
         });
       }
+      if (dealsOnly && contactSections.includes("contact_details")) {
+        const matter = {
+          snapshot,
+          pageId: page,
+          target: CRM_TARGETS.matter,
+          module: CRM_MODULES.Deals,
+          recordId: application.zohoId || null,
+        };
+        const contactFields = buildContactFieldPlan({
+          definition,
+          draft,
+          subject,
+          snapshot,
+          sections: ["contact_details"],
+        });
+        for (const [sourceField, dealField] of [["Phone", "Client_Phone"], ["Mobile", "Client_Mobile"]]) {
+          const entry = contactFields.find((field) => field.fieldApiName === sourceField);
+          if (entry) mappings.push(canonicalMapping({
+            ...matter,
+            fieldApiName: dealField,
+            value: entry.value,
+            skipReason: entry.skipReason,
+          }));
+        }
+      }
       return;
     }
+
+    if (dealsOnly) return;
 
     const dependent = {
       snapshot,
@@ -279,5 +309,16 @@ export function buildCanonicalApplicantCrmMappings({
       });
     }
   });
+  if (dealsOnly && !mappings.some((item) => item.module === CRM_MODULES.Deals && item.fieldApiName === "Questionnaires_Status")) {
+    mappings.push(canonicalMapping({
+      snapshot: { id: "matter" },
+      pageId: selectedPage?.id || null,
+      target: CRM_TARGETS.matter,
+      module: CRM_MODULES.Deals,
+      recordId: application.zohoId || null,
+      fieldApiName: "Questionnaires_Status",
+      value: questionnaireStatus(draft),
+    }));
+  }
   return mappings;
 }

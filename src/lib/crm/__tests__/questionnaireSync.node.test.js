@@ -89,6 +89,28 @@ test("CRM sync accepts Nano ID application IDs and rejects unsafe document paths
   }
 });
 
+test("Deals-only synchronization reports a missing Matter link without attempting any CRM write", async () => {
+  let calls = 0;
+  const result = await synchronizeQuestionnaireCrm({
+    application: { id: "app-1" },
+    definition,
+    draft: {
+      profiles: [{ id: "main-1", relationship: "main_applicant" }],
+      profiles_data: { "main-1": { details: { family_name: "Lovelace" } } },
+    },
+    mode: "page",
+    pageId: "main-details",
+    profileId: "main-1",
+  }, {
+    zoho: { updateRecord: async () => { calls += 1; } },
+    flags: { enabled: true, dryRun: false },
+    dealsOnly: true,
+  });
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "missing_matter_id");
+  assert.equal(calls, 0);
+});
+
 test("writes grouped Zoho payloads from saved answers", async () => {
   const { calls, client } = zohoMock();
   const jobs = [];

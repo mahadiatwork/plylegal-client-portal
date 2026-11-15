@@ -4,7 +4,7 @@ import {
   selectQuestionnaireDefinitionPages,
 } from "../questionnaires/index.js";
 import { getCrmSyncFlags } from "./crmSyncFlags.js";
-import { CRM_SYNC_STATES, buildCrmSyncJobRecord } from "./crmSyncJobs.js";
+import { buildCrmSyncJobRecord } from "./crmSyncJobs.js";
 import { buildQuestionnaireCrmProjection } from "./questionnaireMapping.js";
 import { seedDefinitionCrmMappings } from "./questionnaireCrmSeed.js";
 import { synchronizeQuestionnaireCrm } from "./questionnaireSync.js";
@@ -83,8 +83,6 @@ function normalizeLoadedDefinition(definition) {
 export async function runQuestionnaireCrmSync({
   db,
   application,
-  authUid,
-  authEmail = null,
   mode,
   pageId,
   profileId,
@@ -98,8 +96,6 @@ export async function runQuestionnaireCrmSync({
   }
   const draftSnap = await db.collection("applications").doc(application.id).collection("data").doc("questionnaire").get();
   const draft = draftSnap.exists ? draftSnap.data() : {};
-  const userSnap = await db.collection("users").doc(authUid).get();
-  const userProfile = userSnap.exists ? userSnap.data() : {};
   const definition = await loadPublishedDefinition(db, application, draft);
   if (!definition) {
     return {
@@ -107,19 +103,6 @@ export async function runQuestionnaireCrmSync({
       body: { success: false, error: "Published questionnaire definition was not found" },
     };
   }
-
-  const persistDependentId = async (subjectId, zohoDependentId, isNonMigrating) => {
-    const key = isNonMigrating ? "non_migrating_members" : "profiles";
-    const list = Array.isArray(draft[key]) ? draft[key] : [];
-    const next = list.map((item) => (
-      String(item.id) === String(subjectId) ? { ...item, zohoDependentId } : item
-    ));
-    draft[key] = next;
-    await db.collection("applications").doc(application.id).collection("data").doc("questionnaire").set(
-      { [key]: next },
-      { merge: true },
-    );
-  };
 
   const persistJob = async (job) => {
     const record = { ...job };
@@ -131,10 +114,11 @@ export async function runQuestionnaireCrmSync({
     definition,
     draft,
     application,
-    userProfile,
+    userProfile: {},
     mode,
     pageId,
     profileId,
+    dealsOnly: true,
   });
   const projectionJob = buildCrmSyncJobRecord({
     applicationId: application.id,
@@ -153,7 +137,7 @@ export async function runQuestionnaireCrmSync({
       application,
       draft,
       definition,
-      userProfile,
+      userProfile: {},
       mode,
       pageId,
       profileId,
@@ -162,9 +146,8 @@ export async function runQuestionnaireCrmSync({
       zoho,
       flags: syncFlags,
       persistJob,
-      persistDependentId,
-      authEmail,
-      existingJob: existingJob?.state === CRM_SYNC_STATES.succeeded ? existingJob : existingJob,
+      existingJob,
+      dealsOnly: true,
       now,
     },
   );

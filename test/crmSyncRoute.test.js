@@ -120,10 +120,18 @@ async function verifyPublishedSync(t, applicationId) {
   const documents = new Map([
     [`applications/${applicationId}/data/questionnaire`, {
       visaContext: "482",
-      profiles: [{ id: "main-1", relationship: "main_applicant", given_names: "Ada", family_name: "Lovelace" }],
-      profiles_data: { "main-1": { details: { given_names: "Ada", family_name: "Lovelace" } } },
+      profiles: [
+        { id: "main-1", relationship: "main_applicant", given_names: "Ada", family_name: "Lovelace" },
+        { id: "spouse-1", relationship: "spouse", given_names: "Sam", family_name: "Lovelace" },
+      ],
+      profiles_data: {
+        "main-1": {
+          details: { given_names: "Ada", family_name: "Lovelace", preferred_names: "Ada", country_of_birth: "Country 1 test" },
+          contact_details: { phone: "0291234567", mobile: "+61412345678" },
+        },
+        "spouse-1": { details: { given_names: "Sam", family_name: "Lovelace" } },
+      },
     }],
-    ["users/owner-1", { zohoContactId: "contact-1", email: "client@example.com" }],
     [`questionnaireDefinitions/${definition.id}`, definition],
   ]);
   function verifyFirestoreValue(value, path = "job") {
@@ -133,6 +141,7 @@ async function verifyPublishedSync(t, applicationId) {
     }
   }
   function collection(path) {
+    assert.notEqual(path, "users", "Deals-only sync must not load the Contact profile");
     return {
       doc(id) {
         const documentPath = `${path}/${id}`;
@@ -155,8 +164,18 @@ async function verifyPublishedSync(t, applicationId) {
   globalThis.__crmSyncTestDatabase = { ok: true, db: { collection } };
   globalThis.__crmSyncTestZoho = {
     getAccessToken: async () => "test-token",
-    getContactIdentity: async () => ({ Email: "client@example.com", Secondary_Email: "" }),
-    getFieldMetadata: async () => [],
+    getContactIdentity: async () => { throw new Error("Contacts must not be read"); },
+    getRelatedRecords: async () => { throw new Error("Dependents must not be read"); },
+    createRecord: async () => { throw new Error("Dependents must not be created"); },
+    getFieldMetadata: async (module) => {
+      assert.equal(module, "Deals");
+      return [
+        ...["Family_Name", "Given_Name", "Client_Phone", "Client_Mobile"]
+          .map((api_name) => ({ api_name, data_type: "text" })),
+        { api_name: "Questionnaires_Status", data_type: "picklist", pick_list_values: [{ actual_value: "In Progress" }] },
+        { api_name: "Country_of_Birth", data_type: "picklist", pick_list_values: [{ actual_value: "Australia" }] },
+      ];
+    },
     updateRecord: async (module, recordId, fields) => {
       updates.push({ module, recordId, fields });
       return { status: "success", details: { id: recordId } };
@@ -180,6 +199,8 @@ async function verifyPublishedSync(t, applicationId) {
 
   for (const body of [
     { applicationId, mode: "page", pageId: "temporary-work-main-applicant-details", profileId: "main-1" },
+    { applicationId, mode: "page", pageId: "temporary-work-main-applicant-contact-details", profileId: "main-1" },
+    { applicationId, mode: "page", pageId: "temporary-work-spouse-partner-details", profileId: "spouse-1" },
     { applicationId, mode: "full" },
   ]) {
     const response = await POST(request(body, "signed-client-token"));
@@ -188,10 +209,19 @@ async function verifyPublishedSync(t, applicationId) {
     assert.equal(payload.success, true);
     assert.equal(payload.state, "succeeded");
     assert.equal(payload.summary.skipped.some((item) => item.questionId.endsWith("-heading")), false);
+    if (body.mode === "full" || body.pageId === "temporary-work-main-applicant-details") {
+      assert.ok(payload.summary.attention.some((item) => item.fieldApiName === "Country_of_Birth" && item.skipReason === "unsupported_picklist_value"));
+      assert.ok(payload.summary.attention.some((item) => item.fieldApiName === "Preferred_Name" && item.skipReason === "field_not_in_crm"));
+    }
   }
-  assert.ok(updates.some((update) => update.module === "Deals"));
+  assert.equal(updates.length, 4);
+  assert.ok(updates.every((update) => update.module === "Deals" && update.recordId === "deal-1"));
+  assert.ok(updates.some((update) => update.fields.Family_Name === "Lovelace" && update.fields.Given_Name === "Ada"));
+  assert.ok(updates.some((update) => update.fields.Client_Phone === "0291234567" && update.fields.Client_Mobile === "+61412345678"));
+  assert.ok(updates.every((update) => !Object.hasOwn(update.fields, "Country_of_Birth")));
+  assert.ok(updates.every((update) => !Object.hasOwn(update.fields, "Preferred_Name")));
   const completedJobs = [...documents.entries()].filter(([key, value]) => key.startsWith(`applications/${applicationId}/crmSync/`) && value.state === "succeeded");
-  assert.equal(completedJobs.length, 2);
+  assert.equal(completedJobs.length, 4);
 
   // A real upstream failure remains visible, and retrying the same saved
   // answers completes the existing job once the upstream service recovers.
@@ -213,4 +243,22 @@ async function verifyPublishedSync(t, applicationId) {
   assert.equal(retried.state, "succeeded");
   assert.equal(retried.jobId, failed.jobId);
   assert.equal(documents.get(`applications/${applicationId}/crmSync/${failed.jobId}`).attemptCount, 2);
+
+  // A temporary metadata failure must not block safe Deal fields or permanently
+  // suppress an answer once Zoho's field configuration is available again.
+  documents.get(`applications/${applicationId}/data/questionnaire`).profiles_data["main-1"].details.country_of_birth = "Australia";
+  const originalMetadata = globalThis.__crmSyncTestZoho.getFieldMetadata;
+  globalThis.__crmSyncTestZoho.getFieldMetadata = async () => { throw new Error("metadata unavailable"); };
+  const partialResponse = await POST(request(retryBody, "signed-client-token"));
+  const partial = await partialResponse.json();
+  assert.equal(partialResponse.status, 200);
+  assert.ok(partial.summary.attention.some((item) => item.fieldApiName === "Country_of_Birth" && item.skipReason === "field_metadata_unavailable"));
+  globalThis.__crmSyncTestZoho.getFieldMetadata = originalMetadata;
+  const recoveredResponse = await POST(request(retryBody, "signed-client-token"));
+  const recovered = await recoveredResponse.json();
+  assert.equal(recoveredResponse.status, 200);
+  assert.equal(recovered.idempotent, undefined);
+  assert.equal(recovered.jobId, partial.jobId);
+  assert.equal(updates.at(-1).fields.Country_of_Birth, "Australia");
+  assert.equal(documents.get(`applications/${applicationId}/crmSync/${partial.jobId}`).attemptCount, 2);
 }

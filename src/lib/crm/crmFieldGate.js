@@ -3,11 +3,9 @@ import { getCrmCatalogField } from "./crmFieldCatalog.js";
 /**
  * Validates values against the LIVE Zoho field configuration before they are written.
  *
- * Field names for Contacts were taken from layout screenshots, so their data type,
- * writability and picklist values are verified here against `GET /settings/fields`
- * rather than assumed. Fields whose catalog entry is already proven by production
- * code (`requiresLiveVerification` falsy) do not need metadata to be written; every
- * other field fails closed (retryable) when metadata cannot be loaded.
+ * Live metadata confirms field presence, writability, length, and picklist values.
+ * When metadata is unavailable, only catalog fields explicitly marked as needing
+ * live verification are withheld. Other mapped fields can still be written.
  */
 
 export const GATE_ERRORS = Object.freeze({
@@ -49,11 +47,7 @@ export function gateFieldValue({ module, fieldApiName, value, metadataIndex }) {
       : { ok: true, value };
   }
   const meta = metadataIndex.get(fieldApiName);
-  if (!meta) {
-    return needsLive
-      ? { ok: false, error: GATE_ERRORS.fieldMissing, retryable: false }
-      : { ok: true, value };
-  }
+  if (!meta) return { ok: false, error: GATE_ERRORS.fieldMissing, retryable: false };
   if (meta.read_only === true || meta.field_read_only === true || meta.visible === false) {
     return { ok: false, error: GATE_ERRORS.readOnly, retryable: false };
   }

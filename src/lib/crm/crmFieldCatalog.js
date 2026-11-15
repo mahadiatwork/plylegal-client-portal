@@ -121,12 +121,14 @@ export const CRM_FIELD_CATALOG = Object.freeze({
     Relationship_Status: field("Relationship_Status", "Relationship Status", "text"),
   }),
   Deals: Object.freeze({
+    Client_Phone: field("Client_Phone", "Client - Phone", "text"),
+    Client_Mobile: field("Client_Mobile", "Client - Mobile", "text"),
     Family_Name: field("Family_Name", "Family Name", "text"),
     Given_Name: field("Given_Name", "Given Name", "text"),
     Preferred_Name: field("Preferred_Name", "Preferred Name", "text"),
     Gender: field("Gender", "Gender", "picklist", { picklistValues: Object.freeze(["Male", "Female"]) }),
     Date_of_Birth: field("Date_of_Birth", "Date of Birth", "date"),
-    Country_of_Birth: field("Country_of_Birth", "Country of Birth", "picklist"),
+    Country_of_Birth: field("Country_of_Birth", "Country of Birth", "picklist", { requiresLiveVerification: true }),
     // AUDIT (unverified): the labels recorded here for these three Deals fields
     // (Citizenship / Passport Number / Passport Expiry Date) disagree with their API
     // names and, for Marital_Status, with the value that is written to it. They are
@@ -136,6 +138,7 @@ export const CRM_FIELD_CATALOG = Object.freeze({
     State_or_Province_of_Birth: field("State_or_Province_of_Birth", "Passport Number", "text", { auditStatus: "label_unverified" }),
     Marital_Status: field("Marital_Status", "Passport Expiry Date", "picklist", {
       auditStatus: "label_unverified",
+      requiresLiveVerification: true,
       picklistValues: Object.freeze([
         "De Facto Relationship",
         "Divorced",

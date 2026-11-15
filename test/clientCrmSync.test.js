@@ -86,3 +86,13 @@ test("network failures become retryable results and do not promise an automatic 
   assert.match(describeCrmSyncResult(result).message, /retry/i);
   assert.doesNotMatch(describeCrmSyncResult(result).message, /will be retried/i);
 });
+
+test("a confirmed Matter write reports fields Zoho could not accept", () => {
+  const result = describeCrmSyncResult({ success: true, summary: { attention: [
+    { fieldApiName: "Country_of_Birth", skipReason: "unsupported_picklist_value" },
+    { fieldApiName: "Country_of_Birth", skipReason: "unsupported_picklist_value" },
+  ] } });
+  assert.equal(result.state, "succeeded");
+  assert.match(result.message, /Matter in CRM/);
+  assert.match(result.message, /1 field/);
+});

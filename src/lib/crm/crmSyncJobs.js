@@ -54,6 +54,7 @@ export const CRM_ATTENTION_REASONS = Object.freeze(new Set([
   "field_not_in_crm",
   "field_read_only",
   "value_too_long",
+  "field_metadata_unavailable",
 ]));
 
 // Zoho and network errors can echo questionnaire values (emails, numbers, quoted
