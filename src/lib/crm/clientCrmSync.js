@@ -62,11 +62,13 @@ export function describeCrmSyncResult(result) {
     const attentionCount = new Set((result.summary?.attention || []).map((item) =>
       item.fieldApiName ? `${item.module}:${item.fieldApiName}` : `${item.pageId}:${item.questionId}`
     )).size;
+    const matterId = /^\d{6,32}$/.test(String(result.matterId || "")) ? result.matterId : null;
+    const destination = matterId ? `CRM Matter ${matterId}` : "the Matter in CRM";
     return {
       state: "succeeded",
       message: attentionCount
-        ? `Saved to the Matter in CRM. ${attentionCount} field${attentionCount === 1 ? "" : "s"} could not be mapped and may need review.`
-        : "Saved and synchronized to the Matter in CRM.",
+        ? `Saved and verified in ${destination}. ${attentionCount} field${attentionCount === 1 ? "" : "s"} could not be mapped and may need review.`
+        : `Saved and verified in ${destination}.`,
     };
   }
   const rawCode = result.error && typeof result.error === "object" ? result.error.code : null;

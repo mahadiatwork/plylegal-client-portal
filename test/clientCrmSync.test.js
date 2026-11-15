@@ -97,11 +97,11 @@ test("the CRM banner shows a safe server error code for diagnosis", () => {
 });
 
 test("a confirmed Matter write reports fields Zoho could not accept", () => {
-  const result = describeCrmSyncResult({ success: true, summary: { attention: [
+  const result = describeCrmSyncResult({ success: true, matterId: "102555000003301011", summary: { attention: [
     { fieldApiName: "Country_of_Birth", skipReason: "unsupported_picklist_value" },
     { fieldApiName: "Country_of_Birth", skipReason: "unsupported_picklist_value" },
   ] } });
   assert.equal(result.state, "succeeded");
-  assert.match(result.message, /Matter in CRM/);
+  assert.match(result.message, /CRM Matter 102555000003301011/);
   assert.match(result.message, /1 field/);
 });

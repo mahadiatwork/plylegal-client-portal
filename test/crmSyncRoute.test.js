@@ -153,6 +153,11 @@ test("a broken Admin Firestore connection falls back to owner-scoped REST reads 
       calls.push({ module, recordId, fields });
       return { status: "success", details: { id: recordId } };
     },
+    getRecord: async (module, recordId) => ({
+      id: recordId,
+      ...Object.assign({}, ...calls.filter((call) => call.module === module && call.recordId === recordId)
+        .map((call) => call.fields)),
+    }),
   };
   t.mock.method(getFirebaseIdentityAuth(), "verifyIdToken", async () => ({ uid: "owner-1" }));
   t.mock.method(globalThis, "fetch", async (url, options) => {
@@ -272,6 +277,11 @@ async function verifyPublishedSync(t, applicationId) {
       updates.push({ module, recordId, fields });
       return { status: "success", details: { id: recordId } };
     },
+    getRecord: async (module, recordId) => ({
+      id: recordId,
+      ...Object.assign({}, ...updates.filter((update) => update.module === module && update.recordId === recordId)
+        .map((update) => update.fields)),
+    }),
   };
   t.mock.method(getFirebaseIdentityAuth(), "verifyIdToken", async () => ({ uid: "owner-1" }));
   t.mock.method(globalThis, "fetch", async (url) => {

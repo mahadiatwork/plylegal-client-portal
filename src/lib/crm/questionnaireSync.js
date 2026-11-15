@@ -7,6 +7,8 @@ import {
 } from "./crmSyncJobs.js";
 import { buildQuestionnaireCrmProjection } from "./questionnaireMapping.js";
 import { gateFieldValue, indexFieldMetadata } from "./crmFieldGate.js";
+import { getQuestionnairePageProfileRole } from "./questionnaireCrmContract.js";
+import { contactSectionForPage } from "./contactCrmProjection.js";
 
 const RELATIONSHIP_MAP = Object.freeze({
   spouse: "Spouse",
@@ -210,6 +212,33 @@ async function updateDealsRecord(zoho, projection, group, recordId) {
   throw Object.assign(new Error("No Matter fields could be synchronized"), { code: "no_deal_fields_accepted" });
 }
 
+function crmValuesMatch(expected, actual) {
+  if (expected === "" || expected === null) return actual === "" || actual === null || actual === undefined;
+  if (expected && typeof expected === "object") return JSON.stringify(actual) === JSON.stringify(expected);
+  return String(actual ?? "").trim() === String(expected).trim();
+}
+
+// Zoho's update acknowledgement confirms receipt, but does not prove that the
+// fields are present on the Matter the applicant can see. Read the same record
+// back before reporting success. A retry can safely send the same values again.
+async function verifyDealsWrite(zoho, group, recordId) {
+  if (typeof zoho?.getRecord !== "function") {
+    throw Object.assign(new Error("Matter readback is unavailable"), { code: "zoho_readback_unavailable" });
+  }
+  let record = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    record = await zoho.getRecord("Deals", recordId);
+    if (record && String(record.id) === String(recordId)
+      && Object.entries(group.fields).every(([field, value]) => crmValuesMatch(value, record[field]))) {
+      return;
+    }
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw Object.assign(new Error("Matter readback did not match the saved answers"), {
+    code: record ? "zoho_readback_mismatch" : "zoho_readback_unavailable",
+  });
+}
+
 function markGroupMappings(projection, group, patch) {
   projection.mappings.forEach((item) => {
     if (item.status !== "ready") return;
@@ -259,6 +288,11 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
     profileId,
     dealsOnly,
   });
+  const selectedPage = mode === "page" ? definition?.pages?.find((page) => page.id === pageId) : null;
+  const requireApplicantFields = dealsOnly && (mode === "full" || (
+    getQuestionnairePageProfileRole(selectedPage) === "main_applicant"
+    && contactSectionForPage(selectedPage) === "details"
+  ));
 
   const job = buildCrmSyncJobRecord({
     applicationId: application.id,
@@ -272,8 +306,10 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
     now: now(),
   });
 
-  if (deps.existingJob?.state === CRM_SYNC_STATES.succeeded
+  if (!dealsOnly
+    && deps.existingJob?.state === CRM_SYNC_STATES.succeeded
     && deps.existingJob.idempotencyKey === job.idempotencyKey
+    && Boolean(deps.existingJob.dryRun) === Boolean(flags.dryRun || mode === "preview")
     && !deps.existingJob.summary?.attention?.some((item) => item.skipReason === "field_metadata_unavailable")) {
     return {
       success: true,
@@ -382,6 +418,12 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
       }
       if (dealsOnly && group.module === "Deals") {
         gateDealsGroup(projection, group, await loadDealsMetadata());
+        if (requireApplicantFields
+          && !Object.keys(group.fields).some((field) => field !== "Questionnaires_Status")) {
+          throw Object.assign(new Error("No saved applicant fields could be sent to the Matter"), {
+            code: "no_matter_answer_fields",
+          });
+        }
         if (!Object.keys(group.fields).length) {
           groupErrors.push({ code: "no_deal_fields_accepted", message: "No Matter fields could be synchronized" });
           continue;
@@ -394,6 +436,9 @@ export async function synchronizeQuestionnaireCrm(input, deps = {}) {
         throw Object.assign(new Error(result?.message || "Zoho did not confirm the update"), {
           code: result?.code || "zoho_update_unconfirmed",
         });
+      }
+      if (dealsOnly && group.module === "Deals") {
+        await verifyDealsWrite(zoho, group, recordId);
       }
       markGroupMappings(projection, group, { status: "succeeded", recordId });
       } catch (error) {

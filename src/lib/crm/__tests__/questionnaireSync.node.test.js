@@ -48,6 +48,11 @@ function zohoMock(t) {
         calls.push({ module, recordId, fields });
         return { status: "success", details: { id: recordId } };
       },
+      getRecord: async (module, recordId) => ({
+        id: recordId,
+        ...Object.assign({}, ...calls.filter((call) => call.module === module && call.recordId === recordId)
+          .map((call) => call.fields)),
+      }),
     },
   };
 }
@@ -111,6 +116,25 @@ test("Deals-only synchronization reports a missing Matter link without attemptin
   assert.equal(calls, 0);
 });
 
+test("main applicant details cannot succeed by updating only questionnaire status", async () => {
+  const { client, calls } = zohoMock();
+  const result = await synchronizeQuestionnaireCrm({
+    application: { id: "app-1", zohoId: "deal-1" },
+    definition,
+    draft: {},
+    mode: "page",
+    pageId: "main-details",
+    profileId: "main-1",
+  }, {
+    zoho: client,
+    flags: { enabled: true, dryRun: false },
+    dealsOnly: true,
+  });
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "no_matter_answer_fields");
+  assert.equal(calls.length, 0);
+});
+
 test("Deals-only sync retries valid fields when Zoho identifies one rejected field", async () => {
   const writes = [];
   const result = await synchronizeQuestionnaireCrm({
@@ -135,6 +159,7 @@ test("Deals-only sync retries valid fields when Zoho identifies one rejected fie
         }
         return { status: "success", details: { id: recordId } };
       },
+      getRecord: async (module, recordId) => ({ id: recordId, ...writes.at(-1).fields }),
     },
     flags: { enabled: true, dryRun: false },
     dealsOnly: true,
@@ -146,6 +171,42 @@ test("Deals-only sync retries valid fields when Zoho identifies one rejected fie
   assert.equal(writes[1].fields.Country_of_Birth, undefined);
   assert.equal(writes[1].fields.Family_Name, "Lovelace");
   assert.ok(result.summary.attention.some((item) => item.fieldApiName === "Country_of_Birth" && item.skipReason === "zoho_rejected_field"));
+});
+
+test("Deals-only sync does not report success until the Matter contains the saved value", async () => {
+  const { client, calls } = zohoMock();
+  const input = {
+    application: { id: "app-1", zohoId: "deal-1" },
+    definition,
+    draft: {
+      profiles: [{ id: "main-1", relationship: "main_applicant" }],
+      profiles_data: { "main-1": { details: { family_name: "Lovelace" } } },
+    },
+    mode: "page",
+    pageId: "main-details",
+    profileId: "main-1",
+  };
+  const jobs = [];
+  const deps = {
+    zoho: client,
+    flags: { enabled: true, dryRun: false },
+    dealsOnly: true,
+    persistJob: async (job) => jobs.push(job),
+  };
+  client.getRecord = async () => ({ id: "deal-1", Family_Name: null });
+  const unverified = await synchronizeQuestionnaireCrm(input, deps);
+  assert.equal(unverified.success, false);
+  assert.equal(unverified.error.code, "zoho_readback_mismatch");
+  assert.equal(unverified.summary.succeeded.length, 0);
+
+  client.getRecord = async () => ({ id: "deal-1", ...calls.at(-1).fields });
+  const verified = await synchronizeQuestionnaireCrm(input, {
+    ...deps,
+    existingJob: { ...jobs.at(-1), state: "succeeded" },
+  });
+  assert.equal(verified.success, true);
+  assert.equal(verified.idempotent, undefined);
+  assert.equal(calls.length, 2);
 });
 
 test("writes grouped Zoho payloads from saved answers", async () => {

@@ -91,13 +91,14 @@ function normalizeLoadedDefinition(definition) {
   );
 }
 
-function syncHttpResponse(result) {
+function syncHttpResponse(result, application) {
+  const matterId = application?.zohoId ? String(application.zohoId) : null;
   if (result.skipped) {
-    return { httpStatus: 200, body: { success: true, ...result } };
+    return { httpStatus: 200, body: { success: true, ...result, matterId } };
   }
   return {
     httpStatus: result.success ? 200 : 502,
-    body: { success: result.success, ...result },
+    body: { success: result.success, ...result, matterId },
   };
 }
 
@@ -116,7 +117,13 @@ export async function runQuestionnaireCrmSyncWithClient({
   flags,
   now,
 }) {
-  const draft = await client.getDocument(`applications/${application.id}/data/questionnaire`) || {};
+  const draft = await client.getDocument(`applications/${application.id}/data/questionnaire`);
+  if (!draft) {
+    return {
+      httpStatus: 409,
+      body: { success: false, error: { code: "questionnaire_draft_not_found", message: "No saved questionnaire was found" } },
+    };
+  }
   const definition = await loadPublishedDefinitionWithClient(client, application, draft);
   if (!definition) {
     return {
@@ -128,7 +135,7 @@ export async function runQuestionnaireCrmSyncWithClient({
     { application, draft, definition, mode, pageId, profileId },
     { zoho, flags: flags || getCrmSyncFlags(), dealsOnly: true, now },
   );
-  return syncHttpResponse(result);
+  return syncHttpResponse(result, application);
 }
 
 export async function runQuestionnaireCrmSync({
@@ -146,7 +153,13 @@ export async function runQuestionnaireCrmSync({
     return { httpStatus: 200, body: { success: true, skipped: true, reason: "feature_disabled" } };
   }
   const draftSnap = await db.collection("applications").doc(application.id).collection("data").doc("questionnaire").get();
-  const draft = draftSnap.exists ? draftSnap.data() : {};
+  if (!draftSnap.exists) {
+    return {
+      httpStatus: 409,
+      body: { success: false, error: { code: "questionnaire_draft_not_found", message: "No saved questionnaire was found" } },
+    };
+  }
+  const draft = draftSnap.data();
   const definition = await loadPublishedDefinition(db, application, draft);
   if (!definition) {
     return {
@@ -208,5 +221,5 @@ export async function runQuestionnaireCrmSync({
     },
   );
 
-  return syncHttpResponse(result);
+  return syncHttpResponse(result, application);
 }
