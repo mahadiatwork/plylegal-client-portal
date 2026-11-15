@@ -52,11 +52,24 @@ test("Firebase synchronization waits for the restored user before requesting a t
   process.env.NEXT_PUBLIC_DATABASE_TYPE = "firebase";
   auth.currentUser = null;
   auth.authStateReady = async () => { auth.currentUser = { getIdToken: async () => "signed-token" }; };
-  t.mock.method(globalThis, "fetch", async (_url, options) => {
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    assert.equal(url, "/api/intake/crm-sync");
+    assert.equal(options.method, "POST");
     assert.equal(options.headers.Authorization, "Bearer signed-token");
+    assert.deepEqual(JSON.parse(options.body), {
+      applicationId: "_app-1",
+      mode: "page",
+      pageId: "main-details",
+      profileId: "profile-1",
+    });
     return { ok: true, json: async () => ({ success: true, state: "succeeded" }) };
   });
-  const result = await requestQuestionnaireCrmSync({ applicationId: "app-1", mode: "full" });
+  const result = await requestQuestionnaireCrmSync({
+    applicationId: "_app-1",
+    mode: "page",
+    pageId: "main-details",
+    profileId: "profile-1",
+  });
   assert.equal(result.success, true);
 });
 

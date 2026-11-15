@@ -71,6 +71,24 @@ test("request body cannot choose Zoho module, record, field, or answer values", 
   });
 });
 
+test("CRM sync accepts Nano ID application IDs and rejects unsafe document paths", () => {
+  for (const applicationId of ["_app-1", "-app_1", "app-1", "a".repeat(128)]) {
+    assert.deepEqual(parseCrmSyncRequestBody({ applicationId, mode: "full" }), {
+      applicationId,
+      mode: "full",
+      pageId: null,
+      profileId: null,
+    });
+  }
+
+  for (const applicationId of ["", " ", "/app", "app/other", "../app", "app\\other", "app%2Fother", "app id", "app\nother", "a".repeat(129)]) {
+    assert.deepEqual(parseCrmSyncRequestBody({ applicationId, mode: "full" }), {
+      error: "A valid applicationId is required",
+      status: 400,
+    });
+  }
+});
+
 test("writes grouped Zoho payloads from saved answers", async () => {
   const { calls, client } = zohoMock();
   const jobs = [];

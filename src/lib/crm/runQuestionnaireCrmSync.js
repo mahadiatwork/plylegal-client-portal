@@ -11,6 +11,8 @@ import { synchronizeQuestionnaireCrm } from "./questionnaireSync.js";
 import { PARTNER_SUBCLASS_CODES } from "../visaDisplay.js";
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+// Applications use Nano ID's URL-safe alphabet, including a leading _ or -.
+const SAFE_APPLICATION_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 export function parseCrmSyncRequestBody(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -20,7 +22,7 @@ export function parseCrmSyncRequestBody(body) {
   const mode = String(body.mode || "").trim();
   const pageId = body.pageId == null || body.pageId === "" ? null : String(body.pageId).trim();
   const profileId = body.profileId == null || body.profileId === "" ? null : String(body.profileId).trim();
-  if (!applicationId || applicationId.includes("/") || !SAFE_ID.test(applicationId)) {
+  if (!SAFE_APPLICATION_ID.test(applicationId)) {
     return { error: "A valid applicationId is required", status: 400 };
   }
   if (mode !== "page" && mode !== "full") {

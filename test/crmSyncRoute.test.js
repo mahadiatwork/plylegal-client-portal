@@ -57,7 +57,7 @@ test("another client's application cannot be synchronized", async (t) => {
     return { uid: "owner-1" };
   });
   t.mock.method(globalThis, "fetch", async (url) => {
-    if (String(url).includes("applications/other-app")) {
+    if (["other-app", "_other-app", "-other-app"].some((id) => String(url).includes(`applications/${id}`))) {
       return {
         ok: true,
         status: 200,
@@ -66,8 +66,10 @@ test("another client's application cannot be synchronized", async (t) => {
     }
     return { ok: false, status: 404, json: async () => ({}) };
   });
-  const response = await POST(request({ applicationId: "other-app", mode: "full" }, "signed-client-token"));
-  assert.equal(response.status, 403);
+  for (const applicationId of ["other-app", "_other-app", "-other-app"]) {
+    const response = await POST(request({ applicationId, mode: "full" }, "signed-client-token"));
+    assert.equal(response.status, 403);
+  }
   assert.equal(globalThis.__crmSyncZohoConstructed, undefined);
 });
 
@@ -97,7 +99,11 @@ test("disabled CRM synchronization does not require an admin Firestore connectio
   assert.deepEqual(await response.json(), { success: true, skipped: true, reason: "feature_disabled" });
 });
 
-test("the published 482 definition synchronizes page and full requests through the route", async (t) => {
+for (const applicationId of ["_app-1", "-app-1"]) {
+  test(`the published 482 definition synchronizes ${applicationId} through the route`, (t) => verifyPublishedSync(t, applicationId));
+}
+
+async function verifyPublishedSync(t, applicationId) {
   const previous = { ...process.env };
   const oldDatabase = globalThis.__crmSyncTestDatabase;
   const oldZoho = globalThis.__crmSyncTestZoho;
@@ -112,7 +118,7 @@ test("the published 482 definition synchronizes page and full requests through t
   process.env.CRM_QUESTIONNAIRE_SYNC_DRY_RUN = "false";
   const definition = JSON.parse(readFileSync(new URL("../e2e/fixtures/built-in-temporary-work-482.json", import.meta.url), "utf8"));
   const documents = new Map([
-    ["applications/app-1/data/questionnaire", {
+    [`applications/${applicationId}/data/questionnaire`, {
       visaContext: "482",
       profiles: [{ id: "main-1", relationship: "main_applicant", given_names: "Ada", family_name: "Lovelace" }],
       profiles_data: { "main-1": { details: { given_names: "Ada", family_name: "Lovelace" } } },
@@ -157,19 +163,24 @@ test("the published 482 definition synchronizes page and full requests through t
     },
   };
   t.mock.method(getFirebaseIdentityAuth(), "verifyIdToken", async () => ({ uid: "owner-1" }));
-  t.mock.method(globalThis, "fetch", async () => ({
-    ok: true,
-    status: 200,
-    json: async () => ({ fields: {
-      userId: { stringValue: "owner-1" },
-      zohoId: { stringValue: "deal-1" },
-      visaTypeCode: { stringValue: "temporary-work" },
-    } }),
-  }));
+  t.mock.method(globalThis, "fetch", async (url) => {
+    assert.ok(String(url).endsWith(`/applications/${applicationId}`));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ fields: {
+        userId: { stringValue: "owner-1" },
+        // The authorized document path, not a mutable stored field, determines the application ID.
+        id: { stringValue: "different-app" },
+        zohoId: { stringValue: "deal-1" },
+        visaTypeCode: { stringValue: "temporary-work" },
+      } }),
+    };
+  });
 
   for (const body of [
-    { applicationId: "app-1", mode: "page", pageId: "temporary-work-main-applicant-details", profileId: "main-1" },
-    { applicationId: "app-1", mode: "full" },
+    { applicationId, mode: "page", pageId: "temporary-work-main-applicant-details", profileId: "main-1" },
+    { applicationId, mode: "full" },
   ]) {
     const response = await POST(request(body, "signed-client-token"));
     const payload = await response.json();
@@ -179,17 +190,17 @@ test("the published 482 definition synchronizes page and full requests through t
     assert.equal(payload.summary.skipped.some((item) => item.questionId.endsWith("-heading")), false);
   }
   assert.ok(updates.some((update) => update.module === "Deals"));
-  const completedJobs = [...documents.entries()].filter(([key, value]) => key.includes("/crmSync/") && value.state === "succeeded");
+  const completedJobs = [...documents.entries()].filter(([key, value]) => key.startsWith(`applications/${applicationId}/crmSync/`) && value.state === "succeeded");
   assert.equal(completedJobs.length, 2);
 
   // A real upstream failure remains visible, and retrying the same saved
   // answers completes the existing job once the upstream service recovers.
-  documents.get("applications/app-1/data/questionnaire").profiles_data["main-1"].details.family_name = "Byron";
+  documents.get(`applications/${applicationId}/data/questionnaire`).profiles_data["main-1"].details.family_name = "Byron";
   const originalUpdate = globalThis.__crmSyncTestZoho.updateRecord;
   globalThis.__crmSyncTestZoho.updateRecord = async () => {
     throw Object.assign(new Error("service unavailable"), { code: "TEMPORARY_ERROR" });
   };
-  const retryBody = { applicationId: "app-1", mode: "page", pageId: "temporary-work-main-applicant-details", profileId: "main-1" };
+  const retryBody = { applicationId, mode: "page", pageId: "temporary-work-main-applicant-details", profileId: "main-1" };
   const failedResponse = await POST(request(retryBody, "signed-client-token"));
   const failed = await failedResponse.json();
   assert.equal(failedResponse.status, 502);
@@ -201,5 +212,5 @@ test("the published 482 definition synchronizes page and full requests through t
   assert.equal(retryResponse.status, 200);
   assert.equal(retried.state, "succeeded");
   assert.equal(retried.jobId, failed.jobId);
-  assert.equal(documents.get(`applications/app-1/crmSync/${failed.jobId}`).attemptCount, 2);
-});
+  assert.equal(documents.get(`applications/${applicationId}/crmSync/${failed.jobId}`).attemptCount, 2);
+}

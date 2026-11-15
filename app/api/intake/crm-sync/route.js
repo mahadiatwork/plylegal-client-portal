@@ -43,7 +43,8 @@ export async function POST(request) {
 
     const result = await runQuestionnaireCrmSync({
       db: database.db,
-      application: { id: parsed.applicationId, ...application },
+      // Use the document ID whose ownership was verified, even if its data contains an id field.
+      application: { ...application, id: parsed.applicationId },
       authUid: auth.uid,
       authEmail: auth.email || null,
       mode: parsed.mode,
