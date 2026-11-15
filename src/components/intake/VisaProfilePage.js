@@ -39,6 +39,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useNavigationLoading } from "@/components/NavigationLoadingProvider";
+import { useDialogs } from "@/components/ui/confirm-dialog";
 import { QuestionnaireCopyText, useQuestionnaireCopy } from "@/components/questionnaire/QuestionnaireCopyContext";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -518,6 +519,7 @@ export default function VisaProfilePage({
   const authSnap = useSnapshot(authStore);
   const appsSnap = useSnapshot(applicationsStore);
   const { toast } = useToast();
+  const { confirm } = useDialogs();
   const copyBody = useQuestionnaireCopy("body");
   const copyIntro = useQuestionnaireCopy("intro");
   const copyAddLabel = useQuestionnaireCopy("labels", "applicants.presentation.addLabel");
@@ -651,12 +653,15 @@ export default function VisaProfilePage({
       ? `${currentPrimary.given_names} ${currentPrimary.family_name}`.trim() || "the current primary applicant"
       : "the current primary applicant";
 
-    if (typeof window !== "undefined") {
-      const confirmed = window.confirm(
-        `Make ${profileName} the primary applicant? ${currentPrimaryName} will become the spouse/partner and both applicants' role-based sections will need review.`
-      );
-      if (!confirmed) return;
-    }
+    const confirmed = await confirm({
+      tone: "warning",
+      title: "Change the primary applicant?",
+      description: `${profileName} will become the primary applicant and ${currentPrimaryName} will become the spouse or partner.`,
+      details: ["Both applicants’ role-based sections will need review."],
+      cancelLabel: "Keep current applicant",
+      confirmLabel: "Make primary applicant",
+    });
+    if (!confirmed) return;
 
     setSettingPrimaryId(profile.id);
     try {

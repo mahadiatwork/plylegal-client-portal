@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthGuard } from "@/components/AuthGuard";
 import { NavigationLoadingProvider } from "@/components/NavigationLoadingProvider";
+import { DialogProvider } from "@/components/ui/confirm-dialog";
 
 export function Providers({ children }) {
   return (
@@ -12,7 +13,7 @@ export function Providers({ children }) {
       <ThemeProvider defaultTheme="light" storageKey="ply-theme">
         <AuthGuard>
           <NavigationLoadingProvider>
-            {children}
+            <DialogProvider>{children}</DialogProvider>
           </NavigationLoadingProvider>
         </AuthGuard>
       </ThemeProvider>
