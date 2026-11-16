@@ -22,6 +22,7 @@ import {
   isQuestionnaireCompletionStampCurrent,
 } from "./questionnaires/answers.js";
 import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
+import { buildDefinitionNavigation, getIncludedGroupKeys, isDefinitionNavigation } from "./questionnaires/navigation.js";
 import {
   getHistoryDate as parseResidenceDate,
   getResidenceApplicants,
@@ -756,11 +757,12 @@ function getTemporaryWorkValidationPageKeys(draft, visaContext) {
   return pageKeys;
 }
 
-function appendTemporaryWorkValidationIssues(items, draft, visaContext, resolveDynamicPage = () => null) {
+function appendTemporaryWorkValidationIssues(items, draft, visaContext, resolveDynamicPage = () => null, includePageKey = () => true) {
   const itemSet = new Set(items);
   const addIssue = (label) => addValidationIssue(items, itemSet, label);
 
   getTemporaryWorkValidationPageKeys(draft, visaContext).forEach((pageKey) => {
+    if (!includePageKey(pageKey)) return;
     if (resolveDynamicPage(pageKey)) return;
     const result = validateTemporaryWorkSectionCompletion({ draft, visaContext, pageKey });
     if (!result.applicable || result.complete) return;
@@ -852,6 +854,43 @@ export function getIncompleteChecklist({
     if (legacyPerMemberKey && completion[legacyPerMemberKey] === true) return;
     items.push(label);
   };
+
+  // Definition-driven questionnaires: only the included groups / sections are required.
+  // Answers saved for excluded groups stay in the draft but never block submission.
+  if (isDefinitionNavigation(questionnaireDefinition)) {
+    const navigation = buildDefinitionNavigation(questionnaireDefinition, { draft, visaType });
+    const includedKeys = new Set(navigation.progressSteps.map((step) => step.completionKey));
+    const groups = new Set(getIncludedGroupKeys(questionnaireDefinition));
+    navigation.progressSteps.forEach((step) => addIncomplete(step.completionKey, step.checklistLabel));
+    if (!(draft.profiles || []).some((profile) => profile.relationship === "main_applicant")) {
+      items.push("Included Applicants: Add the main applicant");
+    }
+    if (visaType === "temporary-work") {
+      appendTemporaryWorkValidationIssues(
+        items,
+        draft,
+        visaContext,
+        resolveDynamicPage,
+        (pageKey) => includedKeys.has(pageKey) || includedKeys.has(pageKey.split("__")[0]),
+      );
+    } else {
+      const legacyPageIsActive = (route) => {
+        const page = findQuestionnaireDefinitionPage(questionnaireDefinition, route);
+        return Boolean(page && page.metadata?.renderer === "legacy");
+      };
+      const hasMainIdentityStep = navigation.progressSteps.some(
+        (step) => step.completionKey?.split("__")[0] === `${visaType}/main-applicant/identity`,
+      );
+      if (hasMainIdentityStep && !resolveDynamicPage(`${visaType}/main-applicant/identity`)) {
+        appendMainApplicantIdentityValidationIssues(items, draft, visaType);
+      }
+      const skipRelationships = new Set();
+      if (!groups.has("spouse-partner") || !legacyPageIsActive(`/intake/${visaType}/spouse-partner/details`)) skipRelationships.add("spouse");
+      if (!groups.has("children") || !legacyPageIsActive(`/intake/${visaType}/children/child-profile/details`)) skipRelationships.add("child");
+      items.push(...getTargetPersonalDetailsIssues(visaType, draft, { skipRelationships }));
+    }
+    return items;
+  }
 
   if (visaType !== "temporary-work") {
     getTargetVisaPages(visaType, draft).forEach((page) => {

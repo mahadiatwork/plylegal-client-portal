@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSnapshot } from "valtio";
-import { draftStore } from "@/stores/draftStore";
+import { draftStore, isCompletionKeyComplete } from "@/stores/draftStore";
 import { applicationsStore, authStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -54,6 +54,8 @@ import {
   getIntakeSlugForContext,
   getIntakeSlugFromPathname,
   getVisaTypeFromPath,
+  getActiveDefinitionNavigation,
+  setActiveNavigationDefinition,
   PARTNER_MAIN_APPLICANT_PROFILE_SUBPAGES,
   PARTNER_SPOUSE_PROFILE_SUBPAGES,
   PARTNER_CHILD_PROFILE_SUBPAGES,
@@ -72,6 +74,7 @@ import { getApplicationIdFromSearchParams, getProfileIdFromSearchParams } from "
 import { getApplicationSlug, normalizeApplicationSlug } from "@/lib/visaDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { DynamicQuestionnaireOverride } from "@/components/questionnaire/DynamicQuestionnaireOverride";
+import { DefinitionNavigation } from "@/components/questionnaire/DefinitionNavigation";
 
 export default function IntakeLayout({ children }) {
   const pathname = usePathname();
@@ -92,6 +95,9 @@ export default function IntakeLayout({ children }) {
   const [mounted, setMounted] = useState(false);
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [deletingNmfId, setDeletingNmfId] = useState(null);
+  // The active questionnaire definition, lifted out of DynamicQuestionnaireOverride so the sidebar,
+  // Next/Previous and progress can follow it when it opts in to definition-driven navigation.
+  const [activeDefinition, setActiveDefinition] = useState(null);
   const mobileActiveTabRef = React.useRef(null);
   const internalPathname = getInternalIntakeHref(pathname).split("?")[0];
   const visaType = getVisaTypeFromPath(pathname);
@@ -212,6 +218,11 @@ export default function IntakeLayout({ children }) {
   }, [pathname, rawPathSlug, appIdFromUrl, pathSlug, subclassFromQuery, visaType, currentApp, draftSnap.visaContext, internalPathname, searchParams, router]);
 
   const INTAKE_ROUTES = getIntakeRoutes(visaType, draftSnap.visaContext);
+
+  // Register the definition before anything reads routes / progress during this render.
+  setActiveNavigationDefinition(activeDefinition);
+  const definitionNavigation = getActiveDefinitionNavigation(visaType);
+  useEffect(() => () => setActiveNavigationDefinition(null), []);
 
   // Get real completion data from draftStore
   const completionData = draftSnap.completionStatus || {};
@@ -418,6 +429,19 @@ export default function IntakeLayout({ children }) {
 
             {/* Stepper Navigation List */}
             <ScrollArea className="h-[calc(100dvh-280px)] pr-2">
+              {definitionNavigation ? (
+                <DefinitionNavigation
+                  navigation={definitionNavigation}
+                  internalPathname={internalPathname}
+                  activeProfileId={effectiveProfileId}
+                  isComplete={(key) => isCompletionKeyComplete(completionData, key)}
+                  onNavigate={(step) => {
+                    navPush(buildHref(step.href.split("?")[0], step.profileId && step.groupKey !== "children" && step.groupKey !== "non-migrating" ? { profileId: step.profileId } : {}));
+                    setMobileMenuOpen(false);
+                    if (step.profileId && step.groupKey !== "non-migrating") draftStore.setActiveProfile(step.profileId);
+                  }}
+                />
+              ) : (
               <nav className="space-y-1 pt-1" aria-label="Questionnaire Sections">
                 {INTAKE_ROUTES.map((route) => {
                   const hasSubpages = route.subpages && route.subpages.length > 0;
@@ -892,6 +916,7 @@ export default function IntakeLayout({ children }) {
                   }
                 })}
               </nav>
+              )}
             </ScrollArea>
           </aside>
 
@@ -903,6 +928,7 @@ export default function IntakeLayout({ children }) {
                 route={internalPathname}
                 visaContext={resolvedVisaContext}
                 visaType={visaType}
+                onDefinitionChange={setActiveDefinition}
               >
                 {children}
               </DynamicQuestionnaireOverride>

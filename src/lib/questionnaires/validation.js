@@ -85,6 +85,37 @@ function isSafeDataKey(value) {
   return !RESERVED_DATA_KEYS.has(value.trim().toLocaleLowerCase("en"));
 }
 
+const SUPPORTED_NAVIGATION_GROUPS = new Set([
+  "main-applicant",
+  "spouse-partner",
+  "children",
+  "non-migrating",
+  "family-sponsor",
+  "relationships",
+  "all-applicants",
+  "shared",
+]);
+
+function validateNavigation(definition, issues) {
+  if (definition.navigation === undefined) return;
+  const navigation = definition.navigation;
+  if (!isPlainObject(navigation)) {
+    issues.push("definition.navigation must be an object");
+    return;
+  }
+  if (navigation.mode !== "definition") issues.push('definition.navigation.mode must be "definition"');
+  if (!Array.isArray(navigation.groups)) {
+    issues.push("definition.navigation.groups must be an array");
+    return;
+  }
+  const seen = new Set();
+  navigation.groups.forEach((group, index) => {
+    if (!SUPPORTED_NAVIGATION_GROUPS.has(group)) issues.push(`definition.navigation.groups[${index}] "${group}" is unsupported`);
+    else if (seen.has(group)) issues.push(`definition.navigation.groups[${index}] "${group}" is duplicated`);
+    seen.add(group);
+  });
+}
+
 function validateVisaContexts(definition, issues) {
   if (definition.visaContext !== undefined && !isNonEmptyString(definition.visaContext)) {
     issues.push("definition.visaContext must be a non-empty string when provided");
@@ -585,6 +616,7 @@ export function getQuestionnaireDefinitionIssues(definition) {
     issues.push("definition.revision must be a non-negative integer");
   }
   validateVisaContexts(definition, issues);
+  validateNavigation(definition, issues);
 
   if (!Array.isArray(definition.pages)) {
     issues.push("definition.pages must be an array");

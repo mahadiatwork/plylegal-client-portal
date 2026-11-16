@@ -4,7 +4,8 @@ import { proxy } from "valtio";
 import { getTargetVisaProgress } from "@/lib/targetVisaPages";
 import { getAdapter } from "@/lib/adapters";
 import { dedupeInFlight } from "@/lib/draftSync";
-import { getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
+import { getActiveDefinitionNavigation, getAllRoutes, getIntakeRoutes, setProfilesGetter, setNonMigratingMembersGetter } from "@/lib/routes";
+import { getDefinitionNavigationProgress } from "@/lib/questionnaires/navigation";
 import { validateTemporaryWorkSectionCompletion } from "@/lib/submitCompletion";
 import { DYNAMIC_QUESTIONNAIRE_COMPLETIONS_KEY } from "@/lib/questionnaires/answers";
 import { authStore } from "./authStore";
@@ -410,7 +411,7 @@ function getCompletionKeyFromTemporaryWorkRoute(route) {
   return baseKey;
 }
 
-function isCompletionKeyComplete(completionStatus, key) {
+export function isCompletionKeyComplete(completionStatus, key) {
   if (Object.prototype.hasOwnProperty.call(completionStatus || {}, key)) {
     return completionStatus?.[key] === true;
   }
@@ -1855,6 +1856,11 @@ export const draftStore = proxy({
 
   // Get completion percentage
   getCompletionPercentage() {
+    // Definition-driven questionnaires count only the steps the definition includes.
+    const definitionNavigation = getActiveDefinitionNavigation();
+    if (definitionNavigation) {
+      return getDefinitionNavigationProgress(definitionNavigation, (key) => isCompletionKeyComplete(this.completionStatus, key));
+    }
     const application = applicationsStore.applications.find((app) => String(app.id) === String(this.currentApplicationId));
     if (["partner", "protection"].includes(application?.visaTypeCode)) {
       return getTargetVisaProgress(application.visaTypeCode, this.draft, this.completionStatus);

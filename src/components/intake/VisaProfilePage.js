@@ -6,7 +6,9 @@ import { draftStore } from "@/stores/draftStore";
 import { authStore } from "@/stores";
 import { applicationsStore } from "@/stores/applicationsStore";
 import { useToast } from "@/hooks/use-toast";
-import { buildIntakeHref, getApplicationIdFromPathname, getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { buildIntakeHref, getActiveDefinitionNavigation, getApplicationIdFromPathname, getNextRoute, getVisaTypeFromPath } from "@/lib/routes";
+import { getAllowedProfileRelationships } from "@/lib/questionnaires/navigation";
+import { useActiveQuestionnaireDefinition } from "@/components/questionnaire/DynamicQuestionnaireOverride";
 import { getApplicationIdFromSearchParams } from "@/lib/intakeQueryParams";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -525,6 +527,9 @@ export default function VisaProfilePage({
   const copyAddLabel = useQuestionnaireCopy("labels", "applicants.presentation.addLabel");
   const copyEmptyMessage = useQuestionnaireCopy("labels", "applicants.presentation.emptyMessage");
   const copyRelationship = useQuestionnaireCopy("labels", "applicants.relationship");
+  // A definition-driven questionnaire only collects the people its included groups cover.
+  const activeDefinition = useActiveQuestionnaireDefinition();
+  const allowedRelationships = getAllowedProfileRelationships(activeDefinition);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
@@ -782,7 +787,7 @@ export default function VisaProfilePage({
 
     // For temporary-work, include profileId in the continue URL
     // For partner/protection, navigate to the next route without profileId
-    if (visaType === "temporary-work") {
+    if (visaType === "temporary-work" && !getActiveDefinitionNavigation(visaType)) {
       const next = buildIntakeHref({
         appId,
         internalHref: continueHref,
@@ -1031,9 +1036,13 @@ export default function VisaProfilePage({
         editingProfile={editingProfile}
         hasMainApplicant={hasMainApplicant}
         mainApplicantPrefill={mainApplicantPrefill}
-        availableCrmDependents={availableCrmDependents}
+        availableCrmDependents={allowedRelationships
+          ? availableCrmDependents.filter((dep) => allowedRelationships.has(crmRelToProfileRel(dep.relationship)))
+          : availableCrmDependents}
         isSaving={isProfileSaving}
-        relationships={relationships}
+        relationships={allowedRelationships
+          ? relationships.filter((option) => allowedRelationships.has(option.value) || option.value === editingProfile?.relationship)
+          : relationships}
       />
     </div>
   );

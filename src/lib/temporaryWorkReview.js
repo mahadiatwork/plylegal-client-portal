@@ -14,6 +14,11 @@ import {
 import { TEMPORARY_WORK_CHARACTER_QUESTIONS } from "./questionnaires/temporaryWork482.definition.js";
 import { applyLegacyQuestionnaireReviewCopy } from "./questionnaires/legacyCopy.js";
 import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
+import {
+  buildDefinitionNavigation,
+  getAllowedProfileRelationships,
+  isDefinitionNavigation,
+} from "./questionnaires/navigation.js";
 
 const PROFILE_RELATIONSHIP_ORDER = {
   main_applicant: 0,
@@ -830,6 +835,56 @@ function buildNonMigratingSections(draft, context, options, questionnaireDefinit
   return [indexSection, ...memberSections];
 }
 
+/**
+ * Review summary of a definition-driven questionnaire: exactly the sections it includes, in its
+ * own order (including administrator-created sections). Answers saved for excluded groups stay
+ * in the draft but are not shown.
+ */
+function buildDefinitionReviewSections({ draft, profiles, context, options, questionnaireDefinition }) {
+  const allowed = getAllowedProfileRelationships(questionnaireDefinition);
+  const includedProfiles = profiles.filter((profile) => allowed.has(profile.relationship));
+  const navigation = buildDefinitionNavigation(questionnaireDefinition, { draft, visaType: "temporary-work" });
+  const sections = [];
+  const rosterSection = buildApplicantRosterSection(includedProfiles, options);
+  if (rosterSection) sections.push(rosterSection);
+
+  navigation.steps.filter((step) => step.kind === "page").forEach((step) => {
+    const page = step.page;
+    const isMember = step.groupKey === "non-migrating";
+    const savedValues = isMember
+      ? getQuestionnairePageSavedValues(draft, page, null, step.profileId)
+      : step.profile
+        ? getQuestionnairePageSavedValues(draft, page, step.profileId)
+        : getQuestionnairePageSavedValues(draft, page);
+    const items = page.metadata?.renderer !== "legacy"
+      ? getQuestionnairePageReviewItems(page, savedValues, context)
+      : applyLegacyQuestionnaireReviewCopy(
+        buildItemsFromObject(
+          step.profile ? getProfileSectionData(draft, step.profile, page.sectionKey) : draft?.[page.sectionKey],
+          context,
+        ),
+        page,
+      );
+    if (items.length === 0) return;
+    const person = step.profile || step.member;
+    const personName = step.profile
+      ? getProfileName(step.profile)
+      : [step.member?.passport?.given_names, step.member?.passport?.family_name].filter(Boolean).join(" ");
+    sections.push({
+      id: `${slugify(step.groupKey)}-${slugify(person?.id || "shared")}-${slugify(page.sectionKey || page.id)}`,
+      title: person ? `${step.title} - ${getRelationshipLabel(step.profile?.relationship || "other")}` : step.title,
+      subtitle: personName || undefined,
+      editHref: buildHref({
+        ...options,
+        internalHref: step.href.split("?")[0],
+        profileId: step.profile && step.groupKey !== "children" ? step.profileId : undefined,
+      }),
+      items,
+    });
+  });
+  return sections;
+}
+
 export function buildTemporaryWorkReviewSections({
   draft = {},
   visaContext = null,
@@ -847,6 +902,9 @@ export function buildTemporaryWorkReviewSections({
   const context = {
     applicantNamesById: buildApplicantNameMap(profiles),
   };
+  if (isDefinitionNavigation(questionnaireDefinition)) {
+    return buildDefinitionReviewSections({ draft, profiles, context, options, questionnaireDefinition });
+  }
   const sections = [];
   const dynamicPagesByRoute = new Map(
     (questionnaireDefinition?.pages || []).map((page) => [page.route, page])

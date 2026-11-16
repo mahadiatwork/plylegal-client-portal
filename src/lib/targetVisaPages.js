@@ -8,13 +8,25 @@ import {
   PROTECTION_MAIN_APPLICANT_PROFILE_SUBPAGES,
   PROTECTION_SPOUSE_PROFILE_SUBPAGES,
 } from "./routes.js";
+import { buildDefinitionNavigation, isDefinitionNavigation } from "./questionnaires/navigation.js";
 
 const ROLE_LABELS = { main_applicant: "Main Applicant", spouse: "Spouse/Partner", child: "Child" };
 
 // Keep completion and review scoped to the people actually included in this matter.
 // The static route list also contains old children-index and absent-spouse routes.
-export function getTargetVisaPages(visaType, draft = {}) {
+export function getTargetVisaPages(visaType, draft = {}, questionnaireDefinition = null) {
   if (!["partner", "protection"].includes(visaType)) return [];
+  // A definition-driven questionnaire lists exactly its own included sections.
+  if (isDefinitionNavigation(questionnaireDefinition)) {
+    return buildDefinitionNavigation(questionnaireDefinition, { draft, visaType }).progressSteps.map((step) => ({
+      href: step.href.split("?")[0],
+      title: step.checklistLabel,
+      key: step.completionKey,
+      ...(step.profileId ? { profileId: step.profileId, profile: step.profile, member: step.member } : {}),
+      section: step.href.split("?")[0].split("/").pop(),
+      allowLegacyCompletion: false,
+    }));
+  }
   const pages = [];
   const add = (href, title, extra = {}) => {
     const key = href.replace("/intake/", "");
@@ -71,8 +83,8 @@ export function isTargetVisaPageComplete(page, completion = {}) {
   return page.allowLegacyCompletion !== false && completion[page.href.replace("/intake/", "")] === true;
 }
 
-export function getTargetVisaProgress(visaType, draft, completion) {
-  const pages = getTargetVisaPages(visaType, draft);
+export function getTargetVisaProgress(visaType, draft, completion, questionnaireDefinition = null) {
+  const pages = getTargetVisaPages(visaType, draft, questionnaireDefinition);
   const completed = pages.filter((page) => isTargetVisaPageComplete(page, completion)).length;
   return { completed, total: pages.length, percentage: pages.length ? Math.round(completed / pages.length * 100) : 0 };
 }

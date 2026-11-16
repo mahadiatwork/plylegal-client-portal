@@ -1,4 +1,5 @@
 import { normalizeApplicationSlug, PARTNER_PUBLIC_SLUG, PROTECTION_PUBLIC_SLUG } from "./visaDisplay.js";
+import { buildDefinitionNavigation, isDefinitionNavigation } from "./questionnaires/navigation.js";
 
 function getInternalIntakePrefixForSlug(slug) {
   const normalizedSlug = normalizeApplicationSlug(slug);
@@ -319,6 +320,36 @@ export function setNonMigratingMembersGetter(getter) {
   nonMigratingMembersGetter = getter;
 }
 
+// ── Definition-driven navigation ──
+// When the active questionnaire definition opts in (`navigation.mode === "definition"`), the
+// intake layout registers it here and every route consumer (Next/Previous, progress, the
+// sidebar) follows the definition instead of the hard-coded tables in this file.
+let activeNavigationDefinition = null;
+
+export function setActiveNavigationDefinition(definition) {
+  activeNavigationDefinition = isDefinitionNavigation(definition) ? definition : null;
+}
+
+/** Navigation model for the registered definition, built from the live draft; null in legacy mode. */
+export function getActiveDefinitionNavigation(visaType = activeNavigationDefinition?.visaType) {
+  if (!activeNavigationDefinition) return null;
+  if (visaType && activeNavigationDefinition.visaType && visaType !== activeNavigationDefinition.visaType) return null;
+  return buildDefinitionNavigation(activeNavigationDefinition, {
+    draft: { profiles: profilesGetter(), non_migrating_members: nonMigratingMembersGetter() },
+    visaType: activeNavigationDefinition.visaType,
+  });
+}
+
+/** Position of an href in a definition route list. */
+function findDefinitionRouteIndex(routes, currentHref) {
+  const [pathOnly, query = ""] = getInternalIntakeHref(currentHref).split("?", 2);
+  const profileId = new URLSearchParams(query).get("profileId")
+    || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("profileId") : null);
+  const withProfile = profileId ? routes.indexOf(`${pathOnly}?profileId=${encodeURIComponent(profileId)}`) : -1;
+  if (withProfile >= 0) return withProfile;
+  const byPath = routes.map((route, index) => ({ route, index })).filter(({ route }) => route.split("?")[0] === pathOnly);
+  return byPath.length ? byPath[0].index : -1;
+}
 
 export function getIntakeSlugFromPathname(pathname) {
   if (!pathname || typeof pathname !== "string") return null;
@@ -410,7 +441,7 @@ function appendProfileQueryParams(path, applicationId, slug = null, visaContext 
   const params = new URLSearchParams(queryStr || undefined);
   
   // Extract child ID from path if present (for any visa type)
-  const childMatch = pathOnly.match(/^\/intake\/(?:temporary-work|partner|protection)\/children\/([^/]+)\/(?:details|other|identity|custody)$/);
+  const childMatch = pathOnly.match(/^\/intake\/(?:temporary-work|partner|protection)\/children\/([^/]+)\/[^/]+$/);
   
   if (childMatch?.[1]) params.set("profileId", childMatch[1]);
   
@@ -617,6 +648,8 @@ export function getDynamicProtectionRoutes(visaContext) {
  * @param {string|null|undefined} visaContext For temporary-work only: '186' uses employer-nomination route order; omit or '482' uses Skills in Demand (482) order.
  */
 export function getAllRoutes(visaType, visaContext = null) {
+  const definitionNavigation = getActiveDefinitionNavigation(visaType);
+  if (definitionNavigation) return definitionNavigation.steps.map((step) => step.href);
   if (visaType === 'temporary-work') {
     return getDynamicTemporaryWorkRoutes(visaContext);
   }
@@ -645,6 +678,12 @@ export function getAllRoutes(visaType, visaContext = null) {
 export function getNextRoute(currentHref, visaType, applicationId = null, visaContext = null, slug = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
   const internalCurrentHref = getInternalIntakeHref(currentHref);
+
+  if (getActiveDefinitionNavigation(visaType)) {
+    const index = findDefinitionRouteIndex(allRoutes, internalCurrentHref);
+    if (index < 0 || index >= allRoutes.length - 1) return null;
+    return appendProfileQueryParams(allRoutes[index + 1], applicationId, slug, visaContext, visaType);
+  }
 
   if (visaType === "temporary-work" && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/children") {
     const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
@@ -693,6 +732,12 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
   const allRoutes = getAllRoutes(visaType, visaContext);
   const internalCurrentHref = getInternalIntakeHref(currentHref);
 
+  if (getActiveDefinitionNavigation(visaType)) {
+    const index = findDefinitionRouteIndex(allRoutes, internalCurrentHref);
+    if (index <= 0) return null;
+    return appendProfileQueryParams(allRoutes[index - 1], applicationId, slug, visaContext, visaType);
+  }
+
   if (visaType === "temporary-work" && temporaryWorkPathname(internalCurrentHref) === "/intake/temporary-work/children") {
     const childIdx = firstTemporaryWorkChildDetailsIndex(allRoutes);
     const visasIdx = allRoutes.findIndex((r) => r.split("?")[0].includes("/all-applicants/visas"));
@@ -737,7 +782,12 @@ export function getPreviousRoute(currentHref, visaType, applicationId = null, vi
 
 export function calculateProgress(currentHref, visaType, visaContext = null) {
   const allRoutes = getAllRoutes(visaType, visaContext);
-  
+
+  if (getActiveDefinitionNavigation(visaType)) {
+    const index = findDefinitionRouteIndex(allRoutes, getInternalIntakeHref(currentHref));
+    return index < 0 ? 0 : Math.round(((index + 1) / allRoutes.length) * 100);
+  }
+
   const internalCurrentHref = getInternalIntakeHref(currentHref);
   let searchHref = internalCurrentHref;
   let currentProfileId = null;

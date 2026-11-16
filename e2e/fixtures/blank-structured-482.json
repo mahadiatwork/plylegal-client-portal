@@ -1,0 +1,124 @@
+{
+  "id": "questionnaire-blank-structured",
+  "visaType": "temporary-work",
+  "visaContexts": [
+    "482"
+  ],
+  "title": "Blank structured questionnaire",
+  "version": "1.0.0",
+  "status": "active",
+  "schemaVersion": 1,
+  "revision": 1,
+  "pages": [
+    {
+      "id": "custom-main-applicant-employer-background",
+      "route": "/intake/temporary-work/main-applicant/employer-background",
+      "sectionKey": "custom_employer_background",
+      "scope": "profile",
+      "order": 11,
+      "completionKey": "temporary-work/main-applicant/employer-background",
+      "questions": [
+        {
+          "id": "start_year",
+          "answerKey": "start_year",
+          "label": "Start year",
+          "type": "text",
+          "required": false
+        },
+        {
+          "id": "employer_name",
+          "answerKey": "employer_name",
+          "label": "Employer name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "id": "job_title",
+          "answerKey": "job_title",
+          "label": "Job title",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "title": "Employer background",
+      "introBlocks": [],
+      "metadata": {
+        "renderer": "dynamic",
+        "customSection": true,
+        "profileRole": "main_applicant"
+      }
+    },
+    {
+      "id": "custom-main-applicant-work-authorisation",
+      "route": "/intake/temporary-work/main-applicant/work-authorisation",
+      "sectionKey": "custom_work_authorisation",
+      "scope": "profile",
+      "order": 10,
+      "completionKey": "temporary-work/main-applicant/work-authorisation",
+      "questions": [
+        {
+          "id": "holds_visa",
+          "answerKey": "holds_visa",
+          "label": "Do you currently hold a work visa?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes"
+            },
+            {
+              "value": "no",
+              "label": "No"
+            }
+          ]
+        },
+        {
+          "id": "visa_notes",
+          "answerKey": "visa_notes",
+          "label": "Anything we should know about your visa?",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "title": "Work authorisation",
+      "introBlocks": [],
+      "metadata": {
+        "renderer": "dynamic",
+        "customSection": true,
+        "profileRole": "main_applicant"
+      }
+    },
+    {
+      "id": "custom-spouse-partner-partner-information",
+      "route": "/intake/temporary-work/spouse-partner/partner-information",
+      "sectionKey": "custom_partner_information",
+      "scope": "profile",
+      "order": 21,
+      "completionKey": "temporary-work/spouse-partner/partner-information",
+      "questions": [
+        {
+          "id": "partner_name",
+          "answerKey": "partner_name",
+          "label": "Partner name",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "title": "Partner information",
+      "introBlocks": [],
+      "metadata": {
+        "renderer": "dynamic",
+        "customSection": true,
+        "profileRole": "spouse"
+      }
+    }
+  ],
+  "navigation": {
+    "mode": "definition",
+    "groups": [
+      "main-applicant"
+    ]
+  },
+  "visaContext": "482"
+}

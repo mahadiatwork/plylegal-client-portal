@@ -9,6 +9,7 @@ import {
 } from "./questionnaires/answers.js";
 import { applyLegacyQuestionnaireReviewCopy } from "./questionnaires/legacyCopy.js";
 import { findQuestionnaireDefinitionPage } from "./questionnaires/pageRoutes.js";
+import { getAllowedProfileRelationships } from "./questionnaires/navigation.js";
 
 const INTERNAL_KEYS = new Set(["id", "__typename", "createdAt", "updatedAt", "userId", "visaContext", "zohoDependentId", "zohoLastSyncedAt", "zohoSyncError", "zohoSyncStatus", "matterDocumentId"]);
 const SHARED_SUFFIXES = { "travel-history": "travel", "contact-details": "contact_details", "future-travel": "future_travel", "future-addresses": "future_addresses" };
@@ -136,7 +137,7 @@ export function buildTargetVisaReviewSections({ visaType, draft = {}, appId, que
   const dynamicPagesByRoute = new Map(
     (questionnaireDefinition?.pages || []).map((page) => [page.route, page])
   );
-  for (const page of getTargetVisaPages(visaType, draft)) {
+  for (const page of getTargetVisaPages(visaType, draft, questionnaireDefinition)) {
     const suffix = page.href.split("/").pop();
     if (suffix === "start") continue;
     const dynamicPage = dynamicPagesByRoute.get(page.href) || findQuestionnaireDefinitionPage(questionnaireDefinition, page.href);
@@ -171,7 +172,11 @@ export function buildTargetVisaReviewSections({ visaType, draft = {}, appId, que
     let formatLabel = formatTargetReviewLabel;
     if (page.member) data = memberData(page.member, page.section);
     else if (page.profile) data = profileData(draft, visaType, page);
-    else if (suffix === "profile") data = { applicants: draft.profiles || [] };
+    else if (suffix === "profile") {
+      // A definition-driven questionnaire only collects the people its included groups cover.
+      const allowed = getAllowedProfileRelationships(questionnaireDefinition);
+      data = { applicants: (draft.profiles || []).filter((profile) => !allowed || allowed.has(profile.relationship)) };
+    }
     else if (suffix === "non-migrating") data = { has_other_family: draft.temporary_work_non_migrating?.has_other_family };
     else if (page.href.includes("/family-sponsor/")) {
       // Sponsor pages save into a single object. Show it once, without dropping

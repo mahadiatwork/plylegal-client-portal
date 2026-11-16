@@ -8,11 +8,17 @@ import { readLocalQuestionnaireDefinitionOverride } from "@/lib/questionnaires/l
 
 const ActiveQuestionnaireDefinitionContext = createContext({
   definition: null,
+  /** True once the definition lookup has finished (found or not), so routes only guessable from it can wait. */
+  resolved: false,
   replaceDefinition: () => {},
 });
 
 export function useActiveQuestionnaireDefinition() {
   return useContext(ActiveQuestionnaireDefinitionContext).definition;
+}
+
+export function useActiveQuestionnaireDefinitionResolved() {
+  return useContext(ActiveQuestionnaireDefinitionContext).resolved;
 }
 
 export function useActiveQuestionnaireDefinitionController() {
@@ -25,6 +31,7 @@ export function DynamicQuestionnaireOverride({
   route,
   visaContext = null,
   visaType,
+  onDefinitionChange,
 }) {
   const remoteDefinitionsEnabled = process.env.NEXT_PUBLIC_DATABASE_TYPE === "firebase";
   const audienceKey = `${visaType || ""}|${visaContext || ""}`;
@@ -74,10 +81,18 @@ export function DynamicQuestionnaireOverride({
     : !remoteDefinitionsEnabled && localOverride.key === audienceKey
       ? localOverride.definition
       : null;
+  const definitionResolved = remoteDefinitionsEnabled
+    ? resolved.key === audienceKey && resolved.status !== "loading"
+    : localOverride.key === audienceKey;
   const contextValue = useMemo(() => ({
     definition: activeDefinition,
+    resolved: definitionResolved,
     replaceDefinition,
-  }), [activeDefinition, replaceDefinition]);
+  }), [activeDefinition, definitionResolved, replaceDefinition]);
+
+  useEffect(() => {
+    if (onDefinitionChange) onDefinitionChange(activeDefinition);
+  }, [activeDefinition, onDefinitionChange]);
 
   return (
     <ActiveQuestionnaireDefinitionContext.Provider value={contextValue}>
